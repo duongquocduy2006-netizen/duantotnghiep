@@ -1,0 +1,678 @@
+/* --- GLOBAL PREMIUM THEME FOR MEMBERSHIP --- */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Oswald:wght@500;700&display=swap');
+
+.member-epic-theme {
+    background-color: #fafafc;
+    color: #1a1a1e;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+
+/* Ensure all headings and buttons default to the clean sans-serif stack to avoid serif fallbacks for Vietnamese characters */
+.member-epic-theme h1,
+.member-epic-theme h2,
+.member-epic-theme h3,
+.member-epic-theme h4,
+.member-epic-theme h5,
+.member-epic-theme h6,
+.member-epic-theme button {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.font-oswald { 
+    font-family: 'Oswald', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+}
+
+.font-outfit {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.font-numeric {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.text-red { 
+    color: #e50914 !important; 
+}
+
+.letter-spacing-1 { letter-spacing: 0.5px; }
+.letter-spacing-2 { letter-spacing: 1.5px; }
+
+/* --- HEADER --- */
+.epic-member-header {
+    background: linear-gradient(135deg, #0e0e11 0%, #1a0809 100%);
+    border-bottom: 3px solid #e50914;
+    padding: 90px 0;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+}
+
+.epic-member-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at 75% 30%, rgba(229, 9, 20, 0.18) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.epic-tag {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: rgba(229, 9, 20, 0.12);
+    color: #e50914;
+    border: 1px solid rgba(229, 9, 20, 0.3);
+    padding: 6px 18px;
+    border-radius: 100px;
+    display: inline-block;
+    text-transform: uppercase;
+}
+
+.epic-header-title {
+    font-size: 52px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -1.5px;
+    line-height: 1.1;
+}
+
+/* --- PREMIUM METALLIC CREDIT CARD --- */
+.metallic-card-container {
+    perspective: 1500px;
+    height: 290px;
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+}
+
+.metallic-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: left;
+    transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    background: linear-gradient(135deg, #131317 0%, #1e1e24 50%, #0c0c0e 100%);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 26px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22);
+    color: #fff;
+}
+
+.metallic-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(30deg, transparent 40%, rgba(255, 255, 255, 0.05) 50%, transparent 60%);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.metallic-card-container:hover .metallic-card {
+    transform: translateY(-8px) rotateX(6deg) rotateY(-3deg);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.32), 
+                0 0 45px rgba(var(--rank-color-rgb, 229, 9, 20), 0.18);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+.metallic-glare {
+    position: absolute;
+    top: -150%; left: -100%;
+    width: 60%; height: 400%;
+    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0) 100%);
+    transform: rotate(25deg);
+    transition: 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.metallic-card-container:hover .metallic-glare {
+    top: -150%; left: 200%;
+}
+
+.card-chip {
+    width: 45px;
+    height: 34px;
+    background: linear-gradient(135deg, #e5c158 0%, #b8860b 100%);
+    border-radius: 6px;
+    position: relative;
+    margin-bottom: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+}
+
+.card-chip::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(0,0,0,0.12) 4px, rgba(0,0,0,0.12) 8px);
+}
+
+.card-number {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.95);
+    margin: 10px 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.epic-rank-badge {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    padding: 5px 14px;
+    border-radius: 100px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.id-card-top {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding-bottom: 15px;
+}
+
+.id-card-middle {
+    margin-top: 15px;
+}
+
+.id-card-middle .text-muted {
+    color: rgba(255, 255, 255, 0.45) !important;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.id-card-middle .card-holder-name {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    font-family: 'Outfit', sans-serif !important;
+    letter-spacing: -0.3px;
+    margin-top: 2px;
+}
+
+.id-card-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding-top: 15px;
+}
+
+.id-card-bottom .text-muted {
+    color: rgba(255, 255, 255, 0.45) !important;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.nfc-icon {
+    font-size: 26px;
+    opacity: 0.85;
+}
+
+/* --- STATS BOX --- */
+.epic-stats-box {
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #eaeaea;
+    padding: 35px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+    height: 100%;
+}
+
+.epic-stats-box h3 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    border-bottom: 1px solid #eaeaea !important;
+}
+
+.epic-progress-bar {
+    height: 12px;
+    background: #f0f1f5;
+    border-radius: 100px;
+    border: none;
+    overflow: hidden;
+}
+
+.epic-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #e50914 0%, #ff4d4d 100%);
+    border-radius: 100px;
+    transition: width 1.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.epic-stats-box .row {
+    border-top: 1px solid #eaeaea !important;
+}
+
+.epic-stats-box .col-6 .text-muted {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.epic-stats-box .col-6.border-start {
+    border-left: 1px solid #eaeaea !important;
+}
+
+/* --- SECTION TITLE --- */
+.section-header {
+    text-align: center;
+    margin-bottom: 45px;
+}
+
+.section-header h2 {
+    font-size: 36px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.8px;
+    color: #111;
+}
+
+.section-header p {
+    color: #666;
+    font-size: 16px;
+    max-width: 600px;
+    margin: 10px auto 0;
+}
+
+/* --- TIER BENEFITS SECTION --- */
+.tier-perks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+}
+
+.tier-perk-card {
+    background: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 20px;
+    padding: 30px;
+    position: relative;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.02);
+}
+
+.tier-perk-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+}
+
+.tier-perk-card.active-rank-card {
+    border: 2px solid var(--tier-color, #e50914);
+    box-shadow: 0 15px 30px rgba(var(--tier-color-rgb, 229, 9, 20), 0.08);
+}
+
+.active-tier-badge {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--tier-color, #e50914);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 6px 14px;
+    border-radius: 100px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.tier-card-header {
+    text-align: center;
+    border-bottom: 1px solid #f0f0f0;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+}
+
+.tier-icon-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--tier-light-color, rgba(229, 9, 20, 0.06));
+    color: var(--tier-color, #e50914);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 15px;
+}
+
+.tier-name {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: -0.3px;
+}
+
+.tier-points-label {
+    font-size: 13px;
+    color: #888;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.tier-discount-box {
+    margin: 20px 0;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+}
+
+.tier-discount-val {
+    font-size: 24px;
+    font-weight: 800;
+    color: #e50914;
+}
+
+.tier-discount-desc {
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+}
+
+.tier-perks-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tier-perks-list li {
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.tier-perks-list li i {
+    color: #10b981;
+    font-size: 15px;
+}
+
+/* --- HOW IT WORKS --- */
+.how-it-works-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+}
+
+.step-card {
+    background: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 20px;
+    padding: 35px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.01);
+}
+
+.step-number {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    font-size: 38px;
+    font-weight: 800;
+    color: #f0f0f4;
+    line-height: 1;
+}
+
+.step-icon-wrapper {
+    width: 70px;
+    height: 70px;
+    background: rgba(229, 9, 20, 0.05);
+    color: #e50914;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin: 0 auto 25px;
+}
+
+.step-card h4 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #111;
+}
+
+.step-card p {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* --- VOUCHER CARD --- */
+.epic-voucher-card {
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid #eaeaea;
+    display: flex;
+    overflow: hidden;
+    height: 100%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.02);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+}
+
+.epic-voucher-card::before, .epic-voucher-card::after {
+    content: '';
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    background-color: #fafafc;
+    border-radius: 50%;
+    left: 35%;
+    z-index: 10;
+    border: 1px solid #eaeaea;
+}
+
+.epic-voucher-card::before {
+    top: -11px;
+}
+
+.epic-voucher-card::after {
+    bottom: -11px;
+}
+
+.epic-voucher-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+    border-color: rgba(229, 9, 20, 0.2);
+}
+
+.voucher-left {
+    background: linear-gradient(135deg, #18181c 0%, #0c0c0e 100%);
+    color: #fff;
+    width: 35%;
+    padding: 24px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    border-right: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.voucher-left i {
+    color: #e50914;
+    filter: drop-shadow(0 0 10px rgba(229, 9, 20, 0.4));
+}
+
+.voucher-left .font-oswald {
+    font-family: 'Outfit', sans-serif !important;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.voucher-right {
+    padding: 24px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.voucher-right h4 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+    color: #111;
+}
+
+/* --- FAQ ACCORDION --- */
+.faq-list {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.faq-item {
+    background: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 14px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.faq-item:hover {
+    border-color: #d2d2d2;
+}
+
+.faq-question-btn {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 22px 28px;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 600;
+    color: #111;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    outline: none;
+}
+
+.faq-question-btn i {
+    transition: transform 0.3s ease;
+    color: #e50914;
+    font-size: 14px;
+}
+
+.faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0, 1, 0, 1), padding 0.3s ease;
+    padding: 0 28px;
+    color: #555;
+    font-size: 14.5px;
+    line-height: 1.6;
+    border-top: 0 solid #eaeaea;
+}
+
+.faq-item.active-faq {
+    border-color: rgba(229, 9, 20, 0.2);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.01);
+}
+
+.faq-item.active-faq .faq-question-btn i {
+    transform: rotate(180deg);
+}
+
+.faq-item.active-faq .faq-answer {
+    max-height: 500px;
+    padding: 0 28px 24px;
+    border-top: 1px solid #f8f9fa;
+    transition: max-height 0.5s cubic-bezier(1, 0, 1, 0), padding 0.3s ease;
+}
+
+/* --- BUTTONS --- */
+.btn-brutal-black {
+    padding: 13px 26px;
+    background: #e50914;
+    color: #fff !important;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: inline-block;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border-radius: 10px;
+    box-shadow: 0 6px 15px rgba(229, 9, 20, 0.25);
+    cursor: pointer;
+}
+
+.btn-brutal-black:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(229, 9, 20, 0.38);
+    background: #b8070f;
+    color: #fff !important;
+}
+
+.btn-brutal-outline {
+    padding: 9px 18px;
+    background: transparent;
+    color: #e50914 !important;
+    border: 1px solid rgba(229, 9, 20, 0.35);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.btn-brutal-outline:hover {
+    background: #e50914;
+    color: #fff !important;
+    border-color: #e50914;
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.18);
+}
+
+/* --- EMPTY / OUT OF BOX --- */
+.epic-empty-box {
+    border: 1px dashed #dcdcdc;
+    border-radius: 20px;
+    padding: 60px 40px;
+    background: #ffffff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.01);
+}
+
+.epic-empty-box h2 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+}
+
+.epic-empty-box p {
+    color: #555;
+    font-size: 15px;
+}

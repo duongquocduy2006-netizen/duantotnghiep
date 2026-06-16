@@ -1,0 +1,375 @@
+/* --- GLOBAL THEME FOR SHOP (CLEAN, FLAT & PROFESSIONAL) --- */
+.shop-epic-theme {
+    background-color: #ffffff;
+    background-image: 
+        linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    color: #333;
+    font-family: 'Poppins', sans-serif;
+    min-height: 80vh;
+}
+
+.epic-filter-sidebar {
+    border-left: 4px solid #e50914 !important;
+}
+
+/* --- FORCE EVERYTHING FLAT: NO SHADOWS OR GLOWS --- */
+.shop-epic-theme,
+.shop-epic-theme *,
+.shop-epic-theme *:focus,
+.shop-epic-theme *:active {
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+
+.font-oswald {
+    font-family: 'Oswald', sans-serif;
+}
+
+/* --- SCROLL REVEAL --- */
+.reveal-item {
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+.opacity-0 {
+    opacity: 0;
+    transform: translateY(30px);
+}
+.opacity-100 {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* --- FORMS --- */
+.epic-input {
+    border: 1px solid #ccc;
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: 500;
+    outline: none;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    background: #fff;
+    color: #000;
+}
+.epic-input:focus {
+    border-color: #e50914;
+}
+
+.epic-select {
+    border: 1px solid #ccc;
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: 500;
+    outline: none;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #000;
+}
+.epic-select:focus {
+    border-color: #e50914;
+}
+
+.epic-radio .form-check-input {
+    border-color: #ccc;
+    cursor: pointer;
+}
+
+.epic-radio .form-check-input:checked {
+    background-color: #e50914;
+    border-color: #e50914;
+}
+
+.epic-radio .form-check-label {
+    cursor: pointer;
+    font-weight: 500;
+    color: #444;
+}
+
+/* --- BUTTONS --- */
+.btn-brutal-outline {
+    padding: 12px 20px;
+    background: transparent;
+    color: #e50914 !important;
+    border: 1px solid #e50914;
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn-brutal-outline:hover {
+    background: #e50914;
+    color: #fff !important;
+}
+
+/* --- CARDS --- */
+.epic-product-card {
+    border-radius: 8px;
+    border: 1px solid #eee;
+    overflow: hidden;
+    background: #fff;
+    transition: all 0.3s ease;
+}
+.epic-product-card:hover {
+    transform: translateY(-5px);
+    border-color: #ddd;
+}
+.epic-product-card img {
+    transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.epic-product-card:hover img {
+    transform: scale(1.05);
+}
+
+.epic-brand {
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 1.5px;
+}
+
+.epic-name a {
+    color: #222 !important;
+    text-decoration: none;
+}
+.epic-name a:hover {
+    color: #e50914 !important;
+}
+
+.price-new {
+    color: #e50914 !important;
+    font-weight: 700;
+}
+
+/* --- FLAT PRODUCT CARD (ALIGNED WITH HOME) --- */
+.flat-product-card {
+    border-radius: 16px;
+    transition: transform 0.35s ease;
+    border: 1px solid rgba(0,0,0,0.08);
+    overflow: hidden;
+    background-color: #fff;
+    box-shadow: none !important;
+}
+.flat-product-card:hover {
+    transform: translateY(-6px);
+}
+
+.flat-card-img-box {
+    border-radius: 0;
+    overflow: hidden;
+    background: #f8f8f8;
+    transition: all 0.3s ease;
+}
+
+.product-card-img {
+    transition: transform 0.55s cubic-bezier(0.19, 1, 0.22, 1) !important;
+    object-fit: contain;
+}
+.flat-product-card:hover .product-card-img {
+    transform: scale(1.12) rotate(-1.5deg) !important;
+}
+
+.wishlist-btn {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(255,255,255,0.95) !important;
+    border: none !important;
+    transition: opacity 0.25s ease, transform 0.2s ease !important;
+    position: relative;
+    z-index: 20;
+    /* Hidden by default */
+    opacity: 0;
+    transform: scale(0.8);
+}
+/* Show on card hover */
+.flat-product-card:hover .wishlist-btn {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+}
+/* Always show if already in wishlist */
+.wishlist-btn:has(.fa-solid.text-danger) {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+}
+.wishlist-btn:hover {
+    transform: scale(1.15) !important;
+}
+
+
+.flat-card-info {
+    background: #fff;
+    padding: 20px;
+}
+
+.flat-brand {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #e50914;
+    text-transform: uppercase;
+}
+.flat-name {
+    font-family: 'Poppins', sans-serif;
+    line-height: 1.4;
+    font-weight: 700;
+}
+.price-new {
+    font-weight: 800;
+    color: #222 !important;
+}
+
+.flat-btn-cart {
+    background: #f0f2f5;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s;
+    border-radius: 10px !important;
+    cursor: pointer;
+}
+.flat-btn-cart:hover {
+    background: #e2e2e2;
+    color: #000;
+}
+
+.flat-btn-buy {
+    background: #e50914;
+    color: #fff !important;
+    border: none;
+    transition: all 0.2s;
+    border-radius: 10px !important;
+    cursor: pointer;
+}
+.flat-btn-buy:hover {
+    background: #c0060f;
+}
+
+/* --- MARQUEE TICKER TICK --- */
+.marquee-strip {
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.marquee-content {
+    display: inline-block;
+    animation: marquee 25s linear infinite;
+}
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+/* --- EDITORIAL BANNER FOR SHOP --- */
+.shop-editorial-section {
+    background-image: linear-gradient(185deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.92) 100%), url('https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?auto=format&fit=crop&w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed; /* Parallax effect */
+}
+
+/* --- PAGE HEADER PARALLAX BANNER --- */
+.epic-page-header {
+    background-image: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 60%, rgba(0,0,0,0.85) 100%), url('https://images.unsplash.com/photo-1556906781-9a412961c28c?auto=format&fit=crop&w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed; /* Parallax */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* --- CAMPAIGN & LOOKBOOK DECORATIVE --- */
+.campaign-img-box img {
+    transition: transform 0.5s ease;
+}
+.campaign-img-box:hover img {
+    transform: scale(1.05);
+}
+.lookbook-item img {
+    transition: transform 0.5s ease;
+}
+.lookbook-item:hover img {
+    transform: scale(1.08);
+}
+.lookbook-item .lookbook-overlay {
+    transition: opacity 0.3s ease;
+}
+.lookbook-item:hover .lookbook-overlay {
+    opacity: 1 !important;
+}
+
+/* --- LOOKBOOK CARD (synced with NewArrivals) --- */
+.na-lookbook-card {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    aspect-ratio: 3/4;
+    cursor: pointer;
+    background: #f4f4f5;
+}
+
+.na-lookbook-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.na-lookbook-card:hover img {
+    transform: scale(1.05);
+}
+
+.na-lookbook-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%);
+    padding: 20px;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0.9;
+    transition: opacity 0.3s ease;
+}
+
+.na-lookbook-overlay span {
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+/* --- SECTION HEADER (synced with NewArrivals) --- */
+.na-section-header {
+    margin-top: 20px;
+}
+
+.na-section-tag {
+    color: #e50914;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.na-section-title {
+    font-size: 32px;
+    font-weight: 900;
+    color: #111;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+}
+
+.na-section-subtitle {
+    font-size: 14px;
+    color: #71717a;
+    max-width: 500px;
+    margin: 0 auto;
+}

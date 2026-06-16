@@ -1,0 +1,163 @@
+.admin-banners-page {
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-banners-page .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 30px;
+}
+
+.admin-banners-page .page-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.admin-banners-page .sub-title {
+    font-size: 13px;
+    color: #00f2ff;
+    font-weight: 600;
+    letter-spacing: 2px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.btn-neon {
+    background: #00f2ff;
+    color: #000;
+    border: none;
+    padding: 12px 25px;
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
+.btn-neon:hover {
+    background: #fff;
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
+}
+
+.admin-banners-page .toolbar {
+    background: #121212;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.admin-banners-page .search-box {
+    flex-grow: 1;
+    position: relative;
+}
+
+.admin-banners-page .search-input {
+    width: 100%;
+    padding: 12px 15px 12px 45px;
+    background: #050505;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #fff;
+    outline: none;
+    transition: 0.3s;
+}
+
+.admin-banners-page .search-input:focus {
+    border-color: #00f2ff;
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+}
+
+.admin-banners-page .search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+}
+
+.admin-banners-page .table-card {
+    background: #121212;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.admin-banners-page table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-banners-page th {
+    text-align: left;
+    padding: 20px;
+    font-weight: 500;
+    color: #666;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: 'Oswald';
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid #333;
+}
+
+.admin-banners-page td {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    vertical-align: middle;
+    color: #ccc;
+    font-size: 13px;
+}
+
+.admin-banners-page tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.admin-banners-page .item-id {
+    font-family: 'Oswald';
+    color: #00f2ff;
+    letter-spacing: 1px;
+    font-weight: 600;
+}
+
+.admin-banners-page .action-btn {
+    width: 35px;
+    height: 35px;
+    background: transparent;
+    border: 1px solid #333;
+    color: #888;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-left: 5px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.btn-edit:hover {
+    border-color: #00f2ff;
+    color: #00f2ff;
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+}
+
+.btn-delete:hover {
+    border-color: #e50914;
+    color: #e50914;
+    box-shadow: 0 0 10px rgba(229, 9, 20, 0.3);
+}

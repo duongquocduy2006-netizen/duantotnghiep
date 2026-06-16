@@ -1,0 +1,302 @@
+/* --- GOD TIER Order Detail Styles --- */
+.order-detail-wrapper {
+    position: relative;
+    overflow-x: hidden;
+    min-height: calc(100vh - 100px);
+    padding-bottom: 100px;
+    background-color: #fff;
+    color: #000;
+}
+
+.title-luxury {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 32px;
+    color: #000;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.order-detail-card {
+    background: #fff;
+    border: 4px solid #000;
+    border-radius: 0;
+    padding: 40px;
+    box-shadow: 12px 12px 0 #e50914;
+    position: relative;
+    margin-top: -50px;
+    z-index: 2;
+}
+
+/* Status Timeline */
+.timeline-container {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    margin: 40px 0 50px;
+    padding: 0 20px;
+}
+
+.timeline-container::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 40px;
+    right: 40px;
+    height: 4px;
+    background: #000;
+    z-index: 1;
+}
+
+.timeline-step {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    flex: 1;
+}
+
+.step-icon {
+    width: 44px;
+    height: 44px;
+    background: #fff;
+    border: 4px solid #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #000;
+    transition: 0.2s;
+    box-shadow: 4px 4px 0 #000;
+}
+
+.step-label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.timeline-step.active .step-icon {
+    border-color: #000;
+    color: #e50914;
+    box-shadow: 4px 4px 0 #e50914;
+    transform: translate(-2px, -2px);
+}
+
+.timeline-step.active .step-label {
+    color: #e50914;
+}
+
+.timeline-step.completed .step-icon {
+    background: #000;
+    color: #fff;
+    box-shadow: 4px 4px 0 #e50914;
+}
+
+.timeline-step.completed .step-label {
+    color: #000;
+}
+
+/* Info Cards */
+.info-card {
+    background: #fff;
+    border: 3px solid #000;
+    padding: 25px;
+    height: 100%;
+    box-shadow: 6px 6px 0 #000;
+    transition: 0.2s;
+}
+
+.info-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 #e50914;
+}
+
+.info-card h6 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 18px;
+    color: #000;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+    border-bottom: 3px solid #000;
+    padding-bottom: 10px;
+}
+
+.info-content {
+    font-size: 15px;
+    color: #000;
+    font-weight: 600;
+}
+
+.info-content p {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* Product Table */
+.product-list {
+    margin-bottom: 30px;
+    border: 3px solid #000;
+    background: #fff;
+    box-shadow: 6px 6px 0 #000;
+}
+
+.product-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    border-bottom: 3px solid #000;
+    transition: 0.2s;
+}
+
+.product-item:hover {
+    background: #f8f8f8;
+}
+
+.product-item:last-child {
+    border-bottom: none;
+}
+
+.product-img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    background: #fff;
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000;
+}
+
+.product-details h6 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: #000;
+    margin-bottom: 6px;
+    line-height: 1.4;
+    text-transform: uppercase;
+}
+
+.variant-tag {
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    color: #000;
+    background: #fff;
+    padding: 4px 10px;
+    border: 2px solid #000;
+    margin-right: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 0 #000;
+}
+
+/* Summary */
+.price-summary {
+    background: #fff;
+    padding: 25px;
+    border: 3px solid #000;
+    box-shadow: 6px 6px 0 #000;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-weight: 700;
+    color: #000;
+    font-size: 16px;
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+}
+
+.summary-row span:last-child {
+    color: #000;
+}
+
+.summary-row.total {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 3px solid #000;
+    font-size: 24px;
+    color: #e50914;
+}
+
+.total-val {
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.5px;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.btn-luxury-back {
+    color: #000;
+    text-decoration: none;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    transition: 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Oswald', sans-serif;
+    border: 3px solid transparent;
+    padding: 8px 16px;
+}
+
+.btn-luxury-back:hover {
+    color: #000;
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #e50914;
+    transform: translate(-2px, -2px);
+    background: #fff;
+}
+
+.action-btn-red {
+    background: #e50914;
+    border: 3px solid #000;
+    color: #ffffff;
+    padding: 15px 40px;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'Oswald', sans-serif;
+    transition: 0.2s;
+    box-shadow: 6px 6px 0 #000;
+}
+
+.action-btn-red:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 #000;
+    color: #fff;
+    background: #000;
+}
+
+.action-btn-outline {
+    background: #fff;
+    border: 3px solid #000;
+    color: #000;
+    padding: 12px 30px;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'Oswald', sans-serif;
+    transition: 0.2s;
+    box-shadow: 6px 6px 0 #000;
+}
+
+.action-btn-outline:hover {
+    background: #e50914;
+    color: #fff;
+    border-color: #000;
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 #000;
+}

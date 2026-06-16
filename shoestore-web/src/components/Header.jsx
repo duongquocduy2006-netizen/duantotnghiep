@@ -1,0 +1,287 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import api from '../services/api';
+import 'animate.css';
+
+const Header = () => {
+    const navigate = useNavigate();
+    const [account, setAccount] = useState(null);
+    const [cartCount, setCartCount] = useState(0);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isListening, setIsListening] = useState(false);
+    const [toast, setToast] = useState(null);
+
+    useEffect(() => {
+        const fetchHeaderData = async () => {
+            try {
+                const profileRes = await api.get('/api/profile');
+                if (profileRes.data && profileRes.data.success) {
+                    setAccount(profileRes.data.account);
+                }
+            } catch (err) {
+                setAccount(null);
+            }
+
+            try {
+                const cartRes = await api.get('/api/cart');
+                if (cartRes.data && cartRes.data.success) {
+                    const items = cartRes.data.cartItems || [];
+                    const count = items.reduce((sum, item) => sum + item.quantity, 0);
+                    setCartCount(count);
+                }
+            } catch (err) {
+                setCartCount(0);
+            }
+        };
+
+        fetchHeaderData();
+
+        // Check for toast message in sessionStorage
+        const msg = sessionStorage.getItem('toast_message');
+        if (msg) {
+            setToast(msg);
+            sessionStorage.removeItem('toast_message');
+        }
+
+        // Custom event to trigger toast dynamically
+        const handleShowToast = (e) => {
+            setToast(e.detail);
+        };
+
+        window.addEventListener('show-toast', handleShowToast);
+        return () => {
+            window.removeEventListener('show-toast', handleShowToast);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => setToast(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toast]);
+
+    const handleLogout = async () => {
+        try {
+            await api.post('/api/auth/logout');
+            sessionStorage.setItem('toast_message', 'Đăng xuất thành công!');
+            setAccount(null);
+            setCartCount(0);
+            navigate('/login');
+        } catch (err) {
+            console.error('Lỗi đăng xuất:', err);
+            setAccount(null);
+            setCartCount(0);
+            navigate('/login');
+        }
+    };
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
+        }
+    };
+
+    const startListening = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Trình duyệt của bạn không hỗ trợ tìm kiếm bằng giọng nói.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'vi-VN';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+            setIsListening(true);
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            setSearchQuery(transcript);
+            navigate(`/shop?search=${encodeURIComponent(transcript)}`);
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Lỗi nhận diện giọng nói:", event.error);
+            setIsListening(false);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognition.start();
+    };
+
+    return (
+        <>
+            <header className="cinematic-header">
+                <div className="container py-4">
+                    <div className="row align-items-center">
+                        <div className="col-md-3 text-center text-md-start">
+                            <Link to="/" className="text-decoration-none">
+                                <h2 className="brand-logo font-oswald" style={{ fontWeight: 800, letterSpacing: '-1px' }}>
+                                    <span style={{ color: '#fff' }}>SHOE</span><span style={{ color: '#e50914' }}>STORE</span>
+                                </h2>
+                            </Link>
+                        </div>
+                        
+
+                        <div className="col-md-5 my-3 my-md-0">
+                            <form onSubmit={handleSearch} className="search-wrapper">
+                                <div className="input-group">
+                                    <input type="text" name="q" className="form-control search-input"
+                                        placeholder="Tìm kiếm phong cách, thương hiệu..." 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)} />
+                                    <button type="button" onClick={startListening} className="btn search-btn" style={{ color: isListening ? '#e50914' : '#fff' }} title="Tìm kiếm bằng giọng nói">
+                                        <i className={`fa ${isListening ? 'fa-microphone-slash' : 'fa-microphone'}`} style={{ animation: isListening ? 'pulse 1.5s infinite' : 'none' }}></i>
+                                    </button>
+                                    <button className="btn search-btn" type="submit"><i className="fa fa-search"></i></button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="col-md-4 text-center text-md-end">
+                            <div className="icon-group d-inline-flex gap-3 align-items-center">
+
+                                <div className="dropdown">
+                                    <a href="#" className="icon-item" id="userDropdown" role="button" data-bs-toggle="dropdown"
+                                        aria-expanded="false" data-bs-display="static">
+                                        <i className="fa fa-user"></i>
+                                    </a>
+
+                                    <ul className="dropdown-menu dropdown-menu-end user-dropdown-menu"
+                                        aria-labelledby="userDropdown">
+                                        {!account ? (
+                                            <>
+                                                <li><Link className="dropdown-item" to="/login"><i className="fa fa-sign-in me-2"></i> Đăng nhập</Link></li>
+                                                <li><Link className="dropdown-item" to="/register"><i className="fa fa-user-plus me-2"></i> Đăng ký</Link></li>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <li>
+                                                    <span className="dropdown-item-text">
+                                                        Hello, <b>{account.full_name || 'User'}</b>
+                                                    </span>
+                                                </li>
+                                                <li><hr className="dropdown-divider" /></li>
+                                                <li><Link className="dropdown-item" to="/profile"><i className="fa fa-id-card-o me-2"></i> Hồ sơ</Link></li>
+                                                <li><Link className="dropdown-item" to="/orders"><i className="fa fa-box-open me-2"></i> Đơn hàng</Link></li>
+                                                <li><Link className="dropdown-item" to="/change-password"><i className="fa fa-key me-2"></i> Mật khẩu</Link></li>
+                                                {account.role === 'ADMIN' && (
+                                                    <li><Link className="dropdown-item" to="/admin/dashboard" style={{ color: '#00f2ff' }}><i className="fa fa-cogs me-2"></i> Trang Quản Trị</Link></li>
+                                                )}
+                                                {account.role === 'SHIPPER' && (
+                                                    <li><Link className="dropdown-item" to="/shipper/dashboard" style={{ color: '#ff9800' }}><i className="fa fa-truck me-2"></i> Kênh Giao Hàng</Link></li>
+                                                )}
+                                                <li><hr className="dropdown-divider" /></li>
+                                                <li>
+                                                    <button type="button" onClick={handleLogout} className="btn-logout-transparent w-100 text-start">
+                                                        <i className="fa fa-power-off me-2"></i> Đăng xuất
+                                                    </button>
+                                                </li>
+                                            </>
+                                        )}
+                                    </ul>
+                                </div>
+
+                                <Link to="/favourites" className="icon-item" title="Yêu thích"><i className="fa fa-heart"></i></Link>
+                                <Link to="/cart" className="icon-item position-relative" title="Giỏ hàng">
+                                    <i className="fa fa-shopping-cart"></i>
+                                    {cartCount > 0 && (
+                                        <span className="cart-badge position-absolute top-0 start-100 translate-middle badge rounded-pill">{cartCount}</span>
+                                    )}
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <nav className="navbar navbar-expand-lg navbar-dark custom-navbar">
+                    <div className="container">
+                        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                            <span className="navbar-toggler-icon"></span>
+                        </button>
+                        <div className="collapse navbar-collapse justify-content-center" id="navbarNav">
+                            <ul className="navbar-nav gap-3">
+                                <li className="nav-item">
+                                    <Link className="nav-link nav-link-custom" to="/">TRANG CHỦ</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <a className="nav-link nav-link-custom" href="#">DANH MỤC <i className="fa fa-angle-down ms-1" style={{ fontSize: '10px' }}></i></a>
+                                    <div className="mega-menu">
+                                        <div className="container">
+                                            <div className="mega-content d-flex flex-wrap justify-content-center gap-5 py-3">
+                                                <div className="mega-column">
+                                                    <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Thương Hiệu</h5>
+                                                    <ul className="list-unstyled">
+                                                        <li className="mb-2"><Link to="/shop?brand=Nike">Nike</Link></li>
+                                                        <li className="mb-2"><Link to="/shop?brand=Adidas">Adidas</Link></li>
+                                                    </ul>
+                                                </div>
+                                                <div className="mega-column">
+                                                    <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Dòng Sản Phẩm</h5>
+                                                    <ul className="list-unstyled">
+                                                        <li className="mb-2"><Link to="/shop?category=Sneaker">Sneaker</Link></li>
+                                                        <li className="mb-2"><Link to="/shop?category=Running">Running</Link></li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            <li className="nav-item">
+                                <Link className="nav-link nav-link-custom" to="/new-arrivals">
+                                    <i className="fa fa-star me-1"></i>HÀNG MỚI
+                                </Link>
+                            </li>
+                            <li className="nav-item">
+                                <Link className="nav-link nav-link-custom" to="/membership">
+                                    <i className="fa fa-fire me-1"></i>HẠNG THÀNH VIÊN
+                                </Link>
+                            </li>
+                            <li className="nav-item">
+                                <Link className="nav-link nav-link-custom" to="/flash-sale">
+                                    <i className="fa fa-fire me-1"></i>SALE SỐC
+                                </Link>
+                            </li>
+                            <li className="nav-item">
+                                <Link className="nav-link nav-link-custom" to="/shop">CỬA HÀNG</Link>
+                            </li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+            </header>
+            {toast && (
+                <div style={{
+                    position: 'fixed',
+                    top: '24px',
+                    right: '24px',
+                    backgroundColor: '#198754',
+                    color: '#fff',
+                    padding: '16px 24px',
+                    borderRadius: '16px',
+                    boxShadow: '0 10px 25px rgba(25, 135, 84, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    zIndex: 99999,
+                    fontWeight: '600',
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: '15px'
+                }} className="animate__animated animate__fadeInDown">
+                    <i className="fa-solid fa-circle-check" style={{ fontSize: '18px' }}></i>
+                    {toast}
+                </div>
+            )}
+        </>
+    );
+};
+
+export default Header;

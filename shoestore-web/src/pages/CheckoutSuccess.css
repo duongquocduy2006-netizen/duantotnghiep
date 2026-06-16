@@ -1,0 +1,57 @@
+/* CheckoutSuccess.css */
+.success-page {
+    background-color: #0a0a0a;
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.success-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 50px;
+    text-align: center;
+    max-width: 600px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.success-icon {
+    font-size: 80px;
+    color: #00ff88;
+    margin-bottom: 30px;
+    text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+}
+
+.success-card h2 {
+    font-family: 'Orbitron', 'Oswald', sans-serif;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.success-card p {
+    color: #ccc;
+    margin-bottom: 40px;
+}
+
+.btn-home {
+    background: #ffffff;
+    color: black;
+    padding: 12px 30px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 700;
+    font-family: 'Orbitron', 'Oswald', sans-serif;
+    transition: all 0.3s;
+    display: inline-block;
+}
+
+.btn-home:hover {
+    background: #ccc;
+    transform: scale(1.05);
+    color: black;
+}

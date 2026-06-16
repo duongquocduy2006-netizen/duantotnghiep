@@ -1,0 +1,165 @@
+/* --- GLOBAL CLEAN THEME FOR FAVOURITES --- */
+.fav-clean-theme {
+    background-color: #ffffff;
+    color: #333333;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    overflow-x: hidden;
+}
+
+/* --- BANNER --- */
+.clean-banner-title {
+    font-size: 40px;
+    letter-spacing: -0.5px;
+}
+
+/* --- EMPTY STATE --- */
+.clean-empty-state {
+    padding: 60px 20px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* --- PRODUCT CARD (Reused & Extended) --- */
+.clean-product-card {
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.clean-product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    border-color: #e0e0e0;
+}
+
+.card-img-box {
+    background: #fdfdfd;
+    position: relative;
+    padding-top: 100%;
+    overflow: hidden;
+}
+
+.card-img-box img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    padding: 20px;
+    transition: transform 0.5s ease;
+}
+
+.clean-product-card:hover .card-img-box img {
+    transform: scale(1.05);
+}
+
+.card-info {
+    padding: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-brand {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.card-name a {
+    color: #111;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    line-height: 1.4;
+    transition: color 0.2s;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.card-name a:hover {
+    color: #777;
+}
+
+.card-price {
+    margin-top: auto;
+    display: flex;
+    justify-content: center;
+}
+
+.price-new {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+/* --- FAV SPECIFIC: REMOVE BUTTON --- */
+.clean-remove-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.clean-remove-btn:hover {
+    background: #dc3545;
+    color: #fff;
+    border-color: #dc3545;
+    transform: rotate(90deg);
+}
+
+/* --- BUTTONS --- */
+.btn-clean-primary {
+    background: #111;
+    color: #fff !important;
+    border: 1px solid #111;
+    padding: 12px 30px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.btn-clean-primary:hover {
+    background: #333;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.btn-clean-outline {
+    background: transparent;
+    color: #111 !important;
+    border: 1px solid #ddd;
+    padding: 12px 30px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.btn-clean-outline:hover {
+    border-color: #111;
+    background: #f8f9fa;
+}

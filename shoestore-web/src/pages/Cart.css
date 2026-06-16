@@ -1,0 +1,220 @@
+/* --- GOD TIER AVANT-GARDE CART CSS --- */
+
+.cart-page-wrapper {
+    background-color: #fff;
+    min-height: 100vh;
+}
+
+/* Watermark typography */
+.god-watermark-bg {
+    position: absolute;
+    color: rgba(0, 0, 0, 0.03);
+    font-family: 'Oswald', sans-serif;
+    font-weight: 900;
+    white-space: nowrap;
+    z-index: 0;
+    pointer-events: none;
+    user-select: none;
+    line-height: 0.8;
+}
+
+/* brutalist lines */
+.god-section-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 40px;
+    font-weight: 800;
+    color: #000;
+    letter-spacing: 2px;
+}
+
+.god-section-line {
+    height: 4px;
+    width: 60px;
+    margin-top: 10px;
+}
+
+/* Cart Item List */
+.god-cart-item {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 30px 0;
+    border-bottom: 3px solid #000;
+    transition: background 0.3s ease;
+}
+
+.god-cart-item:hover {
+    background: #f8f9fa;
+}
+
+.item-img-wrapper {
+    width: 120px;
+    height: 120px;
+    background: #fff;
+    overflow: hidden;
+    position: relative;
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000;
+}
+
+.item-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease, filter 0.5s ease;
+}
+
+.god-grayscale-hover {
+    filter: grayscale(100%) brightness(0.9);
+}
+
+.god-cart-item:hover .god-grayscale-hover {
+    filter: grayscale(0%) brightness(1);
+    transform: scale(1.1);
+}
+
+.god-hover-red {
+    transition: color 0.3s ease;
+}
+
+.god-hover-red:hover {
+    color: #e50914 !important;
+}
+
+/* Brutalist Qty Controls */
+.qty-control-god {
+    height: 40px;
+    border: 3px solid #000 !important;
+    background: #fff !important;
+    box-shadow: 4px 4px 0 #000;
+}
+
+.qty-btn-god {
+    width: 40px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: #000;
+    font-weight: bold;
+    font-size: 20px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.qty-btn-god:hover {
+    color: #fff;
+    background: #000;
+}
+
+.qty-input-god {
+    outline: none;
+    color: #000 !important;
+}
+
+.qty-input-god:focus {
+    color: #e50914 !important;
+}
+
+/* Remove button */
+.btn-remove-god {
+    background: transparent;
+    border: none;
+    color: #000;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+.btn-remove-god:hover {
+    color: #e50914;
+    transform: rotate(90deg) scale(1.2);
+}
+
+/* Brutalist Checkout Button */
+.god-checkout-btn {
+    background: #e50914;
+    color: #fff;
+    border: none;
+    padding: 20px 25px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    clip-path: polygon(0 0, 100% 0, 95% 100%, 0% 100%);
+    transition: 0.3s ease;
+}
+
+.god-checkout-btn:hover:not(:disabled) {
+    background: #000;
+    color: #fff;
+    transform: translateY(-3px);
+    box-shadow: 6px 6px 0 #e50914;
+    clip-path: none;
+}
+
+.god-checkout-btn:disabled {
+    background: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    clip-path: none;
+}
+
+/* Summary Card */
+.god-summary-card {
+    background: #fff !important;
+    border: 4px solid #000 !important;
+    box-shadow: 10px 10px 0 #e50914 !important;
+}
+
+.promo-input-group .form-control {
+    background: #fff !important;
+    color: #000 !important;
+    border: 3px solid #000 !important;
+    box-shadow: inset 4px 4px 0 rgba(0,0,0,0.05);
+}
+
+.promo-input-group .god-btn {
+    background: #000;
+    color: #fff;
+    border: 3px solid #000;
+    font-family: 'Oswald';
+    font-weight: 700;
+    transition: 0.2s;
+    box-shadow: 4px 4px 0 #e50914;
+}
+
+.promo-input-group .god-btn:hover {
+    background: #e50914;
+    color: #fff;
+    box-shadow: 4px 4px 0 #000;
+    transform: translate(-2px, -2px);
+}
+
+/* General Utilities */
+.transition-300 {
+    transition: 0.3s ease;
+}
+
+.god-hover-white:hover {
+    color: #fff !important;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .god-cart-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .item-img-wrapper {
+        width: 100%;
+        height: 250px;
+        margin-bottom: 20px;
+    }
+
+    .item-actions {
+        justify-content: space-between;
+        margin-top: 20px;
+    }
+}
+

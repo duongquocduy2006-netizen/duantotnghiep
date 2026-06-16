@@ -1,0 +1,239 @@
+.admin-settings-page {
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-settings-page .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 30px;
+}
+
+.admin-settings-page .page-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    font-family: 'Oswald', sans-serif;
+}
+
+.admin-settings-page .sub-title {
+    font-size: 13px;
+    color: #00f2ff;
+    font-weight: 600;
+    letter-spacing: 2px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.btn-neon {
+    background: #e50914;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.btn-neon:hover {
+    background: #fff;
+    color: #000;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+}
+
+.card-box {
+    background: #121212;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 30px;
+    margin-bottom: 30px;
+    position: relative;
+    overflow: hidden;
+}
+
+.card-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, #00f2ff, transparent);
+    opacity: 0.5;
+}
+
+.card-title {
+    font-family: 'Oswald';
+    font-size: 18px;
+    color: #fff;
+    margin-bottom: 25px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 15px;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-title i {
+    color: #00f2ff;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    color: #a1a1aa;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    background: #050505;
+    border: 1px solid #333;
+    padding: 12px 15px;
+    color: #fff;
+    outline: none;
+    transition: 0.3s;
+    border-radius: 4px;
+    font-family: 'Poppins';
+}
+
+.form-control:focus {
+    border-color: #00f2ff;
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.6;
+}
+
+.logo-upload-area {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.current-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #333;
+    padding: 2px;
+    background: #000;
+}
+
+.btn-upload {
+    padding: 8px 20px;
+    background: transparent;
+    border: 1px solid #333;
+    color: #ccc;
+    font-size: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-family: 'Oswald';
+    letter-spacing: 1px;
+    transition: 0.3s;
+}
+
+.btn-upload:hover {
+    border-color: #fff;
+    color: #fff;
+}
+
+.switch-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    border-bottom: 1px solid #222;
+    padding-bottom: 15px;
+}
+
+.switch-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.switch-label {
+    font-weight: 600;
+    color: #fff;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.switch-desc {
+    font-size: 11px;
+    color: #666;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 26px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #333;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: #888;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #00f2ff;
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+    background-color: #000;
+}
