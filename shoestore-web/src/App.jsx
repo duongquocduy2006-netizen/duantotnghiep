@@ -8,6 +8,7 @@ import Checkout from './pages/Checkout';
 import CheckoutSuccess from './pages/CheckoutSuccess';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
+import OrderHistory from './pages/OrderHistory';
 import ChangePassword from './pages/ChangePassword';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -91,6 +92,7 @@ function App() {
         <Route path="/checkout-success" element={<CheckoutSuccess />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/orders" element={<Orders />} />
+        <Route path="/order-history" element={<OrderHistory />} />
         <Route path="/orders/detail/:id" element={<OrderDetail />} />
         <Route path="/change-password" element={<ChangePassword />} />
         <Route path="/favourites" element={<Favourites />} />

@@ -45,7 +45,16 @@ const Profile = () => {
     }, [loggedIn]);
 
     const formatPoints = (points) => {
-        return new Intl.NumberFormat('vi-VN').format(points || 0) + ' PTS';
+        return new Intl.NumberFormat('vi-VN').format(points || 0);
+    };
+
+    const getRankClass = (rankName) => {
+        if (!rankName) return 'rank-bronze';
+        const name = rankName.toLowerCase();
+        if (name.includes('kim cương') || name.includes('diamond')) return 'rank-diamond';
+        if (name.includes('vàng') || name.includes('gold')) return 'rank-gold';
+        if (name.includes('bạc') || name.includes('silver')) return 'rank-silver';
+        return 'rank-bronze';
     };
 
     const handleSave = async (e) => {
@@ -70,10 +79,10 @@ const Profile = () => {
     if (loading) {
         return (
             <Layout>
-                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
+                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh'}}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
-                        <div className="spinner-border text-danger" role="status" style={{ width: '4rem', height: '4rem', borderWidth: '5px' }}></div>
-                        <p className="mt-3 font-oswald fw-bold text-uppercase letter-spacing-1">ĐANG TẢI DỮ LIỆU...</p>
+                        <div className="spinner-border text-danger" role="status" style={{ width: '3rem', height: '3rem', borderWidth: '3px' }}></div>
+                        <p className="mt-3 fw-semibold text-muted" style={{fontSize: '14px', letterSpacing: '1px', textTransform: 'uppercase'}}>Đang tải...</p>
                     </div>
                 </div>
             </Layout>
@@ -83,14 +92,16 @@ const Profile = () => {
     if (!loggedIn || !account) {
         return (
             <Layout>
-                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
+                <div className="home-god-tier position-relative" style={{minHeight: '100vh', background: '#f8fafc', paddingBottom: '100px'}}>
                     <div className="container py-5" style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div className="text-center py-5 px-4 bg-white profile-login-box" style={{maxWidth: '550px', width: '100%'}}>
-                            <i className="fa-regular fa-id-badge fa-4x text-danger mb-4 opacity-75"></i>
-                            <h3 className="fw-bold text-uppercase text-dark mb-3" style={{fontSize: '32px'}}>HỒ SƠ CÁ NHÂN</h3>
-                            <p className="fw-semibold text-muted letter-spacing-1 fs-5 my-4">Đăng nhập để xem và quản lý thông tin hồ sơ của bạn, cập nhật thông tin vận chuyển và theo dõi lịch sử đơn hàng cá nhân!</p>
-                            <Link to="/login" className="btn-modern-primary mt-2 d-inline-block">
-                                <span>ĐĂNG NHẬP NGAY</span>
+                        <div className="text-center py-5 px-4 profile-login-box" style={{maxWidth: '480px', width: '100%'}}>
+                            <div style={{width: '72px', height: '72px', borderRadius: '16px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px'}}>
+                                <i className="fa-regular fa-id-badge" style={{fontSize: '28px', color: '#64748b'}}></i>
+                            </div>
+                            <h3 className="fw-bold text-uppercase text-dark mb-2" style={{fontSize: '22px', letterSpacing: '0.5px'}}>Hồ Sơ Cá Nhân</h3>
+                            <p className="text-muted mb-4" style={{fontSize: '14px', lineHeight: '1.7'}}>Đăng nhập để xem và quản lý thông tin hồ sơ, cập nhật thông tin vận chuyển và theo dõi lịch sử đơn hàng.</p>
+                            <Link to="/login" className="btn-modern-primary d-inline-block">
+                                Đăng nhập ngay
                             </Link>
                         </div>
                     </div>
@@ -101,70 +112,89 @@ const Profile = () => {
 
     return (
         <Layout>
-            <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
-                {/* FILM GRAIN TEXTURE */}
-                <div className="god-film-grain" style={{opacity: 0.01}}></div>
+            <div className="home-god-tier position-relative" style={{minHeight: '100vh', background: '#f8fafc', paddingBottom: '80px'}}>
 
-                {/* EPIC HERO */}
-                <div className="profile-page-header py-5 position-relative overflow-hidden mb-5">
-                    <div className="god-watermark-bg text-dark opacity-5" style={{fontSize: '15vw', top: '10%'}}>PROFILE</div>
-                    
-                    <div className="container text-center position-relative z-1 py-4">
-                        <span className="bg-danger text-white px-3 py-1 fw-bold fs-6 text-uppercase animate__animated animate__fadeInDown d-inline-block rounded-pill">TÀI KHOẢN CỦA BẠN</span>
-                        <h1 className="fw-extrabold mt-3 mb-0 text-uppercase animate__animated animate__fadeInUp text-dark" style={{fontSize: '3.5rem', letterSpacing: '1px'}}>HỒ SƠ CÁ NHÂN</h1>
+                {/* PAGE HEADER */}
+                <div className="profile-page-header py-4">
+                    <div className="container">
+                        <div className="d-flex align-items-center gap-2" style={{fontSize: '13px', color: '#64748b'}}>
+                            <Link to="/" style={{color: '#64748b', textDecoration: 'none'}}>Trang chủ</Link>
+                            <i className="fa-solid fa-chevron-right" style={{fontSize: '10px'}}></i>
+                            <span style={{color: '#0f172a', fontWeight: 600}}>Hồ sơ cá nhân</span>
+                        </div>
+                        <h1 className="fw-bold mt-2 mb-0" style={{fontSize: '22px', color: '#0f172a', letterSpacing: '0.3px'}}>Tài Khoản Của Bạn</h1>
                     </div>
                 </div>
 
-                <div className="container pb-5 position-relative z-1">
-                    <div className="row g-5">
+                <div className="container py-4">
+                    <div className="row g-4">
 
-                        <div className="col-lg-4 animate__animated animate__fadeInLeft">
+                        {/* SIDEBAR */}
+                        <div className="col-lg-3">
                             <div className="epic-profile-panel">
+                                {/* Cover */}
                                 <div className="profile-cover"></div>
-                                <div className="user-block">
+
+                                {/* User Block */}
+                                <div className="user-block px-3">
                                     <div className="avatar-box">
-                                        <img src={`https://ui-avatars.com/api/?name=${account.full_name}&background=000&color=fff`} className="user-avatar" alt="Avatar" />
+                                        <img
+                                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(account.full_name)}&background=1e293b&color=fff&bold=true&size=200`}
+                                            className="user-avatar"
+                                            alt="Avatar"
+                                        />
                                         <i className="fa fa-crown vip-crown"></i>
                                     </div>
-                                    <h3 className="mt-3 fw-bold text-uppercase" style={{ fontSize: '24px' }}>{account.full_name}</h3>
-                                    <div className="d-flex flex-column align-items-center gap-1 mt-2">
-                                        <span className="badge bg-danger rounded-pill px-3 py-2 fs-6 text-uppercase">{account.rank_name || 'Đồng'}</span>
-                                        <span className="text-danger fw-bold fs-5 mt-2">{formatPoints(account.points)}</span>
+                                    <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
+                                    <div className="mb-2">
+                                        <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>
+                                            {account.rank_name || 'Đồng'}
+                                        </span>
+                                    </div>
+                                    <div className="points-flat-box mb-3">
+                                        <span className="points-label">Điểm</span>
+                                        <span className="points-val">{formatPoints(account.points)} PTS</span>
                                     </div>
                                 </div>
 
-                                <div className="pb-4 pt-2">
+                                {/* Navigation */}
+                                <div className="pb-3">
+                                    <div style={{height: '1px', background: '#f1f5f9', margin: '0 16px 8px'}}></div>
                                     <Link to="/profile" className="menu-link active">
-                                        <i className="fa-regular fa-id-badge"></i> THÔNG TIN CÁ NHÂN
+                                        <i className="fa-regular fa-id-badge"></i> Thông tin cá nhân
                                     </Link>
                                     <Link to="/orders" className="menu-link">
-                                        <i className="fa-solid fa-bag-shopping"></i> LỊCH SỬ ĐƠN HÀNG
+                                        <i className="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng
                                     </Link>
                                     <Link to="/change-password" className="menu-link">
-                                        <i className="fa-solid fa-shield-halved"></i> ĐỔI MẬT KHẨU
+                                        <i className="fa-solid fa-shield-halved"></i> Đổi mật khẩu
                                     </Link>
-                                    <div className="my-3 mx-4 border-top border-light border-1"></div>
+                                    <div style={{height: '1px', background: '#f1f5f9', margin: '8px 16px'}}></div>
                                     <a href="/login" className="menu-link text-danger" onClick={() => api.post('/logout')}>
-                                        <i className="fa-solid fa-power-off"></i> ĐĂNG XUẤT
+                                        <i className="fa-solid fa-power-off"></i> Đăng xuất
                                     </a>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="col-lg-8 animate__animated animate__fadeInRight">
+                        {/* MAIN CONTENT */}
+                        <div className="col-lg-9">
                             <div className="epic-profile-panel p-4 p-lg-5">
                                 <div className="content-header pb-3 mb-4">
-                                    <h4>CHỈNH SỬA HỒ SƠ</h4>
-                                    <p className="text-muted fw-bold letter-spacing-1 text-uppercase m-0">Quản lý thông tin cá nhân và bảo mật</p>
+                                    <div className="d-flex align-items-center gap-2 mb-1">
+                                        <div style={{width: '4px', height: '20px', background: '#e50914', borderRadius: '2px'}}></div>
+                                        <h4 className="mb-0">Chỉnh sửa hồ sơ</h4>
+                                    </div>
+                                    <p className="mb-0 ms-3">Quản lý thông tin cá nhân và bảo mật tài khoản</p>
                                 </div>
 
-                                <form onSubmit={handleSave} className="mt-4">
+                                <form onSubmit={handleSave}>
                                     <div className="row g-4">
                                         {/* Email */}
                                         <div className="col-md-6">
                                             <div className="float-input-group">
                                                 <input type="email" className="float-input" id="email" defaultValue={account.email} readOnly placeholder=" " />
-                                                <label htmlFor="email" className="float-label">ĐỊA CHỈ EMAIL (KHÔNG THỂ ĐỔI)</label>
+                                                <label htmlFor="email" className="float-label">Địa chỉ email (không thể đổi)</label>
                                             </div>
                                         </div>
 
@@ -172,7 +202,7 @@ const Profile = () => {
                                         <div className="col-md-6">
                                             <div className="float-input-group">
                                                 <input type="text" className="float-input" id="usercode" defaultValue={account.user_code} readOnly placeholder=" " />
-                                                <label htmlFor="usercode" className="float-label">MÃ THÀNH VIÊN</label>
+                                                <label htmlFor="usercode" className="float-label">Mã thành viên</label>
                                             </div>
                                         </div>
 
@@ -180,7 +210,7 @@ const Profile = () => {
                                         <div className="col-md-6">
                                             <div className="float-input-group">
                                                 <input type="text" className="float-input" id="fullname" name="fullName" value={fullName} onChange={e => setFullName(e.target.value)} placeholder=" " required />
-                                                <label htmlFor="fullname" className="float-label">HỌ VÀ TÊN</label>
+                                                <label htmlFor="fullname" className="float-label">Họ và tên</label>
                                             </div>
                                         </div>
 
@@ -188,15 +218,25 @@ const Profile = () => {
                                         <div className="col-md-6">
                                             <div className="float-input-group">
                                                 <input type="text" className="float-input" id="phone" name="phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder=" " />
-                                                <label htmlFor="phone" className="float-label">SỐ ĐIỆN THOẠI</label>
+                                                <label htmlFor="phone" className="float-label">Số điện thoại</label>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="mt-5 d-flex align-items-center justify-content-between pt-4 content-footer">
-                                        <span className="text-muted fw-bold text-uppercase letter-spacing-1"><i className="fa fa-info-circle me-2 text-danger"></i> Hồ sơ tích lũy thành viên</span>
+                                    {/* Info note */}
+                                    <div className="mt-4 p-3 d-flex align-items-start gap-2" style={{background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0'}}>
+                                        <i className="fa fa-circle-info mt-1" style={{color: '#64748b', fontSize: '14px', flexShrink: 0}}></i>
+                                        <p className="mb-0" style={{fontSize: '13px', color: '#475569', lineHeight: '1.6'}}>
+                                            Thông tin cá nhân của bạn sẽ được sử dụng để tích điểm và xét hạng thành viên. Điểm tích lũy hiện tại: <strong style={{color: '#e50914'}}>{formatPoints(account.points)} điểm</strong>.
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-4 d-flex align-items-center justify-content-between pt-4 content-footer">
+                                        <span style={{fontSize: '13px', color: '#94a3b8'}}>
+                                            Cập nhật lần cuối bởi hệ thống
+                                        </span>
                                         <button type="submit" className="btn-super">
-                                            LƯU THAY ĐỔI <i className="fa fa-arrow-right ms-2"></i>
+                                            Lưu thay đổi <i className="fa fa-check ms-2"></i>
                                         </button>
                                     </div>
                                 </form>
