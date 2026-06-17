@@ -85,11 +85,11 @@ const Profile = () => {
             <Layout>
                 <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
                     <div className="container py-5" style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div className="text-center py-5 px-4 border border-dark border-4 bg-white" style={{boxShadow: '10px 10px 0 #e50914', maxWidth: '600px', width: '100%'}}>
+                        <div className="text-center py-5 px-4 bg-white profile-login-box" style={{maxWidth: '550px', width: '100%'}}>
                             <i className="fa-regular fa-id-badge fa-4x text-danger mb-4 opacity-75"></i>
-                            <h3 className="font-oswald fw-bold text-uppercase text-dark" style={{fontSize: '40px'}}>HỒ SƠ CÁ NHÂN</h3>
-                            <p className="fw-bold text-muted font-oswald letter-spacing-1 fs-5 my-4">Đăng nhập để xem và quản lý thông tin hồ sơ của bạn, cập nhật thông tin vận chuyển và theo dõi lịch sử đơn hàng cá nhân!</p>
-                            <Link to="/login" className="btn-god-tier mt-2 d-inline-block">
+                            <h3 className="fw-bold text-uppercase text-dark mb-3" style={{fontSize: '32px'}}>HỒ SƠ CÁ NHÂN</h3>
+                            <p className="fw-semibold text-muted letter-spacing-1 fs-5 my-4">Đăng nhập để xem và quản lý thông tin hồ sơ của bạn, cập nhật thông tin vận chuyển và theo dõi lịch sử đơn hàng cá nhân!</p>
+                            <Link to="/login" className="btn-modern-primary mt-2 d-inline-block">
                                 <span>ĐĂNG NHẬP NGAY</span>
                             </Link>
                         </div>
@@ -103,15 +103,15 @@ const Profile = () => {
         <Layout>
             <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
                 {/* FILM GRAIN TEXTURE */}
-                <div className="god-film-grain" style={{opacity: 0.05}}></div>
+                <div className="god-film-grain" style={{opacity: 0.01}}></div>
 
                 {/* EPIC HERO */}
-                <div className="epic-page-header py-5 bg-white position-relative overflow-hidden border-bottom border-dark border-3 mb-5">
-                    <div className="god-watermark-bg text-dark opacity-10" style={{fontSize: '15vw', top: '10%'}}>PROFILE</div>
+                <div className="profile-page-header py-5 position-relative overflow-hidden mb-5">
+                    <div className="god-watermark-bg text-dark opacity-5" style={{fontSize: '15vw', top: '10%'}}>PROFILE</div>
                     
-                    <div className="container text-center position-relative z-1 py-5">
-                        <span className="bg-danger text-white px-4 py-1 font-oswald fw-bold fs-5 text-uppercase animate__animated animate__fadeInDown d-inline-block border border-dark border-2" style={{boxShadow: '4px 4px 0 #000'}}>TÀI KHOẢN CỦA BẠN</span>
-                        <h1 className="font-oswald fw-bold mt-3 mb-0 text-uppercase animate__animated animate__fadeInUp text-dark" style={{fontSize: '5rem', letterSpacing: '4px', textShadow: '4px 4px 0 #e50914'}}>HỒ SƠ CÁ NHÂN</h1>
+                    <div className="container text-center position-relative z-1 py-4">
+                        <span className="bg-danger text-white px-3 py-1 fw-bold fs-6 text-uppercase animate__animated animate__fadeInDown d-inline-block rounded-pill">TÀI KHOẢN CỦA BẠN</span>
+                        <h1 className="fw-extrabold mt-3 mb-0 text-uppercase animate__animated animate__fadeInUp text-dark" style={{fontSize: '3.5rem', letterSpacing: '1px'}}>HỒ SƠ CÁ NHÂN</h1>
                     </div>
                 </div>
 
@@ -126,10 +126,10 @@ const Profile = () => {
                                         <img src={`https://ui-avatars.com/api/?name=${account.full_name}&background=000&color=fff`} className="user-avatar" alt="Avatar" />
                                         <i className="fa fa-crown vip-crown"></i>
                                     </div>
-                                    <h3 className="mt-3 font-oswald fw-bold text-uppercase">{account.full_name}</h3>
+                                    <h3 className="mt-3 fw-bold text-uppercase" style={{ fontSize: '24px' }}>{account.full_name}</h3>
                                     <div className="d-flex flex-column align-items-center gap-1 mt-2">
-                                        <span className="badge bg-dark rounded-0 px-3 py-2 font-oswald fs-6 text-uppercase border border-dark" style={{boxShadow: '3px 3px 0 #e50914'}}>{account.rank_name || 'Đồng'}</span>
-                                        <span className="font-oswald text-danger fw-bold fs-5 mt-2">{formatPoints(account.points)}</span>
+                                        <span className="badge bg-danger rounded-pill px-3 py-2 fs-6 text-uppercase">{account.rank_name || 'Đồng'}</span>
+                                        <span className="text-danger fw-bold fs-5 mt-2">{formatPoints(account.points)}</span>
                                     </div>
                                 </div>
 
@@ -143,7 +143,7 @@ const Profile = () => {
                                     <Link to="/change-password" className="menu-link">
                                         <i className="fa-solid fa-shield-halved"></i> ĐỔI MẬT KHẨU
                                     </Link>
-                                    <div className="my-3 mx-4 border-top border-dark border-2"></div>
+                                    <div className="my-3 mx-4 border-top border-light border-1"></div>
                                     <a href="/login" className="menu-link text-danger" onClick={() => api.post('/logout')}>
                                         <i className="fa-solid fa-power-off"></i> ĐĂNG XUẤT
                                     </a>
@@ -153,9 +153,9 @@ const Profile = () => {
 
                         <div className="col-lg-8 animate__animated animate__fadeInRight">
                             <div className="epic-profile-panel p-4 p-lg-5">
-                                <div className="content-header border-bottom border-dark border-3 pb-3 mb-4">
+                                <div className="content-header pb-3 mb-4">
                                     <h4>CHỈNH SỬA HỒ SƠ</h4>
-                                    <p className="text-muted font-oswald fw-bold letter-spacing-1 text-uppercase m-0">Quản lý thông tin cá nhân và bảo mật</p>
+                                    <p className="text-muted fw-bold letter-spacing-1 text-uppercase m-0">Quản lý thông tin cá nhân và bảo mật</p>
                                 </div>
 
                                 <form onSubmit={handleSave} className="mt-4">
@@ -193,8 +193,8 @@ const Profile = () => {
                                         </div>
                                     </div>
 
-                                    <div className="mt-5 d-flex align-items-center justify-content-between border-top border-dark border-3 pt-4">
-                                        <span className="text-muted font-oswald fw-bold text-uppercase letter-spacing-1"><i className="fa fa-info-circle me-2 text-danger"></i> Hồ sơ tích lũy thành viên</span>
+                                    <div className="mt-5 d-flex align-items-center justify-content-between pt-4 content-footer">
+                                        <span className="text-muted fw-bold text-uppercase letter-spacing-1"><i className="fa fa-info-circle me-2 text-danger"></i> Hồ sơ tích lũy thành viên</span>
                                         <button type="submit" className="btn-super">
                                             LƯU THAY ĐỔI <i className="fa fa-arrow-right ms-2"></i>
                                         </button>
