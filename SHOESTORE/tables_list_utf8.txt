@@ -1,0 +1,25 @@
+﻿name                                                                                                                            
+--------------------------------------------------------------------------------------------------------------------------------
+membership_ranks                                                                                                                
+accounts                                                                                                                        
+addresses                                                                                                                       
+shops                                                                                                                           
+categories                                                                                                                      
+sizes                                                                                                                           
+colors                                                                                                                          
+products                                                                                                                        
+product_variants                                                                                                                
+product_images                                                                                                                  
+carts                                                                                                                           
+cart_items                                                                                                                      
+platform_vouchers                                                                                                               
+shop_vouchers                                                                                                                   
+user_vouchers                                                                                                                   
+payment_methods                                                                                                                 
+shipping_methods                                                                                                                
+orders                                                                                                                          
+order_items                                                                                                                     
+favourites                                                                                                                      
+product_reviews                                                                                                                 
+
+(21 rows affected)

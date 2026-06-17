@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chi tiết sản phẩm | ShoeStore</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+    <style>
+        /* --- THEME VARIABLES --- */
+        :root {
+            --bg-body: #050505;
+            --card-bg: #121212;
+            --accent-red: #e50914;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Poppins', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        .brand-font {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+
+        /* --- BREADCRUMB --- */
+        .custom-breadcrumb {
+            background: transparent;
+            padding: 20px 0;
+            margin-bottom: 20px;
+        }
+
+        .breadcrumb-item a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .breadcrumb-item a:hover {
+            color: var(--accent-red);
+        }
+
+        .breadcrumb-item.active {
+            color: #fff;
+        }
+
+        .breadcrumb-item+.breadcrumb-item::before {
+            color: #555;
+        }
+
+        /* --- PRODUCT GALLERY (LEFT) --- */
+        .product-gallery {
+            position: relative;
+        }
+
+        .main-img-box {
+            background: #151515;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+            cursor: zoom-in;
+            border: 1px solid var(--border-glass);
+        }
+
+        .main-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+
+        .thumb-grid {
+            display: flex;
+            gap: 15px;
+        }
+
+        .thumb-item {
+            width: 80px;
+            height: 80px;
+            background: #151515;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            overflow: hidden;
+            transition: 0.2s;
+        }
+
+        .thumb-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.6;
+            transition: 0.2s;
+        }
+
+        .thumb-item:hover,
+        .thumb-item.active {
+            border-color: var(--accent-red);
+        }
+
+        .thumb-item:hover img,
+        .thumb-item.active img {
+            opacity: 1;
+        }
+
+        /* --- PRODUCT INFO (RIGHT) --- */
+        .product-brand {
+            color: var(--text-muted);
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .product-title {
+            font-size: 40px;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 15px;
+        }
+
+        .product-price-box {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .current-price {
+            font-family: 'Oswald', sans-serif;
+            font-size: 32px;
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        .old-price {
+            font-size: 18px;
+            color: #666;
+            text-decoration: line-through;
+        }
+
+        .discount-tag {
+            background: #ffd700;
+            color: #000;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        .product-desc {
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        /* Size Selector */
+        .size-label {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .size-guide-link {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .size-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .size-option {
+            width: 45px;
+            height: 45px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            border-radius: 8px;
+        }
+
+        .size-option:hover {
+            border-color: #fff;
+        }
+
+        .size-option.active {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+            font-weight: 700;
+        }
+
+        .size-option.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            text-decoration: line-through;
+        }
+
+        /* Actions */
+        .action-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        /* Quantity (Reuse) */
+        .qty-wrapper {
+            display: flex;
+            align-items: center;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 50px;
+            padding: 5px;
+            height: 50px;
+        }
+
+        .qty-btn {
+            width: 40px;
+            height: 100%;
+            border: none;
+            background: transparent;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .qty-btn:hover {
+            color: var(--accent-red);
+        }
+
+        .qty-input {
+            width: 40px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .qty-input:focus {
+            outline: none;
+        }
+
+        .btn-add-cart {
+            flex: 1;
+            height: 50px;
+            background: transparent;
+            color: #fff;
+            border: 1px solid #fff;
+            font-family: 'Oswald', sans-serif;
+            font-size: 16px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+
+        .btn-add-cart:hover {
+            background: #fff;
+            color: #000;
+        }
+
+        .btn-buy-now {
+            flex: 1;
+            height: 50px;
+            background: var(--accent-red);
+            color: #fff;
+            border: none;
+            font-family: 'Oswald', sans-serif;
+            font-size: 16px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(229, 9, 20, 0.4);
+            transition: 0.3s;
+        }
+
+        .btn-buy-now:hover {
+            background: #b20710;
+            transform: translateY(-2px);
+        }
+
+        .wish-btn {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #333;
+            background: #1a1a1a;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .wish-btn:hover {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .wish-btn.active {
+            background: var(--accent-red);
+            color: #fff;
+            border-color: var(--accent-red);
+        }
+
+        /* --- TABS SECTION --- */
+        .product-tabs {
+            margin-top: 60px;
+        }
+
+        .nav-tabs {
+            border-bottom: 1px solid #333;
+        }
+
+        .nav-link {
+            color: #777;
+            background: transparent;
+            border: none;
+            font-family: 'Oswald', sans-serif;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 15px 30px;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: #fff;
+        }
+
+        .nav-link.active {
+            color: #fff;
+            background: transparent;
+        }
+
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--accent-red);
+        }
+
+        .tab-content {
+            padding: 40px 0;
+            color: #ccc;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        /* Specs Table */
+        .specs-table td {
+            padding: 10px 0;
+            border-bottom: 1px solid #222;
+            color: #aaa;
+        }
+
+        .specs-table td:first-child {
+            width: 150px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        /* Reviews */
+        .review-item {
+            border-bottom: 1px solid #222;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+
+        .user-rating {
+            color: #ffd700;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        /* --- RELATED PRODUCTS (Reuse Card) --- */
+        .related-title {
+            margin-top: 60px;
+            margin-bottom: 30px;
+            font-size: 28px;
+            border-left: 5px solid var(--accent-red);
+            padding-left: 20px;
+        }
+
+        /* Copy Card CSS from Shop Page (Simplified) */
+        .product-card {
+            background: #121212;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: 0.3s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            border-color: #444;
+        }
+
+        .card-img-box {
+            position: relative;
+            padding-top: 100%;
+            background: #1a1a1a;
+        }
+
+        .card-img-box img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-info {
+            padding: 15px;
+        }
+
+        .card-name a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .card-price {
+            color: var(--accent-red);
+            font-family: 'Oswald', sans-serif;
+            margin-top: 5px;
+        }
+
+        /* CUSTOM POLICY ICONS COLORS */
+        /* Sáng hơn text-muted */
+
+        /* STAR RATING INPUT */
+        .star-rating {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+        }
+
+        .star-rating input {
+            display: none;
+        }
+
+        .star-rating label {
+            font-size: 25px;
+            color: #444;
+            cursor: pointer;
+            transition: color 0.2s;
+            margin-right: 5px;
+        }
+
+        .star-rating label:hover,
+        .star-rating label:hover ~ label,
+        .star-rating input:checked ~ label {
+            color: #ffd700;
+        }
+
+        .review-form-box {
+            background: #151515;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid var(--border-glass);
+            margin-bottom: 40px;
+        }
+
+        .review-textarea {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            width: 100%;
+            min-height: 100px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+
+        .review-textarea:focus {
+            outline: none;
+            border-color: var(--accent-red);
+        }
+
+        .replies-list {
+            margin-left: 50px;
+            border-left: 1px solid var(--border-glass);
+            padding-left: 20px;
+            margin-top: 15px;
+        }
+        .reply-item {
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+        .badge-shop {
+            background: var(--accent-red);
+            color: white;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+            text-transform: uppercase;
+            font-weight: 700;
+            vertical-align: middle;
+        }
+        .reply-link {
+            color: var(--accent-red);
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none !important;
+            margin-top: 8px;
+            display: inline-block;
+            font-weight: 600;
+        }
+        .reply-link:hover {
+            color: #fff;
+        }
+        .reply-form-container {
+            margin-left: 50px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .review-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            align-items: center;
+        }
+        .action-btn {
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: 0.2s;
+            background: transparent;
+            border: none;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .action-btn:hover {
+            color: #fff;
+        }
+        .action-btn.liked {
+            color: var(--accent-red);
+        }
+        .btn-delete-comment {
+            color: #ff4d4d !important;
+        }
+        .btn-delete-comment:hover {
+            color: #ff0000 !important;
+            text-decoration: underline !important;
+        }
+        
+        /* PREMIUM NOTIFICATION */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+        }
+
+        .premium-toast {
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid var(--accent-red);
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            margin-bottom: 10px;
+        }
+
+        .premium-toast.show {
+            transform: translateX(0);
+        }
+
+        .premium-toast i {
+            font-size: 20px;
+            color: var(--accent-red);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div th:replace="~{client/fragments/header :: header}"></div>
+
+    <div class="container pb-5">
+
+        <nav aria-label="breadcrumb" class="custom-breadcrumb animate__animated animate__fadeIn">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Trang chủ</a></li>
+                <li class="breadcrumb-item"><a href="/shop">Sản phẩm</a></li>
+                <li class="breadcrumb-item active" aria-current="page" th:text="${p?.product_name}">Nike Air Force 1
+                </li>
+            </ol>
+        </nav>
+
+        <div class="row g-5">
+            <div class="col-lg-7">
+                <div class="product-gallery">
+                    <div class="main-img-box">
+                        <img id="mainImage"
+                            th:src="${images != null && !images.isEmpty() ? (images[0].image_url.startsWith('http') ? images[0].image_url : (images[0].image_url.startsWith('/images/') ? images[0].image_url : '/images/' + images[0].image_url)) : 'https://placehold.co/800x800?text=No+Image'}"
+                            onerror="this.onerror=null; this.src='https://placehold.co/800x800?text=No+Image'" class="main-img">
+                    </div>
+                    <div class="thumb-grid">
+                        <div th:each="img, iter : ${images}"
+                            th:class="'thumb-item' + (${iter.index == 0} ? ' active' : '')"
+                            th:data-src="${img.image_url.startsWith('http') ? img.image_url : (img.image_url.startsWith('/images/') ? img.image_url : '/images/' + img.image_url)}" onclick="changeImage(this)">
+                            <img th:src="${img.image_url.startsWith('http') ? img.image_url : (img.image_url.startsWith('/images/') ? img.image_url : '/images/' + img.image_url)}"
+                                 onerror="this.onerror=null; this.src='https://placehold.co/100x100?text=Error'">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="product-brand" th:text="${p?.category_name != null ? p.category_name : p?.brand_name}">Brand
+                </div>
+                <h1 class="product-title" th:text="${p?.product_name}">NIKE AIR FORCE 1</h1>
+
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="text-warning small">
+                        <i th:each="i : ${#numbers.sequence(1, 5)}" 
+                           th:class="${i <= avgRating ? 'fa fa-star' : (i - 0.5 <= avgRating ? 'fa-solid fa-star-half-stroke' : 'fa-regular fa-star')}"></i>
+                    </div>
+                    <span class="text-muted small" th:text="${'(' + #numbers.formatDecimal(avgRating, 1, 1) + '/5.0)'}">(4.8/5.0)</span>
+                    <span class="badge bg-success" th:if="${p?.status == 1}">Còn hàng</span>
+                    <span class="badge bg-secondary" th:if="${p?.status == 0}">Hết hàng</span>
+                </div>
+
+                <div class="product-price-box">
+                    <!-- Flash Sale Price -->
+                    <th:block th:if="${flashSale != null}">
+                        <div class="current-price" id="displayPrice"
+                            th:text="${#numbers.formatDecimal(flashSale.sale_price, 0, 'POINT', 0, 'POINT') + '₫'}">
+                            1.000.000đ</div>
+                        <div class="old-price" 
+                            th:text="${variants != null && !variants.isEmpty() ? #numbers.formatDecimal(variants[0].price, 0, 'POINT', 0, 'POINT') + '₫' : ''}">
+                            2.000.000đ</div>
+                        <div class="discount-tag" th:with="oldP=${variants[0].price.doubleValue()}, newP=${flashSale.sale_price.doubleValue()}"
+                             th:text="'-' + ${#numbers.formatDecimal((oldP - newP) / oldP * 100, 0, 0)} + '%'">-50%</div>
+                    </th:block>
+                    
+                    <!-- Normal Price -->
+                    <th:block th:if="${flashSale == null}">
+                        <div class="current-price" id="displayPrice"
+                            th:text="${variants != null && !variants.isEmpty() && variants[0]?.price != null ? #numbers.formatDecimal(variants[0].price, 0, 'POINT', 0, 'POINT') + '₫' : 'Liên hệ'}">
+                            2.500.000đ</div>
+                    </th:block>
+                </div>
+
+                <p class="product-desc" th:text="${p?.description ?: 'Đang cập nhật mô tả...'}">
+                    Mô tả sản phẩm...
+                </p>
+
+                <!-- VOUCHER SECTION -->
+                <div th:if="${vouchers != null && !vouchers.isEmpty()}" class="mb-4">
+                    <div
+                        style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--accent-red); text-transform: uppercase; letter-spacing: 1px;">
+                        <i class="fa fa-ticket-alt"></i> Mã Giảm Giá Khả Dụng
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <div th:each="v : ${vouchers}"
+                            style="background: rgba(229, 9, 20, 0.05); border: 1px dashed var(--accent-red); padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: 0.3s;"
+                            th:title="${'Đơn tối thiểu: ' + #numbers.formatDecimal(v.min_order_value, 0, 'POINT', 0, 'POINT') + 'đ'}">
+                            <div style="font-size: 11px; color: #aaa; font-weight: 500;">GIẢM [[${v.discount_type ==
+                                'PERCENT' ? v.discount_value + '%' : #numbers.formatInteger(v.discount_value/1000, 0) +
+                                'K'}]]</div>
+                            <div style="font-family: 'Oswald'; color: #fff; font-size: 16px; letter-spacing: 1px;">
+                                [[${v.code}]]</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="size-label">
+                        <span>Chọn Biến Thể (Size - Màu)</span>
+                        <span id="stockLabel"
+                            style="color: var(--accent-cyan); font-size: 13px; font-weight: 500;"></span>
+                    </div>
+                    <div class="size-grid">
+                        <div th:each="v : ${variants}" class="size-option"
+                            th:text="${(v.size_name ?: 'N/A') + ' - ' + (v.color_name ?: 'N/A')}" th:data-id="${v.id}"
+                            th:data-price="${v.price ?: 0}" th:data-quantity="${v.quantity ?: 0}"
+                            onclick="updateVariant(this)">
+                        </div>
+                        <div th:if="${variants == null || #lists.isEmpty(variants)}" class="text-muted">Không có biến
+                            thể khả dụng</div>
+                    </div>
+                </div>
+
+                <div class="action-group">
+                    <div class="qty-wrapper">
+                        <button class="qty-btn" onclick="decrease()">-</button>
+                        <input type="text" class="qty-input" value="1" id="qtyInput" readonly>
+                        <button class="qty-btn" onclick="increase()">+</button>
+                    </div>
+                    <button class="wish-btn"
+                        th:classappend="${globalFavIds != null && globalFavIds.contains(p.id)} ? 'active' : ''"
+                        th:onclick="'toggleWishlist(' + ${p.id} + ', this)'">
+                        <i class="fa fa-heart"></i>
+                    </button>
+                </div>
+
+                <div class="d-flex gap-3 mb-4">
+                    <button class="btn btn-add-cart" onclick="addToCart()">Thêm vào giỏ</button>
+                    <button class="btn btn-buy-now" onclick="buyNow()">Mua ngay</button>
+                </div>
+
+                <div class="border-top border-secondary pt-3 mt-4">
+                    <div class="d-flex align-items-center gap-3 text-light small mb-2 policy-text">
+                        <i class="fa fa-check-circle text-success fs-5"></i> <span>Hàng chính hãng 100%</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 text-light small mb-2 policy-text">
+                        <i class="fa fa-truck-fast text-danger fs-5"></i> <span>Miễn phí vận chuyển đơn > 500k</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 text-light small policy-text">
+                        <i class="fa fa-rotate text-primary fs-5"></i> <span>Đổi trả trong 7 ngày</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="product-tabs animate__animated animate__fadeInUp animate__delay-1s">
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#desc">Mô tả</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#specs">Thông số</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#review" th:text="'Đánh giá (' + ${reviewCount != null ? reviewCount : 0} + ')'">Đánh giá (128)</button>
+                </li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="desc">
+                    <p>Huyền thoại sống mãi với Nike Air Force 1 '07. Kết hợp giữa sự thoải mái của sân đấu và phong
+                        cách đường phố, đôi giày này mang lại vẻ ngoài tươi mới với những chi tiết quen thuộc: lớp phủ
+                        da khâu bền bỉ, lớp hoàn thiện sạch sẽ và đủ độ nổi bật để bạn tỏa sáng.</p>
+                    <p>Đệm Nike Air: Ban đầu được thiết kế cho bóng rổ, đệm Nike Air mang lại sự thoải mái nhẹ nhàng cả
+                        ngày.</p>
+                </div>
+
+                <div class="tab-pane fade" id="specs">
+                    <table class="specs-table w-100">
+                        <tr>
+                            <td>Danh mục</td>
+                            <td th:text="${p?.category_name ?: 'N/A'}">Nike</td>
+                        </tr>
+                        <tr>
+                            <td>Mã sản phẩm</td>
+                            <td th:text="${p?.product_code ?: 'N/A'}">CW2288-111</td>
+                        </tr>
+                        <tr>
+                            <td>Thương hiệu</td>
+                            <td th:text="${p?.brand_name ?: 'N/A'}">Nike</td>
+                        </tr>
+                        <tr>
+                            <td>Trạng thái</td>
+                            <td th:text="${p?.status == 1 ? 'Đang kinh doanh' : 'Ngừng kinh doanh'}">Đang bán</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="tab-pane fade" id="review">
+                    <!-- REVIEW FORM -->
+                    <div class="review-form-box" th:if="${hasPurchased}">
+                        <h5 class="text-white mb-3">Gửi đánh giá của bạn</h5>
+                        <div class="star-rating">
+                            <input type="radio" id="star5" name="rating" value="5" /><label for="star5" title="5 stars"><i class="fa fa-star"></i></label>
+                            <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="4 stars"><i class="fa fa-star"></i></label>
+                            <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="3 stars"><i class="fa fa-star"></i></label>
+                            <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="2 stars"><i class="fa fa-star"></i></label>
+                            <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="1 star"><i class="fa fa-star"></i></label>
+                        </div>
+                        <textarea id="reviewContent" class="review-textarea" placeholder="Chia sẻ cảm nhận của bạn về sản phẩm này..."></textarea>
+                        <button class="btn btn-buy-now px-4" style="height: 45px; width: auto;" onclick="submitReview()">Gửi đánh giá</button>
+                    </div>
+
+                    <div class="review-form-box text-center" th:if="${session.account != null && !hasPurchased}">
+                        <p class="mb-3 text-warning">Bạn cần mua hàng thành công để có thể đánh giá sản phẩm này.</p>
+                        <a href="/orders" class="btn btn-outline-light px-4">Xem lịch sử đơn hàng</a>
+                    </div>
+
+                    <div class="review-form-box text-center" th:if="${session.account == null}">
+                        <p class="mb-3">Vui lòng đăng nhập để có thể đánh giá sản phẩm này.</p>
+                        <a href="/login" class="btn btn-outline-light px-4">Đăng nhập ngay</a>
+                    </div>
+
+
+                    <!-- REVIEWS LIST -->
+                    <div id="reviewsList">
+                        <div th:each="r : ${reviews}" class="review-item animate__animated animate__fadeIn">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="text-white mb-0">
+                                    <span th:text="${r.user_name}">Nguyễn Văn A</span>
+                                    <span th:if="${r.role == 'ADMIN'}" class="badge-shop">Shop</span>
+                                </h6>
+                                <small class="text-white" th:text="${#calendars.format(r.created_at, 'dd/MM/yyyy HH:mm')}">20/01/2026</small>
+                            </div>
+                            <div class="user-rating">
+                                <i th:each="i : ${#numbers.sequence(1, 5)}" 
+                                   th:class="${i <= r.rating ? 'fa fa-star' : 'fa-regular fa-star'}"></i>
+                            </div>
+                            <p class="mb-0" th:text="${r.content}">Giày đẹp, đi êm!</p>
+
+                            <!-- Review Actions (Thích, Trả lời, Xóa) -->
+                            <div class="review-actions">
+                                <button class="action-btn" th:onclick="'likeReview(' + ${r.id} + ')'" th:id="'like-btn-' + ${r.id}">
+                                    <i class="fa-regular fa-thumbs-up"></i>
+                                    <span th:id="'like-count-' + ${r.id}" th:text="${r.like_count}">0</span> Thích
+                                </button>
+                                <button th:if="${session.account != null}" class="action-btn" th:onclick="'toggleReplyForm(' + ${r.id} + ')'">
+                                    <i class="fa fa-reply"></i> Trả lời
+                                </button>
+                                <button th:if="${session.account != null and (session.account.id == r.user_id or session.account.role == 'ADMIN')}"
+                                        class="action-btn btn-delete-comment" th:onclick="'deleteComment(' + ${r.id} + ')'">
+                                    <i class="fa fa-trash"></i> Xóa
+                                </button>
+                            </div>
+
+                            <!-- Form trả lời ẩn -->
+                            <div th:if="${session.account != null}" th:class="'reply-form-container reply-form-' + ${r.id}">
+                                <textarea th:id="'replyContent-' + ${r.id}" class="review-textarea mb-2" style="min-height: 80px; font-size: 14px;" placeholder="Viết phản hồi của bạn..."></textarea>
+                                <div class="text-end">
+                                    <button class="btn btn-sm btn-outline-light me-2" th:onclick="'toggleReplyForm(' + ${r.id} + ')'">Hủy</button>
+                                    <button class="btn btn-sm btn-buy-now px-3" th:onclick="'submitReply(' + ${r.id} + ')'">Gửi phản hồi</button>
+                                </div>
+                            </div>
+
+                            <!-- Danh sách phản hồi -->
+                            <div class="replies-list" th:if="${!#lists.isEmpty(r.replies)}">
+                                <div th:each="reply : ${r.replies}" class="reply-item">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="fw-bold text-white small" style="font-size: 13px;">
+                                            <span th:text="${reply.user_name}">Shop ShoeStore</span>
+                                            <span th:if="${reply.role == 'ADMIN'}" class="badge-shop">Shop</span>
+                                        </div>
+                                        <small class="text-white-50" style="font-size: 11px;" th:text="${#calendars.format(reply.created_at, 'dd/MM/yyyy HH:mm')}"></small>
+                                    </div>
+                                    <div class="text-light" style="font-size: 14px;" th:text="${reply.content}">Cảm ơn bạn!</div>
+                                    
+                                    <!-- Phản hồi Actions (Thích, Xóa) -->
+                                    <div class="review-actions mt-2" style="font-size: 11px;">
+                                        <button class="btn-clean action-btn" style="font-size: 11px;" th:onclick="'likeReview(' + ${reply.id} + ')'" th:id="'like-btn-' + ${reply.id}">
+                                            <i class="fa-regular fa-thumbs-up"></i>
+                                            <span th:id="'like-count-' + ${reply.id}" th:text="${reply.like_count}">0</span> Thích
+                                        </button>
+                                        <button th:if="${session.account != null and (session.account.id == reply.user_id or session.account.role == 'ADMIN')}"
+                                                class="action-btn btn-delete-comment" style="font-size: 11px;" th:onclick="'deleteComment(' + ${reply.id} + ')'">
+                                            <i class="fa fa-trash"></i> Xóa
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div th:if="${#lists.isEmpty(reviews)}" class="text-center py-4">
+                            <p class="text-muted">Chưa có đánh giá nào cho sản phẩm này. Hãy là người đầu tiên!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="related-title">CÓ THỂ BẠN THÍCH</h3>
+        <div class="row g-4">
+            <div th:each="rp : ${relatedProducts}" class="col-md-3 col-6">
+                <div class="product-card">
+                    <div class="card-img-box">
+                        <img
+                            th:src="${rp.image_url != null ? rp.image_url : 'https://placehold.co/400x400?text=No+Image'}">
+                        <a th:href="@{/details(id=${rp.id})}" class="img-link"></a>
+                    </div>
+                    <div class="card-info">
+                        <div class="card-name"><a th:href="@{/details(id=${rp.id})}" th:text="${rp.product_name}">Sản
+                                phẩm</a></div>
+                        <div class="card-price">
+                            <th:block th:if="${rp.sale_price != null}">
+                                <span th:text="${#numbers.formatDecimal(rp.sale_price, 0, 'POINT', 0, 'POINT') + '₫'}">0₫</span>
+                                <span class="text-muted text-decoration-line-through ms-2 small" style="font-size: 11px;"
+                                      th:text="${#numbers.formatDecimal(rp.min_price, 0, 'POINT', 0, 'POINT') + '₫'}">0₫</span>
+                            </th:block>
+                            <th:block th:if="${rp.sale_price == null}">
+                                <span th:text="${rp.min_price != null ? #numbers.formatDecimal(rp.min_price, 0, 'POINT', 0, 'POINT') + '₫' : 'Liên hệ'}">0₫</span>
+                            </th:block>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div th:if="${#lists.isEmpty(relatedProducts)}" class="text-muted text-center pt-3">Đang cập nhật thêm sản
+                phẩm cùng loại...</div>
+        </div>
+
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-white shadow-lg" style="background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(15px); border: 1px solid var(--border-glass); border-radius: 12px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Xác nhận xóa</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="text-center mb-3">
+                        <i class="fa fa-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+                    </div>
+                    <p class="text-center mb-0">Bạn có chắc chắn muốn xóa bình luận này không? Hành động này không thể hoàn tác.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0 justify-content-center pb-4">
+                    <button type="button" class="btn btn-outline-light px-4 rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-buy-now px-4 rounded-pill" id="confirmDeleteBtn">Xóa ngay</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function toggleWishlist(productId, btn) {
+            $.post('/favourites/toggle', { productId: productId }, function (res) {
+                if (res.success) {
+                    if (res.status === 'added') {
+                        $(btn).addClass('active');
+                    } else {
+                        $(btn).removeClass('active');
+                    }
+                } else if (res.message === 'Chưa đăng nhập') {
+                    window.location.href = '/login';
+                }
+            });
+        }
+    </script>
+    <script th:inline="javascript">
+        const currentUserId = /*[[${session.account != null ? session.account.id : null}]]*/ null;
+        const currentUserRole = /*[[${session.account != null ? session.account.role : null}]]*/ null;
+
+        // JS: Change Main Image
+        function changeImage(el) {
+            const src = el.getAttribute('data-src');
+            document.getElementById('mainImage').src = src;
+            document.querySelectorAll('.thumb-item').forEach(item => item.classList.remove('active'));
+            el.classList.add('active');
+        }
+
+        // JS: Update Variant (Price & Stock)
+        let selectedVariantId = null;
+        let currentStock = 0;
+        const hasFlashSale = /*[[${flashSale != null}]]*/ false;
+        const flashSalePrice = /*[[${flashSale != null ? flashSale.sale_price : 0}]]*/ 0;
+
+        function updateVariant(el) {
+            selectedVariantId = el.getAttribute('data-id');
+            const price = el.getAttribute('data-price');
+            currentStock = parseInt(el.getAttribute('data-quantity'));
+
+            // Update UI selection
+            document.querySelectorAll('.size-option').forEach(item => item.classList.remove('active'));
+            el.classList.add('active');
+
+            // Update Price
+            if (!hasFlashSale) {
+                const formattedPrice = new Intl.NumberFormat('vi-VN').format(price) + '₫';
+                document.getElementById('displayPrice').innerText = formattedPrice;
+            } else {
+                // Nếu đang có Flash Sale, cập nhật giá GỐC và % giảm giá
+                const formattedOldPrice = new Intl.NumberFormat('vi-VN').format(price) + '₫';
+                const oldPriceEl = document.querySelector('.old-price');
+                if (oldPriceEl) oldPriceEl.innerText = formattedOldPrice;
+                
+                const discountTag = document.querySelector('.discount-tag');
+                if (discountTag && price > 0) {
+                    const discount = Math.round((price - flashSalePrice) / price * 100);
+                    discountTag.innerText = '-' + discount + '%';
+                }
+            }
+
+            // Update Stock Label
+            const stockLabel = document.getElementById('stockLabel');
+            if (currentStock > 0) {
+                stockLabel.innerText = "Kho: " + currentStock;
+                stockLabel.style.color = "var(--accent-cyan)";
+            } else {
+                stockLabel.innerText = "Hết hàng";
+                stockLabel.style.color = "var(--accent-red)";
+            }
+
+            // Reset quantity if exceeds stock
+            const qtyInput = document.getElementById('qtyInput');
+            if (parseInt(qtyInput.value) > currentStock && currentStock > 0) {
+                qtyInput.value = currentStock;
+            } else if (currentStock === 0) {
+                qtyInput.value = 1;
+            }
+        }
+
+        function addToCart() {
+            if (!selectedVariantId) {
+                showToast("Vui lòng chọn Size & Màu sắc!", "error");
+                return;
+            }
+            if (currentStock <= 0) {
+                showToast("Sản phẩm này hiện đang hết hàng!", "error");
+                return;
+            }
+            const qty = parseInt(document.getElementById('qtyInput').value);
+
+            fetch('/api/cart/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ variantId: selectedVariantId, quantity: qty })
+            })
+            .then(res => {
+                if (res.status === 401) {
+                    window.location.href = '/login';
+                    return null;
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (!data) return;
+                if (data.success) {
+                    showToast(data.message);
+                    // Cập nhật badge giỏ hàng trên header
+                    const badge = document.querySelector('.cart-badge');
+                    if (badge) {
+                        let current = parseInt(badge.textContent) || 0;
+                        badge.textContent = current + qty;
+                        badge.style.display = '';
+                    }
+                } else {
+                    showToast(data.message, "error");
+                }
+            })
+            .catch(err => {
+                console.error('Lỗi thêm giỏ hàng:', err);
+                showToast('Lỗi kết nối server!', 'error');
+            });
+        }
+
+        function buyNow() {
+            if (!selectedVariantId) {
+                showToast("Vui lòng chọn Size & Màu sắc!", "error");
+                return;
+            }
+            if (currentStock <= 0) {
+                showToast("Sản phẩm này hiện đang hết hàng!", "error");
+                return;
+            }
+            const qty = document.getElementById('qtyInput').value;
+            window.location.href = `/checkout/quick?variantId=${selectedVariantId}&quantity=${qty}`;
+        }
+
+        // JS: Quantity
+        const qtyInput = document.getElementById('qtyInput');
+        function increase() {
+            if (!selectedVariantId) {
+                showToast("Vui lòng chọn Size & Màu sắc trước!", "error");
+                return;
+            }
+            if (parseInt(qtyInput.value) < currentStock) {
+                qtyInput.value = parseInt(qtyInput.value) + 1;
+            }
+        }
+        function decrease() {
+            if (parseInt(qtyInput.value) > 1) {
+                qtyInput.value = parseInt(qtyInput.value) - 1;
+            }
+        }
+
+        // TOAST FUNCTION
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'premium-toast';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+            toast.innerHTML = `<i class="fa ${icon}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+
+            // Force reflow
+            toast.offsetHeight;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        // SUBMIT REVIEW
+        function submitReview() {
+            const productId = /*[[${p.id}]]*/ 0;
+            const rating = $('input[name="rating"]:checked').val();
+            const content = $('#reviewContent').val();
+
+            if (!rating) {
+                showToast("Vui lòng chọn số sao đánh giá!", "error");
+                return;
+            }
+            if (!content || content.trim() === '') {
+                showToast("Vui lòng nhập nội dung đánh giá!", "error");
+                return;
+            }
+
+            $.post('/api/reviews/add', {
+                productId: productId,
+                rating: rating,
+                content: content
+            }, function (res) {
+                if (res.success) {
+                    showToast(res.message);
+                    $('#reviewContent').val(''); // Clear textarea
+                    
+                    // Tạo HTML mới để thêm vào danh sách mà ko cần reload
+                    let starsHtml = '';
+                    for(let i=1; i<=5; i++) {
+                        starsHtml += `<i class="${i <= rating ? 'fa fa-star' : 'fa-regular fa-star'}"></i>`;
+                    }
+                    
+                    const newReviewHtml = `
+                        <div class="review-item animate__animated animate__fadeIn">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="text-white mb-0">
+                                    <span>${res.userName}</span>
+                                    ${res.role === 'ADMIN' ? '<span class="badge-shop">Shop</span>' : ''}
+                                </h6>
+                                <small class="text-white">${res.createdAt}</small>
+                            </div>
+                            <div class="user-rating">${starsHtml}</div>
+                            <p class="mb-0">${content}</p>
+                            <div class="review-actions">
+                                <button class="action-btn" id="like-btn-${res.id}" onclick="likeReview(${res.id})">
+                                    <i class="fa-regular fa-thumbs-up"></i> <span id="like-count-${res.id}">0</span> Thích
+                                </button>
+                                ${currentUserId ? `<button class="action-btn" onclick="toggleReplyForm(${res.id})"><i class="fa fa-reply"></i> Trả lời</button>` : ''}
+                                ${currentUserId && (currentUserId == res.userId || currentUserRole === 'ADMIN') ? `<button class="action-btn btn-delete-comment" onclick="deleteComment(${res.id})"><i class="fa fa-trash"></i> Xóa</button>` : ''}
+                            </div>
+                            <!-- Form trả lời ẩn mới cho review vừa tạo -->
+                            <div class="reply-form-container reply-form-${res.id}" style="display:none">
+                                <textarea id="replyContent-${res.id}" class="review-textarea mb-2" style="min-height: 80px; font-size: 14px;" placeholder="Viết phản hồi của bạn..."></textarea>
+                                <div class="text-end">
+                                    <button class="btn btn-sm btn-outline-light me-2" onclick="toggleReplyForm(${res.id})">Hủy</button>
+                                    <button class="btn btn-sm btn-buy-now px-3" onclick="submitReply(${res.id})">Gửi phản hồi</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    if ($('#reviewsList').find('.text-center.py-4').length > 0) {
+                        $('#reviewsList').html(newReviewHtml);
+                    } else {
+                        $('#reviewsList').prepend(newReviewHtml);
+                    }
+                } else {
+                    showToast(res.message, "error");
+                }
+            });
+        }
+
+        function submitReply(parentId) {
+            const productId = /*[[${p.id}]]*/ 0;
+            const content = $('#replyContent-' + parentId).val();
+
+            if (!content || content.trim() === '') {
+                showToast("Vui lòng nhập nội dung phản hồi!", "error");
+                return;
+            }
+
+            $.post('/api/reviews/add', {
+                productId: productId,
+                content: content,
+                parentId: parentId,
+                rating: 0 
+            }, function (res) {
+                if (res.success) {
+                    showToast(res.message);
+                    $('#replyContent-' + parentId).val('');
+                    toggleReplyForm(parentId);
+
+                    // Tìm hoặc tạo replies-list
+                    let repliesList = $('.reply-form-' + parentId).next('.replies-list');
+                    if (repliesList.length === 0) {
+                        // Nếu chưa có danh sách phản hồi, tạo mới và chèn sau form
+                        $('<div class="replies-list"></div>').insertAfter('.reply-form-' + parentId);
+                        repliesList = $('.reply-form-' + parentId).next('.replies-list');
+                    }
+
+                    const newReplyHtml = `
+                        <div class="reply-item animate__animated animate__fadeIn">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="fw-bold text-white small" style="font-size: 13px;">
+                                    <span>${res.userName}</span>
+                                    ${res.role === 'ADMIN' ? '<span class="badge-shop">Shop</span>' : ''}
+                                </div>
+                                <small class="text-white-50" style="font-size: 11px;">${res.createdAt}</small>
+                            </div>
+                            <div class="text-light" style="font-size: 14px;">${content}</div>
+                            <div class="review-actions mt-2" style="font-size: 11px;">
+                                <button class="btn-clean action-btn" style="font-size: 11px;" id="like-btn-${res.id}" onclick="likeReview(${res.id})">
+                                    <i class="fa-regular fa-thumbs-up"></i> <span id="like-count-${res.id}">0</span> Thích
+                                </button>
+                                ${currentUserId && (currentUserId == res.userId || currentUserRole === 'ADMIN') ? `<button class="action-btn btn-delete-comment" style="font-size: 11px;" onclick="deleteComment(${res.id})"><i class="fa fa-trash"></i> Xóa</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    repliesList.append(newReplyHtml);
+                } else {
+                    showToast(res.message, "error");
+                }
+            });
+        }
+
+        // --- AUTO-OPEN REVIEW TAB ---
+        $(document).ready(function() {
+            if (window.location.hash === '#review') {
+                const reviewTabEl = document.querySelector('button[data-bs-target="#review"]');
+                if (reviewTabEl) {
+                    const tab = new bootstrap.Tab(reviewTabEl);
+                    tab.show();
+                    setTimeout(() => {
+                        reviewTabEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 500);
+                }
+            }
+
+            // MODAL CONFIRM DELETE
+            $('#confirmDeleteBtn').click(function() {
+                if (!commentIdToDelete) return;
+                
+                $.post('/api/reviews/delete', { id: commentIdToDelete }, function(res) {
+                    if (res.success) {
+                        $('#deleteConfirmModal').modal('hide');
+                        showToast(res.message);
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showToast(res.message, "error");
+                    }
+                });
+            });
+        });
+
+        // REB: TOGGLE REPLY FORM
+        function toggleReplyForm(reviewId) {
+            $(".reply-form-" + reviewId).slideToggle();
+        }
+
+        function likeReview(id) {
+            $.post('/api/reviews/like', { id: id }, function(res) {
+                if (res.success) {
+                    const countSpan = $('#like-count-' + id);
+                    const btn = $('#like-btn-' + id);
+                    countSpan.text(res.likeCount);
+                    
+                    if (res.liked) {
+                        btn.addClass('liked');
+                        btn.find('i').removeClass('fa-regular').addClass('fa-solid');
+                    } else {
+                        btn.removeClass('liked');
+                        btn.find('i').removeClass('fa-solid').addClass('fa-regular');
+                    }
+                } else {
+                    showToast(res.message, "error");
+                }
+            });
+        }
+
+        let commentIdToDelete = null;
+        function deleteComment(id) {
+            commentIdToDelete = id;
+            var deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+            deleteModal.show();
+        }
+    </script>
+</body>
+</html>

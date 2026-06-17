@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ShoeStore | Official Website</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+    <style>
+        /* --- VARIABLES --- */
+        :root {
+            --bg-body: #050505;
+            --card-bg: #121212;
+            --accent-red: #e50914;
+            --accent-cyan: #00f2ff;
+            --text-main: #ffffff;
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Poppins', sans-serif;
+            overflow-x: hidden;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        .display-1,
+        .btn-font {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+
+        /* --- 1. HERO SLIDER --- */
+        .hero-section {
+            height: 85vh;
+            position: relative;
+            overflow: hidden;
+            /* QUAN TRỌNG: Đặt z-index thấp hơn Header (Header là 9999) */
+            z-index: 1;
+        }
+
+        .carousel-item {
+            height: 85vh;
+            background: #000;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.6;
+            animation: zoomSlow 20s infinite alternate;
+        }
+
+        @keyframes zoomSlow {
+            from {
+                transform: scale(1);
+            }
+
+            to {
+                transform: scale(1.1);
+            }
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, #050505 5%, transparent 50%, rgba(0, 0, 0, 0.6) 100%);
+        }
+
+        .hero-content {
+            position: absolute;
+            bottom: 15%;
+            left: 8%;
+            z-index: 999;
+            max-width: 800px;
+        }
+
+        .hero-subtitle {
+            font-size: 16px;
+            letter-spacing: 4px;
+            color: var(--accent-cyan);
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            animation: fadeInUp 1s ease 0.5s backwards;
+        }
+
+        .hero-title {
+            font-size: 80px;
+            font-weight: 800;
+            line-height: 0.9;
+            margin-bottom: 30px;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            animation: fadeInUp 1s ease 0.7s backwards;
+        }
+
+        .btn-cta {
+            padding: 15px 40px;
+            background: var(--accent-red);
+            color: #fff;
+            border: none;
+            font-family: 'Oswald', sans-serif;
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            clip-path: polygon(10% 0, 100% 0, 100% 80%, 90% 100%, 0 100%, 0 20%);
+            transition: var(--transition);
+            display: inline-block;
+            text-decoration: none;
+            animation: fadeInUp 1s ease 0.9s backwards;
+        }
+
+        .btn-cta:hover {
+            background: #fff;
+            color: #000;
+            transform: translateY(-5px);
+        }
+
+
+        /* --- 3. TRENDING CATEGORIES --- */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            margin-bottom: 40px;
+            border-bottom: 1px solid var(--border-glass);
+            padding-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 40px;
+            margin: 0;
+        }
+
+        .view-link {
+            color: #888;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .view-link:hover {
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .cat-card {
+            position: relative;
+            height: 400px;
+            overflow: hidden;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .cat-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.6s ease;
+        }
+
+        .cat-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, #000 0%, transparent 60%);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 30px;
+        }
+
+        .cat-name {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            transform: translateY(10px);
+            transition: 0.4s;
+        }
+
+        .cat-btn {
+            color: var(--accent-cyan);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 10px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: 0.4s;
+        }
+
+        .cat-card:hover .cat-img {
+            transform: scale(1.1);
+        }
+
+        .cat-card:hover .cat-name {
+            transform: translateY(0);
+        }
+
+        .cat-card:hover .cat-btn {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- 4. FEATURED DROP --- */
+        .featured-section {
+            background: #111;
+            margin: 80px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .featured-img-box {
+            position: relative;
+            height: 600px;
+        }
+
+        .featured-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .featured-content {
+            padding: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .drop-tag {
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            padding: 5px 15px;
+            display: inline-block;
+            width: fit-content;
+            margin-bottom: 20px;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 2px;
+        }
+
+        /* --- 5. PRODUCTS --- */
+        .product-card {
+            background: transparent;
+            border: 1px solid #222;
+            border-radius: 0;
+            overflow: hidden;
+            transition: border 0.3s;
+            position: relative;
+        }
+
+        .product-card:hover {
+            border-color: #555;
+        }
+
+        .card-img-box {
+            position: relative;
+            padding-top: 120%;
+            background: #0a0a0a;
+            overflow: hidden;
+            border-radius: 0;
+        }
+
+        .card-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s ease;
+        }
+
+        .product-card:hover .card-img {
+            opacity: 0.75;
+        }
+
+        .img-link {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .card-actions {
+            position: absolute;
+            bottom: 15px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .product-card:hover .card-actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            width: 40px;
+            height: 40px;
+            background: #000;
+            color: #fff;
+            border-radius: 0;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: background 0.2s, border 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #222;
+            color: #fff;
+        }
+
+        .action-btn.active {
+            background: var(--accent-red);
+            color: #fff;
+            border-color: var(--accent-red);
+        }
+
+        .card-info {
+            padding: 15px;
+        }
+
+        .card-cat {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card-title {
+            margin: 8px 0;
+        }
+
+        .card-title a {
+            color: #fff;
+            text-decoration: none;
+            font-family: 'Oswald', sans-serif;
+            font-size: 16px;
+            transition: color 0.2s;
+            text-transform: uppercase;
+        }
+
+        .card-title a:hover {
+            color: var(--accent-red);
+        }
+
+        .card-price {
+            color: #fff;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 40px;
+            }
+
+            .hero-content {
+                bottom: 10%;
+                width: 90%;
+            }
+
+            .featured-img-box {
+                height: 300px;
+            }
+
+            .featured-content {
+                padding: 40px 20px;
+            }
+        }
+
+        .light-beam {
+            position: fixed;
+            bottom: -50px;
+            /* Bắt đầu từ dưới màn hình một chút */
+            width: 6px;
+            /* Độ mảnh của tia sáng */
+            height: 50px;
+            /* Chiều dài ban đầu */
+            /* Tạo hiệu ứng vệt sáng gradient mờ 2 đầu */
+            background: linear-gradient(to top, transparent, white, transparent);
+            /* Hiệu ứng phát sáng rực rỡ xung quanh */
+            box-shadow: 0 0 20px 5px white;
+            opacity: 1;
+            border-radius: 50%;
+            /* Bo tròn đầu cho mềm mại */
+            pointer-events: none;
+            z-index: 99999;
+            /* Hiệu ứng chuyển động bay lên nhanh dần */
+            transition: all 1s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+
+        .light-beam.shoot {
+            bottom: 80% !important;
+            /* Bay lên gần đỉnh màn hình */
+            height: 300px;
+            /* Kéo dài ra như một vệt sao băng */
+            opacity: 0;
+            /* Mờ dần khi lên cao */
+        }
+
+        /* --- FLASH SALE SECTION --- */
+        .home-flash-sale {
+            background: linear-gradient(135deg, #1a0505 0%, #050505 100%);
+            padding: 60px 0;
+            border-top: 1px solid var(--accent-red);
+            border-bottom: 1px solid var(--accent-red);
+            margin-bottom: 60px;
+            position: relative;
+        }
+        .flash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .flash-badge {
+            background: var(--accent-red);
+            color: #fff;
+            padding: 5px 15px;
+            font-family: 'Oswald';
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+        }
+        .home-countdown {
+            display: flex;
+            gap: 10px;
+        }
+        .cd-box {
+            background: #222;
+            padding: 5px 10px;
+            border-radius: 4px;
+            min-width: 45px;
+            text-align: center;
+        }
+        .cd-time {
+            color: var(--accent-red);
+            font-weight: 700;
+            font-family: 'Oswald';
+            font-size: 18px;
+        }
+        .cd-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="fireworks-container"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; pointer-events: none; background: transparent;">
+    </div>
+
+    <div th:replace="~{client/fragments/header :: header}"></div>
+
+    <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="5000"
+        style="position: relative;">
+
+        <div id="fw-left"
+            style="position: absolute; bottom: 0; left: 0; width: 300px; height: 100%; z-index: 10; pointer-events: none;">
+        </div>
+        <div id="fw-right"
+            style="position: absolute; bottom: 0; right: 0; width: 300px; height: 100%; z-index: 10; pointer-events: none;">
+        </div>
+        <div class="carousel-inner">
+            <th:block th:if="${bannerImages != null and !bannerImages.isEmpty()}">
+                <div th:each="img, iter : ${bannerImages}" class="carousel-item" th:classappend="${iter.index == 0} ? 'active' : ''">
+                    <img th:src="@{'/images/' + ${img.imageUrl}}" class="hero-bg" onerror="this.src='https://placehold.co/1920x1080?text=ShoeStore+Banner'">
+                    <div class="hero-overlay"></div>
+                    <div class="hero-content">
+                        <div class="hero-subtitle" th:text="${img.banner.seasonType != null ? img.banner.seasonType : 'SỰ KIỆN MỚI'}">SỰ KIỆN MỚI</div>
+                        <h1 class="hero-title" th:text="${img.banner.name}">CHIẾN DỊCH KHUYẾN MÃI</h1>
+                        <a th:href="@{/shop}" class="btn-cta">VÀO XEM NGAY</a>
+                    </div>
+                </div>
+            </th:block>
+            <!-- Nếu chỉ có đúng 1 ảnh động, thêm 1 ảnh tĩnh để slider có thể trượt được -->
+            <th:block th:if="${bannerImages != null and bannerImages.size() == 1}">
+                <div class="carousel-item">
+                    <img th:src="@{/images/jordan_chicago.png}" class="hero-bg">
+                    <div class="hero-overlay"></div>
+                    <div class="hero-content">
+                        <div class="hero-subtitle">Icons Never Die</div>
+                        <h1 class="hero-title">JORDAN 1 <br> LOST & FOUND</h1>
+                        <a th:href="@{/shop}" class="btn-cta">KHÁM PHÁ</a>
+                    </div>
+                </div>
+            </th:block>
+            <!-- Fallback -->
+            <th:block th:if="${bannerImages == null or bannerImages.isEmpty()}">
+                <div class="carousel-item active">
+                    <img src="https://brand.assets.adidas.com/image/upload/f_auto,q_auto,fl_lossy/if_w_gt_1920,w_1920/running_fw23_supernova_rise_global_educate_hp_banner_interactive_d_72404e330a.jpg" class="hero-bg">
+                    <div class="hero-overlay"></div>
+                    <div class="hero-content">
+                        <div class="hero-subtitle">New Collection 2026</div>
+                        <h1 class="hero-title">RUN BEYOND <br> YOUR LIMITS</h1>
+                        <a th:href="@{/shop}" class="btn-cta">MUA NGAY</a>
+                    </div>
+                </div>
+                <div class="carousel-item">
+                    <img src="https://static.nike.com/a/images/f_auto/dpr_1.3,cs_srgb/w_1423,c_limit/6f8e7960-466d-4952-a39c-482087596d66/jordan-1-lost-and-found-chicago-release-date.jpg" class="hero-bg">
+                    <div class="hero-overlay"></div>
+                    <div class="hero-content">
+                        <div class="hero-subtitle">Icons Never Die</div>
+                        <h1 class="hero-title">JORDAN 1 <br> LOST & FOUND</h1>
+                        <a th:href="@{/details}" class="btn-cta">KHÁM PHÁ</a>
+                    </div>
+                </div>
+            </th:block>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev"
+            style="z-index: 999;">
+            <span class="carousel-control-prev-icon"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next"
+            style="z-index: 999;">
+            <span class="carousel-control-next-icon"></span>
+        </button>
+    </div>
+
+    <!-- FLASH SALE SECTION -->
+    <section class="home-flash-sale" th:if="${activeFlashSale != null && !flashProducts.isEmpty()}">
+        <div class="container text-center mb-5">
+            <div class="d-flex justify-content-center align-items-center gap-4">
+                <h2 class="section-title m-0"><i class="fa fa-bolt" style="color: var(--accent-red);"></i> FLASH SALE</h2>
+                <div class="home-countdown">
+                    <div class="cd-box"><div class="cd-time" id="h-d">00</div><div class="cd-label">Ngày</div></div>
+                    <div class="cd-box"><div class="cd-time" id="h-h">00</div><div class="cd-label">Giờ</div></div>
+                    <div class="cd-box"><div class="cd-time" id="h-m">00</div><div class="cd-label">Phút</div></div>
+                    <div class="cd-box"><div class="cd-time" id="h-s">00</div><div class="cd-label">Giây</div></div>
+                </div>
+                <a th:href="@{/flash-sale}" class="view-link" style="margin-bottom: 0;">Xem tất cả</a>
+            </div>
+        </div>
+        <div class="container">
+            <div class="row g-4 justify-content-center">
+                <div th:each="fsp, iter : ${flashProducts}" th:if="${iter.index < 4}" class="col-6 col-md-3">
+                    <div class="product-card">
+                        <div class="card-img-box">
+                            <div class="discount-badge" th:if="${fsp.product.variants != null && !fsp.product.variants.isEmpty()}" 
+                                 th:with="oldPrice=${fsp.product.variants.iterator().next().price.doubleValue()}, newPrice=${fsp.salePrice.doubleValue()}"
+                                 th:text="'-' + ${#numbers.formatDecimal((oldPrice - newPrice) / oldPrice * 100, 0, 0)} + '%'"
+                                 style="position: absolute; top: 0; right: 0; background: var(--accent-red); color: #fff; padding: 5px 10px; font-weight: 700; font-family: 'Oswald'; z-index: 2;">-0%</div>
+                            
+                            <img th:src="${fsp.product.images != null && !fsp.product.images.isEmpty() ? '/images/' + fsp.product.images.iterator().next().imageUrl : 'https://placehold.co/400x400?text=No+Image'}"
+                                class="card-img">
+                            <a th:href="@{/details(id=${fsp.product.id})}" class="img-link"></a>
+                        </div>
+                        <div class="card-info">
+                            <div class="card-cat" th:text="${fsp.product.brandName}">Nike</div>
+                            <h5 class="card-title"><a th:href="@{/details(id=${fsp.product.id})}" th:text="${fsp.product.productName}">Product</a></h5>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="price-new text-danger fw-bold" th:text="${#numbers.formatCurrency(fsp.salePrice)}">0đ</span>
+                                <span class="price-old text-muted text-decoration-line-through small" th:if="${fsp.product.variants != null && !fsp.product.variants.isEmpty()}" 
+                                      th:text="${#numbers.formatCurrency(fsp.product.variants.iterator().next().price)}">0đ</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <div class="container py-5">
+        <div class="section-header">
+            <h2 class="section-title">DANH MỤC HOT</h2>
+            <a th:href="@{/shop}" class="view-link">Xem tất cả <i class="fa fa-arrow-right"></i></a>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="cat-card">
+                    <img src="https://images.unsplash.com/photo-1552346154-21d32810aba3?w=800" class="cat-img">
+                    <div class="cat-overlay">
+                        <h3 class="cat-name">NIKE</h3>
+                        <span class="cat-btn">Khám phá <i class="fa fa-long-arrow-right"></i></span>
+                    </div>
+                    <a th:href="@{/shop}" class="img-link"></a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="cat-card">
+                    <img src="https://images.unsplash.com/photo-1518002171953-a080ee817e1f?w=800" class="cat-img">
+                    <div class="cat-overlay">
+                        <h3 class="cat-name">ADIDAS</h3>
+                        <span class="cat-btn">Khám phá <i class="fa fa-long-arrow-right"></i></span>
+                    </div>
+                    <a th:href="@{/shop}" class="img-link"></a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="cat-card">
+                    <img src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800" class="cat-img">
+                    <div class="cat-overlay">
+                        <h3 class="cat-name">SNEAKER</h3>
+                        <span class="cat-btn">Khám phá <i class="fa fa-long-arrow-right"></i></span>
+                    </div>
+                    <a th:href="@{/shop}" class="img-link"></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section class="featured-section">
+        <div class="row g-0">
+            <div class="col-lg-6">
+                <div class="featured-img-box">
+                    <img src="https://static.nike.com/a/images/f_auto,cs_srgb/w_1536,c_limit/d265bf7f-37b3-4024-9b3e-526cb8390d4e/nike-just-do-it.jpg"
+                        class="featured-img">
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="featured-content">
+                    <span class="drop-tag">FEATURED DROP</span>
+                    <h2 class="display-1 fw-bold text-white mb-4">TRAVIS SCOTT <br> X AIR JORDAN</h2>
+                    <p class="text-white-50 mb-5" style="max-width: 500px; line-height: 1.8;">
+                        Sự kết hợp bùng nổ nhất năm đã trở lại. Thiết kế Reverse Mocha độc đáo cùng chất liệu da lộn cao
+                        cấp. Số lượng cực kỳ giới hạn.
+                    </p>
+                    <a th:href="@{/details}" class="btn-cta bg-white text-black hover-red">XEM CHI TIẾT</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="container py-5 mb-5">
+        <div class="section-header">
+            <h2 class="section-title">HÀNG MỚI VỀ</h2>
+            <a th:href="@{/new-arrivals}" class="view-link">Xem tất cả <i class="fa fa-arrow-right"></i></a>
+        </div>
+
+        <div class="row g-4">
+            <div th:each="p : ${latestProducts}" class="col-6 col-md-3">
+                <div class="product-card">
+                    <div class="card-img-box">
+                        <img th:src="${p.image_url != null ? (p.image_url.startsWith('http') ? p.image_url : (p.image_url.startsWith('/images/') ? p.image_url : '/images/' + p.image_url)) : 'https://placehold.co/400x400?text=No+Image'}"
+                            onerror="this.onerror=null; this.src='https://placehold.co/400x400?text=No+Image'" class="card-img">
+                        <a th:href="@{/details(id=${p.id})}" class="img-link"></a>
+                        <div class="card-actions">
+                            <a th:href="@{/details(id=${p.id})}" class="action-btn"><i class="fa fa-eye"></i></a>
+                            <button type="button" class="action-btn"
+                                th:classappend="${globalFavIds != null && globalFavIds.contains(p.id)} ? 'active' : ''"
+                                th:onclick="'toggleWishlist(' + ${p.id} + ', this)'">
+                                <i class="fa fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-info">
+                        <div class="card-cat" th:text="${p.brand_name}">Nike</div>
+                        <h5 class="card-title"><a th:href="@{/details(id=${p.id})}" th:text="${p.product_name}">Sản
+                                phẩm</a></h5>
+                        <div class="card-price"
+                            th:text="${p.min_price != null ? #numbers.formatDecimal(p.min_price, 0, 'POINT', 0, 'POINT') + '₫' : 'Liên hệ'}">
+                            2.990.000₫</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hiển thị thông báo nếu không có sản phẩm nào -->
+            <div th:if="${#lists.isEmpty(latestProducts)}" class="text-center py-5">
+                <p class="text-muted">Chưa có sản phẩm nào được cập nhật.</p>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="~{client/fragments/footer :: footer}"></div>
+
+    <div id="fireworks-container"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; pointer-events: none; background: transparent;">
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fireworks-js@2.10.7/dist/index.umd.js"></script>
+
+    <script>
+        function toggleWishlist(productId, btn) {
+            $.post('/favourites/toggle', { productId: productId }, function (res) {
+                if (res.success) {
+                    if (res.status === 'added') {
+                        $(btn).addClass('active');
+                    } else {
+                        $(btn).removeClass('active');
+                    }
+                } else if (res.message === 'Chưa đăng nhập') {
+                    window.location.href = '/login';
+                }
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // --- PHẦN 1: CẤU HÌNH PHÁO HOA NỀN (Hạt li ti 2 bên giữ nguyên cho đẹp) ---
+            const commonConfig = {
+                autoresize: true, opacity: 0.3, acceleration: 1.02, friction: 0.98, gravity: 1.2,
+                particles: 30, traceLength: 3, traceSpeed: 10, explosion: 4, intensity: 5, flickering: 50,
+                lineStyle: 'round', hue: { min: 0, max: 360 }, delay: { min: 20, max: 60 },
+                lineWidth: { explosion: { min: 1, max: 3 }, trace: { min: 0.1, max: 1 } },
+                brightness: { min: 50, max: 80 }, mouse: { click: false, move: false }
+            };
+
+            const fwLeft = new Fireworks.default(document.getElementById('fw-left'), {
+                ...commonConfig, rocketsPoint: { min: 0, max: 20 }
+            });
+            const fwRight = new Fireworks.default(document.getElementById('fw-right'), {
+                ...commonConfig, rocketsPoint: { min: 80, max: 100 }
+            });
+
+            fwLeft.start();
+            fwRight.start();
+
+            // --- PHẦN 2: THỦ THUẬT BẮN TIA SÁNG (Light Beams) ---
+            let beamInterval;
+
+            function shootLightBeam() {
+                // 1. Tạo thẻ tia sáng
+                const el = document.createElement('div');
+                el.classList.add('light-beam');
+
+                // 2. Random màu sắc cho tia sáng (để không chỉ có màu trắng)
+                const hue = Math.floor(Math.random() * 360);
+                const color = `hsl(${hue}, 100%, 70%)`; // Màu sáng rực
+                el.style.background = `linear-gradient(to top, transparent, ${color}, transparent)`;
+                el.style.boxShadow = `0 0 20px 5px ${color}`;
+
+                // 3. Chọn vị trí xuất phát ngẫu nhiên 2 bên
+                const isLeft = Math.random() < 0.5;
+                // Random vị trí trong khoảng 0-30% (trái) hoặc 70-100% (phải)
+                el.style.left = isLeft ? (Math.random() * 30 + '%') : (Math.random() * 30 + 70 + '%');
+
+                // 4. Thêm vào body
+                document.body.appendChild(el);
+
+                // 5. Kích hoạt hiệu ứng bay lên sau 50ms
+                setTimeout(() => {
+                    el.classList.add('shoot');
+                }, 50);
+
+                // 6. Xóa khỏi web sau khi bay xong (1.2 giây)
+                setTimeout(() => {
+                    el.remove();
+                }, 1200);
+            }
+
+            // Cài đặt bắn tia sáng: Mỗi 0.4 giây bắn 1 tia (nhanh hơn bắn icon cũ)
+            beamInterval = setInterval(shootLightBeam, 400);
+
+
+            // --- PHẦN 3: DỪNG TẤT CẢ SAU 5 GIÂY ---
+            setTimeout(() => {
+                // Dừng pháo nền
+                fwLeft.waitStop(true);
+                fwRight.waitStop(true);
+
+                // Dừng bắn tia sáng
+                clearInterval(beamInterval);
+
+                // Dọn dẹp hiện trường
+                setTimeout(() => {
+                    document.getElementById('fw-left').remove();
+                    document.getElementById('fw-right').remove();
+                    // Xóa nốt các tia sáng còn sót lại
+                    document.querySelectorAll('.light-beam').forEach(e => e.remove());
+                }, 2000);
+            }, 5000);
+            // --- PHẦN 4: FLASH SALE COUNTDOWN ---
+            const homeEndDateStr = /*[[${activeFlashSale != null ? #temporals.format(activeFlashSale.endDate, 'yyyy-MM-dd''T''HH:mm:ss') : null}]]*/ null;
+            if (homeEndDateStr) {
+                const homeEndDate = new Date(homeEndDateStr).getTime();
+                function updateHomeCountdown() {
+                    const now = new Date().getTime();
+                    const distance = homeEndDate - now;
+                    if (distance < 0) {
+                        if (document.getElementById('h-d')) document.getElementById('h-d').innerText = "00";
+                        document.getElementById('h-h').innerText = "00";
+                        document.getElementById('h-m').innerText = "00";
+                        document.getElementById('h-s').innerText = "00";
+                        return;
+                    }
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                    if (document.getElementById('h-d')) document.getElementById('h-d').innerText = days.toString().padStart(2, '0');
+                    document.getElementById('h-h').innerText = hours.toString().padStart(2, '0');
+                    document.getElementById('h-m').innerText = minutes.toString().padStart(2, '0');
+                    document.getElementById('h-s').innerText = seconds.toString().padStart(2, '0');
+                }
+                setInterval(updateHomeCountdown, 1000);
+                updateHomeCountdown();
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<footer th:fragment="footer" class="custom-footer">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ================= CSS FOOTER (ĐÃ DI CHUYỂN VÀO TRONG) ================= */
+        :root {
+            --footer-bg: #0a0a0a;
+            --footer-border: #222222;
+            --text-main: #b0b0b0;
+            --text-light: #ffffff;
+            --accent: #d32f2f;
+        }
+
+        .custom-footer {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--footer-bg);
+            color: var(--text-main);
+            font-size: 14px;
+            padding-top: 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* --- LINK MÀU XANH SẼ HẾT VÌ CÓ ĐOẠN NÀY --- */
+        .custom-footer a {
+            text-decoration: none !important; /* Bỏ gạch chân */
+            color: var(--text-main) !important; /* Màu xám thay vì xanh */
+        }
+        
+        .custom-footer a:hover {
+            color: var(--text-light) !important;
+        }
+
+        /* --- HEADINGS --- */
+        .footer-heading {
+            color: var(--text-light);
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 30px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .footer-heading::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -8px;
+            width: 30px;
+            height: 2px;
+            background-color: var(--accent);
+            transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .footer-col:hover .footer-heading::after {
+            width: 100%;
+        }
+
+        /* --- LINKS LIST --- */
+        .footer-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .footer-links li {
+            margin-bottom: 15px;
+        }
+
+        .footer-links a {
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .footer-links a::before {
+            content: '\f105'; /* Icon mũi tên */
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            margin-right: 0px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            color: var(--accent);
+            transform: translateX(-10px);
+        }
+
+        .footer-links a:hover {
+            padding-left: 5px;
+            color: var(--accent) !important;
+        }
+
+        .footer-links a:hover::before {
+            opacity: 1;
+            margin-right: 8px;
+            transform: translateX(0);
+        }
+
+        /* --- CONTACT --- */
+        .contact-item {
+            display: flex;
+            margin-bottom: 18px;
+            align-items: flex-start;
+        }
+        .contact-icon {
+            color: var(--accent);
+            font-size: 18px;
+            margin-right: 15px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* --- NEWSLETTER --- */
+        .newsletter-form {
+            position: relative;
+            margin-top: 20px;
+        }
+        .newsletter-input {
+            width: 100%;
+            padding: 14px 20px;
+            background-color: rgba(255,255,255,0.05);
+            border: 1px solid var(--footer-border);
+            color: var(--text-light);
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        .newsletter-input:focus {
+            border-color: var(--accent);
+            background-color: rgba(255,255,255,0.1);
+        }
+        .newsletter-btn {
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            width: 50px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .newsletter-btn:hover { background-color: #b71c1c; }
+
+        /* --- SOCIAL ICONS --- */
+        .social-icons { display: flex; gap: 12px; }
+        .social-btn {
+            width: 38px; height: 38px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            background-color: #1a1a1a;
+            color: #fff !important; /* Force màu trắng */
+            border: 1px solid transparent;
+            transition: all 0.3s;
+        }
+        .social-btn:hover { transform: translateY(-5px); color: #fff !important; }
+        .social-btn.fb:hover { background-color: #3b5998; }
+        .social-btn.ins:hover { background: linear-gradient(45deg, #f09433 0%, #dc2743 50%, #bc1888 100%); }
+        .social-btn.tt:hover { background-color: #000; border-color: #fff; }
+        .social-btn.yt:hover { background-color: #ff0000; }
+
+        /* --- BOTTOM --- */
+        .footer-bottom {
+            margin-top: 60px;
+            padding: 25px 0;
+            border-top: 1px solid var(--footer-border);
+            background-color: #050505;
+        }
+        .payment-icons i {
+            font-size: 32px; margin-left: 15px; color: #444; transition: 0.3s; cursor: pointer;
+        }
+        .payment-icons i:hover { color: #fff; }
+    </style>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-4 col-md-6 mb-5 footer-col">
+                <h5 class="footer-heading">Về Shoe Store</h5>
+                <p class="mb-4" style="color: #888; line-height: 1.8;">
+                    Chúng tôi không chỉ bán giày, chúng tôi mang đến phong cách sống. Khám phá bộ sưu tập Sneaker chính hãng.
+                </p>
+                <div class="contact-item">
+                    <i class="fas fa-map-marker-alt contact-icon"></i>
+                    <span>Đường 3/2, Q. Ninh Kiều, TP. Cần Thơ</span>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-envelope contact-icon"></i>
+                    <span>cskh@shoestore.vn</span>
+                </div>
+            </div>
+
+            <div class="col-lg-2 col-md-6 mb-5 footer-col">
+                <h5 class="footer-heading">Hỗ Trợ</h5>
+                <ul class="footer-links">
+                    <li><a href="#">Tra cứu đơn hàng</a></li>
+                    <li><a href="#">Hướng dẫn chọn size</a></li>
+                    <li><a href="#">Chính sách đổi trả</a></li>
+                    <li><a href="#">Chính sách bảo mật</a></li>
+                </ul>
+            </div>
+
+            <div class="col-lg-2 col-md-6 mb-5 footer-col">
+                <h5 class="footer-heading">Khám Phá</h5>
+                <ul class="footer-links">
+                    <li><a href="#">Về chúng tôi</a></li>
+                    <li><a href="#">Blog thời trang</a></li>
+                    <li><a href="#">Tuyển dụng</a></li>
+                    <li><a href="#">Liên hệ hợp tác</a></li>
+                </ul>
+            </div>
+
+            <div class="col-lg-4 col-md-6 mb-5 footer-col">
+                <h5 class="footer-heading">Đăng Ký Nhận Tin</h5>
+                <p class="small text-white opacity-75">Nhận mã giảm giá <strong>10%</strong> ngay hôm nay.</p>
+                <form action="#" class="newsletter-form">
+                    <input type="email" class="newsletter-input" placeholder="Email của bạn...">
+                    <button type="button" class="newsletter-btn"><i class="fas fa-arrow-right"></i></button>
+                </form>
+                <div class="mt-4">
+                    <div class="social-icons">
+                        <a href="#" class="social-btn fb"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-btn ins"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-btn tt"><i class="fab fa-tiktok"></i></a>
+                        <a href="#" class="social-btn yt"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-6 text-center text-md-start">
+                    <p class="mb-0 text-secondary small">&copy; 2026 <strong>Shoe Store</strong>. All Rights Reserved.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end payment-icons">
+                    <i class="fab fa-cc-visa"></i>
+                    <i class="fab fa-cc-mastercard"></i>
+                    <i class="fab fa-cc-paypal"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</footer>
+
+</body>
+</html>

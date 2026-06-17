@@ -1,0 +1,35 @@
+--- TABLE: addresses ---
+COLUMN: id
+COLUMN: receiving_name
+COLUMN: phone_number
+COLUMN: province
+COLUMN: district
+COLUMN: ward
+COLUMN: street_detail
+COLUMN: is_default
+COLUMN: user_id
+--- TABLE: accounts ---
+COLUMN: id
+COLUMN: user_code
+COLUMN: email
+COLUMN: password
+COLUMN: full_name
+COLUMN: phone
+COLUMN: role
+COLUMN: status
+COLUMN: membership_rank_id
+COLUMN: created_at
+COLUMN: points
+--- TABLE: orders ---
+COLUMN: id
+COLUMN: order_code
+COLUMN: status
+COLUMN: total_amount
+COLUMN: shipping_fee
+COLUMN: final_amount
+COLUMN: receiver_address_id
+COLUMN: shop_id
+COLUMN: user_id
+COLUMN: payment_method_id
+COLUMN: shipping_method_id
+COLUMN: created_at

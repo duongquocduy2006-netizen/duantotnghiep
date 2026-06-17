@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Thành Viên VIP | ShoeStore</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
+    <style>
+        /* --- 1. CORE CSS FIX --- */
+        html,
+        body {
+            height: auto !important;
+            min-height: 100vh !important;
+            overflow-y: auto !important;
+            /* Cho phép cuộn */
+            background-color: #050505 !important;
+            color: #fff !important;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* --- VARIABLES --- */
+        :root {
+            --accent-red: #e50914;
+            --accent-gold: #fbbf24;
+            --section-bg: #161616;
+            /* Nền xám sáng hơn đen để dễ thấy */
+        }
+
+        /* --- 2. HERO SECTION (THẺ VIP) --- */
+        .member-hero {
+            padding: 60px 0 80px;
+            background: #000;
+            border-bottom: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Thẻ VIP 3D */
+        .vip-card {
+            width: 400px;
+            height: 250px;
+            border-radius: 20px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            position: relative;
+            margin-bottom: 30px;
+            cursor: pointer;
+        }
+
+        /* Thẻ VIP - Màu sắc được tải động từ Database */
+        .vip-card * {
+            font-family: 'Oswald', sans-serif;
+        }
+
+        .vip-card * {
+            font-family: 'Oswald', sans-serif;
+        }
+
+        .card-chip {
+            width: 50px;
+            height: 35px;
+            border: 1px solid rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            opacity: 0.5;
+            margin-bottom: 15px;
+        }
+
+        .rank-bronze .card-chip {
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .member-rank {
+            border: 2px solid currentColor;
+            padding: 5px 15px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 14px;
+            display: inline-block;
+        }
+
+        /* Thanh điểm */
+        .point-summary {
+            width: 90%;
+            max-width: 500px;
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            position: relative;
+            z-index: 2;
+        }
+
+        .progress-track {
+            height: 10px;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-red);
+            transition: width 0.5s ease;
+        }
+
+        /* --- 3. MAIN CONTENT --- */
+        .main-content-wrapper {
+            position: relative;
+            z-index: 2;
+            /* Nổi lên trên */
+            background-color: var(--section-bg);
+            /* Nền xám rõ ràng */
+            padding: 60px 0 100px;
+            border-top: 1px solid #333;
+        }
+
+        .section-header {
+            margin-bottom: 40px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+        }
+
+        .section-title {
+            font-family: 'Oswald';
+            font-size: 32px;
+            text-transform: uppercase;
+            color: #fff;
+            margin: 0;
+        }
+
+        .section-title span {
+            color: var(--accent-red);
+        }
+
+        /* TICKET STYLE */
+        .voucher-ticket {
+            background: #252525;
+            /* Nền vé sáng */
+            border: 1px solid #555;
+            border-radius: 10px;
+            display: flex;
+            height: 140px;
+            margin-bottom: 25px;
+            overflow: hidden;
+            transition: 0.3s;
+        }
+
+        .voucher-ticket:hover {
+            transform: translateY(-5px);
+            border-color: #fff;
+            background: #333;
+        }
+
+        .ticket-left {
+            width: 110px;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 2px dashed #555;
+        }
+
+        .ticket-val {
+            font-family: 'Oswald';
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent-gold);
+            line-height: 1;
+        }
+
+        .ticket-lbl {
+            font-size: 11px;
+            color: #ccc;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .ticket-right {
+            flex: 1;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .ticket-shop {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        .ticket-code {
+            font-family: 'Oswald';
+            font-size: 22px;
+            color: #fff;
+            letter-spacing: 1px;
+            margin: 5px 0;
+        }
+
+        .ticket-desc {
+            font-size: 12px;
+            color: #bbb;
+        }
+
+        .btn-use {
+            padding: 5px 15px;
+            background: var(--accent-red);
+            color: #fff;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            float: right;
+            margin-top: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* PRIVILEGES STYLE */
+        .priv-card {
+            background: #252525;
+            border: 1px solid #444;
+            padding: 30px 15px;
+            border-radius: 12px;
+            text-align: center;
+            height: 100%;
+            transition: 0.3s;
+        }
+
+        .priv-card:hover {
+            border-color: var(--accent-gold);
+            transform: translateY(-5px);
+        }
+
+        .priv-icon {
+            font-size: 32px;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        .priv-card:hover .priv-icon {
+            color: #fff;
+            text-shadow: 0 0 15px var(--accent-gold);
+        }
+
+        .priv-card h6 {
+            color: #fff;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .priv-card p {
+            color: #aaa;
+            font-size: 12px;
+            margin: 0;
+        }
+
+        @media (max-width: 768px) {
+            .vip-card {
+                width: 100%;
+                height: 220px;
+            }
+
+            .ticket-left {
+                width: 90px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div th:replace="~{client/fragments/header :: header}"></div>
+
+    <div class="member-hero">
+        <div class="vip-card" id="tiltCard"
+            th:style="'background: linear-gradient(135deg, ' + ${account.color_code ?: '#804a00'} + ' 0%, #fff 50%, ' + ${account.color_code ?: '#804a00'} + ' 100%);' + 
+                      'box-shadow: 0 20px 50px ' + ${account.color_code ?: '#804a00'} + '4D; border-color: ' + (${account.color_code} == '#FFFFFF' ? '#000' : 'rgba(255,255,255,0.4)') + '; color: #000;'">
+            <div class="d-flex justify-content-between">
+                <div class="card-chip"></div>
+                <i class="fa-solid fa-wifi" style="font-size: 24px; opacity: 0.5;"></i>
+            </div>
+            <div class="mt-2">
+                <p class="mb-0 text-uppercase" style="font-size: 10px; opacity: 0.7;">Member Name</p>
+                <h4 style="font-size: 24px;" th:text="${account.full_name}">Dương Quốc Duy</h4>
+            </div>
+            <div class="d-flex justify-content-between align-items-end mt-auto">
+                <div>
+                    <p class="mb-0" style="font-size: 10px;" th:text="'ID: ' + ${account.user_code}">ID: US-001</p>
+                </div>
+                <div class="member-rank" th:text="${#strings.toUpperCase(account.rank_name ?: 'Đồng') + ' MEMBER'}">GOLD
+                    MEMBER</div>
+            </div>
+        </div>
+
+        <div class="point-summary">
+            <div class="d-flex justify-content-between align-items-end text-white mb-2">
+                <span style="font-size: 13px; font-weight: 500;">ĐIỂM TÍCH LŨY</span>
+                <span style="font-family: 'Oswald'; font-size: 24px; color: var(--accent-gold);"
+                    th:text="${#numbers.formatDecimal(account.points ?: 0, 0, 'POINT', 0, 'POINT') + ' PTS'}">
+                    0 PTS
+                </span>
+            </div>
+            <div class="progress-track" th:with="
+                nextRank=${currentRankIdx < allRanks.size() - 1 ? allRanks[currentRankIdx + 1] : null},
+                currentMin=${allRanks[currentRankIdx].min_points},
+                nextMin=${nextRank != null ? nextRank.min_points : 1000000},
+                progressPercent=${nextRank == null ? 100 : ( (account.points - currentMin) * 100 / (nextMin - currentMin) )}
+            ">
+                <div class="progress-fill"
+                    th:style="'width: ' + ${progressPercent > 100 ? 100 : (progressPercent < 0 ? 0 : progressPercent)} + '%'">
+                </div>
+            </div>
+            <div class="d-flex justify-content-between" style="font-size: 12px; color: #ccc;" th:with="
+                nextRank=${currentRankIdx < allRanks.size() - 1 ? allRanks[currentRankIdx + 1] : null}
+            ">
+                <span><i class="fa-solid fa-medal text-warning me-1"></i> <span
+                        th:text="'Hạng ' + ${account.rank_name ?: 'Đồng'}">Hạng Vàng</span></span>
+
+                <span th:if="${nextRank != null}"
+                    th:text="'Tiếp theo: ' + ${nextRank.rank_name} + ' (' + ${#numbers.formatDecimal(T(java.lang.Math).max(0, nextRank.min_points - account.points), 0, 'POINT', 0, 'POINT')} + ' pts)'">
+                </span>
+                <span th:if="${nextRank == null}">Hạng cao nhất</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content-wrapper">
+        <div class="container">
+
+            <div class="wallet-section">
+                <div class="section-header">
+                    <h3 class="section-title">Kho Voucher <span>Của Tôi</span></h3>
+                    <a href="#" style="color: #bbb; text-decoration: none; font-size: 13px;">Xem Lịch Sử <i
+                            class="fa fa-arrow-right ms-1"></i></a>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="voucher-ticket">
+                            <div class="ticket-left">
+                                <span class="ticket-val">20%</span>
+                                <span class="ticket-lbl">OFF</span>
+                            </div>
+                            <div class="ticket-right">
+                                <span class="ticket-shop">NIKE OFFICIAL</span>
+                                <div class="ticket-code">NIKE2026</div>
+                                <div class="ticket-desc">Giảm tối đa 200k cho đơn từ 1.2tr</div>
+                                <div><button class="btn-use">Dùng Ngay</button></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="voucher-ticket">
+                            <div class="ticket-left" style="background: #333;">
+                                <span class="ticket-val text-white">50K</span>
+                                <span class="ticket-lbl text-white">VND</span>
+                            </div>
+                            <div class="ticket-right">
+                                <span class="ticket-shop">ADIDAS STORE</span>
+                                <div class="ticket-code">ADI50KFREE</div>
+                                <div class="ticket-desc">Giảm trực tiếp 50k đơn từ 500k</div>
+                                <div><button class="btn-use">Dùng Ngay</button></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-5 mt-5">
+                <h4 class="text-white text-uppercase mb-4"
+                    style="font-family: 'Oswald'; border-left: 5px solid var(--accent-gold); padding-left: 20px;">Đặc
+                    quyền hạng <span style="color: var(--accent-gold);">Vàng</span></h4>
+
+                <div class="row g-4">
+                    <div class="col-6 col-md-3">
+                        <div class="priv-card">
+                            <i class="fa-solid fa-truck-fast priv-icon"></i>
+                            <h6>Free Shipping</h6>
+                            <p>Đơn hàng > 500k</p>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="priv-card">
+                            <i class="fa-solid fa-cake-candles priv-icon"></i>
+                            <h6>Quà Sinh Nhật</h6>
+                            <p>Voucher 50%</p>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="priv-card">
+                            <i class="fa-solid fa-percent priv-icon"></i>
+                            <h6>Giảm Thêm 5%</h6>
+                            <p>Áp dụng mọi đơn</p>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="priv-card">
+                            <i class="fa-solid fa-headset priv-icon"></i>
+                            <h6>Hỗ Trợ 24/7</h6>
+                            <p>Hotline riêng</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div th:replace="~{client/fragments/footer :: footer}"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        if (typeof VanillaTilt !== 'undefined') {
+            VanillaTilt.init(document.getElementById("tiltCard"), {
+                max: 15,
+                speed: 400,
+                glare: true,
+                "max-glare": 0.4
+            });
+        }
+    </script>
+</body>
+
+</html>
