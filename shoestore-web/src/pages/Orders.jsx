@@ -5,11 +5,14 @@ import api from '../services/api';
 import './Profile.css';
 import './Orders.css';
 
+const ORDERS_PER_PAGE = 3;
+
 const Orders = () => {
     const [loading, setLoading] = useState(true);
     const [loggedIn, setLoggedIn] = useState(false);
     const [account, setAccount] = useState(null);
     const [orders, setOrders] = useState([]);
+    const [visibleCount, setVisibleCount] = useState(ORDERS_PER_PAGE);
 
     const fetchOrdersData = async () => {
         try {
@@ -47,7 +50,7 @@ const Orders = () => {
     }, [loggedIn]);
 
     const formatPoints = (points) => {
-        return new Intl.NumberFormat('vi-VN').format(points || 0) + ' PTS';
+        return new Intl.NumberFormat('vi-VN').format(points || 0);
     };
 
     const formatCurrency = (amount) => {
@@ -60,6 +63,15 @@ const Orders = () => {
         return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     };
 
+    const getRankClass = (rankName) => {
+        if (!rankName) return 'rank-bronze';
+        const name = rankName.toLowerCase();
+        if (name.includes('kim cương') || name.includes('diamond')) return 'rank-diamond';
+        if (name.includes('vàng') || name.includes('gold')) return 'rank-gold';
+        if (name.includes('bạc') || name.includes('silver')) return 'rank-silver';
+        return 'rank-bronze';
+    };
+
     const getStatusClass = (status) => {
         if (status === 3) return 'status-done';
         if (status === 4) return 'status-canceled';
@@ -67,10 +79,18 @@ const Orders = () => {
         return 'status-wait';
     };
 
+    const getStatusBadge = (status) => {
+        if (status === 1) return { cls: 'badge-luxury badge-warning-lux', icon: 'fa-clock', text: 'Chờ duyệt' };
+        if (status === 2) return { cls: 'badge-luxury badge-info-lux', icon: 'fa-truck-fast', text: 'Đang giao' };
+        if (status === 3) return { cls: 'badge-luxury badge-success-lux', icon: 'fa-circle-check', text: 'Thành công' };
+        if (status === 4) return { cls: 'badge-luxury badge-danger-lux', icon: 'fa-circle-xmark', text: 'Đã hủy' };
+        if (status === 5) return { cls: 'badge-luxury badge-warning-lux', icon: 'fa-hourglass-half', text: 'Chờ hoàn tất' };
+        return { cls: 'badge-luxury', icon: 'fa-circle', text: 'Không rõ' };
+    };
+
     const handleCancel = async (e, orderCode) => {
         e.preventDefault();
         if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
-
         try {
             const response = await api.post('/api/orders/cancel', { orderCode });
             if (response.data && response.data.success) {
@@ -92,11 +112,10 @@ const Orders = () => {
     const handleConfirm = async (e, orderCode) => {
         e.preventDefault();
         if (!window.confirm('Xác nhận bạn đã nhận được gói hàng này?')) return;
-
         try {
             const response = await api.post('/api/orders/confirm', { orderCode });
             if (response.data && response.data.success) {
-                alert('Đã xác nhận nhận hàng thành công và cộng điểm tích lũy thành viên VIP!');
+                alert('Đã xác nhận nhận hàng thành công và cộng điểm tích lũy!');
                 fetchOrdersData();
             } else {
                 alert('Không thể xác nhận đơn hàng: ' + response.data.message);
@@ -112,18 +131,19 @@ const Orders = () => {
     };
 
     const getImageUrl = (url) => {
-        if (!url) return 'https://ui-avatars.com/api/?name=SP&background=121212&color=00f2ff&bold=true';
+        if (!url) return null;
         if (url.startsWith('http')) return url;
-        return `http://localhost:8080${url}`;
+        const prefix = url.startsWith('/') ? '' : '/images/';
+        return `http://localhost:8080${prefix}${url}`;
     };
 
     if (loading) {
         return (
             <Layout>
-                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
+                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh'}}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
-                        <div className="spinner-border text-danger" role="status" style={{ width: '4rem', height: '4rem', borderWidth: '5px' }}></div>
-                        <p className="mt-3 font-oswald fw-bold text-uppercase letter-spacing-1">ĐANG TẢI DỮ LIỆU...</p>
+                        <div className="spinner-border text-danger" role="status" style={{ width: '3rem', height: '3rem', borderWidth: '3px' }}></div>
+                        <p className="mt-3 fw-semibold text-muted" style={{fontSize: '14px', letterSpacing: '1px', textTransform: 'uppercase'}}>Đang tải...</p>
                     </div>
                 </div>
             </Layout>
@@ -133,14 +153,16 @@ const Orders = () => {
     if (!loggedIn || !account) {
         return (
             <Layout>
-                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
+                <div className="home-god-tier position-relative" style={{minHeight: '100vh', background: '#f8fafc', paddingBottom: '100px'}}>
                     <div className="container py-5" style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div className="text-center py-5 px-4 bg-white profile-login-box" style={{maxWidth: '550px', width: '100%'}}>
-                            <i className="fa-solid fa-bag-shopping fa-4x text-danger mb-4 opacity-75"></i>
-                            <h3 className="fw-bold text-uppercase text-dark mb-3" style={{fontSize: '32px'}}>LỊCH SỬ ĐƠN HÀNG</h3>
-                            <p className="fw-semibold text-muted letter-spacing-1 fs-5 my-4">Đăng nhập để theo dõi trạng thái giao hàng, kiểm tra lịch sử mua sắm và xác nhận nhận hàng tích lũy điểm VIP!</p>
-                            <Link to="/login" className="btn-modern-primary mt-2 d-inline-block">
-                                <span>ĐĂNG NHẬP NGAY</span>
+                        <div className="text-center py-5 px-4 profile-login-box" style={{maxWidth: '480px', width: '100%'}}>
+                            <div style={{width: '72px', height: '72px', borderRadius: '16px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px'}}>
+                                <i className="fa-solid fa-bag-shopping" style={{fontSize: '28px', color: '#64748b'}}></i>
+                            </div>
+                            <h3 className="fw-bold text-uppercase text-dark mb-2" style={{fontSize: '22px', letterSpacing: '0.5px'}}>Lịch Sử Đơn Hàng</h3>
+                            <p className="text-muted mb-4" style={{fontSize: '14px', lineHeight: '1.7'}}>Đăng nhập để theo dõi trạng thái giao hàng, kiểm tra lịch sử mua sắm và xác nhận nhận hàng tích lũy điểm.</p>
+                            <Link to="/login" className="btn-modern-primary d-inline-block">
+                                Đăng nhập ngay
                             </Link>
                         </div>
                     </div>
@@ -151,153 +173,213 @@ const Orders = () => {
 
     return (
         <Layout>
-            <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
-                {/* FILM GRAIN TEXTURE */}
-                <div className="god-film-grain" style={{opacity: 0.01}}></div>
+            <div className="home-god-tier position-relative" style={{minHeight: '100vh', background: '#f8fafc', paddingBottom: '80px'}}>
 
-                {/* EPIC HERO */}
-                <div className="profile-page-header py-5 position-relative overflow-hidden mb-5">
-                    <div className="god-watermark-bg text-dark opacity-5" style={{fontSize: '15vw', top: '10%'}}>ORDERS</div>
-                    
-                    <div className="container text-center position-relative z-1 py-4">
-                        <span className="bg-danger text-white px-3 py-1 fw-bold fs-6 text-uppercase animate__animated animate__fadeInDown d-inline-block rounded-pill">MUA SẮM</span>
-                        <h1 className="fw-extrabold mt-3 mb-0 text-uppercase animate__animated animate__fadeInUp text-dark" style={{fontSize: '3.5rem', letterSpacing: '1px'}}>ĐƠN HÀNG CỦA BẠN</h1>
+                {/* PAGE HEADER */}
+                <div className="profile-page-header py-4">
+                    <div className="container">
+                        <div className="d-flex align-items-center gap-2" style={{fontSize: '13px', color: '#64748b'}}>
+                            <Link to="/" style={{color: '#64748b', textDecoration: 'none'}}>Trang chủ</Link>
+                            <i className="fa-solid fa-chevron-right" style={{fontSize: '10px'}}></i>
+                            <span style={{color: '#0f172a', fontWeight: 600}}>Lịch sử đơn hàng</span>
+                        </div>
+                        <h1 className="fw-bold mt-2 mb-0" style={{fontSize: '22px', color: '#0f172a', letterSpacing: '0.3px'}}>Tài Khoản Của Bạn</h1>
                     </div>
                 </div>
 
-                <div className="container pb-5 position-relative z-1">
-                    <div className="row g-5">
+                <div className="container py-4">
+                    <div className="row g-4">
 
-                        <div className="col-lg-4 animate__animated animate__fadeInLeft">
+                        {/* SIDEBAR */}
+                        <div className="col-lg-3">
                             <div className="epic-profile-panel">
                                 <div className="profile-cover"></div>
-                                <div className="user-block">
+                                <div className="user-block px-3">
                                     <div className="avatar-box">
-                                        <img src={`https://ui-avatars.com/api/?name=${account.full_name}&background=000&color=fff`} className="user-avatar" alt="Avatar" />
+                                        <img
+                                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(account.full_name)}&background=1e293b&color=fff&bold=true&size=200`}
+                                            className="user-avatar"
+                                            alt="Avatar"
+                                        />
                                         <i className="fa fa-crown vip-crown"></i>
                                     </div>
-                                    <h3 className="mt-3 fw-bold text-uppercase" style={{ fontSize: '24px' }}>{account.full_name}</h3>
-                                    <div className="d-flex flex-column align-items-center gap-1 mt-2">
-                                        <span className="badge bg-danger rounded-pill px-3 py-2 fs-6 text-uppercase">{account.rank_name || 'Đồng'}</span>
-                                        <span className="text-danger fw-bold fs-5 mt-2">{formatPoints(account.points)}</span>
+                                    <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
+                                    <div className="mb-2">
+                                        <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>
+                                            {account.rank_name || 'Đồng'}
+                                        </span>
+                                    </div>
+                                    <div className="points-flat-box mb-3">
+                                        <span className="points-label">Điểm</span>
+                                        <span className="points-val">{formatPoints(account.points)} PTS</span>
                                     </div>
                                 </div>
-
-                                <div className="pb-4 pt-2">
+                                <div className="pb-3">
+                                    <div style={{height: '1px', background: '#f1f5f9', margin: '0 16px 8px'}}></div>
                                     <Link to="/profile" className="menu-link">
-                                        <i className="fa-regular fa-id-badge"></i> THÔNG TIN CÁ NHÂN
+                                        <i className="fa-regular fa-id-badge"></i> Thông tin cá nhân
                                     </Link>
                                     <Link to="/orders" className="menu-link active">
-                                        <i className="fa-solid fa-bag-shopping"></i> LỊCH SỬ ĐƠN HÀNG
+                                        <i className="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng
                                     </Link>
                                     <Link to="/change-password" className="menu-link">
-                                        <i className="fa-solid fa-shield-halved"></i> ĐỔI MẬT KHẨU
+                                        <i className="fa-solid fa-shield-halved"></i> Đổi mật khẩu
                                     </Link>
-                                    <div className="my-3 mx-4 border-top border-light border-1"></div>
+                                    <div style={{height: '1px', background: '#f1f5f9', margin: '8px 16px'}}></div>
                                     <a href="/login" className="menu-link text-danger" onClick={() => api.post('/logout')}>
-                                        <i className="fa-solid fa-power-off"></i> ĐĂNG XUẤT
+                                        <i className="fa-solid fa-power-off"></i> Đăng xuất
                                     </a>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="col-lg-8 animate__animated animate__fadeInRight">
+                        {/* MAIN CONTENT */}
+                        <div className="col-lg-9">
                             <div className="epic-profile-panel p-4 p-lg-5">
-                                <div className="content-header pb-3 mb-4 d-flex justify-content-between align-items-end">
+                                <div className="content-header pb-3 mb-4 d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h4 className="mb-0">LỊCH SỬ ĐƠN HÀNG</h4>
-                                        <p className="text-muted fw-bold letter-spacing-1 text-uppercase mt-2 mb-0">Theo dõi trạng thái và lịch sử mua sắm</p>
+                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                            <div style={{width: '4px', height: '20px', background: '#e50914', borderRadius: '2px'}}></div>
+                                            <h4 className="mb-0">Lịch sử đơn hàng</h4>
+                                        </div>
+                                        <p className="mb-0 ms-3">Theo dõi trạng thái và lịch sử mua sắm của bạn</p>
                                     </div>
-                                    <div className="text-danger fw-bold text-uppercase" style={{ fontSize: '13px' }}>
-                                        <i className="fa-solid fa-filter me-1 text-dark"></i> HIỂN THỊ: <span className="text-dark fw-bold px-2 mx-1">{orders.length}</span> ĐƠN GẦN NHẤT
+                                    <div style={{fontSize: '13px', color: '#64748b', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px 12px', fontWeight: 600}}>
+                                        {orders.length} đơn hàng
                                     </div>
                                 </div>
 
-                                <div className="mt-4">
+                                <div>
                                     {orders.length === 0 ? (
-                                        <div className="text-center py-5 border border-light rounded-3 bg-light">
-                                            <i className="fa-solid fa-box-open fa-4x text-muted mb-4 d-block opacity-50"></i>
-                                            <p className="fs-5 fw-bold text-uppercase text-muted">BẠN CHƯA CÓ ĐƠN HÀNG NÀO.</p>
-                                            <Link to="/shop" className="btn-super mt-3 text-decoration-none d-inline-block">TIẾP TỤC MUA SẮM</Link>
+                                        <div className="text-center py-5" style={{border: '1px solid #e2e8f0', borderRadius: '10px', background: '#f8fafc'}}>
+                                            <div style={{width: '64px', height: '64px', borderRadius: '16px', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'}}>
+                                                <i className="fa-solid fa-box-open" style={{fontSize: '24px', color: '#94a3b8'}}></i>
+                                            </div>
+                                            <p className="fw-semibold text-muted mb-3" style={{fontSize: '15px'}}>Bạn chưa có đơn hàng nào</p>
+                                            <Link to="/shop" className="btn-super text-decoration-none d-inline-block">Tiếp tục mua sắm</Link>
                                         </div>
                                     ) : (
-                                        orders.map(order => (
-                                            <div key={order.order_code} className={`luxury-order-card ${getStatusClass(order.status)} animate__animated animate__fadeInUp`}>
-                                                <div className="order-header">
-                                                    <div>
-                                                        <span className="order-id">#{order.order_code}</span>
-                                                        <span className="order-date">
-                                                            <i className="fa-regular fa-calendar me-1"></i>
-                                                            <span>{formatDate(order.created_at)}</span>
-                                                        </span>
-                                                    </div>
+                                        <>
+                                            {orders.slice(0, visibleCount).map(order => {
+                                                const badge = getStatusBadge(order.status);
+                                                const imgSrc = getImageUrl(order.first_product_image);
+                                                return (
+                                                    <div key={order.order_code} className={`luxury-order-card ${getStatusClass(order.status)}`}>
 
-                                                    {order.status === 1 && (
-                                                        <span className="badge-luxury badge-warning-lux">
-                                                            <i className="fa-solid fa-clock me-1"></i> CHỜ DUYỆT
-                                                        </span>
-                                                    )}
-                                                    {order.status === 2 && (
-                                                        <span className="badge-luxury" style={{ background: '#eff6ff', color: '#1e40af' }}>
-                                                            <i className="fa-solid fa-truck-fast me-1 text-primary"></i> ĐANG GIAO
-                                                        </span>
-                                                    )}
-                                                    {order.status === 3 && (
-                                                        <span className="badge-luxury badge-success-lux">
-                                                            <i className="fa-solid fa-check-circle me-1"></i> THÀNH CÔNG
-                                                        </span>
-                                                    )}
-                                                    {order.status === 5 && (
-                                                        <span className="badge-luxury" style={{ background: '#fef3c7', color: '#92400e' }}>
-                                                            <i className="fa-solid fa-hourglass-half me-1"></i> CHỜ HOÀN TẤT
-                                                        </span>
-                                                    )}
-                                                    {order.status === 4 && (
-                                                        <span className="badge-luxury" style={{ background: '#f3f4f6', color: '#374151' }}>
-                                                            <i className="fa-solid fa-times-circle me-1"></i> ĐÃ HỦY
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                        {/* Order Header */}
+                                                        <div className="order-header">
+                                                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                                                                <span className="order-id">#{order.order_code}</span>
+                                                                <span className="order-date">
+                                                                    <i className="fa-regular fa-calendar me-1"></i>
+                                                                    {formatDate(order.created_at)}
+                                                                </span>
+                                                            </div>
+                                                            <span className={badge.cls}>
+                                                                <i className={`fa-solid ${badge.icon} me-1`}></i> {badge.text}
+                                                            </span>
+                                                        </div>
 
-                                                <div className="d-flex align-items-center gap-3">
-                                                    <img src={getImageUrl(order.first_product_image)} className="product-thumb" alt="Product" />
-                                                    <div className="flex-grow-1">
-                                                        <div className="product-title">{order.first_product_name || 'Đôi giày thời trang'}</div>
-                                                        <div className="product-meta">
-                                                            {order.total_items > 1 ? `VÀ ${order.total_items - 1} SẢN PHẨM KHÁC` : '1 SẢN PHẨM'}
+                                                        {/* Product info */}
+                                                        <div className="d-flex align-items-center gap-3 mb-4">
+                                                            {imgSrc ? (
+                                                                <img
+                                                                    src={imgSrc}
+                                                                    className="product-thumb"
+                                                                    alt={order.first_product_name || 'Sản phẩm'}
+                                                                    onError={(e) => {
+                                                                        e.target.style.display = 'none';
+                                                                        e.target.nextSibling.style.display = 'flex';
+                                                                    }}
+                                                                />
+                                                            ) : null}
+                                                            <div
+                                                                className="product-thumb"
+                                                                style={{
+                                                                    display: imgSrc ? 'none' : 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    background: '#f1f5f9',
+                                                                    border: '1px solid #e2e8f0',
+                                                                    flexShrink: 0
+                                                                }}
+                                                            >
+                                                                <i className="fa-solid fa-shoe-prints" style={{fontSize: '22px', color: '#94a3b8', transform: 'rotate(-30deg)'}}></i>
+                                                            </div>
+                                                            <div className="flex-grow-1 min-w-0">
+                                                                <div className="product-title">{order.first_product_name || 'Đôi giày thời trang'}</div>
+                                                                <div className="product-meta">
+                                                                    {order.total_items > 1 ? `+${order.total_items - 1} sản phẩm khác` : '1 sản phẩm'}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-end flex-shrink-0">
+                                                                <div className="price-tag">{formatCurrency(order.final_amount)}</div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Actions */}
+                                                        <div className="d-flex justify-content-end gap-2 pt-3" style={{borderTop: '1px solid #f1f5f9'}}>
+                                                            <Link to={`/orders/detail/${order.order_code}`} className="btn-outline-luxury">
+                                                                <i className="fa-regular fa-file-lines me-1"></i> Chi tiết
+                                                            </Link>
+                                                            {order.status === 3 && (
+                                                                <Link to="/shop" className="btn-outline-luxury" style={{background: '#0f172a', color: '#fff', border: '1px solid #0f172a'}}>
+                                                                    Mua lại
+                                                                </Link>
+                                                            )}
+                                                            {order.status === 1 && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn-outline-luxury text-danger"
+                                                                    onClick={(e) => handleCancel(e, order.order_code)}
+                                                                >
+                                                                    <i className="fa-solid fa-xmark me-1"></i> Hủy đơn
+                                                                </button>
+                                                            )}
+                                                            {order.status === 2 && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn-super"
+                                                                    style={{padding: '8px 16px', fontSize: '13px'}}
+                                                                    onClick={(e) => handleConfirm(e, order.order_code)}
+                                                                >
+                                                                    <i className="fa-solid fa-box-open me-1"></i> Đã nhận hàng
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <div className="text-end">
-                                                        <div className="price-tag">{formatCurrency(order.final_amount)}</div>
-                                                    </div>
-                                                </div>
+                                                );
+                                            })}
 
-                                                <div className="d-flex justify-content-end gap-3 mt-4 pt-4 border-top border-light border-1">
-                                                    <Link to={`/orders/detail/${order.order_code}`} className="btn-outline-luxury">CHI TIẾT</Link>
-                                                    {order.status === 3 && (
-                                                        <Link to="/shop" className="btn-outline-luxury bg-dark text-white border-dark">MUA LẠI</Link>
-                                                    )}
-                                                    {order.status === 1 && (
-                                                        <button 
-                                                            type="button" 
-                                                            className="btn-outline-luxury text-danger border-danger" 
-                                                            onClick={(e) => handleCancel(e, order.order_code)}
+                                            {/* Xem thêm / Thu gọn */}
+                                            {orders.length > ORDERS_PER_PAGE && (
+                                                <div className="text-center pt-2 pb-1">
+                                                    {visibleCount < orders.length ? (
+                                                        <button
+                                                            className="load-more-btn"
+                                                            onClick={() => setVisibleCount(v => v + ORDERS_PER_PAGE)}
                                                         >
-                                                            HỦY ĐƠN
+                                                            <i className="fa-solid fa-chevron-down me-2"></i>
+                                                            Xem thêm ({orders.length - visibleCount} đơn còn lại)
                                                         </button>
-                                                    )}
-                                                    {order.status === 2 && (
-                                                        <button 
-                                                            type="button" 
-                                                            className="btn-super p-2 px-3" 
-                                                            onClick={(e) => handleConfirm(e, order.order_code)}
+                                                    ) : (
+                                                        <button
+                                                            className="load-more-btn"
+                                                            onClick={() => setVisibleCount(ORDERS_PER_PAGE)}
                                                         >
-                                                            ĐÃ NHẬN HÀNG
+                                                            <i className="fa-solid fa-chevron-up me-2"></i>
+                                                            Thu gọn
                                                         </button>
                                                     )}
                                                 </div>
+                                            )}
+
+                                            <div className="text-center pt-3 mt-3" style={{ borderTop: '1px dashed #e2e8f0' }}>
+                                                <Link to="/order-history" className="btn-super d-inline-block" style={{ padding: '10px 24px', fontSize: '14px', borderRadius: '8px' }}>
+                                                    <i className="fa-solid fa-filter me-2"></i> Xem tất cả & Lọc nâng cao
+                                                </Link>
                                             </div>
-                                        ))
+                                        </>
                                     )}
                                 </div>
                             </div>
