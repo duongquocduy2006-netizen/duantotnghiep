@@ -115,12 +115,13 @@ const AdminProducts = () => {
 
             <div className="toolbar" style={{
                 background: '#fff',
-                padding: '15px',
-                border: '4px solid #000', boxShadow: '4px 4px 0 #000', borderRadius: '0',
-                marginBottom: '25px',
+                padding: '12px 16px',
+                border: '1px solid #e8eaed', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', borderRadius: '12px',
+                marginBottom: '24px',
                 display: 'flex',
-                gap: '15px',
-                alignItems: 'stretch'
+                gap: '14px',
+                alignItems: 'center',
+                flexWrap: 'wrap'
             }}>
                 <div className="search-box" style={{ flex: 1 }}>
                     <i className="bi bi-search"></i>
@@ -135,7 +136,7 @@ const AdminProducts = () => {
 
                 <select 
                     className="filter-select" 
-                    style={{ width: '200px', background: '#fff', border: '3px solid #000', fontWeight: 'bold', color: '#555' }}
+                    style={{ width: '200px', background: '#fff', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#555' }}
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
                 >
@@ -147,7 +148,7 @@ const AdminProducts = () => {
 
                 <select 
                     className="filter-select" 
-                    style={{ width: '200px', background: '#fff', border: '3px solid #000', fontWeight: 'bold', color: '#555' }}
+                    style={{ width: '200px', background: '#fff', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#555' }}
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
                 >
@@ -180,7 +181,7 @@ const AdminProducts = () => {
                                     <tr key={p.id}>
                                         <td>
                                             <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <div style={{ width: '50px', height: '50px', background: '#fff', overflow: 'hidden', border: '3px solid #000', flexShrink: 0 }}>
+                                                <div style={{ width: '50px', height: '50px', background: '#fff', overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: '8px', flexShrink: 0 }}>
                                                     <img
                                                         src={getImageUrl(p.imageUrl)}
                                                         className="product-img"
@@ -210,7 +211,7 @@ const AdminProducts = () => {
 
                                         <td>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                                <span style={{ fontSize: '13px', fontWeight: 800, color: '#000', fontFamily: 'Oswald', textTransform: 'uppercase', borderBottom: '2px solid #000' }}>{p.categoryName}</span>
+                                                <span style={{ fontSize: '13px', fontWeight: 800, color: '#000', fontFamily: 'Oswald', textTransform: 'uppercase', borderBottom: '1px solid #f1f5f9' }}>{p.categoryName}</span>
                                                 <span style={{ fontSize: '11px', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}><i className="bi bi-tag-fill"></i> {p.brandName}</span>
                                             </div>
                                         </td>
@@ -220,7 +221,7 @@ const AdminProducts = () => {
                                                 <span className="price" style={{ fontWeight: 800, color: '#000', fontFamily: 'Oswald', fontSize: '16px' }}>
                                                     {p.price != null ? `${p.price.toLocaleString()} ₫` : 'N/A'}
                                                 </span>
-                                                <span style={{ fontSize: '11px', fontWeight: 800, color: '#000', border: '2px solid #000', padding: '2px 6px' }}>
+                                                <span style={{ fontSize: '11px', fontWeight: 800, color: '#000', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '2px 6px' }}>
                                                     <i className="bi bi-box-seam"></i> {p.variantCount} BIẾN THỂ
                                                 </span>
                                             </div>
@@ -228,7 +229,7 @@ const AdminProducts = () => {
 
                                         <td>
                                             <span className={`status-badge ${p.status === 1 ? 'status-active' : 'status-cancel'}`} style={{
-                                                padding: '4px 8px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', border: '2px solid #000'
+                                                padding: '4px 8px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', border: '1px solid #e2e8f0'
                                             }}>
                                                 {p.status === 1 ? 'ĐANG BÁN' : 'TẠM ẨN'}
                                             </span>
@@ -261,39 +262,39 @@ const AdminProducts = () => {
                 
                 .header-right-actions { display: flex; align-items: center; }
                 .btn-cyan-skew { 
-                    background: #fff; color: #000; border: 4px solid #000; box-shadow: 6px 6px 0 #000; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+                    background: #fff; color: #000; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
                     transition: 0.3s; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none;
                 }
-                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 6px 6px 0 var(--accent-red); transform: translateY(-3px); }
+                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
 
-                .toolbar { display: flex; gap: 20px; align-items: stretch; justify-content: space-between; margin-bottom: 30px; background: #fff; padding: 15px 25px; border: 4px solid #000; box-shadow: 4px 4px 0 #000; flex-wrap: wrap; }
-                .search-box { position: relative; flex: 1; min-width: 300px; max-width: none; }
-                .search-input { width: 100%; background: #fff !important; border: 3px solid #000; padding: 12px 15px 12px 45px; color: #000 !important; outline: none; height: 45px; font-weight: bold; }
-                .search-input:focus { border-color: var(--accent-red); box-shadow: 4px 4px 0 var(--accent-red); }
-                .bi-search { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #000; font-weight: bold; }
-                .filter-select { background: #fff !important; color: #000 !important; border: 3px solid #000 !important; padding: 8px 15px; outline: none; cursor: pointer; height: 45px; min-width: 200px; font-weight: bold; font-family: 'Poppins'; }
-                .filter-select:focus { border-color: var(--accent-red) !important; }
+                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }
+                .search-box { position: relative; flex: 1; min-width: 220px; max-width: none; }
+                .search-input { width: 100%; background: #fff !important; border: 1.5px solid #dadce0; padding: 9px 14px 9px 38px; color: #3c4043 !important; outline: none; height: 40px; font-weight: 400; border-radius: 24px; font-size: 14px; transition: all 0.2s; font-family: 'Poppins', sans-serif; }
+                .search-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
+                .search-input::placeholder { color: #9aa0a6; }
+                .bi-search { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9aa0a6; font-size: 14px; pointer-events: none; }
+                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Poppins'; font-size: 14px; transition: all 0.2s; }
+                .filter-select:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
 
                 .btn-red-skew { 
-                    background: #fff; color: #000; border: 3px solid #000; padding: 0 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+                    background: #fff; color: #000; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 0 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
                     transition: 0.3s; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; height: 45px; min-width: 150px;
                 }
-                .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 4px 4px 0 var(--accent-red); transform: translateY(-2px); }
+                .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-2px); }
 
                 /* Compact Brutalist Table */
-                .table-card { background: #fff; border: 4px solid #000; box-shadow: 6px 6px 0 #000; margin-top: 20px; overflow: hidden; }
-                .table-responsive-wrapper { width: 100%; }
+                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-top: 20px; overflow: hidden; border-radius: 14px; }
                 .compact-table { width: 100%; border-collapse: collapse; }
-                .compact-table th { background: #f4f4f4; color: #000; font-size: 13px; text-transform: uppercase; padding: 15px 20px; text-align: left; font-family: 'Oswald'; border-bottom: 4px solid #000; font-weight: 800; white-space: nowrap; }
-                .compact-table td { padding: 15px 20px; border-bottom: 2px solid #000; font-size: 14px; color: #000; font-weight: 600; vertical-align: middle; }
+                .compact-table th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 20px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; white-space: nowrap; }
+                .compact-table td { padding: 14px 20px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; vertical-align: middle; }
                 
-                .status-badge { font-family: 'Oswald'; font-weight: 800; border: 2px solid #000 !important; border-radius: 0 !important; }
+                .status-badge { font-family: 'Oswald'; font-weight: 800; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; }
                 .status-active { background: #4ade80; color: #000; }
                 .status-cancel { background: var(--accent-red); color: #fff; }
 
                 /* Action Icon Buttons */
-                .action-btn-icon { background: #fff; border: 3px solid #000; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; }
-                .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 2px 2px 0 var(--accent-red); background: #000; color: #fff; }
+                .action-btn-icon { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; }
+                .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); background: #000; color: #fff; }
                 .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 2px 2px 0 #000; }
                 .icon-edit:hover { background: #facc15; color: #000; box-shadow: 2px 2px 0 #000; }
             `}</style>

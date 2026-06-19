@@ -8,6 +8,15 @@ const AdminLayout = ({ children }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+    useEffect(() => {
+        // Thay đổi nền body sang màu xám sáng khi ở trang admin
+        document.body.style.backgroundColor = '#f4f5f7';
+        return () => {
+            // Khôi phục nền tối mặc định khi rời khỏi admin
+            document.body.style.backgroundColor = '';
+        };
+    }, []);
+
     const menuItems = [
         { label: 'KINH DOANH', type: 'label' },
         { path: '/admin/dashboard', icon: 'bi-grid-fill', label: 'Tổng Quan' },
@@ -34,11 +43,19 @@ const AdminLayout = ({ children }) => {
             {/* SIDEBAR */}
             <aside className={`sidebar-wrapper ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className="sidebar-branding">
-                    <Link to="/admin" className="brand-logo" style={{ textDecoration: 'none' }}>
-                        <h2 className="font-oswald" style={{ fontWeight: 800, margin: 0, fontSize: '24px', letterSpacing: '-1px' }}>
-                            <span style={{ color: '#000' }}>SHOE</span><span style={{ color: '#e50914' }}>STORE</span>
-                        </h2>
-                    </Link>
+                    {!isCollapsed && (
+                        <Link to="/admin" className="brand-logo" style={{ textDecoration: 'none' }}>
+                            <h2 className="font-oswald" style={{ fontWeight: 800, margin: 0, fontSize: '24px', letterSpacing: '-1px' }}>
+                                <span style={{ color: '#fff' }}>SHOE</span><span style={{ color: '#e50914' }}>STORE</span>
+                            </h2>
+                        </Link>
+                    )}
+                    <button
+                        className="toggle-sidebar-btn"
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                    >
+                        <i className={`bi ${isCollapsed ? 'bi-text-indent-left' : 'bi-text-indent-right'}`}></i>
+                    </button>
                 </div>
 
                 <nav className="sidebar-nav">
@@ -69,20 +86,6 @@ const AdminLayout = ({ children }) => {
             <main className={`main-content ${isCollapsed ? 'expanded' : ''}`}>
                 <header className="page-header-admin">
                     <div className="header-left">
-                        <button
-                            className="toggle-sidebar-btn"
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#000',
-                                fontSize: '20px',
-                                cursor: 'pointer',
-                                marginRight: '20px'
-                            }}
-                        >
-                            <i className={`bi ${isCollapsed ? 'bi-list' : 'bi-text-indent-left'}`}></i>
-                        </button>
                         <div className="search-global">
                             <i className="bi bi-search"></i>
                             <input type="text" placeholder="Tìm kiếm nhanh (Ctrl + K)..." />

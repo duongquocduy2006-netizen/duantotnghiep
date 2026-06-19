@@ -387,41 +387,42 @@ const AdminOrders = () => {
                 
                 .header-right-actions { display: flex; align-items: center; }
                 .btn-red-skew { 
-                    background: #e50914; color: #fff; border: 3px solid #000; box-shadow: 6px 6px 0 #000; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+                    background: #e50914; color: #fff; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
                     transition: 0.3s; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none;
                 }
-                .btn-red-skew:hover { background: #fff; color: #000; box-shadow: 8px 8px 0 var(--accent-red); transform: translateY(-3px); }
-                .toolbar { display: flex; gap: 20px; align-items: center; justify-content: space-between; margin-bottom: 30px; background: #fff; padding: 15px 25px; border: 4px solid #000; box-shadow: 8px 8px 0 #000; }
-                .search-box { position: relative; flex: 1; max-width: none; }
-                .search-input { width: 100%; background: #fff; border: 3px solid #000; padding: 12px 15px 12px 45px; color: #000; outline: none; transition: 0.3s; height: 45px; border-radius: 0; box-shadow: 4px 4px 0 #000; font-weight: 700; }
-                .search-input:focus { border-color: var(--accent-red); box-shadow: 4px 4px 0 var(--accent-red); }
-                .bi-search { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #000; font-weight: bold; }
+                .btn-red-skew:hover { background: #fff; color: #000; box-shadow: 0 8px 24px rgba(229,9,20,0.25); transform: translateY(-3px); }
+                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }
+                .search-box { position: relative; flex: 1; max-width: none; min-width: 220px; }
+                .search-input { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 9px 14px 9px 38px; color: #3c4043; outline: none; transition: all 0.2s; height: 40px; border-radius: 24px; font-weight: 400; font-size: 14px; font-family: 'Poppins', sans-serif; }
+                .search-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
+                .search-input::placeholder { color: #9aa0a6; }
+                .bi-search { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9aa0a6; font-size: 14px; pointer-events: none; }
 
-                .table-card { background: #fff; border: 4px solid #000; box-shadow: 12px 12px 0 #000; overflow: hidden; margin-top: 20px; }
+                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); overflow: hidden; margin-top: 20px; border-radius: 14px; }
                 table { width: 100%; border-collapse: collapse; }
-                th { background: #f4f4f4; color: #000; font-size: 13px; text-transform: uppercase; padding: 18px 20px; text-align: left; font-family: 'Oswald'; border-bottom: 4px solid #000; font-weight: 800; }
-                td { padding: 18px 20px; border-bottom: 2px solid #000; font-size: 14px; color: #000; font-weight: 600; }
+                th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 20px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; letter-spacing: 0.5px; }
+                td { padding: 16px 20px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; }
                 
                 .order-id { font-family: 'Oswald'; color: #000; font-weight: 800; text-decoration: none; transition: 0.2s; font-size: 16px; }
                 .order-id:hover { color: var(--accent-red); text-shadow: none; text-decoration: underline; }
                 .customer-name { display: block; font-weight: 800; color: #000; font-size: 15px; }
                 .customer-date { font-size: 12px; color: #555; display: flex; align-items: center; gap: 5px; margin-top: 3px; font-weight: 600; }
 
-                .action-btn { background: #fff; border: 3px solid #000; color: #000; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; padding: 0 10px; cursor: pointer; font-weight: 700; box-shadow: 2px 2px 0 #000; }
-                .btn-view:hover { background: #000; color: #fff; box-shadow: 4px 4px 0 var(--accent-red); transform: translateY(-2px); }
+                .action-btn { background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; height: 34px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; padding: 0 10px; cursor: pointer; font-weight: 600; border-radius: 8px; }
+                .btn-view:hover { background: #1e293b; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-1px); }
                 
-                .filter-select { background: #fff !important; color: #000 !important; border: 3px solid #000 !important; padding: 8px 15px; outline: none; cursor: pointer; height: 45px; border-radius: 0; min-width: 200px; box-shadow: 4px 4px 0 #000; font-weight: 700; font-family: 'Poppins'; }
-                .filter-select:focus { border-color: var(--accent-red) !important; box-shadow: 4px 4px 0 var(--accent-red); }
+                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Poppins'; font-size: 14px; transition: all 0.2s; }
+                .filter-select:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
 
                 /* Status badging */
-                .status-select-badge { border-radius: 0; font-weight: 800; font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 13px; border: 3px solid #000 !important; box-shadow: 3px 3px 0 #000; cursor: pointer; }
+                .status-select-badge { border-radius: 6px; font-weight: 800; font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 13px; border: 1px solid #e2e8f0 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.08); cursor: pointer; }
                 .status-pending { background: #fff !important; color: #000 !important; }
                 .status-shipping { background: #fff !important; color: #000 !important; }
                 .status-success { background: #000 !important; color: #fff !important; }
                 .status-cancel { background: var(--accent-red) !important; color: #fff !important; }
                 .status-delivered { background: #fff !important; color: #000 !important; }
 
-                .badge-payment { font-size: 11px; font-weight: 800; padding: 6px 12px; background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 #000; text-transform: uppercase; }
+                .badge-payment { font-size: 11px; font-weight: 800; padding: 6px 12px; background: #fff; color: #000; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); text-transform: uppercase; }
                 .payment-vnpay { background: #fff !important; color: #000 !important; }
 
                 /* Modern Brutalism Modal */
@@ -431,12 +432,12 @@ const AdminOrders = () => {
                     padding: 20px; animation: fadeIn 0.25s ease-out;
                 }
                 .modal-container-neon {
-                    background: #fff; border: 4px solid #000; box-shadow: 16px 16px 0 var(--accent-red);
-                    width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; border-radius: 0px;
+                    background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+                    width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; border-radius: 16px;
                     display: flex; flex-direction: column; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
                 }
                 .modal-header-neon {
-                    padding: 20px 25px; border-bottom: 4px solid #000; display: flex; align-items: center; justify-content: space-between; background: #fff;
+                    padding: 20px 25px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 16px 16px 0 0;
                 }
                 .modal-header-neon h3 { margin: 0; font-size: 24px; color: #000; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; font-weight: 800; }
                 .btn-close-neon { background: transparent; border: none; color: #000; font-size: 32px; font-weight: 800; cursor: pointer; transition: 0.2s; }
@@ -444,26 +445,26 @@ const AdminOrders = () => {
                 .modal-body-neon { padding: 30px; background: #fff; }
 
                 .order-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
-                .detail-panel { background: #fff; border: 4px solid #000; padding: 20px; box-shadow: 8px 8px 0 #000; }
-                .panel-title { margin-top: 0; font-size: 16px; color: #000; font-weight: 800; border-bottom: 4px solid #000; padding-bottom: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
-                .detail-panel p { margin: 10px 0; font-size: 14px; color: #000; font-weight: 600; }
-                .detail-panel b { color: #000; font-weight: 800; margin-right: 5px; }
+                .detail-panel { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-radius: 12px; }
+                .panel-title { margin-top: 0; font-size: 16px; color: #1e293b; font-weight: 700; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
+                .detail-panel p { margin: 10px 0; font-size: 14px; color: #334155; font-weight: 500; }
+                .detail-panel b { color: #1e293b; font-weight: 700; margin-right: 5px; }
 
-                .badge-status-neon { font-size: 12px; font-weight: 800; padding: 6px 12px; font-family: 'Oswald'; text-transform: uppercase; border: 3px solid #000; box-shadow: 3px 3px 0 #000; }
+                .badge-status-neon { font-size: 12px; font-weight: 800; padding: 6px 12px; font-family: 'Oswald'; text-transform: uppercase; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 
                 /* Modal Product Table */
-                .product-table-wrapper { background: #fff; border: 4px solid #000; margin-top: 20px; box-shadow: 8px 8px 0 #000; }
+                .product-table-wrapper { background: #fff; border: 1px solid #e2e8f0; margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-radius: 12px; overflow: hidden; }
                 .modal-product-table { width: 100%; border-collapse: collapse; }
-                .modal-product-table th { background: #f0f0f0; padding: 15px; border-bottom: 4px solid #000; font-size: 13px; color: #000; font-family: 'Oswald'; font-weight: 800; text-transform: uppercase; }
-                .modal-product-table td { padding: 15px; border-bottom: 2px solid #000; font-size: 14px; color: #000; font-weight: 700; }
+                .modal-product-table th { background: #f8fafc; padding: 14px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #64748b; font-family: 'Oswald'; font-weight: 700; text-transform: uppercase; }
+                .modal-product-table td { padding: 14px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; }
                 .modal-prod-info { display: flex; align-items: center; gap: 15px; }
-                .modal-prod-img { width: 55px; height: 55px; object-fit: cover; border: 3px solid #000; }
+                .modal-prod-img { width: 55px; height: 55px; object-fit: cover; border: 1px solid #e2e8f0; border-radius: 8px; }
                 .modal-prod-name { font-weight: 800; color: #000; font-size: 14px; line-height: 1.4; text-transform: uppercase; }
                 .modal-prod-variant { font-size: 12px; color: #555; margin-top: 4px; font-weight: 700; }
 
-                .price-summary-panel { margin-top: 30px; max-width: 400px; margin-left: auto; display: flex; flex-direction: column; gap: 12px; background: #fff; padding: 25px; border: 4px solid #000; box-shadow: 12px 12px 0 var(--accent-red); }
-                .summary-row { display: flex; justify-content: space-between; font-size: 15px; color: #000; font-weight: 700; }
-                .final-row { font-size: 24px; font-family: 'Oswald'; font-weight: 800; color: #000; margin-top: 15px; padding-top: 15px; border-top: 4px solid #000; }
+                .price-summary-panel { margin-top: 30px; max-width: 400px; margin-left: auto; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; padding: 25px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 14px; }
+                .summary-row { display: flex; justify-content: space-between; font-size: 15px; color: #334155; font-weight: 600; }
+                .final-row { font-size: 22px; font-family: 'Oswald'; font-weight: 800; color: #1e293b; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0; }
                 .cyan-glow-text { color: #000 !important; text-shadow: none; }
 
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
