@@ -1,267 +1,242 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import './AdminBannerForm.css';
 import api from '../../services/api';
+import './AdminFormModern.css';
 
 const AdminBannerForm = () => {
-    const { id } = useParams();
     const navigate = useNavigate();
+    const { id } = useParams();
     const isEdit = !!id;
 
-    const [form, setForm] = useState({
-        name: '',
-        seasonType: '',
-        startDate: '',
-        endDate: '',
-        description: '',
-        status: 'true'
-    });
-
-    const [existingImages, setExistingImages] = useState([]);
-    const [newImages, setNewImages] = useState([]);
-    const [loading, setLoading] = useState(isEdit);
+    const [name, setName] = useState('');
+    const [event, setEvent] = useState('');
+    const [description, setDescription] = useState('');
+    const [seasonType, setSeasonType] = useState('Default');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [status, setStatus] = useState(true);
+    const [images, setImages] = useState([]);
+    const [previewImages, setPreviewImages] = useState([]);
 
     useEffect(() => {
         if (isEdit) {
-            const fetchBanner = async () => {
-                try {
-                    const response = await api.get(`/api/banners/${id}`);
-                    const data = response.data;
-                    setForm({
-                        name: data.name || '',
-                        seasonType: data.seasonType || '',
-                        startDate: data.startDate ? data.startDate.substring(0, 16) : '',
-                        endDate: data.endDate ? data.endDate.substring(0, 16) : '',
-                        description: data.description || '',
-                        status: String(data.status)
-                    });
-                    setExistingImages(Array.isArray(data.images) ? data.images : []);
-                } catch (error) {
-                    console.error('Error fetching banner:', error);
-                    alert('Lỗi khi tải thông tin banner');
-                } finally {
-                    setLoading(false);
-                }
-            };
-            fetchBanner();
+            fetchBannerDetails();
         }
-    }, [id, isEdit]);
+    }, [id]);
 
-    const handleFileChange = (e) => {
-        const files = Array.from(e.target.files);
-        const previews = files.map(file => ({
-            file,
-            preview: URL.createObjectURL(file)
-        }));
-        setNewImages([...newImages, ...previews]);
-    };
-
-    const removeNewImage = (index) => {
-        const updated = [...newImages];
-        URL.revokeObjectURL(updated[index].preview);
-        updated.splice(index, 1);
-        setNewImages(updated);
-    };
-
-    const removeExistingImage = async (imgId) => {
-        if (window.confirm('Xóa ảnh này viễn vĩnh khỏi hệ thống?')) {
-            try {
-                await api.delete(`/api/banners/image/${imgId}`);
-                setExistingImages(existingImages.filter(img => img.id !== imgId));
-            } catch (error) {
-                alert('Lỗi khi xóa ảnh');
+    const fetchBannerDetails = async () => {
+        try {
+            const response = await api.get(`/api/banners/${id}`);
+            const data = response.data;
+            setName(data.name || '');
+            setEvent(data.event || '');
+            setDescription(data.description || '');
+            setSeasonType(data.seasonType || 'Default');
+            setStatus(data.status !== false);
+            if (data.startDate) setStartDate(data.startDate.substring(0, 16));
+            if (data.endDate) setEndDate(data.endDate.substring(0, 16));
+            if (data.images) {
+                setPreviewImages(data.images.map(img => `http://localhost:8080/uploads/${img.imageUrl}`));
             }
+        } catch (error) {
+            console.error('Lỗi khi lấy chi tiết banner:', error);
+        }
+    };
+
+    const handleImageChange = (e) => {
+        const files = Array.from(e.target.files);
+        setImages([...images, ...files]);
+        const newPreviews = files.map(file => URL.createObjectURL(file));
+        setPreviewImages([...previewImages, ...newPreviews]);
+    };
+
+    const removeImage = (index) => {
+        const updatedPreviews = [...previewImages];
+        updatedPreviews.splice(index, 1);
+        setPreviewImages(updatedPreviews);
+
+        const updatedImages = [...images];
+        // Logic to remove from newly added images if applicable
+        if (index >= (previewImages.length - images.length)) {
+            updatedImages.splice(index - (previewImages.length - images.length), 1);
+            setImages(updatedImages);
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Validation: Cần ít nhất 1 ảnh
-        if (existingImages.length === 0 && newImages.length === 0) {
-            alert('Vui lòng thêm ít nhất 1 hình ảnh cho chiến dịch Banner!');
-            return;
-        }
-
         const formData = new FormData();
         if (isEdit) formData.append('id', id);
-        formData.append('name', form.name);
-        formData.append('seasonType', form.seasonType);
-        formData.append('startDate', form.startDate);
-        formData.append('endDate', form.endDate);
-        formData.append('description', form.description);
-        formData.append('status', form.status === 'true');
+        formData.append('name', name);
+        formData.append('event', event);
+        formData.append('description', description);
+        formData.append('seasonType', seasonType);
+        formData.append('startDate', startDate);
+        formData.append('endDate', endDate);
+        formData.append('status', status);
 
-        newImages.forEach(img => {
-            formData.append('imageFiles', img.file);
+        images.forEach(image => {
+            formData.append('imageFiles', image); // Backend expects 'imageFiles'
         });
 
         try {
-            await api.post('/api/banners', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
-            alert('Lưu banner thành công!');
+            // Both Add and Edit use POST in the API
+            await api.post('/api/banners', formData);
+            window.dispatchEvent(new CustomEvent('show-toast', {
+                detail: isEdit ? 'Cập nhật banner thành công!' : 'Thêm banner thành công!'
+            }));
             navigate('/admin/banners');
         } catch (error) {
-            console.error('Error saving banner:', error);
-            alert('Lỗi khi lưu banner');
+            console.error('Lỗi khi lưu banner:', error);
+            alert('Có lỗi xảy ra khi lưu dữ liệu. Vui lòng kiểm tra lại.');
         }
     };
 
     return (
         <AdminLayout>
-            <div className="admin-banner-form-page">
+            <div className="admin-form-modern">
                 <form onSubmit={handleSubmit}>
-                    <div className="page-header" style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                        <div className="header-left">
-                            <span className="sub-title" style={{ color: '#000', fontSize: '13px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>QUẢN LÝ GIAO DIỆN HIỂN THỊ</span>
-                            <h1 className="page-title font-oswald" style={{ margin: 0, color: '#000', fontSize: '38px', fontWeight: '700' }}>CHIẾN DỊCH BANNER (CAMPAIGN)</h1>
+                    {/* MODERN HEADER */}
+                    <div className="page-header-wrapper">
+                        <div>
+                            <div className="header-label">
+                                <i className="bi bi-shield-lock-fill me-2"></i> SYSTEM ADMIN
+                            </div>
+                            <h1 className="header-title">{isEdit ? 'CẬP NHẬT BANNER' : 'TẠO CHIẾN DỊCH MỚI'}</h1>
                         </div>
-                        <div className="btn-group" style={{ display: 'flex', gap: '15px' }}>
-                            <Link to="/admin/banners" className="btn-cancel" style={{
-                                background: 'transparent', border: '1px solid #dadce0', color: '#555', padding: '10px 30px',
-                                fontFamily: 'Oswald', fontWeight: '600', textDecoration: 'none', transition: '0.3s', borderRadius: '8px'
-                            }}>
-                                HỦY BỎ
-                            </Link>
-                            <button type="submit" className="btn-cyan-skew" style={{ minWidth: '200px' }}>
-                                LƯU CHIẾN DỊCH
+                        <div className="d-flex gap-3">
+                            <Link to="/admin/banners" className="btn-modern-cancel">HỦY BỎ</Link>
+                            <button type="submit" className="btn-modern-primary">
+                                {isEdit ? 'LƯU THAY ĐỔI' : 'XUẤT BẢN BANNER'}
                             </button>
                         </div>
                     </div>
 
-                    <div className="form-grid">
-                        <div className="left-col">
-                            <div className="card">
-                                <h3 className="card-title">THÔNG TIN CHIẾN DỊCH</h3>
-                                <div className="form-group">
-                                    <label className="form-label">Tên chiến dịch *</label>
+                    <div className="row g-4">
+                        <div className="col-lg-7">
+                            <div className="form-card mb-4">
+                                <h3 className="form-card-title">THÔNG TIN CHIẾN DỊCH</h3>
+
+                                <div className="mb-4">
+                                    <label className="form-label-modern">Tên chiến dịch *</label>
                                     <input
                                         type="text"
-                                        className="form-control"
-                                        placeholder="VD: Khuyến mãi mùa hè 2026"
+                                        className="form-input-modern"
+                                        placeholder="VD: Summer Sale 2024"
                                         required
-                                        value={form.name}
-                                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
                                     />
                                 </div>
 
-                                <div className="form-group">
-                                    <label className="form-label">Sự kiện / Mùa *</label>
-                                    <select
-                                        className="form-control"
-                                        required
-                                        value={form.seasonType}
-                                        onChange={(e) => setForm({ ...form, seasonType: e.target.value })}
-                                    >
-                                        <option value="">-- Chọn sự kiện --</option>
-                                        <option value="Sinh Nhật">Sinh Nhật Store</option>
-                                        <option value="Summer Collection">Summer Collection</option>
-                                        <option value="Black Friday">Black Friday</option>
-                                        <option value="New Arrival">Ra mắt bộ sưu tập mới</option>
-                                        <option value="Khác">Khác / Định kỳ</option>
-                                    </select>
-                                </div>
-
-                                <div className="form-group-row">
-                                    <div>
-                                        <label className="form-label">Thời gian bắt đầu</label>
+                                <div className="row">
+                                    <div className="col-md-6 mb-4">
+                                        <label className="form-label-modern">Sự kiện / Dịp</label>
                                         <input
-                                            type="datetime-local"
-                                            className="form-control"
-                                            value={form.startDate}
-                                            onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                                            type="text"
+                                            className="form-input-modern"
+                                            placeholder="VD: Black Friday"
+                                            value={event}
+                                            onChange={(e) => setEvent(e.target.value)}
                                         />
                                     </div>
-                                    <div>
-                                        <label className="form-label">Thời gian kết thúc</label>
-                                        <input
-                                            type="datetime-local"
-                                            className="form-control"
-                                            value={form.endDate}
-                                            onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                                        />
+                                    <div className="col-md-6 mb-4">
+                                        <label className="form-label-modern">Loại hiển thị</label>
+                                        <select
+                                            className="form-input-modern"
+                                            value={seasonType}
+                                            onChange={(e) => setSeasonType(e.target.value)}
+                                        >
+                                            <option value="Default">Mặc định</option>
+                                            <option value="Limited">Giới hạn</option>
+                                            <option value="Collection">Bộ sưu tập</option>
+                                        </select>
                                     </div>
                                 </div>
 
-                                <div className="form-group">
-                                    <label className="form-label">Mô tả thêm</label>
+                                <div className="row">
+                                    <div className="col-md-6 mb-4">
+                                        <label className="form-label-modern">Ngày bắt đầu</label>
+                                        <input
+                                            type="datetime-local"
+                                            className="form-input-modern"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="col-md-6 mb-4">
+                                        <label className="form-label-modern">Ngày kết thúc</label>
+                                        <input
+                                            type="datetime-local"
+                                            className="form-input-modern"
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mb-4">
+                                    <label className="form-label-modern">Mô tả thêm</label>
                                     <textarea
-                                        className="form-control"
+                                        className="form-input-modern"
                                         rows="3"
                                         placeholder="Ghi chú nội bộ cho chiến dịch này..."
-                                        value={form.description}
-                                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
                                     ></textarea>
+                                </div>
+
+                                <div className="mb-0">
+                                    <label className="form-label-modern">Trạng thái</label>
+                                    <select
+                                        className="form-input-modern"
+                                        value={status}
+                                        onChange={(e) => setStatus(e.target.value === 'true')}
+                                    >
+                                        <option value="true">Đang hoạt động</option>
+                                        <option value="false">Tạm ẩn</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="right-col">
-                            <div className="card">
-                                <h3 className="card-title">HÌNH ẢNH BANNER (NHIỀU ẢNH)</h3>
+                        <div className="col-lg-5">
+                            <div className="form-card">
+                                <h3 className="form-card-title">HÌNH ẢNH BANNER</h3>
 
-                                {isEdit && existingImages.length > 0 && (
-                                    <div style={{ marginBottom: '25px' }}>
-                                        <label className="form-label">Các ảnh đang sử dụng</label>
-                                        <div className="preview-grid">
-                                            {existingImages.map(img => (
-                                                <div key={img.id} className="img-item-wrapper">
-                                                    <img src={`http://localhost:8080/images/${img.imageUrl}`} alt="Banner" />
-                                                    <button type="button" className="btn-remove-img-brutal" title="Xóa ảnh này" onClick={() => removeExistingImage(img.id)}>
-                                                        <i className="bi bi-trash"></i>
+                                <div className="image-drop-zone-modern" onClick={() => document.getElementById('banner-upload').click()}>
+                                    <i className="bi bi-cloud-arrow-up display-4 text-muted mb-3 d-block"></i>
+                                    <p className="mb-0 fw-bold">Kéo thả hoặc Click để tải ảnh</p>
+                                    <p className="text-muted small">Khuyên dùng tỷ lệ 16:9 cho trang chủ</p>
+                                    <input
+                                        type="file"
+                                        id="banner-upload"
+                                        multiple
+                                        hidden
+                                        onChange={handleImageChange}
+                                    />
+                                </div>
+
+                                {previewImages.length > 0 && (
+                                    <div className="mt-4 pt-3 border-top">
+                                        <label className="form-label-modern">Ảnh đã chọn ({previewImages.length})</label>
+                                        <div className="d-flex flex-wrap gap-2">
+                                            {previewImages.map((src, idx) => (
+                                                <div key={idx} style={{ position: 'relative', width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
+                                                    <img src={src} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeImage(idx)}
+                                                        style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '10px' }}
+                                                    >
+                                                        <i className="bi bi-x"></i>
                                                     </button>
                                                 </div>
                                             ))}
                                         </div>
-                                        <hr style={{ borderColor: '#e2e8f0', margin: '20px 0' }} />
                                     </div>
                                 )}
-
-                                <label className="form-label">Tải lên các ảnh của chiến dịch</label>
-
-                                <div className="image-upload-box" onClick={() => document.getElementById('fileInput').click()}>
-                                    <input
-                                        type="file"
-                                        id="fileInput"
-                                        className="file-input"
-                                        accept="image/*"
-                                        multiple
-                                        onChange={handleFileChange}
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                    <div className="upload-placeholder">
-                                        <i className="bi bi-cloud-arrow-up upload-icon"></i>
-                                        <p style={{ color: '#555', fontSize: '12px', marginBottom: '5px' }}>BẤM VÀO ĐỂ TẢI LÊN NHIỀU ẢNH</p>
-                                        <p style={{ color: '#00f2ff', fontSize: '11px' }}>(Hỗ trợ chọn nhiều file cùng lúc)</p>
-                                    </div>
-                                </div>
-
-                                <div className="preview-grid mt-3">
-                                    {newImages.map((img, idx) => (
-                                        <div key={idx} className="img-item-wrapper">
-                                            <img src={img.preview} alt="New Preview" />
-                                            <button type="button" className="btn-remove-img-brutal" title="Bỏ chọn" onClick={() => removeNewImage(idx)}>
-                                                <i className="bi bi-x"></i>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="form-group" style={{ marginTop: '30px' }}>
-                                    <label className="form-label">Trạng thái Chiến dịch</label>
-                                    <select
-                                        className="form-control"
-                                        value={form.status}
-                                        onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                    >
-                                        <option value="true">Kích hoạt (Hiển thị trang chủ)</option>
-                                        <option value="false">Tạm ẩn</option>
-                                    </select>
-                                </div>
                             </div>
                         </div>
                     </div>
