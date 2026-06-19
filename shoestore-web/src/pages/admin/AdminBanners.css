@@ -49,7 +49,8 @@
     background: var(--accent-red);
     color: #fff !important;
     padding: 12px 28px;
-    border-radius: 50px;
+    border-radius: 0px;
+    /* Bo vuông */
     font-weight: 800;
     text-transform: uppercase;
     text-decoration: none;
@@ -71,7 +72,8 @@
 .toolbar-container {
     background: #fff;
     border: 1px solid var(--border-pink);
-    border-radius: 20px;
+    border-radius: 0px;
+    /* Bo vuông */
     padding: 15px;
     /* Reduced from 20px */
     margin-bottom: 15px;
@@ -99,7 +101,8 @@
     width: 100%;
     padding: 15px 15px 15px 55px;
     border: 1px solid #ddd;
-    border-radius: 12px;
+    border-radius: 0px;
+    /* Bo vuông */
     font-size: 15px;
     outline: none;
     transition: 0.3s;
@@ -115,7 +118,8 @@
     padding: 15px 25px;
     background: #f8f9fa;
     border: 1px solid #ddd;
-    border-radius: 50px;
+    border-radius: 0px;
+    /* Bo vuông */
     font-weight: 700;
     color: #333;
     outline: none;
@@ -127,7 +131,8 @@
 /* Table Design */
 .table-main-wrapper {
     border: 1px solid var(--border-pink);
-    border-radius: 15px;
+    border-radius: 0px;
+    /* Bo vuông */
     overflow: hidden;
     background: #fff;
 }
@@ -196,7 +201,8 @@
     padding: 8px 16px;
     background: #e6fffa;
     color: #38b2ac;
-    border-radius: 8px;
+    border-radius: 0px;
+    /* Bo vuông */
     font-size: 12px;
     font-weight: 800;
     text-transform: uppercase;
@@ -218,7 +224,8 @@
 .btn-icon-action {
     width: 42px;
     height: 42px;
-    border-radius: 12px;
+    border-radius: 0px;
+    /* Bo vuông */
     border: 1px solid #ddd;
     background: #fff;
     display: inline-flex;
@@ -242,7 +249,8 @@
 .table-img-box {
     width: 100px;
     height: 120px;
-    border-radius: 15px;
+    border-radius: 0px;
+    /* Bo vuông */
     overflow: hidden;
     background: #f8f9fa;
 }

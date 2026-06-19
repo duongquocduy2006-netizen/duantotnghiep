@@ -101,7 +101,7 @@ const AdminBannerForm = () => {
                     <div className="page-header-wrapper">
                         <div>
                             <div className="header-label">
-                                <span role="img" aria-label="display">📱</span> SYSTEM ADMIN
+                                <i className="bi bi-shield-lock-fill me-2"></i> SYSTEM ADMIN
                             </div>
                             <h1 className="header-title">{isEdit ? 'CẬP NHẬT BANNER' : 'TẠO CHIẾN DỊCH MỚI'}</h1>
                         </div>

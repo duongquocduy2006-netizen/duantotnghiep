@@ -56,7 +56,7 @@ const AdminLookbooks = () => {
                 <div className="page-header-wrapper">
                     <div>
                         <div className="header-label">
-                            <span role="img" aria-label="camera">📸</span> CONTENT MANAGEMENT
+                            <i className="bi bi-image-fill me-2"></i> CONTENT MANAGEMENT
                         </div>
                         <h1 className="header-title">QUẢN LÝ LOOKBOOKS</h1>
                     </div>

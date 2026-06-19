@@ -16,7 +16,8 @@
 .form-card {
     background: #ffffff;
     border: 1px solid var(--border-pink);
-    border-radius: 20px;
+    border-radius: 0px;
+    /* Bo vuông */
     padding: 20px;
     /* Reduced from 25px */
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.02);
@@ -48,7 +49,8 @@
     padding: 15px 20px;
     background: #fdfdfd;
     border: 1px solid #ddd;
-    border-radius: 12px;
+    border-radius: 0px;
+    /* Bo vuông */
     font-size: 14px;
     color: #333;
     transition: 0.3s;
@@ -68,7 +70,8 @@
 .image-drop-zone-modern {
     border: 2px dashed var(--border-pink);
     background: var(--soft-pink);
-    border-radius: 20px;
+    border-radius: 0px;
+    /* Bo vuông */
     padding: 60px 20px;
     text-align: center;
     cursor: pointer;
@@ -85,7 +88,8 @@
     color: #fff;
     border: none;
     padding: 15px 35px;
-    border-radius: 50px;
+    border-radius: 0px;
+    /* Bo vuông */
     font-family: 'Oswald', sans-serif;
     font-weight: 800;
     text-transform: uppercase;
@@ -104,7 +108,8 @@
     color: #666;
     border: 1px solid #ddd;
     padding: 15px 35px;
-    border-radius: 50px;
+    border-radius: 0px;
+    /* Bo vuông */
     font-family: 'Oswald', sans-serif;
     font-weight: 800;
     text-transform: uppercase;

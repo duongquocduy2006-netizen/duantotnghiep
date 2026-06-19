@@ -8,6 +8,7 @@ const AdminBanners = () => {
     const [banners, setBanners] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
 
     const fetchBanners = async () => {
         try {
@@ -35,7 +36,13 @@ const AdminBanners = () => {
         }
     };
 
-    const filteredBanners = (Array.isArray(banners) ? banners : []).filter(b => b.name?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredBanners = (Array.isArray(banners) ? banners : []).filter(b => {
+        const matchesSearch = b.name?.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'all' ||
+            (statusFilter === 'active' && b.status) ||
+            (statusFilter === 'inactive' && !b.status);
+        return matchesSearch && matchesStatus;
+    });
 
     return (
         <AdminLayout>
@@ -44,7 +51,7 @@ const AdminBanners = () => {
                 <div className="page-header-wrapper">
                     <div>
                         <div className="header-label">
-                            <span role="img" aria-label="display">📱</span> DISPLAY MANAGEMENT
+                            <i className="bi bi-collection-play-fill me-2"></i> DISPLAY MANAGEMENT
                         </div>
                         <h1 className="header-title">QUẢN LÝ BANNERS</h1>
                     </div>
@@ -64,6 +71,15 @@ const AdminBanners = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <select
+                        className="filter-select-pill"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="all">TẤT CẢ TRẠNG THÁI</option>
+                        <option value="active">ĐANG HOẠT ĐỘNG</option>
+                        <option value="inactive">TẠM ẨN</option>
+                    </select>
                 </div>
 
                 {/* TABLE */}
