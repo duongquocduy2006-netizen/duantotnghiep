@@ -37,6 +37,7 @@ import AdminProductForm from './pages/admin/AdminProductForm';
 import AdminBanners from './pages/admin/AdminBanners';
 import AdminBannerForm from './pages/admin/AdminBannerForm';
 import AdminLookbooks from './pages/admin/AdminLookbooks';
+import AdminLookbookForm from './pages/admin/AdminLookbookForm';
 import AdminRanks from './pages/admin/AdminRanks';
 import AdminRankForm from './pages/admin/AdminRankForm';
 import AdminFlashSales from './pages/admin/AdminFlashSales';
@@ -48,8 +49,6 @@ import VerifyOTP from './pages/VerifyOTP';
 import ResetPassword from './pages/ResetPassword';
 import OAuth2Redirect from './pages/OAuth2Redirect';
 
-
-
 import Chatbox from './components/Chatbox';
 
 import './index.css';
@@ -59,12 +58,12 @@ function ScrollAndModalReset() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    
+
     // Clean up stuck bootstrap backdrops and body locks
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
     document.body.style.paddingRight = '';
-    
+
     const backdrops = document.querySelectorAll('.modal-backdrop');
     backdrops.forEach(el => el.remove());
   }, [pathname]);
@@ -126,7 +125,11 @@ function App() {
         <Route path="/admin/banners" element={<AdminBanners />} />
         <Route path="/admin/banners/add" element={<AdminBannerForm />} />
         <Route path="/admin/banners/edit/:id" element={<AdminBannerForm />} />
+
         <Route path="/admin/lookbooks" element={<AdminLookbooks />} />
+        <Route path="/admin/lookbooks/add" element={<AdminLookbookForm />} />
+        <Route path="/admin/lookbooks/edit/:id" element={<AdminLookbookForm />} />
+
         <Route path="/admin/ranks" element={<AdminRanks />} />
         <Route path="/admin/ranks/add" element={<AdminRankForm />} />
         <Route path="/admin/ranks/edit/:id" element={<AdminRankForm />} />
@@ -135,12 +138,6 @@ function App() {
         <Route path="/admin/flashsales/edit/:id" element={<AdminFlashSaleForm />} />
         <Route path="/admin/settings" element={<AdminSettings />} />
         <Route path="/admin/chat" element={<AdminChat />} />
-
-
-
-
-
-
       </Routes>
     </Router>
   );
