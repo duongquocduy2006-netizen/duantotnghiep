@@ -2,17 +2,19 @@
 
 .luxury-order-card {
     background: #fff;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 24px;
     box-shadow: none;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     position: relative;
+    overflow: hidden;
 }
 
 .luxury-order-card:hover {
-    background: #fafafa;
+    background: #fff;
+    border-color: #cbd5e1;
     transform: none;
     box-shadow: none;
 }
@@ -21,79 +23,95 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #e5e7eb;
-    padding-bottom: 16px;
-    margin-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 16px 24px;
+    margin: -24px -24px 20px -24px;
+    background: #f8fafc;
 }
 
 .order-id {
     font-family: inherit;
     font-weight: 700;
-    font-size: 18px;
-    color: #111827;
+    font-size: 16px;
+    color: #0f172a;
     letter-spacing: 0.5px;
 }
 
 .order-date {
     font-size: 13px;
-    color: #6b7280;
+    color: #64748b;
     font-weight: 500;
     margin-left: 15px;
     text-transform: none;
 }
 
 .order-date i {
-    color: #ef4444;
+    color: #64748b;
 }
 
 /* Status Badges */
 .badge-luxury {
-    padding: 6px 14px;
-    border-radius: 30px;
+    padding: 6px 12px;
+    border-radius: 6px;
     font-family: inherit;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     display: inline-flex;
     align-items: center;
-    border: none;
+    border: 1px solid transparent;
     box-shadow: none;
 }
 
 .badge-success-lux {
-    background: #d1fae5 !important;
-    color: #065f46 !important;
+    background: #dcfce7 !important;
+    color: #15803d !important;
+    border-color: #bbf7d0 !important;
 }
 
 .badge-warning-lux {
-    background: #fef3c7 !important;
-    color: #92400e !important;
+    background: #fef9c3 !important;
+    color: #a16207 !important;
+    border-color: #fef08a !important;
+}
+
+.badge-info-lux {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+    border-color: #bfdbfe !important;
+}
+
+.badge-danger-lux {
+    background: #fee2e2 !important;
+    color: #b91c1c !important;
+    border-color: #fca5a5 !important;
 }
 
 /* Product Info */
 .product-thumb {
-    width: 90px;
-    height: 90px;
+    width: 80px;
+    height: 80px;
     border-radius: 8px;
     object-fit: cover;
-    border: 1px solid #e5e7eb;
-    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    background: #fff;
     box-shadow: none;
+    padding: 4px;
 }
 
 .product-title {
     font-family: inherit;
     font-weight: 600;
-    font-size: 16px;
-    color: #111827;
+    font-size: 15px;
+    color: #0f172a;
     margin-bottom: 4px;
     text-transform: none;
 }
 
 .product-meta {
-    font-size: 13px;
-    color: #6b7280;
+    font-size: 12px;
+    color: #64748b;
     font-weight: 500;
     font-family: inherit;
     text-transform: none;
@@ -102,21 +120,21 @@
 .price-tag {
     font-family: inherit;
     font-weight: 700;
-    font-size: 18px;
+    font-size: 16px;
     color: #e50914;
     text-shadow: none;
 }
 
 /* Action Buttons */
 .btn-outline-luxury {
-    border: 1px solid #d1d5db;
-    color: #374151;
+    border: 1px solid #cbd5e1;
+    color: #475569;
     border-radius: 6px;
-    padding: 8px 18px;
+    padding: 8px 16px;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     background: #fff;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -127,15 +145,15 @@
 }
 
 .btn-outline-luxury:hover {
-    border-color: #9ca3af;
-    color: #111827;
-    background: #f9fafb;
+    border-color: #94a3b8;
+    color: #0f172a;
+    background: #f8fafc;
     box-shadow: none;
     transform: none;
 }
 
 .btn-outline-luxury.text-danger {
-    border-color: #fecaca;
+    border-color: #fca5a5;
     color: #ef4444 !important;
 }
 
@@ -161,4 +179,35 @@
 
 .status-wait {
     border-left: 4px solid #f59e0b;
+}
+
+/* Nút Xem thêm / Thu gọn */
+.load-more-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #475569;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 24px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    box-shadow: none;
+    text-transform: none;
+    letter-spacing: 0;
+    min-width: 200px;
+}
+
+.load-more-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+.load-more-btn:active {
+    background: #f1f5f9;
 }
