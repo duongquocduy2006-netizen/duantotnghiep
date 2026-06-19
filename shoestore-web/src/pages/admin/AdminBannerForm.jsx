@@ -122,8 +122,8 @@ const AdminBannerForm = () => {
                         </div>
                         <div className="btn-group" style={{ display: 'flex', gap: '15px' }}>
                             <Link to="/admin/banners" className="btn-cancel" style={{
-                                background: 'transparent', border: '1px solid #333', color: '#555', padding: '10px 30px',
-                                fontFamily: 'Oswald', fontWeight: '600', textDecoration: 'none', transition: '0.3s'
+                                background: 'transparent', border: '1px solid #dadce0', color: '#555', padding: '10px 30px',
+                                fontFamily: 'Oswald', fontWeight: '600', textDecoration: 'none', transition: '0.3s', borderRadius: '8px'
                             }}>
                                 HỦY BỎ
                             </Link>
@@ -217,7 +217,7 @@ const AdminBannerForm = () => {
                                                 </div>
                                             ))}
                                         </div>
-                                        <hr style={{ borderColor: '#000', margin: '20px 0' }} />
+                                        <hr style={{ borderColor: '#e2e8f0', margin: '20px 0' }} />
                                     </div>
                                 )}
 
@@ -271,11 +271,11 @@ const AdminBannerForm = () => {
     .admin-banner-form-page { padding: 10px 0; }
     .admin-banner-form-page .card { 
         background: #fff !important; 
-        border: 4px solid #000 !important; 
-        border-radius: 0 !important;
+        border: 1px solid #e2e8f0 !important; 
+        border-radius: 12px !important;
         padding: 30px !important;
         margin-bottom: 25px;
-        box-shadow: 8px 8px 0 #000 !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06) !important;
     }
     .admin-banner-form-page .card-title {
         font-family: 'Oswald', sans-serif !important;
@@ -283,7 +283,7 @@ const AdminBannerForm = () => {
         font-size: 20px !important;
         font-weight: 800 !important;
         letter-spacing: 1px !important;
-        border-bottom: 3px solid #000 !important;
+        border-bottom: 1px solid #f1f5f9 !important;
         padding-bottom: 10px !important;
         margin-bottom: 25px !important;
         text-transform: uppercase !important;
@@ -299,53 +299,54 @@ const AdminBannerForm = () => {
     }
     .admin-banner-form-page .form-control {
         background: #fff !important;
-        border: 3px solid #000 !important;
-        color: #000 !important;
+        border: 1.5px solid #dadce0 !important;
+        color: #3c4043 !important;
         padding: 12px 15px !important;
         font-size: 14px !important;
-        border-radius: 0 !important;
-        font-weight: 600 !important;
-        box-shadow: 4px 4px 0 #000 !important;
-        transition: 0.3s;
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        box-shadow: none !important;
+        transition: 0.2s;
     }
     .admin-banner-form-page .form-control:focus {
-        border-color: var(--accent-red) !important;
-        box-shadow: 4px 4px 0 var(--accent-red) !important;
+        border-color: #1a73e8 !important;
+        box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important;
     }
     .image-upload-box {
-        border: 4px dashed #000 !important;
-        background: #f8f9fa !important;
+        border: 2px dashed #dadce0 !important;
+        border-radius: 12px !important;
+        background: #f8fafc !important;
         padding: 60px 40px !important;
         transition: 0.3s !important;
         cursor: pointer;
     }
     .image-upload-box:hover {
-        border-style: solid !important;
+        border-color: #1a73e8 !important;
         background: #fff !important;
-        box-shadow: 6px 6px 0 var(--accent-red) !important;
     }
-    .upload-icon { color: #000 !important; font-size: 45px !important; font-weight: bold; }
+    .upload-icon { color: #9aa0a6 !important; font-size: 45px !important; font-weight: bold; }
     
     .btn-cyan-skew {
-        background: #fff; color: #000; border: 4px solid #000; padding: 12px 30px; 
+        background: #fff; color: #000; border: none; padding: 12px 30px; 
         font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
-        transition: 0.3s; cursor: pointer; font-size: 14px; box-shadow: 6px 6px 0 #000;
+        transition: 0.3s; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         display: inline-flex; justify-content: center; align-items: center; text-decoration: none;
+        border-radius: 8px;
     }
-    .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 6px 6px 0 var(--accent-red); transform: translateY(-3px); }
+    .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
     
-    .btn-cancel:hover { background: #000 !important; color: #fff !important; box-shadow: 6px 6px 0 #000; transform: translateY(-3px); }
+    .btn-cancel:hover { background: #000 !important; color: #fff !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-3px); }
 
     .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; }
-    .img-item-wrapper { border: 4px solid #000; background: #fff; padding: 5px; position: relative; box-shadow: 4px 4px 0 #000; }
-    .img-item-wrapper img { width: 100%; height: auto; display: block; border: 2px solid #000; }
+    .img-item-wrapper { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 5px; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .img-item-wrapper img { width: 100%; height: auto; display: block; border: 1px solid #f1f5f9; border-radius: 4px; }
     
     .btn-remove-img-brutal {
-        position: absolute; top: -10px; right: -10px; background: #fff; border: 3px solid #000; color: #000;
+        position: absolute; top: -10px; right: -10px; background: #fff; border: 1px solid #e2e8f0; color: #000;
         width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer;
-        font-weight: bold; box-shadow: 2px 2px 0 #000; transition: 0.2s; border-radius: 50%;
+        font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: 0.2s; border-radius: 50%;
     }
-    .btn-remove-img-brutal:hover { background: #e50914; color: #fff; transform: scale(1.1); box-shadow: 4px 4px 0 #000; }
+    .btn-remove-img-brutal:hover { background: #e50914; color: #fff; transform: scale(1.1); box-shadow: 0 4px 12px rgba(229,9,20,0.3); }
 `}</style>
         </AdminLayout>
     );

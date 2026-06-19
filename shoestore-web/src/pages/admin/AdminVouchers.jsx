@@ -182,7 +182,7 @@ const AdminVouchers = () => {
                     <p style={{ marginTop: '10px' }}>{error}</p>
                 </div>
             ) : vouchers.length === 0 ? (
-                <div style={{ padding: '60px 40px', textAlign: 'center', color: '#555', border: '4px solid #000', boxShadow: '6px 6px 0 #000', background: '#fff' }}>
+                <div style={{ padding: '60px 40px', textAlign: 'center', color: '#555', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#fff', borderRadius: '12px' }}>
                     <i className="bi bi-inbox" style={{ fontSize: '48px', color: '#000' }}></i>
                     <p style={{ marginTop: '15px' }}>Chưa có mã giảm giá nào được tạo.</p>
                 </div>
@@ -348,7 +348,7 @@ const AdminVouchers = () => {
 
                             <div className="form-group" style={{ marginTop: '10px' }}>
                                 <label className="form-label">Hạng thành viên áp dụng (Để trống = Áp dụng tất cả)</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: '#fff', padding: '15px', border: '3px solid #000' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: '#fff', padding: '15px', border: '1.5px solid #dadce0', borderRadius: '8px' }}>
                                     {ranks.map(r => {
                                         const isChecked = selectedRankIds.includes(r.id);
                                         return (
@@ -374,7 +374,7 @@ const AdminVouchers = () => {
 
                             <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
                                 <button type="submit" className="btn-cyan-skew" style={{ flex: 1 }}>LƯU THÔNG TIN</button>
-                                <button type="button" onClick={closeModal} className="btn-cyan-skew" style={{ background: 'transparent', border: '1px solid #333', color: '#000', flex: 1 }}>ĐÓNG</button>
+                                <button type="button" onClick={closeModal} className="btn-cyan-skew" style={{ background: 'transparent', border: '1px solid #dadce0', color: '#000', flex: 1, borderRadius: '8px' }}>ĐÓNG</button>
                             </div>
                         </form>
                     </div>
@@ -387,23 +387,23 @@ const AdminVouchers = () => {
                 .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
                 
                 .btn-cyan-skew { 
-                    background: #fff; color: #000; border: 4px solid #000; box-shadow: 6px 6px 0 #000; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+                    background: #fff; color: #000; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
                     transition: 0.3s; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none; justify-content: center;
                 }
-                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 6px 6px 0 var(--accent-red); transform: translateY(-3px); }
+                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
 
-                /* Vouchers Grid Brutalist */
+                /* Vouchers Grid Sleek Modern */
                 .voucher-grid-alt { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 30px; }
-                .voucher-ticket { background: #fff; border: 4px solid #000; box-shadow: 8px 8px 0 #000; display: flex; min-height: 140px; position: relative; transition: 0.3s; }
-                .voucher-ticket:hover { transform: translateY(-5px); box-shadow: 8px 8px 0 var(--accent-red); border-color: #000; }
+                .voucher-ticket { background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.06); display: flex; min-height: 140px; position: relative; transition: 0.3s; border-radius: 12px; overflow: hidden; }
+                .voucher-ticket:hover { transform: translateY(-5px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); border-color: #dadce0; }
                 
-                .ticket-left { width: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-right: 4px dashed #000; }
-                .ticket-left::before, .ticket-left::after { content: ''; position: absolute; right: -12px; width: 20px; height: 20px; background: #f8f9fa; border-radius: 50%; border: 4px solid #000; }
-                .ticket-left::before { top: -12px; }
-                .ticket-left::after { bottom: -12px; }
+                .ticket-left { width: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-right: 2px dashed #dadce0; }
+                .ticket-left::before, .ticket-left::after { content: ''; position: absolute; right: -11px; width: 20px; height: 20px; background: #f8f9fa; border-radius: 50%; border: 1px solid #e2e8f0; }
+                .ticket-left::before { top: -11px; }
+                .ticket-left::after { bottom: -11px; }
  
-                .bg-red-glow { background: #fca5a5; color: #000; border-right: 4px dashed #000; }
-                .bg-cyan-glow { background: #67e8f9; color: #000; border-right: 4px dashed #000; }
+                .bg-red-glow { background: #fee2e2; color: #991b1b; border-right: 2px dashed #e2e8f0; }
+                .bg-cyan-glow { background: #ecfeff; color: #155e75; border-right: 2px dashed #e2e8f0; }
 
                 .ticket-type { font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
                 .ticket-value { font-family: 'Oswald'; font-size: 36px; font-weight: 800; }
@@ -414,19 +414,19 @@ const AdminVouchers = () => {
                 .ticket-body b { color: #000; font-weight: 800; }
 
                 .ticket-actions { position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; }
-                .action-ic { background: #fff; border: 3px solid #000; color: #000; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-                .edit-ic:hover { background: #facc15; box-shadow: 2px 2px 0 #000; transform: translateY(-2px); }
-                .del-ic:hover { background: #ef4444; color: #fff; box-shadow: 2px 2px 0 #000; transform: translateY(-2px); }
+                .action-ic { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; color: #000; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+                .edit-ic:hover { background: #facc15; box-shadow: 0 4px 12px rgba(250,204,21,0.2); transform: translateY(-2px); }
+                .del-ic:hover { background: #ef4444; color: #fff; box-shadow: 0 4px 12px rgba(239,68,68,0.2); transform: translateY(-2px); }
 
                 /* MODAL STYLES */
                 .modal-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(5px); z-index: 2000; display: flex; align-items: center; justify-content: center; }
-                .modal-box { background: #fff; width: 650px; padding: 40px; border: 4px solid #000; box-shadow: 16px 16px 0 var(--accent-red); max-height: 90vh; overflow-y: auto; border-radius: 0; animation: slideUp 0.3s ease-out; }
-                .modal-title { font-family: 'Oswald'; font-size: 28px; color: #000; margin-bottom: 30px; letter-spacing: 1px; font-weight: 800; border-bottom: 4px solid #000; padding-bottom: 10px; }
+                .modal-box { background: #fff; width: 650px; padding: 40px; border: 1px solid #e2e8f0; box-shadow: 0 20px 60px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; border-radius: 16px; animation: slideUp 0.3s ease-out; }
+                .modal-title { font-family: 'Oswald'; font-size: 28px; color: #000; margin-bottom: 30px; letter-spacing: 1px; font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
                 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
                 .form-group { margin-bottom: 20px; }
                 .form-label { display: block; color: #000; font-size: 13px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; font-family: 'Oswald'; }
-                .form-input { width: 100%; background: #fff; border: 3px solid #000; color: #000; padding: 12px; outline: none; transition: 0.3s; font-size: 14px; font-weight: bold; box-shadow: 4px 4px 0 #000; }
-                .form-input:focus { border-color: var(--accent-red); box-shadow: 4px 4px 0 var(--accent-red); }
+                .form-input { width: 100%; background: #fff; border: 1.5px solid #dadce0; color: #3c4043; padding: 12px; outline: none; transition: 0.2s; font-size: 14px; font-weight: 500; box-shadow: none; border-radius: 8px; }
+                .form-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
                 
                 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         `}</style>

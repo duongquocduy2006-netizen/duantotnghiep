@@ -172,12 +172,12 @@ const AdminLookbooks = () => {
 
             <div className="toolbar" style={{
                 background: '#fff',
-                padding: '15px',
-                border: '4px solid #000', boxShadow: '4px 4px 0 #000', borderRadius: '0',
+                padding: '12px 16px',
+                border: '1px solid #e8eaed', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', borderRadius: '12px',
                 marginBottom: '25px',
                 display: 'flex',
-                gap: '15px',
-                alignItems: 'stretch'
+                gap: '14px',
+                alignItems: 'center'
             }}>
                 <div className="search-box" style={{ flex: 1 }}>
                     <i className="bi bi-search"></i>
@@ -192,7 +192,7 @@ const AdminLookbooks = () => {
 
                 <select 
                     className="filter-select" 
-                    style={{ width: '200px', background: '#fff', border: '3px solid #000', color: '#555', fontWeight: 'bold' }}
+                    style={{ width: '200px', background: '#fff', border: '1.5px solid #dadce0', color: '#3c4043', borderRadius: '24px', padding: '8px 14px', height: '40px', fontWeight: '400' }}
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
                 >
@@ -223,7 +223,7 @@ const AdminLookbooks = () => {
                             {filteredLookbooks.map((lb) => (
                                 <tr key={lb.id}>
                                     <td>
-                                        <div style={{ width: '80px', height: '100px', background: '#fff', borderRadius: '4px', overflow: 'hidden', border: '3px solid #000' }}>
+                                        <div style={{ width: '80px', height: '100px', background: '#fff', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                                             <img src={getImageUrl(lb.imageUrl)} alt={lb.caption} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         </div>
                                     </td>
@@ -278,7 +278,7 @@ const AdminLookbooks = () => {
                                 <label className="form-label">Hình ảnh phối đồ (On-feet)</label>
                                 <div style={{ 
                                     width: '120px', height: '160px', background: '#fff', 
-                                    border: '3px dashed #000', borderRadius: '8px', margin: '0 auto',
+                                    border: '2px dashed #dadce0', borderRadius: '8px', margin: '0 auto',
                                     position: 'relative', overflow: 'hidden', cursor: 'pointer'
                                 }}>
                                     {formImagePreview ? (
@@ -317,7 +317,7 @@ const AdminLookbooks = () => {
                                 <button type="submit" className="btn-cyan-skew" style={{ flex: 1 }}>
                                     {editingLookbook ? 'LƯU LẠI' : 'TẠO MỚI'}
                                 </button>
-                                <button type="button" onClick={closeModal} className="btn-cyan-skew" style={{ background: 'transparent', border: '1px solid #333', color: '#000', flex: 1 }}>
+                                <button type="button" onClick={closeModal} className="btn-cyan-skew" style={{ background: 'transparent', border: '1px solid #dadce0', color: '#000', flex: 1, borderRadius: '8px' }}>
                                     HỦY BỎ
                                 </button>
                             </div>

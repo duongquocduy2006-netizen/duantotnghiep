@@ -295,8 +295,8 @@ const AdminProducts = () => {
                 /* Action Icon Buttons */
                 .action-btn-icon { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; }
                 .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); background: #000; color: #fff; }
-                .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 2px 2px 0 #000; }
-                .icon-edit:hover { background: #facc15; color: #000; box-shadow: 2px 2px 0 #000; }
+                .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 0 4px 12px rgba(229,9,20,0.2); }
+                .icon-edit:hover { background: #facc15; color: #000; box-shadow: 0 4px 12px rgba(250,204,21,0.2); }
             `}</style>
         </AdminLayout >
     );
