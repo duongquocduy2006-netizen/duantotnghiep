@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Quản Lý Danh Mục (API) | ShoeStore Professional</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        /* --- THEME CONFIGURATION --- */
+        :root {
+            --bg-body: #050505;
+            --bg-card: #121212;
+            --accent-red: #e50914;
+            --accent-cyan: #00f2ff;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --radius: 6px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Poppins', sans-serif; background-color: var(--bg-body); color: var(--text-main); font-size: 14px; overflow-x: hidden; }
+        h1, h2, h3, h4, h5, .font-oswald { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
+
+        .admin-wrapper { display: flex; min-height: 100vh; }
+        .main-content { flex-grow: 1; margin-left: 260px; padding: 30px 40px; background-image: radial-gradient(circle at 80% 10%, rgba(0, 242, 255, 0.05) 0%, transparent 40%); display: flex; flex-direction: column; }
+        
+        /* HEADER */
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
+        .page-title { font-size: 32px; font-weight: 700; margin: 0; line-height: 1; text-shadow: 0 0 20px rgba(0, 0, 0, 0.5); }
+        .sub-title { font-size: 13px; color: var(--accent-cyan); font-weight: 600; letter-spacing: 2px; display: block; margin-bottom: 5px; }
+
+        /* BUTTONS */
+        .btn-neon { background: var(--accent-cyan); color: #000; border: none; padding: 12px 25px; font-family: 'Oswald', sans-serif; letter-spacing: 1px; text-transform: uppercase; cursor: pointer; transition: 0.3s; display: flex; align-items: center; gap: 8px; font-weight: 600; text-decoration: none; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+        .btn-neon:hover { background: #fff; box-shadow: 0 0 20px rgba(0, 242, 255, 0.5); }
+        .btn-red { background: var(--accent-red); color: #fff; }
+        .btn-red:hover { box-shadow: 0 0 20px rgba(229, 9, 20, 0.5); }
+
+        /* TOOLBAR */
+        .toolbar { background: var(--bg-card); padding: 20px; border: 1px solid var(--border-glass); border-radius: var(--radius); display: flex; gap: 15px; align-items: center; margin-bottom: 30px; }
+        .search-box { flex-grow: 1; position: relative; }
+        .search-input { width: 100%; padding: 12px 15px 12px 45px; background: #050505; border: 1px solid #333; border-radius: 4px; color: #fff; outline: none; transition: 0.3s; }
+        .search-input:focus { border-color: var(--accent-cyan); box-shadow: 0 0 10px rgba(0, 242, 255, 0.2); }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #666; }
+
+        /* TABLE */
+        .table-card { background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: var(--radius); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 20px; font-weight: 500; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-family: 'Oswald'; background: rgba(255, 255, 255, 0.03); border-bottom: 1px solid #333; }
+        td { padding: 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); vertical-align: middle; }
+        tr:hover td { background: rgba(255, 255, 255, 0.02); }
+        .cat-id { font-family: 'Oswald'; color: var(--accent-cyan); letter-spacing: 1px; font-weight: 600; }
+
+        .action-btn { width: 35px; height: 35px; background: transparent; border: 1px solid #333; color: #888; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; margin-left: 5px; border-radius: 4px; text-decoration: none; }
+        .btn-edit:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); box-shadow: 0 0 10px rgba(0, 242, 255, 0.3); }
+        .btn-delete:hover { border-color: var(--accent-red); color: var(--accent-red); box-shadow: 0 0 10px rgba(229, 9, 20, 0.3); }
+
+        /* MODAL */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 9999; }
+        .modal-content { background: var(--bg-card); border: 1px solid var(--border-glass); border-radius: 12px; width: 500px; padding: 30px; position: relative; box-shadow: 0 15px 50px rgba(0,0,0,0.5); transform: translateY(-50px); opacity: 0; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .modal-overlay.active { display: flex; }
+        .modal-overlay.active .modal-content { transform: translateY(0); opacity: 1; border-color: var(--accent-cyan); }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; font-family: 'Oswald'; margin-bottom: 8px; letter-spacing: 1px; }
+        .form-input { width: 100%; background: #050505; border: 1px solid #333; padding: 12px 15px; color: #fff; border-radius: 6px; outline: none; transition: 0.3s; font-family: 'Poppins', sans-serif; font-size: 14px;}
+        .form-input:focus { border-color: var(--accent-cyan); }
+        
+        /* CUSTOM CHECKBOX */
+        .checkbox-wrapper { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .checkbox-wrapper input { display: none; }
+        .custom-check { width: 44px; height: 24px; background: #333; border-radius: 12px; position: relative; transition: 0.3s; }
+        .custom-check::before { content: ''; position: absolute; left: 2px; top: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: 0.3s; }
+        .checkbox-wrapper input:checked + .custom-check { background: var(--accent-cyan); box-shadow: 0 0 10px rgba(0, 242, 255, 0.5); }
+        .checkbox-wrapper input:checked + .custom-check::before { transform: translateX(20px); }
+
+        /* TOAST NOTIFICATION */
+        .toast { position: fixed; bottom: -100px; right: 30px; background: #1a1a1a; border-left: 4px solid var(--accent-cyan); padding: 15px 25px; border-radius: 4px; color: #fff; font-size: 14px; transition: 0.4s; z-index: 10000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; gap: 10px; align-items: center; }
+        .toast.show { bottom: 30px; }
+        .toast.error { border-color: var(--accent-red); }
+        .toast.error i { color: var(--accent-red); }
+        .toast i { color: var(--accent-cyan); font-size: 20px; }
+    </style>
+</head>
+
+<body>
+
+    <div class="admin-wrapper">
+        <aside th:replace="~{admin/fragments/sidebar :: sidebar}"></aside>
+
+        <div class="main-content">
+            <header th:replace="~{admin/fragments/header :: header}"></header>
+
+            <div class="page-header" style="margin-top: 20px;">
+                <div>
+                    <span class="sub-title"><i class="bi bi-hdd-network"></i> SINGLE PAGE APPLICATION (REST API)</span>
+                    <h1 class="page-title font-oswald">QUẢN LÝ DANH MỤC</h1>
+                </div>
+                <button onclick="openModal()" class="btn-neon">
+                    <i class="bi bi-plus-lg"></i> Thêm Mới
+                </button>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Lọc nhanh (gõ chữ để tìm)...">
+                </div>
+                <select id="statusFilter" class="search-input" style="width: 200px; flex-grow: 0;">
+                    <option value="">Trạng thái: Tất cả</option>
+                    <option value="true">Đang hiển thị</option>
+                    <option value="false">Đang ẩn</option>
+                </select>
+            </div>
+
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 100px;">ID</th>
+                            <th>Tên danh mục</th>
+                            <th>Đường dẫn (Slug)</th>
+                            <th>Trạng thái</th>
+                            <th style="text-align: right;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="5" style="text-align: center; color: #666; padding: 40px;">Đang tải dữ liệu từ API...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="categoryModal">
+        <div class="modal-content">
+            <h2 class="font-oswald" id="modalTitle" style="color: var(--accent-cyan); margin-bottom: 25px;">THÊM DANH MỤC</h2>
+            <input type="hidden" id="categoryId">
+            <div class="form-group">
+                <label>Tên Danh Mục</label>
+                <input type="text" id="categoryName" class="form-input" placeholder="VD: Giày thể thao">
+            </div>
+            <div class="form-group">
+                <label>Đường dẫn Slug (Tùy chọn)</label>
+                <input type="text" id="categorySlug" class="form-input" placeholder="VD: giay-the-thao (Để trống tự tạo)">
+            </div>
+            <div class="form-group" style="margin-top: 30px;">
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="categoryStatus" checked>
+                    <div class="custom-check"></div>
+                    <span style="font-weight: 500; font-size: 13px;">Hiển thị lên Website</span>
+                </label>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
+                <button class="btn-neon btn-red" onclick="closeModal()" style="padding: 10px 20px; font-size: 12px;"><i class="bi bi-x-lg"></i> Hủy</button>
+                <button class="btn-neon" onclick="saveCategory()" style="padding: 10px 20px; font-size: 12px;"><i class="bi bi-check-lg"></i> Lưu Lại</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toastMsg">
+        <i class="bi bi-check-circle-fill" id="toastIcon"></i>
+        <span id="toastText">Thao tác thành công!</span>
+    </div>
+
+    <!-- SCRIPT TƯƠNG TÁC API (SPA) -->
+    <script>
+        let allCategories = [];
+
+        // KHI TRANG VỪA TẢI XONG -> GỌI API LẤY DỮ LIỆU
+        document.addEventListener("DOMContentLoaded", () => {
+            loadCategories();
+        });
+
+        // 1. GET - TẢI DANH MỤC
+        function loadCategories() {
+            fetch('/api/categories')
+                .then(response => response.json())
+                .then(data => {
+                    allCategories = data;
+                    renderTable(data);
+                })
+                .catch(error => showToast("Lỗi khi tải dữ liệu từ máy chủ API!", true));
+        }
+
+        // 2. RENDER GIAO DIỆN BẢNG
+        function renderTable(dataArray) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            if(dataArray.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #888;">Không tìm thấy danh mục nào.</td></tr>';
+                return;
+            }
+
+            // Sap xep ID giam dan
+            dataArray.sort((a,b) => b.id - a.id);
+
+            dataArray.forEach(cate => {
+                let sttBadge = cate.active 
+                    ? '<span style="color: #4ade80; font-size: 11px; text-transform: uppercase; font-weight: 700;">● Hiển thị</span>'
+                    : '<span style="color: var(--accent-red); font-size: 11px; text-transform: uppercase; font-weight: 700;">● Đang ẩn</span>';
+
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="cat-id">#CAT-${cate.id}</td>
+                    <td style="font-weight: 600; color: #fff;">${cate.name}</td>
+                    <td style="color: #888;">${cate.slug}</td>
+                    <td>${sttBadge}</td>
+                    <td style="text-align: right;">
+                        <button onclick="editModal(${cate.id})" class="action-btn btn-edit" title="Sửa"><i class="bi bi-pencil-square"></i></button>
+                        <button onclick="deleteCategory(${cate.id})" class="action-btn btn-delete" title="Xóa"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 3. XỬ LÝ LỌC TRÊN GIAO DIỆN (JS THUẦN KHÔNG CẦN GỌI LẠI SERVER)
+        document.getElementById('searchInput').addEventListener('input', filterData);
+        document.getElementById('statusFilter').addEventListener('change', filterData);
+        
+        function filterData() {
+            let kw = document.getElementById('searchInput').value.toLowerCase();
+            let st = document.getElementById('statusFilter').value;
+            
+            let filtered = allCategories.filter(c => {
+                let matchName = c.name.toLowerCase().includes(kw) || c.slug.toLowerCase().includes(kw);
+                let matchStatus = st === "" ? true : (c.active.toString() === st);
+                return matchName && matchStatus;
+            });
+            renderTable(filtered);
+        }
+
+        // 4. MỞ MODAL THÊM / SỬA
+        function openModal() {
+            document.getElementById('modalTitle').innerText = "THÊM DANH MỤC MỚI";
+            document.getElementById('categoryId').value = "";
+            document.getElementById('categoryName').value = "";
+            document.getElementById('categorySlug').value = "";
+            document.getElementById('categoryStatus').checked = true;
+            document.getElementById('categoryModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('categoryModal').classList.remove('active');
+        }
+
+        function editModal(id) {
+            let cate = allCategories.find(c => c.id === id);
+            if(cate) {
+                document.getElementById('modalTitle').innerText = "SỬA DANH MỤC #" + id;
+                document.getElementById('categoryId').value = cate.id;
+                document.getElementById('categoryName').value = cate.name;
+                document.getElementById('categorySlug').value = cate.slug;
+                document.getElementById('categoryStatus').checked = cate.active;
+                document.getElementById('categoryModal').classList.add('active');
+            }
+        }
+
+        // 5. POST/PUT - LƯU DỮ LIỆU
+        function saveCategory() {
+            let id = document.getElementById('categoryId').value;
+            let payload = {
+                name: document.getElementById('categoryName').value,
+                slug: document.getElementById('categorySlug').value,
+                active: document.getElementById('categoryStatus').checked
+            };
+
+            if(!payload.name.trim()) {
+                showToast("Vui lòng nhập tên danh mục!", true);
+                return;
+            }
+
+            let url = id ? '/api/categories/' + id : '/api/categories';
+            let method = id ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(async res => {
+                let data = await res.json();
+                if(res.ok && !data.error) {
+                    closeModal();
+                    showToast("Lưu danh mục thành công!");
+                    loadCategories(); // Nạp lại bảng
+                } else {
+                    // Hiển thị lỗi từ backend (trùng slug)
+                    showToast(data.error || "Không thể lưu danh mục!", true);
+                }
+            })
+            .catch(err => showToast("Đã xảy ra lỗi kết nối với máy chủ!", true));
+        }
+
+        // 6. DELETE - XÓA DỮ LIỆU
+        function deleteCategory(id) {
+            if(!confirm("Bạn có chắc chắn muốn xóa danh mục ID #" + id + " không?")) return;
+
+            fetch('/api/categories/' + id, { method: 'DELETE' })
+            .then(async res => {
+                let data = await res.json();
+                if(res.ok) {
+                    showToast(data.message);
+                    loadCategories();
+                } else {
+                    showToast(data.error || "Không thể xóa!", true);
+                }
+            })
+            .catch(err => showToast("Lỗi mạng khi xóa!", true));
+        }
+
+        // 7. TOAST NOTIFICATION
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toastMsg');
+            const icon = document.getElementById('toastIcon');
+            const text = document.getElementById('toastText');
+            
+            text.innerText = msg;
+            if(isError) {
+                toast.classList.add('error');
+                icon.className = "bi bi-exclamation-triangle-fill";
+            } else {
+                toast.classList.remove('error');
+                icon.className = "bi bi-check-circle-fill";
+            }
+            
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+    </script>
+</body>
+</html>

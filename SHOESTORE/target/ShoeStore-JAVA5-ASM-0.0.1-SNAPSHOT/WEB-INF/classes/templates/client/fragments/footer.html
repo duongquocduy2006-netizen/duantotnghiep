@@ -1,0 +1,137 @@
+<footer th:fragment="footer" class="custom-footer">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+    
+    <style>
+        :root { --footer-bg: #0a0a0a; --footer-border: #222222; --text-main: #b0b0b0; --text-light: #ffffff; --accent: #d32f2f; }
+        .custom-footer { font-family: 'Poppins', sans-serif; background-color: var(--footer-bg); color: var(--text-main); padding-top: 50px; position: relative; }
+        .custom-footer a { text-decoration: none !important; color: var(--text-main) !important; }
+        .footer-heading { color: var(--text-light); font-size: 16px; font-weight: 700; text-transform: uppercase; margin-bottom: 20px; }
+        .footer-bottom { margin-top: 40px; padding: 20px 0; border-top: 1px solid var(--footer-border); background-color: #050505; }
+
+        /* --- CHAT BUBBLE --- */
+        .chat-bubble { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: var(--accent); color: white !important; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 9999; cursor: pointer; box-shadow: 0 10px 25px rgba(211,47,47,0.4); }
+        .chat-window { position: fixed; bottom: 100px; right: 30px; width: 380px; height: 520px; background: #fff; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; z-index: 9999; transform: translateY(20px); opacity: 0; visibility: hidden; transition: 0.3s; }
+        .chat-window.active { transform: translateY(0); opacity: 1; visibility: visible; }
+        .chat-header { padding: 15px; background: #fff; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: #f8f9fa; display: flex; flex-direction: column; gap: 10px; }
+        
+        .msg-row { display: flex; max-width: 85%; }
+        .msg-row.sent { align-self: flex-end; }
+        .msg-row.received { align-self: flex-start; }
+        .msg-bubble { padding: 10px 15px; border-radius: 15px; font-size: 13px; position: relative; }
+        .msg-row.sent .msg-bubble { background: var(--accent); color: #fff; }
+        .msg-row.received .msg-bubble { background: #fff; color: #333; border: 1px solid #eee; }
+
+        /* --- PREMIUM PRODUCT CARD (SHOPEE STYLE) --- */
+        .chat-product-card { background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #eee; margin-top: 8px; display: flex; text-decoration: none !important; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .chat-product-card-img { width: 80px; height: 80px; object-fit: cover; }
+        .chat-product-card-info { padding: 10px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .chat-product-card-name { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 3px; }
+        .chat-product-card-price { color: var(--accent); font-weight: 700; font-size: 14px; }
+
+        .chat-input-area { padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; }
+        .chat-input-area input { flex: 1; border: 1px solid #eee; border-radius: 20px; padding: 8px 15px; outline: none; }
+    </style>
+
+    <div class="container pb-4">
+        <div class="row">
+            <div class="col-md-4">
+                <h5 class="footer-heading">Về Shoe Store</h5>
+                <p class="small">Chúng tôi cung cấp những mẫu Sneaker chính hãng tốt nhất.</p>
+            </div>
+            <div class="col-md-4">
+                <h5 class="footer-heading">Liên Hệ</h5>
+                <p class="small">Email: cskh@shoestore.vn<br>Hotline: 1900 1234</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="chatWindow" class="chat-window">
+        <div class="chat-header">
+            <h6 class="m-0">Hỗ trợ ShoeStore</h6>
+            <button onclick="toggleChatWindow()" style="border:none; background:none;">X</button>
+        </div>
+        <div class="chat-messages" id="userChatMessages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="userChatInput" placeholder="Nhập tin nhắn...">
+            <button onclick="sendUserMessage()" style="border:none; background:none; color:var(--accent); font-weight:bold;">Gửi</button>
+        </div>
+    </div>
+
+    <div onclick="toggleChatWindow()" class="chat-bubble">
+        <span class="material-symbols-outlined">support_agent</span>
+    </div>
+
+    <script type="module" th:inline="javascript">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded, serverTimestamp, set, onDisconnect } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDl8zFVPIPS1ufAN9pCXGCTU9k47BramrY",
+            databaseURL: "https://shoestore-14c8f-default-rtdb.firebaseio.com",
+            projectId: "shoestore-14c8f",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        let clientId = localStorage.getItem('shoestore_clientId') || "GUEST_" + Math.floor(Math.random() * 100000);
+        localStorage.setItem('shoestore_clientId', clientId);
+        
+        const msgRef = ref(db, 'chats/' + clientId + '/messages');
+
+        window.toggleChatWindow = () => document.getElementById('chatWindow').classList.toggle('active');
+
+        window.sendUserMessage = () => {
+            const input = document.getElementById('userChatInput');
+            const text = input.value.trim();
+            if (text) {
+                push(msgRef, { sender: 'client', text: text, timestamp: Date.now() });
+                input.value = "";
+                fetch('/api/chatbot/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    push(msgRef, { sender: 'admin', text: data.reply, timestamp: Date.now() });
+                });
+            }
+        };
+
+        onChildAdded(msgRef, (snapshot) => {
+            const data = snapshot.val();
+            const container = document.getElementById('userChatMessages');
+            
+            let finalContent = data.text;
+            let productHtml = "";
+            const productRegex = /\[PRODUCT:(.*?)\|(.*?)\|(.*?)\|(.*?)\]/g;
+            let match;
+            while ((match = productRegex.exec(data.text)) !== null) {
+                const [fullMatch, pid, name, price, img] = match;
+                finalContent = finalContent.replace(fullMatch, "");
+                productHtml += `
+                    <a href="/details?id=${pid}" class="chat-product-card">
+                        <img src="${img.startsWith('http') ? img : '/images/' + img}" class="chat-product-card-img" onerror="this.src='https://placehold.co/100x100?text=Giày'">
+                        <div class="chat-product-card-info">
+                            <div class="chat-product-card-name">${name}</div>
+                            <div class="chat-product-card-price">${new Intl.NumberFormat('vi-VN').format(price)} đ</div>
+                        </div>
+                    </a>`;
+            }
+
+            container.insertAdjacentHTML('beforeend', `
+                <div class="msg-row ${data.sender === 'client' ? 'sent' : 'received'}">
+                    <div class="msg-bubble">
+                        ${finalContent}
+                        ${productHtml}
+                    </div>
+                </div>`);
+            container.scrollTop = container.scrollHeight;
+        });
+        
+        document.getElementById('userChatInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendUserMessage(); });
+    </script>
+</footer>
