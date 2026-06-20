@@ -349,7 +349,6 @@ public class CheckoutController {
 
             final Integer finalPmId = pmId;
             final Voucher finalVoucher = voucher;
-            final double finalShipping = shipping;
 
             org.springframework.jdbc.support.GeneratedKeyHolder keyHolder = new org.springframework.jdbc.support.GeneratedKeyHolder();
             jdbc.update(connection -> {
@@ -357,7 +356,7 @@ public class CheckoutController {
                 ps.setString(1, orderCode);
                 ps.setLong(2, accountId);
                 ps.setDouble(3, total);
-                ps.setDouble(4, finalShipping);
+                ps.setDouble(4, shipping);
                 ps.setDouble(5, finalTotal);
                 ps.setLong(6, addressId);
                 ps.setInt(7, finalPmId);
