@@ -16,6 +16,7 @@ const AdminRankForm = () => {
         discountPercent: '',
         freeShipping: false
     });
+    const [formErrors, setFormErrors] = useState({});
 
     useEffect(() => {
         if (isEdit) {
@@ -50,25 +51,45 @@ const AdminRankForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        const errors = {};
+        if (!form.rankName || !form.rankName.trim()) {
+            errors.rankName = "Vui lòng nhập tên hạng thành viên!";
+        }
+        if (form.minPoints === '' || isNaN(form.minPoints) || parseInt(form.minPoints) < 0) {
+            errors.minPoints = "Vui lòng nhập ngưỡng điểm tối thiểu (>= 0)!";
+        }
+        if (form.discountPercent === '' || isNaN(form.discountPercent) || parseFloat(form.discountPercent) < 0 || parseFloat(form.discountPercent) > 100) {
+            errors.discountPercent = "Vui lòng nhập phần trăm chiết khấu từ 0% đến 100%!";
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lưu thất bại. Vui lòng kiểm tra các lỗi nhập liệu bên dưới!" }));
+            return;
+        }
+        setFormErrors({});
+
         try {
             const payload = {
                 id: isEdit ? parseInt(id) : null,
                 rankName: form.rankName,
-                minPoints: form.minPoints === '' ? 0 : parseInt(form.minPoints),
+                minPoints: parseInt(form.minPoints),
                 colorCode: form.colorCode,
-                discountPercent: form.discountPercent === '' ? 0 : parseFloat(form.discountPercent),
+                discountPercent: parseFloat(form.discountPercent),
                 freeShipping: form.freeShipping
             };
             const res = await api.post('/api/membership/ranks', payload);
             if (res.data && res.data.success) {
-                alert(isEdit ? 'Cập nhật hạng thành công!' : 'Thêm hạng thành viên thành công!');
+                sessionStorage.setItem('toast_message', isEdit ? 'Cập nhật hạng thành công!' : 'Thêm hạng thành viên thành công!');
                 navigate('/admin/ranks');
             } else {
-                alert('Lỗi: ' + (res.data.message || 'Không thể lưu.'));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi: " + (res.data.message || "Không thể lưu.") }));
             }
         } catch (err) {
             console.error('Lỗi khi lưu hạng thành viên:', err);
-            alert('Lỗi khi lưu hạng thành viên: ' + (err.response?.data?.message || err.message));
+            const errMsg = err.response?.data?.message || err.message || "Có lỗi xảy ra khi lưu hạng thành viên.";
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi khi lưu hạng thành viên: " + errMsg }));
         }
     };
 
@@ -86,45 +107,57 @@ const AdminRankForm = () => {
                     <h3 className="card-section-title">Thông Tin Hạng Thành Viên</h3>
                     <p style={{ fontFamily: 'Outfit', fontSize: '14px', marginBottom: '25px', color: '#666' }}>Thiết lập tên hạng và ngưỡng điểm để đạt được hạng này.</p>
 
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} noValidate>
                         <div className="form-group">
-                            <label className="form-label"><i className="bi bi-tag"></i> Tên hạng thành viên</label>
+                            <label className="form-label"><i className="bi bi-tag"></i> Tên hạng thành viên *</label>
                             <input 
                                 type="text" 
-                                className="form-input-cinematic" 
+                                className={`form-input-cinematic ${formErrors.rankName ? 'input-error' : ''}`} 
                                 placeholder="Ví dụ: Đồng, Bạc, Vàng, Kim Cương..." 
                                 required
                                 value={form.rankName}
-                                onChange={(e) => setForm({...form, rankName: e.target.value})}
+                                onChange={(e) => {
+                                    setForm({...form, rankName: e.target.value});
+                                    if (formErrors.rankName) setFormErrors(p => ({...p, rankName: ''}));
+                                }}
                             />
+                            {formErrors.rankName && <span className="field-error">{formErrors.rankName}</span>}
                         </div>
 
                         <div className="form-group" style={{ marginTop: '20px' }}>
-                            <label className="form-label"><i className="bi bi-lightning"></i> Ngưỡng điểm tối thiểu</label>
+                            <label className="form-label"><i className="bi bi-lightning"></i> Ngưỡng điểm tối thiểu *</label>
                             <input 
                                 type="number" 
-                                className="form-input-cinematic" 
+                                className={`form-input-cinematic ${formErrors.minPoints ? 'input-error' : ''}`} 
                                 placeholder="Ví dụ: 0, 5000, 10000..." 
                                 required 
                                 min="0"
                                 value={form.minPoints}
-                                onChange={(e) => setForm({...form, minPoints: e.target.value})}
+                                onChange={(e) => {
+                                    setForm({...form, minPoints: e.target.value});
+                                    if (formErrors.minPoints) setFormErrors(p => ({...p, minPoints: ''}));
+                                }}
                             />
+                            {formErrors.minPoints && <span className="field-error">{formErrors.minPoints}</span>}
                         </div>
 
                         <div className="form-group" style={{ marginTop: '20px' }}>
-                            <label className="form-label"><i className="bi bi-percent"></i> Chiết khấu giảm giá trực tiếp (%)</label>
+                            <label className="form-label"><i className="bi bi-percent"></i> Chiết khấu giảm giá trực tiếp (%) *</label>
                             <input 
                                 type="number" 
-                                className="form-input-cinematic" 
+                                className={`form-input-cinematic ${formErrors.discountPercent ? 'input-error' : ''}`} 
                                 placeholder="Ví dụ: 0, 5, 10, 15..." 
                                 required 
                                 min="0"
                                 max="100"
                                 step="0.01"
                                 value={form.discountPercent}
-                                onChange={(e) => setForm({...form, discountPercent: e.target.value})}
+                                onChange={(e) => {
+                                    setForm({...form, discountPercent: e.target.value});
+                                    if (formErrors.discountPercent) setFormErrors(p => ({...p, discountPercent: ''}));
+                                }}
                             />
+                            {formErrors.discountPercent && <span className="field-error">{formErrors.discountPercent}</span>}
                         </div>
 
                         <div className="form-group" style={{ marginTop: '20px' }}>
@@ -228,6 +261,19 @@ const AdminRankForm = () => {
                         border-radius: 10px;
                     }
                     .btn-outline-flat:hover { background: #f7fafc; color: #1a202c; border-color: #cbd5e0; }
+                    .input-error {
+                        border-color: #ef4444 !important;
+                        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+                    }
+                    .field-error {
+                        display: block;
+                        color: #ef4444;
+                        font-size: 11px;
+                        font-weight: 600;
+                        margin-top: 5px;
+                        letter-spacing: 0.3px;
+                        font-family: 'Outfit', sans-serif;
+                    }
                 `}</style>
             </div>
         </AdminLayout>
