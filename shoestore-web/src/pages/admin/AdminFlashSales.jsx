@@ -8,6 +8,7 @@ const AdminFlashSales = () => {
     const [flashSales, setFlashSales] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
 
     const fetchFlashSales = async () => {
         try {
@@ -26,20 +27,26 @@ const AdminFlashSales = () => {
         fetchFlashSales();
     }, []);
 
-    const handleDelete = async (id, name) => {
-        if (window.confirm(`Xếp có chắc chắn muốn xóa chiến dịch "${name}" này không?`)) {
-            try {
-                const response = await api.delete(`/api/flash-sales/${id}`);
-                if (response.data && response.data.success) {
-                    alert("Xóa chiến dịch Flash Sale thành công!");
-                    setFlashSales(flashSales.filter(fs => fs.id !== id));
-                } else {
-                    alert(response.data.error || "Có lỗi xảy ra khi xóa chiến dịch.");
-                }
-            } catch (err) {
-                console.error("Lỗi xóa chiến dịch:", err);
-                alert("Không thể kết nối đến server để xóa chiến dịch.");
+    const handleDelete = (id, name) => {
+        setDeleteConfirm({ id, name });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteConfirm) return;
+        const { id } = deleteConfirm;
+        try {
+            const response = await api.delete(`/api/flash-sales/${id}`);
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Xóa chiến dịch Flash Sale thành công!" }));
+                setFlashSales(flashSales.filter(fs => fs.id !== id));
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.error || "Có lỗi xảy ra khi xóa chiến dịch." }));
             }
+        } catch (err) {
+            console.error("Lỗi xóa chiến dịch:", err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể kết nối đến server để xóa chiến dịch." }));
+        } finally {
+            setDeleteConfirm(null);
         }
     };
 
@@ -137,7 +144,7 @@ const AdminFlashSales = () => {
                 )}
                 <style>{`
                 .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
-                .sub-title-neon { display: block; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
+                .sub-title-neon { display: block; color: var(--accent-red) !important; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
                 .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
                 
                 .header-right-actions { display: flex; align-items: center; }
@@ -164,6 +171,98 @@ const AdminFlashSales = () => {
                 .icon-edit:hover { background: #facc15; color: #000; box-shadow: 0 4px 12px rgba(250,204,21,0.2); }
         `}</style>
             </div>
+            {deleteConfirm && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-box">
+                        <h4 className="custom-modal-title">XÁC NHẬN XÓA CHIẾN DỊCH</h4>
+                        <p className="custom-modal-body">
+                            Xếp có chắc chắn muốn xóa chiến dịch <strong>"{deleteConfirm.name}"</strong> này không?
+                            Thao tác này không thể hoàn tác.
+                        </p>
+                        <div className="custom-modal-actions">
+                            <button className="custom-modal-btn custom-modal-btn-cancel" onClick={() => setDeleteConfirm(null)}>
+                                HỦY BỎ
+                            </button>
+                            <button className="custom-modal-btn custom-modal-btn-confirm" onClick={handleConfirmDelete}>
+                                XÁC NHẬN XÓA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <style>{`
+                .custom-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.4);
+                    backdrop-filter: blur(4px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                }
+                .custom-modal-box {
+                    background: #fff;
+                    border-radius: 12px;
+                    width: 90%;
+                    max-width: 450px;
+                    padding: 24px;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                    border: 1px solid rgba(0,0,0,0.05);
+                }
+                .custom-modal-title {
+                    font-family: 'Oswald', sans-serif;
+                    font-size: 20px;
+                    font-weight: 800;
+                    color: #000;
+                    margin-top: 0;
+                    margin-bottom: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .custom-modal-body {
+                    font-size: 14px;
+                    color: #4b5563;
+                    margin-bottom: 24px;
+                    line-height: 1.5;
+                }
+                .custom-modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 12px;
+                }
+                .custom-modal-btn {
+                    padding: 10px 20px;
+                    font-family: 'Oswald', sans-serif;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    font-size: 13px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: 0.2s;
+                    outline: none;
+                }
+                .custom-modal-btn-cancel {
+                    background: transparent;
+                    border: 1px solid #d1d5db;
+                    color: #374151;
+                }
+                .custom-modal-btn-cancel:hover {
+                    background: #f3f4f6;
+                }
+                .custom-modal-btn-confirm {
+                    background: var(--accent-red);
+                    border: 1px solid var(--accent-red);
+                    color: #fff;
+                }
+                .custom-modal-btn-confirm:hover {
+                    background: #b30000;
+                    border-color: #b30000;
+                }
+            `}</style>
         </AdminLayout>
     );
 };

@@ -8,6 +8,7 @@ const AdminRanks = () => {
     const [ranks, setRanks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
 
     const fetchRanks = async () => {
         try {
@@ -39,24 +40,31 @@ const AdminRanks = () => {
         }
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = (id, name) => {
         if (id === 1) {
-            alert('Không thể xóa hạng mặc định!');
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể xóa hạng mặc định!" }));
             return;
         }
-        if (window.confirm('Bạn có chắc chắn muốn xóa hạng thành viên này? Tất cả tài khoản thuộc hạng này sẽ được chuyển về hạng Đồng mặc định.')) {
-            try {
-                const res = await api.delete(`/api/membership/ranks/${id}`);
-                if (res.data && res.data.success) {
-                    alert(res.data.message || 'Xóa hạng thành công!');
-                    fetchRanks();
-                } else {
-                    alert('Lỗi: ' + (res.data.message || 'Không thể xóa.'));
-                }
-            } catch (err) {
-                console.error('Lỗi khi xóa hạng:', err);
-                alert('Có lỗi xảy ra khi xóa hạng: ' + (err.response?.data?.message || err.message));
+        setDeleteConfirm({ id, name });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteConfirm) return;
+        const { id } = deleteConfirm;
+        try {
+            const res = await api.delete(`/api/membership/ranks/${id}`);
+            if (res.data && res.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.message || "Xóa hạng thành công!" }));
+                fetchRanks();
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi: " + (res.data.message || "Không thể xóa.") }));
             }
+        } catch (err) {
+            console.error('Lỗi khi xóa hạng:', err);
+            const errMsg = err.response?.data?.message || err.message || "Có lỗi xảy ra khi xóa hạng.";
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Có lỗi xảy ra khi xóa hạng: " + errMsg }));
+        } finally {
+            setDeleteConfirm(null);
         }
     };
 
@@ -153,7 +161,7 @@ const AdminRanks = () => {
                                     </td>
                                     <td style={{ textAlign: 'right' }}>
                                         <Link to={`/admin/ranks/edit/${r.id}`} className="action-btn" title="Sửa"><i className="bi bi-pencil-square"></i></Link>
-                                        <button className="action-btn delete-btn" title="Xóa" onClick={() => handleDelete(r.id)}><i className="bi bi-trash"></i></button>
+                                        <button className="action-btn delete-btn" title="Xóa" onClick={() => handleDelete(r.id, r.name)}><i className="bi bi-trash"></i></button>
                                     </td>
                                 </tr>
                             ))}
@@ -210,8 +218,101 @@ const AdminRanks = () => {
                     gap: 4px;
                     font-family: 'Outfit', sans-serif;
                 }
+                .custom-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.45);
+                    backdrop-filter: blur(4px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                }
+                .custom-modal-box {
+                    background: #fff;
+                    border-radius: 12px;
+                    width: 90%;
+                    max-width: 450px;
+                    padding: 24px;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                    border: 1px solid rgba(0,0,0,0.05);
+                }
+                .custom-modal-title {
+                    font-family: 'Outfit', sans-serif;
+                    font-size: 20px;
+                    font-weight: 800;
+                    color: #000;
+                    margin-top: 0;
+                    margin-bottom: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .custom-modal-body {
+                    font-size: 14px;
+                    color: #4b5563;
+                    margin-bottom: 24px;
+                    line-height: 1.5;
+                    font-family: 'Outfit', sans-serif;
+                }
+                .custom-modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 12px;
+                }
+                .custom-modal-btn {
+                    padding: 10px 20px;
+                    font-family: 'Outfit', sans-serif;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    font-size: 13px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: 0.2s;
+                    outline: none;
+                }
+                .custom-modal-btn-cancel {
+                    background: transparent;
+                    border: 1px solid #d1d5db;
+                    color: #374151;
+                }
+                .custom-modal-btn-cancel:hover {
+                    background: #f3f4f6;
+                }
+                .custom-modal-btn-confirm {
+                    background: #e50914;
+                    border: 1px solid #e50914;
+                    color: #fff;
+                    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.2);
+                }
+                .custom-modal-btn-confirm:hover {
+                    background: #b8070f;
+                    border-color: #b8070f;
+                }
                 `}</style>
             </div>
+            
+            {deleteConfirm && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-box">
+                        <h4 className="custom-modal-title">Xác Nhận Xóa Hạng</h4>
+                        <p className="custom-modal-body">
+                            Bạn có chắc chắn muốn xóa hạng thành viên <strong>"{deleteConfirm.name}"</strong>? 
+                            Tất cả tài khoản thuộc hạng này sẽ được chuyển về hạng Đồng mặc định.
+                        </p>
+                        <div className="custom-modal-actions">
+                            <button className="custom-modal-btn custom-modal-btn-cancel" onClick={() => setDeleteConfirm(null)}>
+                                HỦY BỎ
+                            </button>
+                            <button className="custom-modal-btn custom-modal-btn-confirm" onClick={handleConfirmDelete}>
+                                XÁC NHẬN XÓA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 };

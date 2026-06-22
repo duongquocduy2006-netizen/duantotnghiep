@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import 'animate.css';
 import './FlashSale.css';
+import './Membership.css';
 
 const FlashSale = () => {
     const navigate = useNavigate();
@@ -206,11 +207,12 @@ const FlashSale = () => {
     return (
         <Layout>
             <div className="fs-page">
-                {/* CINEMATIC HEADER WITH COUNTDOWN */}
-                <div className="fs-header">
-                    <div className="fs-header-content container">
-                        <span className="fs-tagline">Giờ vàng giá sốc</span>
-                        <h1 className="fs-title">Săn Deal <span>Flash Sale</span></h1>
+                {/* CREATIVE NEON FLASH SALE HEADER */}
+                <div className="fs-creative-header">
+                    <div className="fs-electric-bg"></div>
+                    <div className="container text-center position-relative z-1">
+                        <span className="fs-neon-tag">GIỜ VÀNG GIÁ SỐC</span>
+                        <h1 className="fs-glitch-title mt-3 animate__animated animate__zoomIn">SĂN DEAL <span className="text-flash">FLASH SALE</span></h1>
                         
                         {campaign && selectedSlot === 'slot1' && (
                             <div className="d-flex justify-content-center mt-3">

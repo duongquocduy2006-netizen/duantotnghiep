@@ -21,6 +21,7 @@ const AdminFlashSaleForm = () => {
     const [products, setProducts] = useState([]);
     const [productVariants, setProductVariants] = useState({});
     const [loading, setLoading] = useState(false);
+    const [formErrors, setFormErrors] = useState({});
 
     // 1. Fetch available products list for dropdown selection
     const fetchProducts = async () => {
@@ -73,7 +74,7 @@ const AdminFlashSaleForm = () => {
             }
         } catch (err) {
             console.error("Lỗi tải chi tiết Flash Sale:", err);
-            alert("Không thể tải thông tin chiến dịch Flash Sale.");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể tải thông tin chiến dịch Flash Sale." }));
         } finally {
             setLoading(false);
         }
@@ -88,7 +89,7 @@ const AdminFlashSaleForm = () => {
 
     const handleAddRow = () => {
         if (products.length === 0) {
-            alert("Vui lòng đợi tải sản phẩm hoặc tạo sản phẩm trước!");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Vui lòng đợi tải sản phẩm hoặc tạo sản phẩm trước!" }));
             return;
         }
         setForm({
@@ -98,35 +99,112 @@ const AdminFlashSaleForm = () => {
                 { id: "temp." + Date.now(), productId: products[0].id, variantId: null, salePrice: 0, quantityLimit: 5, soldQuantity: 0 }
             ]
         });
+        // Clear productsList error and any row errors to prevent mismatch
+        setFormErrors(p => {
+            const next = { ...p };
+            delete next.productsList;
+            Object.keys(next).forEach(k => {
+                if (k.startsWith('products.')) {
+                    delete next[k];
+                }
+            });
+            return next;
+        });
     };
 
     const handleRemoveRow = (idx) => {
         const updated = [...form.flashSaleProducts];
         updated.splice(idx, 1);
         setForm({ ...form, flashSaleProducts: updated });
+        
+        // Reset product row errors to prevent misalignment
+        setFormErrors(p => {
+            const next = { ...p };
+            Object.keys(next).forEach(k => {
+                if (k.startsWith('products.')) {
+                    delete next[k];
+                }
+            });
+            return next;
+        });
     };
 
     const handleRowChange = (idx, field, value) => {
         const updated = [...form.flashSaleProducts];
         updated[idx] = { ...updated[idx], [field]: value };
         setForm({ ...form, flashSaleProducts: updated });
+        
+        // Clear specific row error and duplicate error
+        const errKey = `products.${idx}.${field}`;
+        const prodErrKey = `products.${idx}.productId`;
+        setFormErrors(p => {
+            const next = { ...p };
+            if (next[errKey]) delete next[errKey];
+            if (next[prodErrKey]) delete next[prodErrKey];
+            return next;
+        });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Validation
-        if (form.flashSaleProducts.length === 0) {
-            alert("Vui lòng chọn ít nhất 1 sản phẩm tham gia Flash Sale!");
-            return;
+        // Inline Validation - collect all errors
+        const errors = {};
+
+        if (!form.name || !form.name.trim()) {
+            errors.name = "Vui lòng nhập tên chương trình Flash Sale!";
         }
 
-        const start = new Date(form.startDate);
-        const end = new Date(form.endDate);
-        if (start >= end) {
-            alert("Ngày kết thúc phải diễn ra sau ngày bắt đầu!");
+        if (!form.startDate) {
+            errors.startDate = "Vui lòng chọn ngày bắt đầu chiến dịch!";
+        }
+
+        if (!form.endDate) {
+            errors.endDate = "Vui lòng chọn ngày kết thúc chiến dịch!";
+        }
+
+        if (form.startDate && form.endDate) {
+            const start = new Date(form.startDate);
+            const end = new Date(form.endDate);
+            if (start >= end) {
+                errors.endDate = "Ngày kết thúc phải diễn ra sau ngày bắt đầu!";
+            }
+        }
+
+        if (form.flashSaleProducts.length === 0) {
+            errors.productsList = "Vui lòng chọn ít nhất 1 sản phẩm tham gia Flash Sale!";
+        }
+
+        // Validate each product row
+        const uniqueProductKeys = new Set();
+        for (let i = 0; i < form.flashSaleProducts.length; i++) {
+            const fsp = form.flashSaleProducts[i];
+            
+            // Check for valid sale price
+            if (fsp.salePrice === undefined || fsp.salePrice === null || fsp.salePrice <= 0) {
+                errors[`products.${i}.salePrice`] = "Vui lòng nhập giá sale lớn hơn 0đ!";
+            }
+
+            // Check for valid quantity limit
+            if (fsp.quantityLimit === undefined || fsp.quantityLimit === null || fsp.quantityLimit <= 0) {
+                errors[`products.${i}.quantityLimit`] = "Vui lòng nhập số lượng giới hạn lớn hơn 0!";
+            }
+
+            // Check duplicate product + variant combo
+            const comboKey = `${fsp.productId}-${fsp.variantId || 'all'}`;
+            if (uniqueProductKeys.has(comboKey)) {
+                errors[`products.${i}.productId`] = `Không được chọn trùng sản phẩm và biến thể ở dòng thứ ${i + 1}!`;
+            } else {
+                uniqueProductKeys.add(comboKey);
+            }
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lưu thất bại. Vui lòng kiểm tra các lỗi nhập liệu bên dưới!" }));
             return;
         }
+        setFormErrors({});
 
         try {
             setLoading(true);
@@ -136,17 +214,17 @@ const AdminFlashSaleForm = () => {
             };
             const response = await api.post('/api/flash-sales/save', payload);
             if (response.data && response.data.success) {
-                alert("Lưu chiến dịch Flash Sale thành công!");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lưu chiến dịch Flash Sale thành công!" }));
                 navigate('/admin/flashsales');
             } else {
-                alert(response.data.message || "Lưu thất bại.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Lưu thất bại." }));
             }
         } catch (err) {
             console.error("Lỗi lưu chiến dịch:", err);
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể kết nối đến server để lưu chiến dịch.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
             setLoading(false);
         }
@@ -162,20 +240,24 @@ const AdminFlashSaleForm = () => {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                     <div className="card-cinematic">
                         <h3 className="card-section-title">THÔNG TIN CƠ BẢN</h3>
                         <div className="form-grid-cinematic">
                             <div className="form-group">
-                                <label className="form-label">Tên chương trình</label>
+                                <label className="form-label">Tên chương trình *</label>
                                 <input 
                                     type="text" 
-                                    className="form-input-cinematic" 
+                                    className={`form-input-cinematic ${formErrors.name ? 'input-error' : ''}`} 
                                     placeholder="Ví dụ: Flash Sale Cuối Tuần" 
                                     value={form.name}
-                                    onChange={(e) => setForm({...form, name: e.target.value})}
+                                    onChange={(e) => {
+                                        setForm({...form, name: e.target.value});
+                                        if (formErrors.name) setFormErrors(p => ({...p, name: ''}));
+                                    }}
                                     required
                                 />
+                                {formErrors.name && <span className="field-error">{formErrors.name}</span>}
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Trạng thái</label>
@@ -189,24 +271,32 @@ const AdminFlashSaleForm = () => {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Ngày bắt đầu</label>
+                                <label className="form-label">Ngày bắt đầu *</label>
                                 <input 
                                     type="datetime-local" 
-                                    className="form-input-cinematic" 
+                                    className={`form-input-cinematic ${formErrors.startDate ? 'input-error' : ''}`} 
                                     value={form.startDate}
-                                    onChange={(e) => setForm({...form, startDate: e.target.value})}
+                                    onChange={(e) => {
+                                        setForm({...form, startDate: e.target.value});
+                                        if (formErrors.startDate) setFormErrors(p => ({...p, startDate: ''}));
+                                    }}
                                     required
                                 />
+                                {formErrors.startDate && <span className="field-error">{formErrors.startDate}</span>}
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Ngày kết thúc</label>
+                                <label className="form-label">Ngày kết thúc *</label>
                                 <input 
                                     type="datetime-local" 
-                                    className="form-input-cinematic" 
+                                    className={`form-input-cinematic ${formErrors.endDate ? 'input-error' : ''}`} 
                                     value={form.endDate}
-                                    onChange={(e) => setForm({...form, endDate: e.target.value})}
+                                    onChange={(e) => {
+                                        setForm({...form, endDate: e.target.value});
+                                        if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
+                                    }}
                                     required
                                 />
+                                {formErrors.endDate && <span className="field-error">{formErrors.endDate}</span>}
                             </div>
                         </div>
                     </div>
@@ -232,18 +322,25 @@ const AdminFlashSaleForm = () => {
                                     <div key={fsp.id} className="product-row">
                                         <div>
                                             <select 
-                                                className="form-input-cinematic"
+                                                className={`form-input-cinematic ${formErrors[`products.${idx}.productId`] ? 'input-error' : ''}`}
                                                 value={fsp.productId}
                                                 onChange={(e) => {
                                                     const updated = [...form.flashSaleProducts];
                                                     updated[idx] = { ...updated[idx], productId: e.target.value, variantId: null };
                                                     setForm({ ...form, flashSaleProducts: updated });
+                                                    setFormErrors(p => {
+                                                        const next = { ...p };
+                                                        delete next[`products.${idx}.productId`];
+                                                        delete next[`products.${idx}.variantId`];
+                                                        return next;
+                                                    });
                                                 }}
                                             >
                                                 {products.map(p => (
                                                     <option key={p.id} value={p.id}>{p.productName}</option>
                                                 ))}
                                             </select>
+                                            {formErrors[`products.${idx}.productId`] && <span className="field-error">{formErrors[`products.${idx}.productId`]}</span>}
                                         </div>
                                         <div>
                                             <select 
@@ -260,18 +357,20 @@ const AdminFlashSaleForm = () => {
                                         <div>
                                             <input 
                                                 type="number" 
-                                                className="form-input-cinematic" 
+                                                className={`form-input-cinematic ${formErrors[`products.${idx}.salePrice`] ? 'input-error' : ''}`} 
                                                 value={fsp.salePrice}
                                                 onChange={(e) => handleRowChange(idx, 'salePrice', parseInt(e.target.value) || 0)}
                                             />
+                                            {formErrors[`products.${idx}.salePrice`] && <span className="field-error">{formErrors[`products.${idx}.salePrice`]}</span>}
                                         </div>
                                         <div>
                                             <input 
                                                 type="number" 
-                                                className="form-input-cinematic" 
+                                                className={`form-input-cinematic ${formErrors[`products.${idx}.quantityLimit`] ? 'input-error' : ''}`} 
                                                 value={fsp.quantityLimit}
                                                 onChange={(e) => handleRowChange(idx, 'quantityLimit', parseInt(e.target.value) || 0)}
                                             />
+                                            {formErrors[`products.${idx}.quantityLimit`] && <span className="field-error">{formErrors[`products.${idx}.quantityLimit`]}</span>}
                                         </div>
                                         <button type="button" className="action-btn-icon icon-delete" onClick={() => handleRemoveRow(idx)}>
                                             <i className="bi bi-trash"></i>
@@ -281,7 +380,11 @@ const AdminFlashSaleForm = () => {
 
                                 {form.flashSaleProducts.length === 0 && (
                                     <div style={{ textAlign: 'center', padding: '40px', color: '#555', fontStyle: 'italic', fontSize: '13px' }}>
-                                        Chưa có sản phẩm nào được chọn tham gia Flash Sale.
+                                        {formErrors.productsList ? (
+                                            <span className="field-error" style={{ fontSize: '13px' }}>{formErrors.productsList}</span>
+                                        ) : (
+                                            "Chưa có sản phẩm nào được chọn tham gia Flash Sale."
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -295,7 +398,7 @@ const AdminFlashSaleForm = () => {
                 </div>
 
                 <style>{`
-    .sub-title-neon { display: block; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
+    .sub-title-neon { display: block; color: var(--accent-red) !important; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
     .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
     
     .card-cinematic { background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 30px; margin-bottom: 30px; border-radius: 12px; }
