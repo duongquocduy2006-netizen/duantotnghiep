@@ -21,6 +21,7 @@ const AdminFlashSaleForm = () => {
     const [products, setProducts] = useState([]);
     const [productVariants, setProductVariants] = useState({});
     const [loading, setLoading] = useState(false);
+    const [formErrors, setFormErrors] = useState({});
 
     // 1. Fetch available products list for dropdown selection
     const fetchProducts = async () => {
@@ -73,7 +74,7 @@ const AdminFlashSaleForm = () => {
             }
         } catch (err) {
             console.error("Lỗi tải chi tiết Flash Sale:", err);
-            alert("Không thể tải thông tin chiến dịch Flash Sale.");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể tải thông tin chiến dịch Flash Sale." }));
         } finally {
             setLoading(false);
         }
@@ -88,7 +89,7 @@ const AdminFlashSaleForm = () => {
 
     const handleAddRow = () => {
         if (products.length === 0) {
-            alert("Vui lòng đợi tải sản phẩm hoặc tạo sản phẩm trước!");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Vui lòng đợi tải sản phẩm hoặc tạo sản phẩm trước!" }));
             return;
         }
         setForm({
@@ -98,35 +99,112 @@ const AdminFlashSaleForm = () => {
                 { id: "temp." + Date.now(), productId: products[0].id, variantId: null, salePrice: 0, quantityLimit: 5, soldQuantity: 0 }
             ]
         });
+        // Clear productsList error and any row errors to prevent mismatch
+        setFormErrors(p => {
+            const next = { ...p };
+            delete next.productsList;
+            Object.keys(next).forEach(k => {
+                if (k.startsWith('products.')) {
+                    delete next[k];
+                }
+            });
+            return next;
+        });
     };
 
     const handleRemoveRow = (idx) => {
         const updated = [...form.flashSaleProducts];
         updated.splice(idx, 1);
         setForm({ ...form, flashSaleProducts: updated });
+        
+        // Reset product row errors to prevent misalignment
+        setFormErrors(p => {
+            const next = { ...p };
+            Object.keys(next).forEach(k => {
+                if (k.startsWith('products.')) {
+                    delete next[k];
+                }
+            });
+            return next;
+        });
     };
 
     const handleRowChange = (idx, field, value) => {
         const updated = [...form.flashSaleProducts];
         updated[idx] = { ...updated[idx], [field]: value };
         setForm({ ...form, flashSaleProducts: updated });
+        
+        // Clear specific row error and duplicate error
+        const errKey = `products.${idx}.${field}`;
+        const prodErrKey = `products.${idx}.productId`;
+        setFormErrors(p => {
+            const next = { ...p };
+            if (next[errKey]) delete next[errKey];
+            if (next[prodErrKey]) delete next[prodErrKey];
+            return next;
+        });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Validation
-        if (form.flashSaleProducts.length === 0) {
-            alert("Vui lòng chọn ít nhất 1 sản phẩm tham gia Flash Sale!");
-            return;
+        // Inline Validation - collect all errors
+        const errors = {};
+
+        if (!form.name || !form.name.trim()) {
+            errors.name = "Vui lòng nhập tên chương trình Flash Sale!";
         }
 
-        const start = new Date(form.startDate);
-        const end = new Date(form.endDate);
-        if (start >= end) {
-            alert("Ngày kết thúc phải diễn ra sau ngày bắt đầu!");
+        if (!form.startDate) {
+            errors.startDate = "Vui lòng chọn ngày bắt đầu chiến dịch!";
+        }
+
+        if (!form.endDate) {
+            errors.endDate = "Vui lòng chọn ngày kết thúc chiến dịch!";
+        }
+
+        if (form.startDate && form.endDate) {
+            const start = new Date(form.startDate);
+            const end = new Date(form.endDate);
+            if (start >= end) {
+                errors.endDate = "Ngày kết thúc phải diễn ra sau ngày bắt đầu!";
+            }
+        }
+
+        if (form.flashSaleProducts.length === 0) {
+            errors.productsList = "Vui lòng chọn ít nhất 1 sản phẩm tham gia Flash Sale!";
+        }
+
+        // Validate each product row
+        const uniqueProductKeys = new Set();
+        for (let i = 0; i < form.flashSaleProducts.length; i++) {
+            const fsp = form.flashSaleProducts[i];
+            
+            // Check for valid sale price
+            if (fsp.salePrice === undefined || fsp.salePrice === null || fsp.salePrice <= 0) {
+                errors[`products.${i}.salePrice`] = "Vui lòng nhập giá sale lớn hơn 0đ!";
+            }
+
+            // Check for valid quantity limit
+            if (fsp.quantityLimit === undefined || fsp.quantityLimit === null || fsp.quantityLimit <= 0) {
+                errors[`products.${i}.quantityLimit`] = "Vui lòng nhập số lượng giới hạn lớn hơn 0!";
+            }
+
+            // Check duplicate product + variant combo
+            const comboKey = `${fsp.productId}-${fsp.variantId || 'all'}`;
+            if (uniqueProductKeys.has(comboKey)) {
+                errors[`products.${i}.productId`] = `Không được chọn trùng sản phẩm và biến thể ở dòng thứ ${i + 1}!`;
+            } else {
+                uniqueProductKeys.add(comboKey);
+            }
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lưu thất bại. Vui lòng kiểm tra các lỗi nhập liệu bên dưới!" }));
             return;
         }
+        setFormErrors({});
 
         try {
             setLoading(true);
@@ -136,17 +214,17 @@ const AdminFlashSaleForm = () => {
             };
             const response = await api.post('/api/flash-sales/save', payload);
             if (response.data && response.data.success) {
-                alert("Lưu chiến dịch Flash Sale thành công!");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lưu chiến dịch Flash Sale thành công!" }));
                 navigate('/admin/flashsales');
             } else {
-                alert(response.data.message || "Lưu thất bại.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Lưu thất bại." }));
             }
         } catch (err) {
             console.error("Lỗi lưu chiến dịch:", err);
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể kết nối đến server để lưu chiến dịch.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
             setLoading(false);
         }
@@ -162,20 +240,24 @@ const AdminFlashSaleForm = () => {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                     <div className="card-cinematic">
                         <h3 className="card-section-title">THÔNG TIN CƠ BẢN</h3>
                         <div className="form-grid-cinematic">
                             <div className="form-group">
-                                <label className="form-label">Tên chương trình</label>
+                                <label className="form-label">Tên chương trình *</label>
                                 <input 
                                     type="text" 
-                                    className="form-input-cinematic" 
+                                    className={`form-input-cinematic ${formErrors.name ? 'input-error' : ''}`} 
                                     placeholder="Ví dụ: Flash Sale Cuối Tuần" 
                                     value={form.name}
-                                    onChange={(e) => setForm({...form, name: e.target.value})}
+                                    onChange={(e) => {
+                                        setForm({...form, name: e.target.value});
+                                        if (formErrors.name) setFormErrors(p => ({...p, name: ''}));
+                                    }}
                                     required
                                 />
+                                {formErrors.name && <span className="field-error">{formErrors.name}</span>}
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Trạng thái</label>
@@ -189,24 +271,32 @@ const AdminFlashSaleForm = () => {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Ngày bắt đầu</label>
+                                <label className="form-label">Ngày bắt đầu *</label>
                                 <input 
                                     type="datetime-local" 
-                                    className="form-input-cinematic" 
+                                    className={`form-input-cinematic ${formErrors.startDate ? 'input-error' : ''}`} 
                                     value={form.startDate}
-                                    onChange={(e) => setForm({...form, startDate: e.target.value})}
+                                    onChange={(e) => {
+                                        setForm({...form, startDate: e.target.value});
+                                        if (formErrors.startDate) setFormErrors(p => ({...p, startDate: ''}));
+                                    }}
                                     required
                                 />
+                                {formErrors.startDate && <span className="field-error">{formErrors.startDate}</span>}
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Ngày kết thúc</label>
+                                <label className="form-label">Ngày kết thúc *</label>
                                 <input 
                                     type="datetime-local" 
-                                    className="form-input-cinematic" 
+                                    className={`form-input-cinematic ${formErrors.endDate ? 'input-error' : ''}`} 
                                     value={form.endDate}
-                                    onChange={(e) => setForm({...form, endDate: e.target.value})}
+                                    onChange={(e) => {
+                                        setForm({...form, endDate: e.target.value});
+                                        if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
+                                    }}
                                     required
                                 />
+                                {formErrors.endDate && <span className="field-error">{formErrors.endDate}</span>}
                             </div>
                         </div>
                     </div>
@@ -232,18 +322,25 @@ const AdminFlashSaleForm = () => {
                                     <div key={fsp.id} className="product-row">
                                         <div>
                                             <select 
-                                                className="form-input-cinematic"
+                                                className={`form-input-cinematic ${formErrors[`products.${idx}.productId`] ? 'input-error' : ''}`}
                                                 value={fsp.productId}
                                                 onChange={(e) => {
                                                     const updated = [...form.flashSaleProducts];
                                                     updated[idx] = { ...updated[idx], productId: e.target.value, variantId: null };
                                                     setForm({ ...form, flashSaleProducts: updated });
+                                                    setFormErrors(p => {
+                                                        const next = { ...p };
+                                                        delete next[`products.${idx}.productId`];
+                                                        delete next[`products.${idx}.variantId`];
+                                                        return next;
+                                                    });
                                                 }}
                                             >
                                                 {products.map(p => (
                                                     <option key={p.id} value={p.id}>{p.productName}</option>
                                                 ))}
                                             </select>
+                                            {formErrors[`products.${idx}.productId`] && <span className="field-error">{formErrors[`products.${idx}.productId`]}</span>}
                                         </div>
                                         <div>
                                             <select 
@@ -260,18 +357,20 @@ const AdminFlashSaleForm = () => {
                                         <div>
                                             <input 
                                                 type="number" 
-                                                className="form-input-cinematic" 
+                                                className={`form-input-cinematic ${formErrors[`products.${idx}.salePrice`] ? 'input-error' : ''}`} 
                                                 value={fsp.salePrice}
                                                 onChange={(e) => handleRowChange(idx, 'salePrice', parseInt(e.target.value) || 0)}
                                             />
+                                            {formErrors[`products.${idx}.salePrice`] && <span className="field-error">{formErrors[`products.${idx}.salePrice`]}</span>}
                                         </div>
                                         <div>
                                             <input 
                                                 type="number" 
-                                                className="form-input-cinematic" 
+                                                className={`form-input-cinematic ${formErrors[`products.${idx}.quantityLimit`] ? 'input-error' : ''}`} 
                                                 value={fsp.quantityLimit}
                                                 onChange={(e) => handleRowChange(idx, 'quantityLimit', parseInt(e.target.value) || 0)}
                                             />
+                                            {formErrors[`products.${idx}.quantityLimit`] && <span className="field-error">{formErrors[`products.${idx}.quantityLimit`]}</span>}
                                         </div>
                                         <button type="button" className="action-btn-icon icon-delete" onClick={() => handleRemoveRow(idx)}>
                                             <i className="bi bi-trash"></i>
@@ -281,7 +380,11 @@ const AdminFlashSaleForm = () => {
 
                                 {form.flashSaleProducts.length === 0 && (
                                     <div style={{ textAlign: 'center', padding: '40px', color: '#555', fontStyle: 'italic', fontSize: '13px' }}>
-                                        Chưa có sản phẩm nào được chọn tham gia Flash Sale.
+                                        {formErrors.productsList ? (
+                                            <span className="field-error" style={{ fontSize: '13px' }}>{formErrors.productsList}</span>
+                                        ) : (
+                                            "Chưa có sản phẩm nào được chọn tham gia Flash Sale."
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -295,32 +398,109 @@ const AdminFlashSaleForm = () => {
                 </div>
 
                 <style>{`
-    .sub-title-neon { display: block; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
+    .sub-title-neon { display: block; color: var(--accent-red) !important; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
     .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
     
-    .card-cinematic { background: #fff; border: 4px solid #000; box-shadow: 8px 8px 0 #000; padding: 30px; margin-bottom: 30px; border-radius: 0; }
-    .card-section-title { font-family: 'Oswald'; color: #000; font-size: 20px; font-weight: 800; letter-spacing: 1px; margin-bottom: 25px; border-bottom: 3px solid #000; padding-bottom: 10px; display: inline-block; text-transform: uppercase; }
-    .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 3px solid #000; padding-bottom: 10px; }
+    .card-cinematic { background: #fff !important; border: 1px solid rgba(0, 0, 0, 0.05) !important; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.03) !important; padding: 30px; margin-bottom: 30px; border-radius: 12px !important; }
+    .card-section-title { font-family: 'Oswald'; color: #000; font-size: 20px; font-weight: 800; letter-spacing: 1px; margin-bottom: 25px; border-bottom: 2px solid var(--accent-red) !important; padding-bottom: 10px; display: inline-block; text-transform: uppercase; }
+    .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid rgba(0,0,0,0.05) !important; padding-bottom: 10px; }
 
     .form-grid-cinematic { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
     .form-label { display: block; color: #000; font-size: 13px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; font-family: 'Oswald'; }
-    .form-input-cinematic { width: 100%; background: #fff; border: 3px solid #000; padding: 12px; color: #000; outline: none; transition: 0.3s; font-size: 14px; font-weight: 600; box-shadow: 4px 4px 0 #000; }
-    .form-input-cinematic:focus { border-color: var(--accent-red); box-shadow: 4px 4px 0 var(--accent-red); }
+    .form-input-cinematic { width: 100%; background: #fff !important; border: 1.5px solid #dadce0 !important; padding: 12px; color: #3c4043 !important; outline: none; transition: 0.2s; font-size: 14px; font-weight: 500; box-shadow: none !important; border-radius: 8px !important; }
+    .form-input-cinematic:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
 
-    .btn-red-skew { 
-        background: #fff; color: #000; border: 4px solid #000; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
-        transition: 0.3s; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 6px 6px 0 #000;
+    .btn-red-skew:not([style*="transparent"]) { 
+        background: var(--accent-red) !important;
+        border: 1px solid var(--accent-red) !important;
+        color: #fff !important;
+        box-shadow: 0 4px 12px rgba(229, 9, 20, 0.2) !important;
+        padding: 12px 30px;
+        font-family: 'Oswald', sans-serif;
+        font-weight: 800;
+        text-transform: uppercase; 
+        transition: all 0.3s ease;
+        cursor: pointer;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        justify-content: center;
+        border-radius: 8px !important;
     }
-    .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 6px 6px 0 var(--accent-red); transform: translateY(-3px); }
+    .btn-red-skew:not([style*="transparent"]):hover {
+        background: #b30000 !important;
+        border-color: #b30000 !important;
+    }
 
-    .product-list-container-alt { border: 4px solid #000; overflow: hidden; background: #fff; }
-    .product-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 60px; gap: 15px; padding: 15px 20px; border-bottom: 2px solid #000; align-items: center; }
-    .product-row.header { background: #f4f4f4; border-bottom: 4px solid #000; }
-    .product-row.header { background: #f4f4f4; border-bottom: 4px solid #000; }
+    .btn-red-skew[style*="transparent"] {
+        background: transparent !important;
+        border: 2px solid #d1d5db !important;
+        color: #374151 !important;
+        box-shadow: none !important;
+        padding: 12px 30px;
+        font-family: 'Oswald', sans-serif;
+        font-weight: 800;
+        text-transform: uppercase; 
+        transition: all 0.3s ease;
+        cursor: pointer;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        justify-content: center;
+        border-radius: 8px !important;
+    }
+    .btn-red-skew[style*="transparent"]:hover {
+        background: #f3f4f6 !important;
+        border-color: #9ca3af !important;
+        color: #111827 !important;
+    }
+
+    .product-list-container-alt { border: 1px solid #e2e8f0 !important; overflow: hidden; background: #fff; border-radius: 8px !important; }
+    .product-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 60px; gap: 15px; padding: 15px 20px; border-bottom: 1px solid #f1f5f9 !important; align-items: center; }
+    .product-row.header { background: #f8fafc !important; border-bottom: 2px solid #e2e8f0 !important; }
     
-    .action-btn-icon { background: #fff; border: 3px solid #000; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; }
-    .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 2px 2px 0 var(--accent-red); background: #000; color: #fff; }
-    .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 2px 2px 0 #000; }
+    .action-btn-icon {
+        background: #fff !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #64748b !important;
+        width: 35px !important;
+        height: 35px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: 0.2s !important;
+        text-decoration: none !important;
+        cursor: pointer !important;
+        font-size: 14px !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+    }
+    .action-btn-icon:hover {
+    }
+    .action-btn-icon.icon-delete {
+        background: rgba(239, 68, 68, 0.1) !important;
+        border-color: rgba(239, 68, 68, 0.4) !important;
+        color: #dc2626 !important;
+    }
+    .action-btn-icon.icon-delete:hover {
+        background: #ef4444 !important;
+        border-color: #ef4444 !important;
+        color: #ffffff !important;
+    }
+    .input-error {
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+    }
+    .field-error {
+        display: block;
+        color: #ef4444;
+        font-size: 11px;
+        font-weight: 600;
+        margin-top: 5px;
+        letter-spacing: 0.3px;
+    }
 `}</style>
             </AdminLayout>
         );
