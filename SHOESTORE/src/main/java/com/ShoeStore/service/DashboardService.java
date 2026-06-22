@@ -164,8 +164,30 @@ public class DashboardService {
                     "FROM orders o JOIN accounts a ON o.user_id = a.id " +
                     "ORDER BY o.created_at DESC";
             jdbc.query(sqlOrders, (rs, rowNum) -> {
+                String orderCode = rs.getString("order_code");
+                String fullName = rs.getString("full_name");
+                
+                // Get product names for this order
+                String sqlProducts = "SELECT p.product_name " +
+                        "FROM order_items oi " +
+                        "JOIN orders o ON oi.order_id = o.id " +
+                        "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+                        "JOIN products p ON pv.product_id = p.id " +
+                        "WHERE o.order_code = ?";
+                List<String> productNames = jdbc.query(sqlProducts, (productRs, productRowNum) -> productRs.getString("product_name"), orderCode);
+                
+                String productsDisplay = "";
+                if (productNames != null && !productNames.isEmpty()) {
+                    productsDisplay = productNames.get(0);
+                    if (productNames.size() > 1) {
+                        productsDisplay += " (và " + (productNames.size() - 1) + " sản phẩm khác)";
+                    }
+                } else {
+                    productsDisplay = "#" + orderCode;
+                }
+
                 activities.add(new Activity("success",
-                        "<strong class='text-white'>" + rs.getString("full_name") + "</strong> vừa đặt đơn hàng #" + rs.getString("order_code"),
+                        "<strong class='text-white'>" + fullName + "</strong> vừa đặt đơn hàng <strong class='text-white'>" + productsDisplay + "</strong>",
                         formatTimeAgo(rs.getTimestamp("created_at"))));
                 return null;
             });

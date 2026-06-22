@@ -176,6 +176,17 @@ const AdminBannerForm = () => {
                                     </div>
                                 </div>
 
+                                <div className="mb-4">
+                                    <label className="form-label-modern">Mô tả thêm</label>
+                                    <textarea
+                                        className="form-input-modern"
+                                        rows="3"
+                                        placeholder="Ghi chú nội bộ cho chiến dịch này..."
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                    ></textarea>
+                                </div>
+
                                 <div className="mb-0">
                                     <label className="form-label-modern">Trạng thái</label>
                                     <select
@@ -231,6 +242,87 @@ const AdminBannerForm = () => {
                     </div>
                 </form>
             </div>
+            <style>{`
+    .admin-banner-form-page { padding: 10px 0; }
+    .admin-banner-form-page .card { 
+        background: #fff !important; 
+        border: 1px solid #e2e8f0 !important; 
+        border-radius: 12px !important;
+        padding: 30px !important;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06) !important;
+    }
+    .admin-banner-form-page .card-title {
+        font-family: 'Oswald', sans-serif !important;
+        color: #000 !important;
+        font-size: 20px !important;
+        font-weight: 800 !important;
+        letter-spacing: 1px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        padding-bottom: 10px !important;
+        margin-bottom: 25px !important;
+        text-transform: uppercase !important;
+        display: inline-block;
+    }
+    .admin-banner-form-page .form-label {
+        color: #000 !important;
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        margin-bottom: 8px !important;
+        font-family: 'Oswald';
+    }
+    .admin-banner-form-page .form-control {
+        background: #fff !important;
+        border: 1.5px solid #dadce0 !important;
+        color: #3c4043 !important;
+        padding: 12px 15px !important;
+        font-size: 14px !important;
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        box-shadow: none !important;
+        transition: 0.2s;
+    }
+    .admin-banner-form-page .form-control:focus {
+        border-color: #1a73e8 !important;
+        box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important;
+    }
+    .image-upload-box {
+        border: 2px dashed #dadce0 !important;
+        border-radius: 12px !important;
+        background: #f8fafc !important;
+        padding: 60px 40px !important;
+        transition: 0.3s !important;
+        cursor: pointer;
+    }
+    .image-upload-box:hover {
+        border-color: #1a73e8 !important;
+        background: #fff !important;
+    }
+    .upload-icon { color: #9aa0a6 !important; font-size: 45px !important; font-weight: bold; }
+    
+    .btn-cyan-skew {
+        background: #fff; color: #000; border: none; padding: 12px 30px; 
+        font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+        transition: 0.3s; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: inline-flex; justify-content: center; align-items: center; text-decoration: none;
+        border-radius: 8px;
+    }
+    .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
+    
+    .btn-cancel:hover { background: #000 !important; color: #fff !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-3px); }
+
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; }
+    .img-item-wrapper { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 5px; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .img-item-wrapper img { width: 100%; height: auto; display: block; border: 1px solid #f1f5f9; border-radius: 4px; }
+    
+    .btn-remove-img-brutal {
+        position: absolute; top: -10px; right: -10px; background: #fff; border: 1px solid #e2e8f0; color: #000;
+        width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: 0.2s; border-radius: 50%;
+    }
+    .btn-remove-img-brutal:hover { background: #e50914; color: #fff; transform: scale(1.1); box-shadow: 0 4px 12px rgba(229,9,20,0.3); }
+`}</style>
         </AdminLayout>
     );
 };

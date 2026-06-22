@@ -51,7 +51,7 @@ const AdminLookbooks = () => {
 
     return (
         <AdminLayout>
-            <div className="admin-banners-page">
+             <div className="admin-banners-page">
                 {/* HEADER */}
                 <div className="page-header-wrapper">
                     <div>
@@ -85,6 +85,7 @@ const AdminLookbooks = () => {
                         <option value="true">ĐANG CÔNG KHAI</option>
                         <option value="false">ĐANG ẨN</option>
                     </select>
+
                 </div>
 
                 {/* TABLE */}
