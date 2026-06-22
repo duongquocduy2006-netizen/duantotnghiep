@@ -7,12 +7,48 @@ const AdminLayout = ({ children }) => {
     const location = useLocation();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [toast, setToast] = useState(null);
+
+    useEffect(() => {
+        // Thay đổi nền body sang màu xám sáng khi ở trang admin
+        document.body.style.backgroundColor = '#f4f5f7';
+        return () => {
+            // Khôi phục nền tối mặc định khi rời khỏi admin
+            document.body.style.backgroundColor = '';
+        };
+    }, []);
+
+    useEffect(() => {
+        // Check for toast message in sessionStorage
+        const msg = sessionStorage.getItem('toast_message');
+        if (msg) {
+            setToast(msg);
+            sessionStorage.removeItem('toast_message');
+        }
+
+        const handleShowToast = (e) => {
+            setToast(e.detail);
+        };
+
+        window.addEventListener('show-toast', handleShowToast);
+        return () => {
+            window.removeEventListener('show-toast', handleShowToast);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => setToast(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toast]);
 
     const menuItems = [
         { label: 'KINH DOANH', type: 'label' },
         { path: '/admin/dashboard', icon: 'bi-grid-fill', label: 'Tổng Quan' },
         { path: '/admin/orders', icon: 'bi-cart-check', label: 'Đơn Hàng' },
         { path: '/admin/customers', icon: 'bi-people-fill', label: 'Khách Hàng' },
+        { path: '/admin/ranks', icon: 'bi-gem', label: 'Hạng Thành Viên' },
 
         { label: 'KHO & SẢN PHẨM', type: 'label' },
         { path: '/admin/products', icon: 'bi-box-seam-fill', label: 'Sản Phẩm' },
@@ -26,19 +62,35 @@ const AdminLayout = ({ children }) => {
         { label: 'HỆ THỐNG & KHUYẾN MÃI', type: 'label' },
         { path: '/admin/flashsales', icon: 'bi-lightning-charge-fill', label: 'Flash Sale' },
         { path: '/admin/vouchers', icon: 'bi-ticket-perforated-fill', label: 'Mã Giảm Giá (Voucher)' },
-        { path: '/admin/ranks', icon: 'bi-star-fill', label: 'Hạng Thành Viên' },
     ];
+    const toastStr = toast ? String(toast) : '';
+    const isToastError = toastStr.toLowerCase().includes('lỗi') || 
+                         toastStr.toLowerCase().includes('thất bại') || 
+                         toastStr.toLowerCase().includes('vui lòng') || 
+                         toastStr.toLowerCase().includes('chưa') || 
+                         toastStr.toLowerCase().includes('không');
+    const toastBgColor = isToastError ? '#dc2626' : '#198754';
+    const toastBgShadow = isToastError ? 'rgba(220, 38, 38, 0.2)' : 'rgba(25, 135, 84, 0.2)';
+    const toastIconClass = isToastError ? 'bi bi-exclamation-circle-fill' : 'bi bi-check-circle-fill';
 
     return (
         <div className="admin-wrapper">
             {/* SIDEBAR */}
             <aside className={`sidebar-wrapper ${isCollapsed ? 'collapsed' : ''}`}>
                 <div className="sidebar-branding">
-                    <Link to="/admin" className="brand-logo" style={{ textDecoration: 'none' }}>
-                        <h2 className="font-oswald" style={{ fontWeight: 800, margin: 0, fontSize: '24px', letterSpacing: '-1px' }}>
-                            <span style={{ color: '#000' }}>SHOE</span><span style={{ color: '#e50914' }}>STORE</span>
-                        </h2>
-                    </Link>
+                    {!isCollapsed && (
+                        <Link to="/admin" className="brand-logo" style={{ textDecoration: 'none' }}>
+                            <h2 className="font-oswald" style={{ fontWeight: 800, margin: 0, fontSize: '24px', letterSpacing: '-1px' }}>
+                                <span style={{ color: '#fff' }}>SHOE</span><span style={{ color: '#e50914' }}>STORE</span>
+                            </h2>
+                        </Link>
+                    )}
+                    <button
+                        className="toggle-sidebar-btn"
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                    >
+                        <i className={`bi ${isCollapsed ? 'bi-text-indent-left' : 'bi-text-indent-right'}`}></i>
+                    </button>
                 </div>
 
                 <nav className="sidebar-nav">
@@ -69,20 +121,6 @@ const AdminLayout = ({ children }) => {
             <main className={`main-content ${isCollapsed ? 'expanded' : ''}`}>
                 <header className="page-header-admin">
                     <div className="header-left">
-                        <button
-                            className="toggle-sidebar-btn"
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#000',
-                                fontSize: '20px',
-                                cursor: 'pointer',
-                                marginRight: '20px'
-                            }}
-                        >
-                            <i className={`bi ${isCollapsed ? 'bi-list' : 'bi-text-indent-left'}`}></i>
-                        </button>
                         <div className="search-global">
                             <i className="bi bi-search"></i>
                             <input type="text" placeholder="Tìm kiếm nhanh (Ctrl + K)..." />
@@ -140,6 +178,29 @@ const AdminLayout = ({ children }) => {
                     {children}
                 </div>
             </main>
+
+            {toast && (
+                <div style={{
+                    position: 'fixed',
+                    top: '24px',
+                    right: '24px',
+                    backgroundColor: toastBgColor,
+                    color: '#fff',
+                    padding: '16px 24px',
+                    borderRadius: '16px',
+                    boxShadow: `0 10px 25px ${toastBgShadow}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    zIndex: 99999,
+                    fontWeight: '600',
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: '15px'
+                }} className="animate__animated animate__fadeInDown">
+                    <i className={toastIconClass} style={{ fontSize: '18px' }}></i>
+                    {toastStr}
+                </div>
+            )}
         </div>
     );
 };

@@ -9,7 +9,7 @@
     align-items: center;
     margin-bottom: 20px;
     padding: 10px 0;
-    border-bottom: 4px solid #000;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .page-title {
@@ -38,15 +38,15 @@
 
 .btn-cancel {
     background: #fff;
-    border: 4px solid #000;
-    color: #000;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     padding: 12px 35px;
     font-family: 'Oswald', sans-serif;
     cursor: pointer;
     text-decoration: none;
     font-size: 14px;
     font-weight: 800;
-    box-shadow: 6px 6px 0 #000;
     transition: 0.2s;
     text-transform: uppercase;
     display: inline-flex;
@@ -56,21 +56,22 @@
 .btn-cancel:hover {
     background: #f4f4f4;
     transform: translateY(-3px);
-    box-shadow: 6px 6px 0 #000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     color: #000;
 }
 
 .btn-save {
     background: #fff;
     color: #000;
-    border: 4px solid #000;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
     padding: 12px 40px;
     font-family: 'Oswald', sans-serif;
     cursor: pointer;
     font-size: 14px;
     font-weight: 800;
     letter-spacing: 1px;
-    box-shadow: 6px 6px 0 #000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     transition: 0.2s;
     text-transform: uppercase;
     display: inline-flex;
@@ -81,7 +82,7 @@
     background: #000;
     color: #fff;
     transform: translateY(-3px);
-    box-shadow: 6px 6px 0 var(--accent-red);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
 
 .form-grid {
@@ -92,11 +93,11 @@
 
 .card-custom {
     background: #fff;
-    border: 4px solid #000;
-    border-radius: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     padding: 30px;
     margin-bottom: 30px;
-    box-shadow: 8px 8px 0 #000;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
 .card-custom-title {
@@ -104,7 +105,7 @@
     font-size: 20px;
     color: #000;
     margin-bottom: 25px;
-    border-bottom: 3px solid #000;
+    border-bottom: 1px solid #f1f5f9;
     padding-bottom: 10px;
     display: inline-block;
     text-transform: uppercase;
@@ -129,20 +130,20 @@
     width: 100%;
     padding: 14px 18px;
     background: #fff;
-    border: 3px solid #000;
-    border-radius: 0;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: none;
     color: #000;
     font-family: 'Poppins', sans-serif;
     outline: none;
     font-size: 14px;
     font-weight: 600;
-    box-shadow: 4px 4px 0 #000;
     transition: 0.2s;
 }
 
 .form-control:focus {
     border-color: var(--accent-red);
-    box-shadow: 4px 4px 0 var(--accent-red);
+    box-shadow: 0 0 0 3px rgba(204,0,0,0.1);
 }
 
 .variant-row {
@@ -171,14 +172,14 @@
 
 .gallery-item {
     position: relative;
-    border-radius: 0;
+    border-radius: 8px;
     overflow: hidden;
     background: #fff;
-    border: 4px solid #000;
+    border: 1px solid #e2e8f0;
     aspect-ratio: 1;
     display: flex;
     flex-direction: column;
-    box-shadow: 4px 4px 0 #000;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
 .gallery-item img {
@@ -197,10 +198,10 @@
     font-weight: 900;
     padding: 4px 8px;
     border-radius: 0;
-    border: 3px solid #000;
+    border: 1px solid #e2e8f0;
     z-index: 10;
     font-family: 'Oswald', sans-serif;
-    box-shadow: 2px 2px 0 #000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .img-footer {
@@ -209,13 +210,12 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-top: 4px solid #000;
+    border-top: 1px solid #f1f5f9;
 }
 
 .set-primary-trigger,
 .delete-trigger {
     background: #fff;
-    border: 2px solid #000;
     font-size: 12px;
     font-family: 'Oswald', sans-serif;
     font-weight: 800;
@@ -225,7 +225,9 @@
     align-items: center;
     gap: 6px;
     padding: 4px 8px;
-    box-shadow: 2px 2px 0 #000;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     text-transform: uppercase;
     color: #000;
 }
@@ -255,8 +257,8 @@
 }
 
 .upload-placeholder-large {
-    border: 4px dashed #000;
-    border-radius: 0;
+    border: 2px dashed #e2e8f0;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -265,7 +267,7 @@
     cursor: pointer;
     transition: 0.3s;
     width: 100%;
-    box-shadow: 6px 6px 0 #000;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
 .upload-placeholder-large:hover {

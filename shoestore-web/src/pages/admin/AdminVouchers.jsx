@@ -10,6 +10,8 @@ const AdminVouchers = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingVoucher, setEditingVoucher] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [formErrors, setFormErrors] = useState({});
 
     // Form states
     const [formCode, setFormCode] = useState("");
@@ -74,12 +76,14 @@ const AdminVouchers = () => {
         setFormEndDate("");
         setSelectedRankIds([]);
         setFormStatus(1);
+        setFormErrors({});
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingVoucher(null);
+        setFormErrors({});
     };
 
     const handleEdit = (v) => {
@@ -95,36 +99,83 @@ const AdminVouchers = () => {
         setFormEndDate(formatDateTimeLocal(v.endDate));
         setSelectedRankIds((v.ranks || []).map(r => r.id));
         setFormStatus(v.status !== undefined ? v.status : 1);
+        setFormErrors({});
         setIsModalOpen(true);
     };
 
-    const handleDelete = async (id, code) => {
-        if (window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn voucher "${code}" này không?`)) {
-            try {
-                const response = await api.delete(`/api/vouchers/admin/${id}`);
-                if (response.data && response.data.success) {
-                    alert(response.data.message || "Xóa voucher thành công!");
-                    setVouchers(vouchers.filter(v => v.id !== id));
-                }
-            } catch (err) {
-                console.error("Lỗi xóa voucher:", err);
-                alert("Không thể kết nối đến máy chủ để xóa voucher này.");
+    const handleDelete = (id, code) => {
+        setDeleteConfirm({ id, code });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteConfirm) return;
+        const { id } = deleteConfirm;
+        try {
+            const response = await api.delete(`/api/vouchers/admin/${id}`);
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Xóa voucher thành công!" }));
+                setVouchers(vouchers.filter(v => v.id !== id));
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.error || "Có lỗi xảy ra khi xóa voucher." }));
             }
+        } catch (err) {
+            console.error("Lỗi xóa voucher:", err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể kết nối đến máy chủ để xóa voucher này." }));
+        } finally {
+            setDeleteConfirm(null);
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        // Inline Validation - collect all errors
+        const errors = {};
+
+        if (!formCode || !formCode.trim()) {
+            errors.code = "Vui lòng nhập mã Voucher!";
+        }
+
+        const discountVal = parseFloat(formDiscountValue);
+        if (isNaN(discountVal) || discountVal <= 0) {
+            errors.discountValue = "Vui lòng nhập giá trị giảm lớn hơn 0!";
+        } else if (formDiscountType === "PERCENT" && discountVal > 100) {
+            errors.discountValue = "Giá trị % không được vượt quá 100!";
+        }
+
+        const qty = parseInt(formQuantity);
+        if (isNaN(qty) || qty <= 0) {
+            errors.quantity = "Số lượng phát hành phải lớn hơn 0!";
+        }
+
+        const limit = parseInt(formUserLimit);
+        if (isNaN(limit) || limit <= 0) {
+            errors.userLimit = "Giới hạn dùng / user phải lớn hơn 0!";
+        }
+
+        if (formStartDate && formEndDate) {
+            const start = new Date(formStartDate);
+            const end = new Date(formEndDate);
+            if (start >= end) {
+                errors.endDate = "Ngày kết thúc phải sau ngày bắt đầu!";
+            }
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            return;
+        }
+        setFormErrors({});
+
         const payload = {
             id: editingVoucher ? editingVoucher.id : null,
             code: formCode,
             discountType: formDiscountType,
-            discountValue: parseFloat(formDiscountValue),
+            discountValue: discountVal,
             minOrderValue: formMinOrderValue ? parseFloat(formMinOrderValue) : 0,
             maxDiscount: formMaxDiscount ? parseFloat(formMaxDiscount) : 0,
-            quantity: parseInt(formQuantity),
-            userUsageLimit: formUserLimit ? parseInt(formUserLimit) : 1,
+            quantity: qty,
+            userUsageLimit: limit,
             startDate: formStartDate || null,
             endDate: formEndDate || null,
             rankIds: selectedRankIds,
@@ -134,16 +185,18 @@ const AdminVouchers = () => {
         try {
             const response = await api.post("/api/vouchers/admin/save", payload);
             if (response.data && response.data.success) {
-                alert(response.data.message || "Lưu Voucher thành công!");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Lưu Voucher thành công!" }));
                 closeModal();
                 fetchVouchers();
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Lưu Voucher thất bại." }));
             }
         } catch (err) {
             console.error("Lỗi lưu voucher:", err);
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể lưu Voucher. Vui lòng kiểm tra lại.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         }
     };
 
@@ -182,7 +235,7 @@ const AdminVouchers = () => {
                     <p style={{ marginTop: '10px' }}>{error}</p>
                 </div>
             ) : vouchers.length === 0 ? (
-                <div style={{ padding: '60px 40px', textAlign: 'center', color: '#555', border: '4px solid #000', boxShadow: '6px 6px 0 #000', background: '#fff' }}>
+                <div style={{ padding: '60px 40px', textAlign: 'center', color: '#555', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', background: '#fff', borderRadius: '12px' }}>
                     <i className="bi bi-inbox" style={{ fontSize: '48px', color: '#000' }}></i>
                     <p style={{ marginTop: '15px' }}>Chưa có mã giảm giá nào được tạo.</p>
                 </div>
@@ -235,18 +288,18 @@ const AdminVouchers = () => {
                 <div className="modal-overlay">
                     <div className="modal-box">
                         <h3 className="modal-title font-oswald"><i className="bi bi-ticket-perforated"></i> {editingVoucher ? 'CẬP NHẬT VOUCHER' : 'TẠO VOUCHER MỚI'}</h3>
-                        <form onSubmit={handleSubmit}>
+                        <form onSubmit={handleSubmit} noValidate>
                             <div className="form-grid">
                                 <div className="form-group">
                                     <label className="form-label">Mã Voucher (Code) *</label>
                                     <input 
                                         type="text" 
-                                        className="form-input" 
+                                        className={`form-input ${formErrors.code ? 'input-error' : ''}`}
                                         placeholder="VD: SUMMER50K" 
                                         value={formCode}
-                                        onChange={(e) => setFormCode(e.target.value.toUpperCase())}
-                                        required 
+                                        onChange={(e) => { setFormCode(e.target.value.toUpperCase()); if (formErrors.code) setFormErrors(p => ({...p, code: ''})); }}
                                     />
+                                    {formErrors.code && <span className="field-error">{formErrors.code}</span>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Loại Giảm Giá *</label>
@@ -254,7 +307,6 @@ const AdminVouchers = () => {
                                         className="form-input" 
                                         value={formDiscountType}
                                         onChange={(e) => setFormDiscountType(e.target.value)}
-                                        required
                                     >
                                         <option value="PERCENT">Giảm theo %</option>
                                         <option value="FIXED">Giảm số tiền cố định</option>
@@ -265,21 +317,20 @@ const AdminVouchers = () => {
                                     <input 
                                         type="number" 
                                         min="1"
-                                        className="form-input" 
+                                        className={`form-input ${formErrors.discountValue ? 'input-error' : ''}`}
                                         value={formDiscountValue}
-                                        onChange={(e) => setFormDiscountValue(e.target.value)}
-                                        required 
+                                        onChange={(e) => { setFormDiscountValue(e.target.value); if (formErrors.discountValue) setFormErrors(p => ({...p, discountValue: ''})); }}
                                     />
+                                    {formErrors.discountValue && <span className="field-error">{formErrors.discountValue}</span>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Đơn tối thiểu (đ) *</label>
                                     <input 
                                         type="number" 
                                         min="0"
-                                        className="form-input" 
+                                        className="form-input"
                                         value={formMinOrderValue}
                                         onChange={(e) => setFormMinOrderValue(e.target.value)}
-                                        required
                                     />
                                 </div>
                                 <div className="form-group">
@@ -298,22 +349,22 @@ const AdminVouchers = () => {
                                     <input 
                                         type="number" 
                                         min="1"
-                                        className="form-input" 
+                                        className={`form-input ${formErrors.quantity ? 'input-error' : ''}`}
                                         value={formQuantity}
-                                        onChange={(e) => setFormQuantity(e.target.value)}
-                                        required 
+                                        onChange={(e) => { setFormQuantity(e.target.value); if (formErrors.quantity) setFormErrors(p => ({...p, quantity: ''})); }}
                                     />
+                                    {formErrors.quantity && <span className="field-error">{formErrors.quantity}</span>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Giới hạn số lần dùng / 1 User *</label>
                                     <input 
                                         type="number" 
                                         min="1"
-                                        className="form-input" 
+                                        className={`form-input ${formErrors.userLimit ? 'input-error' : ''}`}
                                         value={formUserLimit}
-                                        onChange={(e) => setFormUserLimit(e.target.value)}
-                                        required 
+                                        onChange={(e) => { setFormUserLimit(e.target.value); if (formErrors.userLimit) setFormErrors(p => ({...p, userLimit: ''})); }}
                                     />
+                                    {formErrors.userLimit && <span className="field-error">{formErrors.userLimit}</span>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Trạng thái</label>
@@ -332,23 +383,24 @@ const AdminVouchers = () => {
                                         type="datetime-local" 
                                         className="form-input" 
                                         value={formStartDate}
-                                        onChange={(e) => setFormStartDate(e.target.value)}
+                                        onChange={(e) => { setFormStartDate(e.target.value); if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''})); }}
                                     />
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Ngày kết thúc</label>
                                     <input 
                                         type="datetime-local" 
-                                        className="form-input" 
+                                        className={`form-input ${formErrors.endDate ? 'input-error' : ''}`}
                                         value={formEndDate}
-                                        onChange={(e) => setFormEndDate(e.target.value)}
+                                        onChange={(e) => { setFormEndDate(e.target.value); if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''})); }}
                                     />
+                                    {formErrors.endDate && <span className="field-error">{formErrors.endDate}</span>}
                                 </div>
                             </div>
 
                             <div className="form-group" style={{ marginTop: '10px' }}>
                                 <label className="form-label">Hạng thành viên áp dụng (Để trống = Áp dụng tất cả)</label>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: '#fff', padding: '15px', border: '3px solid #000' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: '#f8fafc', padding: '15px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                                     {ranks.map(r => {
                                         const isChecked = selectedRankIds.includes(r.id);
                                         return (
@@ -383,53 +435,196 @@ const AdminVouchers = () => {
 
             <style>{`
                 .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; padding-top: 20px; }
-                .sub-title-neon { display: block; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
+                .sub-title-neon { display: block; color: var(--accent-red) !important; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
                 .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
                 
                 .btn-cyan-skew { 
-                    background: #fff; color: #000; border: 4px solid #000; box-shadow: 6px 6px 0 #000; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
-                    transition: 0.3s; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none; justify-content: center;
+                    background: var(--accent-red) !important;
+                    color: #fff !important;
+                    border: 1px solid var(--accent-red) !important;
+                    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.2) !important;
+                    padding: 12px 30px;
+                    font-family: 'Oswald', sans-serif;
+                    font-weight: 800;
+                    text-transform: uppercase; 
+                    transition: background 0.2s, border-color 0.2s;
+                    cursor: pointer;
+                    font-size: 14px;
+                    display: inline-flex;
+                    align-items: center;
+                    text-decoration: none;
+                    justify-content: center;
+                    border-radius: 8px !important;
                 }
-                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 6px 6px 0 var(--accent-red); transform: translateY(-3px); }
+                .btn-cyan-skew:hover {
+                    background: #b30000 !important;
+                    border-color: #b30000 !important;
+                }
 
-                /* Vouchers Grid Brutalist */
-                .voucher-grid-alt { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 30px; }
-                .voucher-ticket { background: #fff; border: 4px solid #000; box-shadow: 8px 8px 0 #000; display: flex; min-height: 140px; position: relative; transition: 0.3s; }
-                .voucher-ticket:hover { transform: translateY(-5px); box-shadow: 8px 8px 0 var(--accent-red); border-color: #000; }
+                /* Vouchers Grid */
+                .voucher-grid-alt { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; }
+                .voucher-ticket {
+                    background: #fff;
+                    border: 1px solid rgba(0, 0, 0, 0.06);
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+                    border-radius: 12px;
+                    display: flex;
+                    min-height: 140px;
+                    position: relative;
+                    overflow: hidden;
+                }
                 
-                .ticket-left { width: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-right: 4px dashed #000; }
-                .ticket-left::before, .ticket-left::after { content: ''; position: absolute; right: -12px; width: 20px; height: 20px; background: #f8f9fa; border-radius: 50%; border: 4px solid #000; }
-                .ticket-left::before { top: -12px; }
-                .ticket-left::after { bottom: -12px; }
+                .ticket-left { width: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; border-right: 2px dashed rgba(0,0,0,0.15); flex-shrink: 0; }
+                .ticket-left::before, .ticket-left::after { content: ''; position: absolute; right: -10px; width: 18px; height: 18px; background: #f8f9fa; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
+                .ticket-left::before { top: -10px; }
+                .ticket-left::after { bottom: -10px; }
  
-                .bg-red-glow { background: #fca5a5; color: #000; border-right: 4px dashed #000; }
-                .bg-cyan-glow { background: #67e8f9; color: #000; border-right: 4px dashed #000; }
+                .bg-red-glow { background: #fee2e2; color: #000; border-right: 2px dashed rgba(0,0,0,0.15); }
+                .bg-cyan-glow { background: #e0f2fe; color: #000; border-right: 2px dashed rgba(0,0,0,0.15); }
 
-                .ticket-type { font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
-                .ticket-value { font-family: 'Oswald'; font-size: 36px; font-weight: 800; }
+                .ticket-type { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #555; }
+                .ticket-value { font-family: 'Oswald'; font-size: 34px; font-weight: 800; color: #000; }
                 
-                .ticket-right { flex: 1; padding: 25px; position: relative; }
-                .ticket-code { font-family: 'Oswald'; font-size: 28px; color: #000; margin-bottom: 8px; letter-spacing: 1px; font-weight: 800; text-transform: uppercase; }
-                .ticket-body p { margin: 0; font-size: 14px; color: #555; margin-bottom: 3px; font-weight: 600; }
-                .ticket-body b { color: #000; font-weight: 800; }
+                .ticket-right { flex: 1; padding: 20px 25px; position: relative; }
+                .ticket-code { font-family: 'Oswald'; font-size: 26px; color: #000; margin-bottom: 6px; letter-spacing: 1px; font-weight: 800; text-transform: uppercase; }
+                .ticket-body p { margin: 0; font-size: 13px; color: #555; margin-bottom: 3px; font-weight: 500; }
+                .ticket-body b { color: #000; font-weight: 700; }
 
-                .ticket-actions { position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; }
-                .action-ic { background: #fff; border: 3px solid #000; color: #000; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-                .edit-ic:hover { background: #facc15; box-shadow: 2px 2px 0 #000; transform: translateY(-2px); }
-                .del-ic:hover { background: #ef4444; color: #fff; box-shadow: 2px 2px 0 #000; transform: translateY(-2px); }
+                .ticket-actions { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; }
+                .action-ic {
+                    background: #fff;
+                    border: 1px solid #e2e8f0;
+                    color: #64748b;
+                    width: 34px;
+                    height: 34px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: background 0.2s, border-color 0.2s, color 0.2s;
+                    border-radius: 8px;
+                }
+                .edit-ic { background: rgba(250, 204, 21, 0.1); border-color: rgba(250, 204, 21, 0.4); color: #d97706; }
+                .edit-ic:hover { background: #facc15; border-color: #facc15; color: #000; }
+                .del-ic { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); color: #dc2626; }
+                .del-ic:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
 
                 /* MODAL STYLES */
-                .modal-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(5px); z-index: 2000; display: flex; align-items: center; justify-content: center; }
-                .modal-box { background: #fff; width: 650px; padding: 40px; border: 4px solid #000; box-shadow: 16px 16px 0 var(--accent-red); max-height: 90vh; overflow-y: auto; border-radius: 0; animation: slideUp 0.3s ease-out; }
-                .modal-title { font-family: 'Oswald'; font-size: 28px; color: #000; margin-bottom: 30px; letter-spacing: 1px; font-weight: 800; border-bottom: 4px solid #000; padding-bottom: 10px; }
+                .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(6px); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+                .modal-box { background: #fff; width: 650px; padding: 40px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 20px 60px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; border-radius: 16px; animation: slideUp 0.3s ease-out; }
+                .modal-title { font-family: 'Oswald'; font-size: 24px; color: #000; margin-bottom: 28px; letter-spacing: 1px; font-weight: 800; border-bottom: 2px solid var(--accent-red); padding-bottom: 12px; }
                 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
                 .form-group { margin-bottom: 20px; }
                 .form-label { display: block; color: #000; font-size: 13px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; font-family: 'Oswald'; }
-                .form-input { width: 100%; background: #fff; border: 3px solid #000; color: #000; padding: 12px; outline: none; transition: 0.3s; font-size: 14px; font-weight: bold; box-shadow: 4px 4px 0 #000; }
-                .form-input:focus { border-color: var(--accent-red); box-shadow: 4px 4px 0 var(--accent-red); }
+                .form-input { width: 100%; background: #fff; border: 1.5px solid #dadce0; color: #3c4043; padding: 11px 14px; outline: none; transition: border-color 0.2s; font-size: 14px; font-weight: 500; box-shadow: none; border-radius: 8px; }
+                .form-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
                 
-                @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        `}</style>
+                @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+                
+                .custom-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.45);
+                    backdrop-filter: blur(4px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                }
+                .custom-modal-box {
+                    background: #fff;
+                    border-radius: 12px;
+                    width: 90%;
+                    max-width: 450px;
+                    padding: 24px;
+                    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                    border: 1px solid rgba(0,0,0,0.05);
+                }
+                .custom-modal-title {
+                    font-family: 'Oswald', sans-serif;
+                    font-size: 20px;
+                    font-weight: 800;
+                    color: #000;
+                    margin-top: 0;
+                    margin-bottom: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .custom-modal-body {
+                    font-size: 14px;
+                    color: #4b5563;
+                    margin-bottom: 24px;
+                    line-height: 1.5;
+                }
+                .custom-modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 12px;
+                }
+                .custom-modal-btn {
+                    padding: 10px 20px;
+                    font-family: 'Oswald', sans-serif;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    font-size: 13px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: 0.2s;
+                    outline: none;
+                }
+                .custom-modal-btn-cancel {
+                    background: transparent;
+                    border: 1px solid #d1d5db;
+                    color: #374151;
+                }
+                .custom-modal-btn-cancel:hover {
+                    background: #f3f4f6;
+                }
+                .custom-modal-btn-confirm {
+                    background: var(--accent-red);
+                    border: 1px solid var(--accent-red);
+                    color: #fff;
+                }
+                .custom-modal-btn-confirm:hover {
+                    background: #b30000;
+                    border-color: #b30000;
+                }
+                .input-error {
+                    border-color: #ef4444 !important;
+                    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+                }
+                .field-error {
+                    display: block;
+                    color: #ef4444;
+                    font-size: 11px;
+                    font-weight: 600;
+                    margin-top: 5px;
+                    letter-spacing: 0.3px;
+                }
+            `}</style>
+            
+            {deleteConfirm && (
+                <div className="custom-modal-overlay">
+                    <div className="custom-modal-box">
+                        <h4 className="custom-modal-title">XÁC NHẬN XÓA VOUCHER</h4>
+                        <p className="custom-modal-body">
+                            Bạn có chắc chắn muốn xóa vĩnh viễn voucher <strong>"{deleteConfirm.code}"</strong> này không?
+                            Thao tác này không thể hoàn tác.
+                        </p>
+                        <div className="custom-modal-actions">
+                            <button className="custom-modal-btn custom-modal-btn-cancel" onClick={() => setDeleteConfirm(null)}>
+                                HỦY BỎ
+                            </button>
+                            <button className="custom-modal-btn custom-modal-btn-confirm" onClick={handleConfirmDelete}>
+                                XÁC NHẬN XÓA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 };

@@ -59,71 +59,101 @@ const AdminChat = () => {
                         display: grid;
                         grid-template-columns: 340px 1fr 320px;
                         height: calc(100vh - 80px); /* Subtract header height */
-                        background: #050505;
-                        border-top: 1px solid rgba(255, 255, 255, 0.08);
+                        background: #f4f5f7;
+                        border-top: 1px solid rgba(0, 0, 0, 0.05);
                         overflow: hidden;
                     }
 
-                    .panel-left { border-right: 1px solid rgba(255, 255, 255, 0.08); background: #0a0a0a; display: flex; flex-direction: column; }
-                    .panel-header { padding: 25px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-                    .panel-title { font-family: 'Oswald'; text-transform: uppercase; font-size: 18px; letter-spacing: 1px; color: #fff; margin-bottom: 15px; }
+                    .panel-left { border-right: 1px solid rgba(0, 0, 0, 0.08); background: #ffffff; display: flex; flex-direction: column; }
+                    .panel-header { padding: 25px 20px; border-bottom: 1px solid rgba(0, 0, 0, 0.08); }
+                    .panel-title { font-family: 'Oswald'; text-transform: uppercase; font-size: 18px; letter-spacing: 1px; color: #000000; margin-bottom: 15px; }
 
                     .chat-search-box { position: relative; width: 100%; }
-                    .chat-search-box input { width: 100%; background: #050505; border: 1px solid #333; border-radius: 4px; padding: 12px 15px 12px 45px; color: #fff; font-size: 13px; outline: none; transition: 0.3s; }
-                    .chat-search-box i { position: absolute; left: 15px; top: 14px; color: #666; }
-                    .chat-search-box input:focus { border-color: #00f2ff; box-shadow: 0 0 10px rgba(0, 242, 255, 0.2); }
+                    .chat-search-box input { width: 100%; background: #f4f5f7; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; padding: 12px 15px 12px 45px; color: #000000; font-size: 13px; outline: none; transition: 0.3s; }
+                    .chat-search-box i { position: absolute; left: 15px; top: 14px; color: #8a8a93; }
+                    .chat-search-box input:focus { border-color: var(--accent-red); background: #ffffff; box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.1); }
 
                     .conv-list { flex: 1; overflow-y: auto; padding: 10px; }
-                    .conv-category { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #555; letter-spacing: 2px; padding: 15px 10px 10px; display: flex; align-items: center; gap: 8px; }
+                    .conv-category { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #8a8a93; letter-spacing: 2px; padding: 15px 10px 10px; display: flex; align-items: center; gap: 8px; }
                     .conv-category .dot { width: 6px; height: 6px; border-radius: 50%; }
 
                     .conv-item { 
                         padding: 15px; border-radius: 12px; margin-bottom: 5px; cursor: pointer; transition: 0.3s; 
                         display: flex; gap: 12px; border: 1px solid transparent; position: relative;
                     }
-                    .conv-item:hover { background: rgba(255, 255, 255, 0.03); }
-                    .conv-item.active { background: rgba(0, 242, 255, 0.05); border-color: rgba(0, 242, 255, 0.1); }
-                    .conv-item.active::before { content: ''; position: absolute; left: -5px; top: 20%; height: 60%; width: 3px; background: #00f2ff; border-radius: 4px; box-shadow: 0 0 10px #00f2ff; }
+                    .conv-item:hover { background: #f4f5f7; }
+                    .conv-item.active { background: rgba(204, 0, 0, 0.05); border-color: rgba(204, 0, 0, 0.08); }
+                    .conv-item.active::before { content: ''; position: absolute; left: -2px; top: 20%; height: 60%; width: 4px; background: var(--accent-red); border-radius: 4px; }
 
                     .chat-avatar { 
                         width: 45px; height: 45px; border-radius: 50%; 
-                        background: #111; color: #fff; 
+                        background: #e4e4e7; color: #000000; 
                         flex-shrink: 0; display: flex; align-items: center; justify-content: center; 
                         font-family: 'Oswald'; font-weight: 700; font-size: 16px; 
-                        border: 1px solid rgba(255, 255, 255, 0.08); transition: 0.3s; 
+                        border: 1px solid rgba(0, 0, 0, 0.05); transition: 0.3s; 
                     }
-                    .conv-item:hover .chat-avatar, .conv-item.active .chat-avatar { background: #00f2ff; color: #fff; box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); border-color: #00f2ff; }
+                    .conv-item:hover .chat-avatar, .conv-item.active .chat-avatar { background: var(--accent-red) !important; color: #ffffff !important; box-shadow: 0 4px 10px rgba(204, 0, 0, 0.2); border-color: var(--accent-red) !important; }
 
                     .conv-info { flex: 1; min-width: 0; }
                     .conv-name-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-                    .conv-name { font-weight: 600; font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                    .conv-time { font-size: 10px; color: #555; font-weight: 600; }
-                    .conv-msg { font-size: 12px; color: #a1a1aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                    .status-typing { color: #00f2ff; font-weight: 600; font-style: italic; }
+                    .conv-name { font-weight: 600; font-size: 14px; color: #000000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                    .conv-time { font-size: 10px; color: #8a8a93; font-weight: 600; }
+                    .conv-msg { font-size: 12px; color: #555559; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                    .status-typing { color: var(--accent-red); font-weight: 600; font-style: italic; }
 
-                    .panel-center { display: flex; flex-direction: column; background: #080808; border-right: 1px solid rgba(255, 255, 255, 0.08); overflow: hidden; }
-                    .chat-view-header { padding: 15px 30px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center; background: rgba(8, 8, 8, 0.8); backdrop-filter: blur(10px); }
+                    .panel-center { display: flex; flex-direction: column; background: #ffffff; border-right: 1px solid rgba(0, 0, 0, 0.08); overflow: hidden; }
+                    .chat-view-header { padding: 15px 30px; border-bottom: 1px solid rgba(0, 0, 0, 0.08); display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
 
                     .msg-container { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
                     .msg-row { display: flex; gap: 12px; max-width: 80%; }
                     .msg-row.sent { align-self: flex-end; flex-direction: row-reverse; }
-                    .msg-bubble { padding: 14px 20px; border-radius: 20px; font-size: 14px; line-height: 1.6; background: #1a1a1a; border: 1px solid rgba(255, 255, 255, 0.08); color: #fff; }
-                    .msg-row.sent .msg-bubble { background: #e50914; color: #fff; border: none; border-bottom-right-radius: 4px; box-shadow: 0 8px 25px rgba(229, 9, 20, 0.2); }
+                    .msg-bubble { padding: 14px 20px; border-radius: 20px; font-size: 14px; line-height: 1.6; background: #f4f5f7; border: 1px solid rgba(0, 0, 0, 0.05); color: #000000; }
+                    .msg-row.sent .msg-bubble { background: var(--accent-red); color: #ffffff; border: none; border-bottom-right-radius: 4px; box-shadow: 0 8px 25px rgba(204, 0, 0, 0.15); }
                     .msg-row.received .msg-bubble { border-bottom-left-radius: 4px; }
-                    .msg-meta { font-size: 10px; color: #555; font-weight: 700; margin-top: 6px; display: block; }
-                    .msg-row.sent .msg-meta { text-align: right; }
+                    .msg-meta { font-size: 10px; color: #8a8a93; font-weight: 700; margin-top: 6px; display: block; }
+                    .msg-row.sent .msg-meta { text-align: right; color: rgba(255, 255, 255, 0.7); }
 
-                    .chat-tools { padding: 25px 30px; background: #0a0a0a; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-                    .input-wrapper { background: #141414; border: 1px solid #222; border-radius: 15px; padding: 8px; display: flex; align-items: center; gap: 10px; }
-                    .input-wrapper textarea { flex: 1; background: transparent; border: none; outline: none; color: #fff; padding: 10px; font-size: 14px; resize: none; }
-                    .btn-send-chat { width: 42px; height: 42px; border-radius: 10px; border: none; background: #e50914; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3); }
+                    .chat-tools { padding: 25px 30px; background: #ffffff; border-top: 1px solid rgba(0, 0, 0, 0.08); }
+                    .input-wrapper { background: #f4f5f7; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 15px; padding: 8px; display: flex; align-items: center; gap: 10px; }
+                    .input-wrapper textarea { flex: 1; background: transparent; border: none; outline: none; color: #000000; padding: 10px; font-size: 14px; resize: none; }
+                    .btn-send-chat { width: 42px; height: 42px; border-radius: 10px; border: none; background: var(--accent-red); color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(204, 0, 0, 0.2); }
 
-                    .panel-right { background: #0a0a0a; padding: 30px 20px; display: flex; flex-direction: column; gap: 30px; overflow-y: auto; }
+                    .panel-right { background: #ffffff; padding: 30px 20px; display: flex; flex-direction: column; gap: 30px; overflow-y: auto; }
                     .profile-avatar-large { 
                         width: 100px; height: 100px; border-radius: 50%; overflow: hidden; 
-                        margin: 0 auto 20px; border: 4px solid #1a1a1a; box-shadow: 0 15px 35px rgba(0,0,0,0.5); 
-                        background: #00f2ff; display: flex; align-items: center; justify-content: center; 
-                        font-family: 'Oswald'; font-size: 36px; font-weight: 700; color: #fff; 
+                        margin: 0 auto 20px; border: 4px solid #f4f5f7; box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+                        background: var(--accent-red); display: flex; align-items: center; justify-content: center; 
+                        font-family: 'Oswald'; font-size: 36px; font-weight: 700; color: #ffffff; 
+                    }
+
+                    /* Window Control Buttons */
+                    .chat-window-controls {
+                        display: flex;
+                        align-items: center;
+                        gap: 15px;
+                    }
+                    .control-btn {
+                        background: transparent;
+                        border: none;
+                        outline: none;
+                        color: #8a8a93;
+                        font-size: 14px;
+                        cursor: pointer;
+                        width: 32px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 6px;
+                        transition: all 0.2s ease;
+                    }
+                    .control-btn:hover {
+                        background: #f4f5f7;
+                        color: #000000;
+                    }
+                    .control-btn.close-btn:hover {
+                        background: var(--accent-red);
+                        color: #ffffff;
                     }
                 `}</style>
                 
@@ -173,16 +203,29 @@ const AdminChat = () => {
                 <section className="panel-center">
                     <div className="chat-view-header">
                         <div style={{ display: 'flex', gap: 15, alignItems: 'center' }}>
-                            <div className="chat-avatar" style={{ width: 40, height: 40, background: '#00f2ff', color: '#000' }}>
+                            <div className="chat-avatar" style={{ width: 40, height: 40, background: 'var(--accent-red)', color: '#fff' }}>
                                 <span>{activeConv.initials}</span>
                             </div>
                             <div>
-                                <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: '#fff' }}>{activeConv.name}</h3>
+                                <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: '#000' }}>{activeConv.name}</h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <span style={{ width: 6, height: 6, background: '#4ade80', borderRadius: '50%' }}></span>
-                                    <span style={{ fontSize: 11, color: '#555', fontWeight: 600 }}>Khách hàng từ {activeConv.location.split(',')[0]} • {activeConv.idText}</span>
+                                    <span style={{ fontSize: 11, color: '#8a8a93', fontWeight: 600 }}>Khách hàng từ {activeConv.location.split(',')[0]} • {activeConv.idText}</span>
                                 </div>
                             </div>
+                        </div>
+                        
+                        {/* WINDOW CONTROL BUTTONS */}
+                        <div className="chat-window-controls">
+                            <button className="control-btn" title="Thu nhỏ">
+                                <i className="bi bi-dash-lg"></i>
+                            </button>
+                            <button className="control-btn" title="Phóng to">
+                                <i className="bi bi-window-stack"></i>
+                            </button>
+                            <button className="control-btn close-btn" title="Đóng">
+                                <i className="bi bi-x-lg"></i>
+                            </button>
                         </div>
                     </div>
 
@@ -191,7 +234,7 @@ const AdminChat = () => {
                             <div key={idx} className={`msg-row ${msg.type}`}>
                                 <div className="msg-bubble">
                                     {msg.content}
-                                    <span className="msg-meta">{msg.time} {msg.type === 'sent' && <i className="bi bi-check2-all" style={{ color: '#00f2ff' }}></i>}</span>
+                                    <span className="msg-meta">{msg.time} {msg.type === 'sent' && <i className="bi bi-check2-all" style={{ color: '#ffffff' }}></i>}</span>
                                 </div>
                             </div>
                         ))}
@@ -219,34 +262,34 @@ const AdminChat = () => {
                         <div className="profile-avatar-large">
                             <span>{activeConv.initials}</span>
                         </div>
-                        <h2 style={{ fontFamily: 'Oswald', fontSize: 24, textTransform: 'uppercase', margin: 0 }}>{activeConv.name}</h2>
-                        <p style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', margin: '5px 0' }}>
+                        <h2 style={{ fontFamily: 'Oswald', fontSize: 24, textTransform: 'uppercase', margin: 0, color: '#000000' }}>{activeConv.name}</h2>
+                        <p style={{ fontSize: 11, color: '#8a8a93', textTransform: 'uppercase', margin: '5px 0' }}>
                             <i className="bi bi-geo-alt-fill"></i> {activeConv.location}
                         </p>
                     </div>
                     
-                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: 15, borderRadius: 15, border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ background: '#f4f5f7', padding: 15, borderRadius: 15, border: '1px solid rgba(0, 0, 0, 0.05)' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, textAlign: 'center' }}>
-                            <div><div style={{ color: '#00f2ff', fontFamily: 'Oswald' }}>12</div><div style={{ fontSize: 9, color: '#555' }}>Đơn hàng</div></div>
-                            <div><div style={{ color: '#00f2ff', fontFamily: 'Oswald' }}>15.4M</div><div style={{ fontSize: 9, color: '#555' }}>Tổng chi</div></div>
-                            <div><div style={{ color: '#facc15', fontFamily: 'Oswald' }}>VIP</div><div style={{ fontSize: 9, color: '#555' }}>Hạng</div></div>
+                            <div><div style={{ color: 'var(--accent-red)', fontFamily: 'Oswald', fontWeight: 'bold' }}>12</div><div style={{ fontSize: 9, color: '#8a8a93' }}>Đơn hàng</div></div>
+                            <div><div style={{ color: 'var(--accent-red)', fontFamily: 'Oswald', fontWeight: 'bold' }}>15.4M</div><div style={{ fontSize: 9, color: '#8a8a93' }}>Tổng chi</div></div>
+                            <div><div style={{ color: '#facc15', fontFamily: 'Oswald', fontWeight: 'bold' }}>VIP</div><div style={{ fontSize: 9, color: '#8a8a93' }}>Hạng</div></div>
                         </div>
                     </div>
 
                     <div>
-                        <span style={{ fontFamily: 'Oswald', fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 15, display: 'block' }}>Đơn hàng gần nhất</span>
-                        <div style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.08)', borderLeft: '3px solid #ffd700', borderRadius: 12, padding: 15 }}>
+                        <span style={{ fontFamily: 'Oswald', fontSize: 11, color: '#8a8a93', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 15, display: 'block' }}>Đơn hàng gần nhất</span>
+                        <div style={{ background: '#ffffff', border: '1px solid rgba(0, 0, 0, 0.08)', borderLeft: '3px solid var(--accent-red)', borderRadius: 12, padding: 15 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                                <span style={{ fontWeight: 700, fontSize: 13 }}>Đơn #10293</span>
-                                <span style={{ color: '#00f2ff', fontSize: 10, fontWeight: 700 }}>Hoàn tất</span>
+                                <span style={{ fontWeight: 700, fontSize: 13, color: '#000000' }}>Đơn #10293</span>
+                                <span style={{ color: '#22c55e', fontSize: 10, fontWeight: 700 }}>Hoàn tất</span>
                             </div>
                             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                <div style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.05)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <i className="bi bi-bag-fill" style={{ color: '#555' }}></i>
+                                <div style={{ width: 40, height: 40, background: '#f4f5f7', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <i className="bi bi-bag-fill" style={{ color: '#8a8a93' }}></i>
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: 12, fontWeight: 600 }}>Nike Air Max '90</div>
-                                    <div style={{ fontSize: 10, color: '#555' }}>Size 38 • 1,200,000₫</div>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: '#000000' }}>Nike Air Max '90</div>
+                                    <div style={{ fontSize: 10, color: '#8a8a93' }}>Size 38 • 1,200,000₫</div>
                                 </div>
                             </div>
                         </div>
