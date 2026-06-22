@@ -1,15 +1,18 @@
-/* --- GLOBAL PREMIUM THEME FOR MEMBERSHIP --- */
+/* --- GLOBAL BRAND THEME FOR MEMBERSHIP (WHITE, BLACK, RED) --- */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Oswald:wght@500;700&display=swap');
 
 .member-epic-theme {
-    background-color: #fafafc;
+    background-color: #ffffff;
     color: #1a1a1e;
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overflow-x: hidden;
     min-height: 100vh;
+    background-image: 
+        radial-gradient(circle at 10% 20%, rgba(229, 9, 20, 0.015) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(0, 0, 0, 0.01) 0%, transparent 40%);
 }
 
-/* Ensure all headings and buttons default to the clean sans-serif stack to avoid serif fallbacks for Vietnamese characters */
+/* Typography reset for Vietnamese characters */
 .member-epic-theme h1,
 .member-epic-theme h2,
 .member-epic-theme h3,
@@ -35,58 +38,108 @@
 }
 
 .text-red { 
-    color: #e50914 !important; 
+    color: #e50914 !important;
+    text-shadow: 0 0 8px rgba(229, 9, 20, 0.15);
 }
 
 .letter-spacing-1 { letter-spacing: 0.5px; }
 .letter-spacing-2 { letter-spacing: 1.5px; }
 
-/* --- HEADER --- */
-.epic-member-header {
-    background: linear-gradient(135deg, #0e0e11 0%, #1a0809 100%);
-    border-bottom: 3px solid #e50914;
-    padding: 90px 0;
-    color: #fff;
+.text-muted-custom {
+    color: #4b5563 !important;
+}
+
+/* --- INTEGRATED CONSOLE HEADER (CREATIVE & ASYMMETRIC) --- */
+.mbr-console-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 70px 0 50px;
     position: relative;
     overflow: hidden;
 }
 
-.epic-member-header::before {
+.mbr-console-header::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(circle at 75% 30%, rgba(229, 9, 20, 0.18) 0%, transparent 60%);
+    background: radial-gradient(circle at 80% 30%, rgba(229, 9, 20, 0.02) 0%, transparent 50%);
     pointer-events: none;
 }
 
-.epic-tag {
+.mbr-welcome-box {
+    text-align: left;
+}
+
+.mbr-status-tag {
     font-family: 'Outfit', sans-serif;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 2px;
-    background: rgba(229, 9, 20, 0.12);
+    background: rgba(229, 9, 20, 0.05);
     color: #e50914;
-    border: 1px solid rgba(229, 9, 20, 0.3);
+    border: 1px solid rgba(229, 9, 20, 0.2);
     padding: 6px 18px;
     border-radius: 100px;
     display: inline-block;
     text-transform: uppercase;
 }
 
-.epic-header-title {
-    font-size: 52px;
+.mbr-welcome-title {
+    font-size: 46px;
     font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: -1.5px;
-    line-height: 1.1;
+    line-height: 1.15;
+    color: #111827;
+    letter-spacing: -1px;
 }
 
-/* --- PREMIUM METALLIC CREDIT CARD --- */
+.mbr-welcome-desc {
+    font-size: 15px;
+    color: #4b5563;
+    line-height: 1.6;
+    max-width: 620px;
+}
+
+/* Quick Status Widget in Console */
+.mbr-quick-status {
+    background: #f9fafb;
+    padding: 16px 28px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    max-width: fit-content;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.status-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.status-item .label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #6b7280;
+}
+
+.status-item .value {
+    font-size: 20px;
+    font-weight: 800;
+    margin-top: 4px;
+}
+
+.status-separator {
+    width: 1px;
+    height: 38px;
+    background: #e5e7eb;
+    margin: 0 8px;
+}
+
+/* --- PREMIUM MATTE BLACK SMART CREDIT CARD --- */
 .metallic-card-container {
     perspective: 1500px;
-    height: 290px;
+    height: 270px;
     width: 100%;
-    max-width: 440px;
+    max-width: 420px;
     margin: 0 auto;
 }
 
@@ -96,16 +149,31 @@
     height: 100%;
     text-align: left;
     transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
-    background: linear-gradient(135deg, #131317 0%, #1e1e24 50%, #0c0c0e 100%);
+    background: linear-gradient(135deg, #18181b 0%, #27272a 50%, #09090b 100%);
     border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 26px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 28px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     overflow: hidden;
-    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22);
-    color: #fff;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+}
+
+/* Carbon texture pattern overlay for smart card */
+.metallic-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: linear-gradient(45deg, rgba(0, 0, 0, 0.15) 25%, transparent 25%), 
+                      linear-gradient(-45deg, rgba(0, 0, 0, 0.15) 25%, transparent 25%), 
+                      linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.15) 75%), 
+                      linear-gradient(-45deg, transparent 75%, rgba(0, 0, 0, 0.15) 75%);
+    background-size: 4px 4px;
+    pointer-events: none;
+    opacity: 0.5;
+    z-index: 1;
 }
 
 .metallic-card::before {
@@ -118,17 +186,17 @@
 }
 
 .metallic-card-container:hover .metallic-card {
-    transform: translateY(-8px) rotateX(6deg) rotateY(-3deg);
-    box-shadow: 0 30px 60px rgba(0,0,0,0.32), 
-                0 0 45px rgba(var(--rank-color-rgb, 229, 9, 20), 0.18);
-    border-color: rgba(255, 255, 255, 0.18);
+    transform: translateY(-10px) rotateX(8deg) rotateY(-4deg);
+    box-shadow: 0 25px 45px rgba(0, 0, 0, 0.4), 
+                0 0 25px rgba(var(--rank-color-rgb, 229, 9, 20), 0.2);
+    border-color: rgba(var(--rank-color-rgb, 229, 9, 20), 0.35);
 }
 
 .metallic-glare {
     position: absolute;
     top: -150%; left: -100%;
     width: 60%; height: 400%;
-    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0) 100%);
+    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
     transform: rotate(25deg);
     transition: 0.8s cubic-bezier(0.25, 1, 0.5, 1);
     pointer-events: none;
@@ -140,21 +208,23 @@
 }
 
 .card-chip {
-    width: 45px;
-    height: 34px;
-    background: linear-gradient(135deg, #e5c158 0%, #b8860b 100%);
+    width: 48px;
+    height: 36px;
+    background: linear-gradient(135deg, #f5d76e 0%, #b8860b 50%, #e6ca65 100%);
     border-radius: 6px;
     position: relative;
     margin-bottom: 5px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(255,255,255,0.3);
+    z-index: 3;
 }
 
 .card-chip::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(0,0,0,0.12) 4px, rgba(0,0,0,0.12) 8px);
+    background: repeating-linear-gradient(0deg, transparent, transparent 4px, rgba(0,0,0,0.18) 4px, rgba(0,0,0,0.18) 8px);
 }
 
 .card-number {
@@ -162,9 +232,10 @@
     font-size: 20px;
     font-weight: 700;
     letter-spacing: 3px;
-    color: rgba(255, 255, 255, 0.95);
-    margin: 10px 0;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    color: #ffffff;
+    margin: 12px 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    z-index: 3;
 }
 
 .epic-rank-badge {
@@ -175,26 +246,23 @@
     border-radius: 100px;
     letter-spacing: 1px;
     text-transform: uppercase;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    z-index: 3;
 }
 
 .id-card-top {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
     padding-bottom: 15px;
+    z-index: 3;
 }
 
 .id-card-middle {
     margin-top: 15px;
-}
-
-.id-card-middle .text-muted {
-    color: rgba(255, 255, 255, 0.45) !important;
-    font-size: 10px;
-    font-weight: 600;
+    z-index: 3;
 }
 
 .id-card-middle .card-holder-name {
-    font-size: 20px !important;
+    font-size: 19px !important;
     font-weight: 700 !important;
     font-family: 'Outfit', sans-serif !important;
     letter-spacing: -0.3px;
@@ -204,12 +272,14 @@
 .id-card-bottom {
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
     padding-top: 15px;
+    z-index: 3;
 }
 
-.id-card-bottom .text-muted {
-    color: rgba(255, 255, 255, 0.45) !important;
-    font-size: 10px;
-    font-weight: 600;
+.id-card-bottom .text-muted-custom {
+    color: rgba(255, 255, 255, 0.5) !important;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
 }
 
 .nfc-icon {
@@ -221,9 +291,9 @@
 .epic-stats-box {
     background: #ffffff;
     border-radius: 20px;
-    border: 1px solid #eaeaea;
+    border: 1px solid #e5e7eb;
     padding: 35px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
     height: 100%;
 }
 
@@ -232,12 +302,13 @@
     font-weight: 700;
     font-size: 22px;
     letter-spacing: -0.5px;
-    border-bottom: 1px solid #eaeaea !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    color: #111827;
 }
 
 .epic-progress-bar {
-    height: 12px;
-    background: #f0f1f5;
+    height: 10px;
+    background: #f3f4f6;
     border-radius: 100px;
     border: none;
     overflow: hidden;
@@ -245,74 +316,83 @@
 
 .epic-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #e50914 0%, #ff4d4d 100%);
+    background: linear-gradient(90deg, #e50914 0%, #ef4444 100%);
     border-radius: 100px;
+    box-shadow: 0 0 8px rgba(229, 9, 20, 0.25);
     transition: width 1.2s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.epic-stats-box .row {
-    border-top: 1px solid #eaeaea !important;
+.stats-details-row {
+    border-top: 1px solid #e5e7eb !important;
 }
 
-.epic-stats-box .col-6 .text-muted {
+.epic-stats-box .col-6 .text-muted-custom {
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
 }
 
 .epic-stats-box .col-6.border-start {
-    border-left: 1px solid #eaeaea !important;
+    border-left: 1px solid #e5e7eb !important;
 }
 
 /* --- SECTION TITLE --- */
 .section-header {
     text-align: center;
-    margin-bottom: 45px;
+    margin-bottom: 50px;
 }
 
 .section-header h2 {
-    font-size: 36px;
+    font-size: 34px;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: -0.8px;
-    color: #111;
+    letter-spacing: -0.5px;
+    color: #111827;
+    background: linear-gradient(to right, #111827, #374151);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .section-header p {
-    color: #666;
-    font-size: 16px;
+    color: #4b5563;
+    font-size: 15px;
     max-width: 600px;
-    margin: 10px auto 0;
+    margin: 12px auto 0;
+    line-height: 1.6;
 }
 
 /* --- TIER BENEFITS SECTION --- */
 .tier-perks-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 30px;
 }
 
 .tier-perk-card {
     background: #ffffff;
-    border: 1px solid #eaeaea;
+    border: 1px solid #e5e7eb;
     border-radius: 20px;
-    padding: 30px;
+    padding: 32px;
     position: relative;
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.02);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.03);
 }
 
 .tier-perk-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+    border-color: rgba(var(--tier-color-rgb), 0.45);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08), 
+                0 0 20px rgba(var(--tier-color-rgb), 0.08);
 }
 
 .tier-perk-card.active-rank-card {
     border: 2px solid var(--tier-color, #e50914);
-    box-shadow: 0 15px 30px rgba(var(--tier-color-rgb, 229, 9, 20), 0.08);
+    background: #ffffff;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06),
+                0 0 20px rgba(var(--tier-color-rgb), 0.1);
 }
 
 .active-tier-badge {
@@ -321,34 +401,35 @@
     left: 50%;
     transform: translateX(-50%);
     background: var(--tier-color, #e50914);
-    color: #fff;
+    color: #ffffff;
     font-size: 10px;
     font-weight: 800;
-    padding: 6px 14px;
+    padding: 6px 16px;
     border-radius: 100px;
-    letter-spacing: 1px;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 10px rgba(var(--tier-color-rgb), 0.2);
 }
 
 .tier-card-header {
     text-align: center;
-    border-bottom: 1px solid #f0f0f0;
-    padding-bottom: 20px;
-    margin-bottom: 20px;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 22px;
+    margin-bottom: 22px;
 }
 
 .tier-icon-circle {
-    width: 60px;
-    height: 60px;
+    width: 62px;
+    height: 62px;
     border-radius: 50%;
-    background: var(--tier-light-color, rgba(229, 9, 20, 0.06));
+    background: var(--tier-light-color, rgba(229, 9, 20, 0.04));
     color: var(--tier-color, #e50914);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 24px;
     margin: 0 auto 15px;
+    border: 1px solid rgba(var(--tier-color-rgb), 0.1);
 }
 
 .tier-name {
@@ -357,33 +438,35 @@
     margin: 0;
     text-transform: uppercase;
     letter-spacing: -0.3px;
+    color: #111827;
 }
 
 .tier-points-label {
     font-size: 13px;
-    color: #888;
-    font-weight: 600;
+    color: #6b7280;
+    font-weight: 500;
     margin-top: 4px;
 }
 
 .tier-discount-box {
     margin: 20px 0;
-    background: #f8f9fa;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
     border-radius: 12px;
-    padding: 12px;
+    padding: 14px;
     text-align: center;
 }
 
 .tier-discount-val {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 800;
-    color: #e50914;
+    color: var(--tier-color, #e50914);
 }
 
 .tier-discount-desc {
     font-size: 12px;
-    color: #666;
-    font-weight: 600;
+    color: #4b5563;
+    font-weight: 500;
 }
 
 .tier-perks-list {
@@ -394,8 +477,8 @@
 
 .tier-perks-list li {
     font-size: 14px;
-    color: #444;
-    margin-bottom: 10px;
+    color: #374151;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -404,10 +487,11 @@
 
 .tier-perks-list li i {
     color: #10b981;
-    font-size: 15px;
+    font-size: 14px;
+    filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.2));
 }
 
-/* --- HOW IT WORKS --- */
+/* --- HOW IT WORKS (STEPS) --- */
 .how-it-works-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -416,12 +500,18 @@
 
 .step-card {
     background: #ffffff;
-    border: 1px solid #eaeaea;
+    border: 1px solid #e5e7eb;
     border-radius: 20px;
     padding: 35px;
     text-align: center;
     position: relative;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.01);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.02);
+    transition: all 0.3s ease;
+}
+
+.step-card:hover {
+    border-color: rgba(229, 9, 20, 0.2);
+    transform: translateY(-5px);
 }
 
 .step-number {
@@ -430,99 +520,103 @@
     right: 25px;
     font-size: 38px;
     font-weight: 800;
-    color: #f0f0f4;
+    color: #f3f4f6;
     line-height: 1;
 }
 
 .step-icon-wrapper {
-    width: 70px;
-    height: 70px;
-    background: rgba(229, 9, 20, 0.05);
+    width: 68px;
+    height: 68px;
+    background: rgba(229, 9, 20, 0.04);
     color: #e50914;
+    border: 1px solid rgba(229, 9, 20, 0.15);
     border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 26px;
     margin: 0 auto 25px;
 }
 
 .step-card h4 {
-    font-size: 20px;
+    font-size: 19px;
     font-weight: 700;
     margin-bottom: 12px;
-    color: #111;
+    color: #111827;
 }
 
 .step-card p {
     font-size: 14px;
-    color: #666;
+    color: #4b5563;
     line-height: 1.6;
     margin: 0;
 }
 
-/* --- VOUCHER CARD --- */
+/* --- EXCLUSIVE VOUCHER CARDS (TICKET STYLE) --- */
 .epic-voucher-card {
     background: #ffffff;
     border-radius: 18px;
-    border: 1px solid #eaeaea;
+    border: 1px solid #e5e7eb;
     display: flex;
     overflow: hidden;
     height: 100%;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.03);
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     position: relative;
 }
 
+/* Ticket stubs punch out circles */
 .epic-voucher-card::before, .epic-voucher-card::after {
     content: '';
     position: absolute;
     width: 22px;
     height: 22px;
-    background-color: #fafafc;
+    background-color: #ffffff; /* Matches page background */
     border-radius: 50%;
     left: 35%;
     z-index: 10;
-    border: 1px solid #eaeaea;
+    border: 1px solid #e5e7eb;
 }
 
 .epic-voucher-card::before {
-    top: -11px;
+    top: -12px;
 }
 
 .epic-voucher-card::after {
-    bottom: -11px;
+    bottom: -12px;
 }
 
 .epic-voucher-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
-    border-color: rgba(229, 9, 20, 0.2);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08), 
+                0 0 15px rgba(229, 9, 20, 0.1);
+    border-color: rgba(229, 9, 20, 0.25);
 }
 
 .voucher-left {
-    background: linear-gradient(135deg, #18181c 0%, #0c0c0e 100%);
-    color: #fff;
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    color: #ffffff;
     width: 35%;
-    padding: 24px 14px;
+    padding: 24px 12px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
     position: relative;
-    border-right: 1px dashed rgba(255, 255, 255, 0.15);
+    border-right: 1px dashed #4b5563;
 }
 
 .voucher-left i {
     color: #e50914;
-    filter: drop-shadow(0 0 10px rgba(229, 9, 20, 0.4));
+    filter: drop-shadow(0 0 4px rgba(229, 9, 20, 0.3));
 }
 
 .voucher-left .font-oswald {
     font-family: 'Outfit', sans-serif !important;
     font-size: 15px;
     font-weight: 700;
+    color: #ffffff;
 }
 
 .voucher-right {
@@ -538,7 +632,11 @@
     font-weight: 700;
     font-size: 18px;
     letter-spacing: 0.5px;
-    color: #111;
+    color: #111827;
+}
+
+.voucher-right .text-muted {
+    color: #4b5563 !important;
 }
 
 /* --- FAQ ACCORDION --- */
@@ -549,7 +647,7 @@
 
 .faq-item {
     background: #ffffff;
-    border: 1px solid #eaeaea;
+    border: 1px solid #e5e7eb;
     border-radius: 14px;
     margin-bottom: 15px;
     overflow: hidden;
@@ -557,7 +655,8 @@
 }
 
 .faq-item:hover {
-    border-color: #d2d2d2;
+    border-color: #cbd5e1;
+    background: #f9fafb;
 }
 
 .faq-question-btn {
@@ -568,7 +667,7 @@
     text-align: left;
     font-size: 16px;
     font-weight: 600;
-    color: #111;
+    color: #111827;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -587,15 +686,16 @@
     overflow: hidden;
     transition: max-height 0.3s cubic-bezier(0, 1, 0, 1), padding 0.3s ease;
     padding: 0 28px;
-    color: #555;
+    color: #4b5563;
     font-size: 14.5px;
     line-height: 1.6;
-    border-top: 0 solid #eaeaea;
+    border-top: 0 solid #e5e7eb;
 }
 
 .faq-item.active-faq {
-    border-color: rgba(229, 9, 20, 0.2);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.01);
+    border-color: rgba(229, 9, 20, 0.25);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.02);
+    background: #ffffff;
 }
 
 .faq-item.active-faq .faq-question-btn i {
@@ -605,41 +705,41 @@
 .faq-item.active-faq .faq-answer {
     max-height: 500px;
     padding: 0 28px 24px;
-    border-top: 1px solid #f8f9fa;
+    border-top: 1px solid #e5e7eb;
     transition: max-height 0.5s cubic-bezier(1, 0, 1, 0), padding 0.3s ease;
 }
 
-/* --- BUTTONS --- */
-.btn-brutal-black {
-    padding: 13px 26px;
-    background: #e50914;
-    color: #fff !important;
+/* --- BRAND BLACK & RED BUTTONS --- */
+.btn-gold-elite {
+    padding: 14px 28px;
+    background: #111827;
+    color: #ffffff !important;
     border: none;
     font-family: 'Outfit', sans-serif;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 1px;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
     display: inline-block;
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     border-radius: 10px;
-    box-shadow: 0 6px 15px rgba(229, 9, 20, 0.25);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
     cursor: pointer;
 }
 
-.btn-brutal-black:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 22px rgba(229, 9, 20, 0.38);
-    background: #b8070f;
-    color: #fff !important;
+.btn-gold-elite:hover {
+    transform: translateY(-2.5px);
+    box-shadow: 0 10px 24px rgba(229, 9, 20, 0.3);
+    background: #e50914;
+    color: #ffffff !important;
 }
 
 .btn-brutal-outline {
     padding: 9px 18px;
     background: transparent;
     color: #e50914 !important;
-    border: 1px solid rgba(229, 9, 20, 0.35);
+    border: 1px solid rgba(229, 9, 20, 0.4);
     font-family: 'Outfit', sans-serif;
     font-weight: 700;
     font-size: 13px;
@@ -652,27 +752,52 @@
 
 .btn-brutal-outline:hover {
     background: #e50914;
-    color: #fff !important;
+    color: #ffffff !important;
     border-color: #e50914;
-    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.18);
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.15);
 }
 
-/* --- EMPTY / OUT OF BOX --- */
+/* Backwards compatibility for general layout styles */
+.btn-brutal-black {
+    padding: 13px 26px;
+    background: #111827;
+    color: #ffffff !important;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: inline-block;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border-radius: 10px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+}
+
+.btn-brutal-black:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(229, 9, 20, 0.3);
+    background: #e50914;
+    color: #ffffff !important;
+}
+
+/* --- EMPTY / ACCORDION BOX --- */
 .epic-empty-box {
-    border: 1px dashed #dcdcdc;
+    border: 1px dashed #d1d5db;
     border-radius: 20px;
     padding: 60px 40px;
     background: #ffffff;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.01);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.01);
 }
 
-.epic-empty-box h2 {
-    font-family: 'Outfit', sans-serif;
-    font-weight: 700;
-    font-size: 24px;
+.glass-empty-box {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
 }
 
-.epic-empty-box p {
-    color: #555;
-    font-size: 15px;
+.gold-glow-icon {
+    filter: drop-shadow(0 0 6px rgba(229, 9, 20, 0.25));
 }

@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import './Checkout.css';
+import './Membership.css';
 
 const Checkout = () => {
     const navigate = useNavigate();
@@ -501,8 +502,18 @@ const Checkout = () => {
 
     return (
         <Layout>
-            <div className="container checkout-container">
-                <form onSubmit={handleSubmit}>
+            <div className="shop-epic-theme checkout-page-wrapper position-relative">
+                <div className="epic-member-header">
+                    <div className="container text-center">
+                        <span className="epic-tag animate__animated animate__fadeInDown d-inline-block">THANH TOÁN</span>
+                        <h1 className="epic-header-title mt-3 animate__animated animate__fadeInUp">THANH TOÁN</h1>
+                        <p className="font-oswald text-light mx-auto mt-4 letter-spacing-1 fw-bold text-uppercase fs-5" style={{ maxWidth: '600px', opacity: 0.8 }}>
+                            Hoàn tất thông tin nhận hàng và phương thức thanh toán để nhận ngay đôi giày bạn yêu thích.
+                        </p>
+                    </div>
+                </div>
+                <div className="container checkout-container py-5 position-relative z-1">
+                    <form onSubmit={handleSubmit}>
                     <div className="row g-5">
                         <div className="col-lg-7 animate__animated animate__fadeInLeft">
                             <h3 className="section-title">THÔNG TIN GIAO HÀNG</h3>
@@ -695,6 +706,7 @@ const Checkout = () => {
                         </div>
                     </div>
                 </form>
+            </div>
             </div>
         </Layout>
     );
