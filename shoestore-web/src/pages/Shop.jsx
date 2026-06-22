@@ -23,7 +23,7 @@ const Shop = () => {
 
     const [selectedCategory, setSelectedCategory] = useState(initialCategory || '');
     const [selectedBrand, setSelectedBrand] = useState(initialBrand || '');
-    const [priceRange, setPriceRange] = useState('');
+    const [maxPrice, setMaxPrice] = useState(5000000);
     const [sortOption, setSortOption] = useState('');
     const [searchQuery, setSearchQuery] = useState(initialSearch);
     const [quickAddProductId, setQuickAddProductId] = useState(null);
@@ -39,7 +39,7 @@ const Shop = () => {
         fetchWishlistIds();
         fetchProducts();
         fetchLookbooks();
-    }, [selectedCategory, selectedBrand, priceRange, sortOption]);
+    }, [selectedCategory, selectedBrand, maxPrice, sortOption]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -144,12 +144,10 @@ const Shop = () => {
             let data = [];
             if (response.data && response.data.success) data = response.data.products || [];
             
-            if (priceRange) {
-                const [min, max] = priceRange.split('-').map(Number);
+            if (maxPrice < 5000000) {
                 data = data.filter(p => {
                     const price = p.min_price || 0;
-                    if (max) return price >= min && price <= max;
-                    return price >= min;
+                    return price <= maxPrice;
                 });
             }
             setProducts(data);
@@ -173,10 +171,37 @@ const Shop = () => {
     return (
         <Layout>
             <div className="shop-epic-theme">
-                <div className="epic-page-header py-5 bg-black text-white">
-                    <div className="container text-center">
-                        <span className="bg-danger px-2 py-1 font-oswald fw-bold fs-5 text-uppercase">CỬA HÀNG</span>
-                        <h1 className="font-oswald display-3 fw-bold mt-2 mb-0">BỘ SƯU TẬP GIÀY</h1>
+                {/* CREATIVE BRUTALIST LOOKBOOK BOARD (CENTERED & 100% INNOVATIVE) */}
+                <div className="shop-editorial-header py-5 text-center">
+                    <div className="container">
+                        <div className="animate__animated animate__fadeInDown">
+                            <span className="shop-tag-accent">CỬA HÀNG CHÍNH THỨC</span>
+                            <h1 className="shop-main-title font-oswald text-uppercase mt-3 mb-2">
+                                BỘ SƯU TẬP <span className="text-red-accent">GIÀY THỂ THAO</span>
+                            </h1>
+                            <p className="shop-sub-desc mx-auto">
+                                Khám phá phong cách thời trang đường phố từ cộng đồng ShoeStore Việt Nam.
+                            </p>
+                        </div>
+                        
+                        <div className="shop-lookbook-board mt-5 animate__animated animate__fadeInUp">
+                            <div className="collage-card card-1">
+                                <img src={getImageUrl(lookbooks[0]?.imageUrl || lookbooks[0]?.image_url || 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=600')} alt="Bộ sưu tập 1" />
+                                <span>{lookbooks[0]?.caption || '#ĐƯỜNG_PHỐ'}</span>
+                            </div>
+                            <div className="collage-card card-2">
+                                <img src={getImageUrl(lookbooks[1]?.imageUrl || lookbooks[1]?.image_url || 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600')} alt="Bộ sưu tập 2" />
+                                <span>{lookbooks[1]?.caption || '#CÁ_TÍNH'}</span>
+                            </div>
+                            <div className="collage-card card-3">
+                                <img src={getImageUrl(lookbooks[2]?.imageUrl || lookbooks[2]?.image_url || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600')} alt="Bộ sưu tập 3" />
+                                <span>{lookbooks[2]?.caption || '#THỜI_TRANG'}</span>
+                            </div>
+                            <div className="collage-card card-4">
+                                <img src={getImageUrl(lookbooks[3]?.imageUrl || lookbooks[3]?.image_url || 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600')} alt="Bộ sưu tập 4" />
+                                <span>{lookbooks[3]?.caption || '#NĂNG_ĐỘNG'}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -230,19 +255,30 @@ const Shop = () => {
                                 </div>
 
                                 <div className="mb-4">
-                                    <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">MỨC GIÁ</h6>
-                                    <select className="epic-select w-100" value={priceRange} onChange={(e) => setPriceRange(e.target.value)}>
-                                        <option value="">Tất cả các mức giá</option>
-                                        <option value="0-1000000">Dưới 1,000,000đ</option>
-                                        <option value="1000000-2000000">1,000,000đ - 2,000,000đ</option>
-                                        <option value="2000000-3000000">2,000,000đ - 3,000,000đ</option>
-                                        <option value="3000000-">Trên 3,000,000đ</option>
-                                    </select>
+                                    <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">MỨC GIÁ TỐI ĐA</h6>
+                                    <div className="epic-slider-wrapper">
+                                        <div className="epic-slider-label fw-bold mb-2 text-dark" style={{ fontSize: '14px' }}>
+                                            {maxPrice === 5000000 ? "Tất cả các mức giá" : `Dưới ${formatCurrency(maxPrice)}`}
+                                        </div>
+                                        <input 
+                                            type="range" 
+                                            min="500000" 
+                                            max="5000000" 
+                                            step="100000" 
+                                            value={maxPrice} 
+                                            onChange={(e) => setMaxPrice(Number(e.target.value))} 
+                                            className="epic-range-input w-100" 
+                                        />
+                                        <div className="d-flex justify-content-between mt-1 text-muted" style={{ fontSize: '11px', fontWeight: '600' }}>
+                                            <span>500.000đ</span>
+                                            <span>5.000.000đ+</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
                                     <button className="btn-brutal-outline w-100 mt-2" onClick={() => {
-                                        setSelectedCategory(''); setSelectedBrand(''); setPriceRange(''); setSortOption(''); setSearchQuery('');
+                                        setSelectedCategory(''); setSelectedBrand(''); setMaxPrice(5000000); setSortOption(''); setSearchQuery('');
                                     }}>XÓA BỘ LỌC</button>
                                 </div>
                             </div>
@@ -333,7 +369,7 @@ const Shop = () => {
                     <div className="row g-4 mt-5 pt-5 border-top border-light-subtle align-items-center">
                         <div className="col-md-6 animate__animated animate__fadeInLeft">
                             <div className="campaign-img-box overflow-hidden rounded-3 border border-light-subtle" style={{ aspectRatio: '16/9', background: '#f5f5f5' }}>
-                                <img src="https://images.unsplash.com/photo-1512374382149-433853003064?w=800&auto=format&fit=crop" alt="Chiến dịch" className="w-100 h-100 object-fit-cover" style={{ transition: 'transform 0.5s ease' }} />
+                                <img src="/campaign_banner.png" alt="Chiến dịch" className="w-100 h-100 object-fit-cover" style={{ transition: 'transform 0.5s ease' }} />
                             </div>
                         </div>
                         <div className="col-md-6 p-4 animate__animated animate__fadeInRight">

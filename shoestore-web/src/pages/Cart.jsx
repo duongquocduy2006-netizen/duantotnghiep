@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import 'animate.css';
 import './Cart.css';
 import './Membership.css';
 
@@ -121,7 +122,7 @@ const Cart = () => {
                 </div>
                 
                 <div className="container cart-container py-5 position-relative z-1">
-                    <div className="d-flex justify-content-between align-items-end mb-4 reveal-item opacity-0 flex-wrap gap-3">
+                    <div className="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3 animate__animated animate__fadeIn">
                         <div>
                             <h3 className="font-oswald text-uppercase m-0 fw-bold">CHI TIẾT GIỎ HÀNG</h3>
                         </div>
@@ -152,7 +153,7 @@ const Cart = () => {
 
                             <div className="cart-items-list">
                                 {cartItems.map((item, idx) => (
-                                    <div key={item.id} className="cart-item-flat reveal-item opacity-0" style={{ animationDelay: `${idx * 0.1}s` }}>
+                                    <div key={item.id} className="cart-item-flat animate__animated animate__fadeInUp" style={{ animationDelay: `${idx * 0.05}s` }}>
                                         <div className="item-img-wrapper">
                                             <img src={getImageUrl(item.image_url)} alt={item.product_name} className="item-img" />
                                         </div>

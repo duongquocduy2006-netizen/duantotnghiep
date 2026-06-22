@@ -162,13 +162,16 @@
 .flat-card-img-box {
     border-radius: 0;
     overflow: hidden;
-    background: #f8f8f8;
+    background: #f8f9fa;
     transition: all 0.3s ease;
+    padding: 0 !important;
 }
 
 .product-card-img {
     transition: transform 0.55s cubic-bezier(0.19, 1, 0.22, 1) !important;
-    object-fit: contain;
+    object-fit: cover !important;
+    width: 100% !important;
+    height: 100% !important;
 }
 .flat-product-card:hover .product-card-img {
     transform: scale(1.12) rotate(-1.5deg) !important;
@@ -276,13 +279,120 @@
     background-attachment: fixed; /* Parallax effect */
 }
 
-/* --- PAGE HEADER PARALLAX BANNER --- */
-.epic-page-header {
-    background-image: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.45) 60%, rgba(0,0,0,0.85) 100%), url('https://images.unsplash.com/photo-1556906781-9a412961c28c?auto=format&fit=crop&w=1920&q=80');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed; /* Parallax */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+/* --- BRUTALIST MOOD BOARD SHOP HEADER --- */
+.shop-editorial-header {
+    background-color: #ffffff;
+    border-bottom: 2px solid #111111;
+    padding: 70px 0 90px;
+    position: relative;
+    overflow: hidden;
+    background-image: radial-gradient(rgba(229, 9, 20, 0.08) 1.5px, transparent 1.5px);
+    background-size: 24px 24px;
+}
+
+.shop-tag-accent {
+    font-family: 'Oswald', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    background: #111111;
+    color: #ffffff;
+    padding: 6px 16px;
+    display: inline-block;
+    text-transform: uppercase;
+}
+
+.shop-main-title {
+    font-size: clamp(34px, 5vw, 52px);
+    font-weight: 900;
+    line-height: 1.1;
+    color: #111111;
+    letter-spacing: -1.5px;
+}
+
+.text-red-accent {
+    color: #e50914;
+    font-weight: 900;
+    display: inline-block;
+    position: relative;
+}
+
+.shop-sub-desc {
+    font-size: 14.5px;
+    color: #555555;
+    line-height: 1.6;
+    max-width: 500px;
+}
+
+/* Centered Fan-Out Lookbook Deck (Xòe ra sẵn & Hiệu ứng nhẹ nhàng) */
+.shop-lookbook-board {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 24px;
+    position: relative;
+    max-width: 900px;
+    margin: 40px auto 0;
+    padding: 20px 0;
+}
+
+.collage-card {
+    position: relative;
+    width: 170px;
+    background: #ffffff;
+    border: 2px solid #111111;
+    padding: 12px 12px 28px;
+    box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    cursor: pointer;
+}
+
+.collage-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border: 1px solid #eaeaea;
+    background: #fdfdfd;
+}
+
+.collage-card span {
+    font-family: 'Oswald', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: block;
+    text-align: center;
+    margin-top: 10px;
+    color: #111111;
+    letter-spacing: 0.5px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Card positions with custom tilts - already fanned out by default, not overlapping */
+.card-1 {
+    transform: rotate(-4deg) translateY(8px);
+}
+
+.card-2 {
+    transform: rotate(-1.5deg) translateY(2deg);
+}
+
+.card-3 {
+    transform: rotate(1.5deg) translateY(2deg);
+}
+
+.card-4 {
+    transform: rotate(4deg) translateY(8px);
+}
+
+/* Hover over individual card: very gentle lift and clean red border highlight, no card deck jumpiness */
+.collage-card:hover {
+    transform: rotate(0deg) translateY(-8px) scale(1.03) !important;
+    box-shadow: 0 10px 20px rgba(229, 9, 20, 0.15);
+    border-color: #e50914;
+    z-index: 10;
 }
 
 /* --- CAMPAIGN & LOOKBOOK DECORATIVE --- */
@@ -372,4 +482,93 @@
     color: #71717a;
     max-width: 500px;
     margin: 0 auto;
+}
+
+/* --- EPIC RANGE SLIDER CUSTOM STYLING (RED, BLACK & WHITE) --- */
+.epic-slider-wrapper {
+    background: #fafafa;
+    border: 1px solid #eaeaea;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.epic-slider-label {
+    letter-spacing: 0.5px;
+    color: #111 !important;
+}
+
+.epic-range-input {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    outline: none;
+    margin: 10px 0;
+    padding: 0;
+}
+
+/* Webkit browser slider track & thumb */
+.epic-range-input::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    cursor: pointer;
+    background: #e0e0e0;
+    border-radius: 3px;
+}
+
+.epic-range-input::-webkit-slider-thumb {
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    background: #e50914; /* Brand Red */
+    border: 2px solid #ffffff;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -6px; /* Center the thumb */
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.epic-range-input::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background-color: #111111; /* Turn Black on hover for interactive feel */
+    border-color: #e50914;
+}
+
+.epic-range-input::-webkit-slider-thumb:active {
+    transform: scale(1.3);
+    background-color: #e50914;
+}
+
+/* Firefox browser slider track & thumb */
+.epic-range-input::-moz-range-track {
+    width: 100%;
+    height: 6px;
+    cursor: pointer;
+    background: #e0e0e0;
+    border-radius: 3px;
+}
+
+.epic-range-input::-moz-range-thumb {
+    height: 18px;
+    width: 18px;
+    border-radius: 50%;
+    background: #e50914;
+    border: 2px solid #ffffff;
+    cursor: pointer;
+    transition: transform 0.15s ease, background-color 0.15s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.epic-range-input::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    background-color: #111111;
+    border-color: #e50914;
+}
+
+.epic-range-input::-moz-range-thumb:active {
+    transform: scale(1.3);
+    background-color: #e50914;
 }

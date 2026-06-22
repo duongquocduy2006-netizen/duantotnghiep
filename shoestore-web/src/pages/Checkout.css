@@ -92,7 +92,7 @@
     border-bottom: 1px solid #eee;
 }
 
-.item-img {
+.order-summary-item .item-img {
     width: 60px;
     height: 60px;
     object-fit: contain;
