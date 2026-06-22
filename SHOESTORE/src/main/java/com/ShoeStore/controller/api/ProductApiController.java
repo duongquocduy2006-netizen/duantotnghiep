@@ -667,10 +667,16 @@ public class ProductApiController {
             List<Object> params = new java.util.ArrayList<>();
 
             String searchTerm = keyword != null ? keyword : q;
-            // Lọc theo từ khóa
+            // Lọc theo từ khóa (Tên sản phẩm, thương hiệu hoặc danh mục) - Smart Search
             if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                sql.append("AND p.product_name LIKE ? ");
-                params.add("%" + searchTerm.trim() + "%");
+                String[] words = searchTerm.trim().split("\\s+");
+                for (String word : words) {
+                    String term = "%" + word + "%";
+                    sql.append("AND (p.product_name LIKE ? OR p.brand_name LIKE ? OR c.category_name LIKE ?) ");
+                    params.add(term);
+                    params.add(term);
+                    params.add(term);
+                }
             }
 
             // Lọc theo Thương hiệu (IN)

@@ -250,6 +250,12 @@
     z-index: 3;
 }
 
+.metallic-card-title {
+    color: #ffffff !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+
 .id-card-top {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
     padding-bottom: 15px;

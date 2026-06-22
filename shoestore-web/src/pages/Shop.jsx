@@ -10,8 +10,7 @@ const Shop = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
-    const initialCategory = queryParams.get('category') ? parseInt(queryParams.get('category')) : null;
-    const initialBrand = queryParams.get('brand') ? parseInt(queryParams.get('brand')) : null;
+    const initialBrand = queryParams.get('brand') || '';
     const initialSearch = queryParams.get('search') || '';
 
     const [products, setProducts] = useState([]);
@@ -21,8 +20,8 @@ const Shop = () => {
     const [wishlistIds, setWishlistIds] = useState([]);
     const [lookbooks, setLookbooks] = useState([]);
 
-    const [selectedCategory, setSelectedCategory] = useState(initialCategory || '');
-    const [selectedBrand, setSelectedBrand] = useState(initialBrand || '');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [selectedBrand, setSelectedBrand] = useState(initialBrand);
     const [maxPrice, setMaxPrice] = useState(5000000);
     const [sortOption, setSortOption] = useState('');
     const [searchQuery, setSearchQuery] = useState(initialSearch);
@@ -35,10 +34,52 @@ const Shop = () => {
     }, []);
 
     useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        
+        // 1. Đồng bộ từ khóa tìm kiếm
+        const searchParam = queryParams.get('search') || '';
+        if (searchParam !== searchQuery) {
+            setSearchQuery(searchParam);
+        }
+
+        // 2. Đồng bộ thương hiệu (Chuỗi tên thương hiệu)
+        const brandParam = queryParams.get('brand') || '';
+        if (brandParam !== selectedBrand) {
+            setSelectedBrand(brandParam);
+        }
+
+        // 3. Đồng bộ danh mục (Hỗ trợ cả ID số hoặc Tên danh mục chữ từ URL)
+        const catParam = queryParams.get('category') || '';
+        if (catParam !== '') {
+            const parsedId = parseInt(catParam);
+            if (!isNaN(parsedId)) {
+                if (parsedId !== selectedCategory) {
+                    setSelectedCategory(parsedId);
+                }
+            } else if (categories.length > 0) {
+                const matchedCat = categories.find(c => {
+                    const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
+                    const param = catParam.toLowerCase();
+                    if (name.includes(param) || param.includes(name)) return true;
+                    if (param === 'running' && name.includes('chạy bộ')) return true;
+                    if (param === 'sneaker' && name.includes('sneaker')) return true;
+                    return false;
+                });
+                if (matchedCat && matchedCat.id !== selectedCategory) {
+                    setSelectedCategory(matchedCat.id);
+                }
+            }
+        }
+    }, [location.search, categories]);
+
+    useEffect(() => {
         fetchFilters();
         fetchWishlistIds();
-        fetchProducts();
         fetchLookbooks();
+    }, []);
+
+    useEffect(() => {
+        fetchProducts();
     }, [selectedCategory, selectedBrand, maxPrice, sortOption]);
 
     useEffect(() => {
@@ -47,6 +88,50 @@ const Shop = () => {
         }, 500);
         return () => clearTimeout(handler);
     }, [searchQuery]);
+
+    useEffect(() => {
+        if (!searchQuery) return;
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return;
+
+        const words = query.split(/\s+/);
+
+        // 1. Quét tìm danh mục trùng khớp thông minh (cộng các ký tự)
+        if (categories.length > 0) {
+            const matchedCat = categories.find(c => {
+                const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
+                // Match if any of the words match the category name
+                for (let word of words) {
+                    if (name === word || name.includes(word) || word.includes(name)) return true;
+                    if (word === 'running' && name.includes('chạy bộ')) return true;
+                    if (word === 'sneaker' && name.includes('sneaker')) return true;
+                }
+                if (query.includes('chạy bộ') && name.includes('chạy bộ')) return true;
+                if (query.includes('thể thao') && name.includes('thể thao')) return true;
+                return false;
+            });
+            if (matchedCat && matchedCat.id !== selectedCategory) {
+                setSelectedCategory(matchedCat.id);
+            }
+        }
+
+        // 2. Quét tìm thương hiệu trùng khớp thông minh
+        if (brands.length > 0) {
+            const matchedBrand = brands.find(b => {
+                const name = (b.name || b.brand_name || b.brandName || '').toLowerCase();
+                for (let word of words) {
+                    if (name === word || name.includes(word) || word.includes(name)) return true;
+                }
+                return false;
+            });
+            if (matchedBrand) {
+                const bName = matchedBrand.name || matchedBrand.brand_name || matchedBrand.brandName;
+                if (bName !== selectedBrand) {
+                    setSelectedBrand(bName);
+                }
+            }
+        }
+    }, [searchQuery, categories, brands]);
 
     useEffect(() => {
         observerRef.current = new IntersectionObserver((entries) => {
@@ -212,11 +297,6 @@ const Shop = () => {
                             <div className="epic-filter-sidebar bg-white border border-light-subtle p-4 rounded-3">
                                 <h4 className="font-oswald fw-bold text-uppercase mb-4 pb-2 border-bottom border-light-subtle">BỘ LỌC TÌM KIẾM</h4>
 
-                                <div className="mb-4">
-                                    <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">TÌM KIẾM</h6>
-                                    <input type="text" className="epic-input w-100" placeholder="Nhập tên sản phẩm..."
-                                        value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                                </div>
 
                                 <div className="mb-4">
                                     <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">DANH MỤC</h6>
@@ -244,13 +324,16 @@ const Shop = () => {
                                                 checked={selectedBrand === ''} onChange={() => setSelectedBrand('')} />
                                             <label className="form-check-label fw-bold" htmlFor="brandAll">Tất cả</label>
                                         </div>
-                                        {brands.map(brand => (
-                                            <div className="form-check epic-radio" key={brand.id}>
-                                                <input className="form-check-input" type="radio" name="brand" id={`brand${brand.id}`}
-                                                    checked={selectedBrand === brand.id} onChange={() => setSelectedBrand(brand.id)} />
-                                                <label className="form-check-label fw-bold" htmlFor={`brand${brand.id}`}>{brand.name || brand.brand_name || brand.brandName}</label>
-                                            </div>
-                                        ))}
+                                        {brands.map(brand => {
+                                            const bName = brand.name || brand.brand_name || brand.brandName || '';
+                                            return (
+                                                <div className="form-check epic-radio" key={brand.id}>
+                                                    <input className="form-check-input" type="radio" name="brand" id={`brand${brand.id}`}
+                                                        checked={selectedBrand === bName} onChange={() => setSelectedBrand(bName)} />
+                                                    <label className="form-check-label fw-bold" htmlFor={`brand${brand.id}`}>{bName}</label>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -278,6 +361,7 @@ const Shop = () => {
 
                                 <div>
                                     <button className="btn-brutal-outline w-100 mt-2" onClick={() => {
+                                        navigate('/shop');
                                         setSelectedCategory(''); setSelectedBrand(''); setMaxPrice(5000000); setSortOption(''); setSearchQuery('');
                                     }}>XÓA BỘ LỌC</button>
                                 </div>

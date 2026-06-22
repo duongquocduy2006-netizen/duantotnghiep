@@ -208,7 +208,7 @@ const Membership = () => {
                                     }}>
                                         <div className="metallic-glare"></div>
                                         <div className="id-card-top pb-3 d-flex justify-content-between align-items-center">
-                                            <h3 className="font-oswald fw-bold text-uppercase m-0" style={{ letterSpacing: '1.5px', fontSize: '18px', color: '#111' }}>PHỐ SNEAKER</h3>
+                                            <h3 className="font-oswald fw-bold text-uppercase m-0 metallic-card-title" style={{ letterSpacing: '1.5px', fontSize: '18px' }}>PHỐ SNEAKER</h3>
                                             <div className="epic-rank-badge" style={{ background: rankInfo?.colorCode || '#e50914', color: '#fff', fontWeight: '800' }}>
                                                 {rankInfo ? rankInfo.rankName : (userInfo.rank_name || 'THÀNH VIÊN')}
                                             </div>
