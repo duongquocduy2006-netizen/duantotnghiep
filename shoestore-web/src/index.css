@@ -275,6 +275,22 @@ a {
   }
 }
 
+.mega-column ul li a {
+  color: #bbb !important;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+  padding: 5px 0;
+  transition: var(--transition);
+}
+
+.mega-column ul li a:hover {
+  color: var(--cine-accent) !important;
+  transform: translateX(10px);
+  text-shadow: var(--glow-shadow);
+}
+
 /* --- FOOTER STYLES --- */
 .custom-footer {
   background-color: var(--footer-bg);
