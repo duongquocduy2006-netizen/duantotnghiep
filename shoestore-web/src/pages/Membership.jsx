@@ -42,16 +42,16 @@ const getPerksForRank = (r) => {
         return [
             `Giảm giá ${discount}% tất cả hóa đơn`,
             isFreeShipping ? 'Miễn phí giao hàng không giới hạn' : 'Miễn phí giao hàng đơn từ 500K',
-            'Quyền mua Sneaker bản giới hạn',
-            'Lối đi riêng & thử giày VIP tại Store',
-            'Chăm sóc đặc biệt 24/7'
+            'Quyền mua giày thể thao bản giới hạn',
+            'Lối đi riêng & thử giày đặc quyền tại cửa hàng',
+            'Hỗ trợ chăm sóc đặc biệt hằng ngày'
         ];
     } else if (lower.includes('vàng') || lower.includes('gold')) {
         return [
             `Giảm giá ${discount}% tất cả hóa đơn`,
             isFreeShipping ? 'Miễn phí giao hàng toàn quốc' : 'Miễn phí giao hàng đơn từ 500K',
             'Ưu tiên đặt trước giày sắp ra mắt',
-            'Quà tặng sinh nhật VIP',
+            'Quà tặng sinh nhật đặc quyền',
             'Hỗ trợ khách hàng ưu tiên'
         ];
     } else if (lower.includes('bạc') || lower.includes('silver')) {
@@ -153,11 +153,11 @@ const Membership = () => {
         return (
             <Layout>
                 <div className="member-epic-theme">
-                    <div className="container py-5 text-center my-5 epic-empty-box animate__animated animate__fadeIn">
-                        <i className="fa fa-id-card fa-4x text-danger mb-4"></i>
-                        <h2 className="font-oswald fw-bold text-uppercase mb-3">CHƯƠNG TRÌNH THÀNH VIÊN</h2>
-                        <p className="fw-bold mb-4">Bạn cần đăng nhập để xem thông tin hạng thẻ và nhận mã giảm giá đặc quyền.</p>
-                        <Link to="/login" className="btn-brutal-black">ĐĂNG NHẬP NGAY</Link>
+                    <div className="container py-5 text-center my-5 epic-empty-box glass-empty-box animate__animated animate__fadeIn">
+                        <i className="fa fa-id-card fa-4x text-gold mb-4 gold-glow-icon"></i>
+                        <h2 className="font-oswald fw-bold text-uppercase text-light mb-3">CHƯƠNG TRÌNH THÀNH VIÊN ELITE</h2>
+                        <p className="text-muted-custom mb-4">Bạn cần đăng nhập để xem thông tin hạng thẻ và nhận mã giảm giá đặc quyền.</p>
+                        <Link to="/login" className="btn-gold-elite">ĐĂNG NHẬP NGAY</Link>
                     </div>
                 </div>
             </Layout>
@@ -170,56 +170,79 @@ const Membership = () => {
     return (
         <Layout>
             <div className="member-epic-theme">
-                {/* EPIC MEMBER HEADER */}
-                <div className="epic-member-header">
-                    <div className="container text-center">
-                        <span className="epic-tag">MEMBERSHIP PROGRAM</span>
-                        <h1 className="epic-header-title mt-3 animate__animated animate__fadeInDown">HELLO, <span className="text-red">{userInfo.full_name || userInfo.email}</span></h1>
-                    </div>
-                </div>
-
-                <div className="container py-5">
-                    <div className="row g-5 align-items-stretch">
-                        <div className="col-lg-5 d-flex flex-column justify-content-center">
-                            {/* PREMIUM SMART CREDIT CARD */}
-                            <div className="metallic-card-container animate__animated animate__fadeInLeft">
-                                <div className="epic-id-card metallic-card" style={{ 
-                                    borderColor: rankInfo?.colorCode || '#e50914',
-                                    '--rank-color': rankInfo?.colorCode || '#e50914',
-                                    '--rank-color-rgb': hexToRgb(rankInfo?.colorCode)
-                                }}>
-                                    <div className="metallic-glare"></div>
-                                    <div className="id-card-top pb-3 d-flex justify-content-between align-items-center">
-                                        <h3 className="font-oswald fw-bold text-uppercase m-0" style={{ letterSpacing: '1.5px', fontSize: '18px' }}>SNEAKER STREET</h3>
-                                        <div className="epic-rank-badge" style={{ background: rankInfo?.colorCode || '#e50914', color: '#fff' }}>
-                                            {rankInfo ? rankInfo.rankName : (userInfo.rank_name || 'MEMBER')}
+                {/* DYNAMIC INTEGRATED CONSOLE HEADER (CREATIVE & NON-GENERIC) */}
+                <div className="mbr-console-header py-5">
+                    <div className="container">
+                        <div className="row g-5 align-items-center">
+                            <div className="col-lg-7 animate__animated animate__fadeInLeft">
+                                <div className="mbr-welcome-box">
+                                    <span className="mbr-status-tag">THÀNH VIÊN ĐẶC BIỆT</span>
+                                    <h1 className="mbr-welcome-title mt-3">
+                                        XIN CHÀO, <br />
+                                        <span className="text-red font-oswald text-uppercase">{userInfo.full_name || userInfo.email}</span>
+                                    </h1>
+                                    <p className="mbr-welcome-desc mt-3">
+                                        Chào mừng bạn đã trở lại với **Phố Sneaker**. Đây là không gian quản lý đặc quyền dành riêng cho tài khoản của bạn. Cùng theo dõi tiến trình tích lũy, các quyền lợi phân hạng và thẻ giảm giá ngay bên dưới.
+                                    </p>
+                                    <div className="mbr-quick-status mt-4 d-flex align-items-center gap-4">
+                                        <div className="status-item">
+                                            <span className="label text-muted-custom">HẠNG THẺ HIỆN TẠI</span>
+                                            <span className="value text-red font-oswald text-uppercase">{rankInfo ? rankInfo.rankName : (userInfo.rank_name || 'THÀNH VIÊN')}</span>
+                                        </div>
+                                        <div className="status-separator"></div>
+                                        <div className="status-item">
+                                            <span className="label text-muted-custom">ĐIỂM TÍCH LŨY</span>
+                                            <span className="value text-dark font-numeric">{formatNumber(totalSpent)}</span>
                                         </div>
                                     </div>
-                                    <div className="id-card-middle flex-grow-1 d-flex flex-column justify-content-center">
-                                        <div className="card-chip"></div>
-                                        <div className="card-number">{formatCardNumber(userInfo.user_code)}</div>
-                                    </div>
-                                    <div className="id-card-bottom pt-3 d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <div className="text-uppercase fw-bold text-muted small letter-spacing-1">CARDHOLDER</div>
-                                            <div className="card-holder-name text-uppercase">{userInfo.full_name || userInfo.email}</div>
+                                </div>
+                            </div>
+                            
+                            <div className="col-lg-5 d-flex justify-content-center animate__animated animate__fadeInRight">
+                                {/* PREMIUM SMART CREDIT CARD */}
+                                <div className="metallic-card-container">
+                                    <div className="epic-id-card metallic-card" style={{ 
+                                        borderColor: rankInfo?.colorCode || '#e50914',
+                                        '--rank-color': rankInfo?.colorCode || '#e50914',
+                                        '--rank-color-rgb': hexToRgb(rankInfo?.colorCode)
+                                    }}>
+                                        <div className="metallic-glare"></div>
+                                        <div className="id-card-top pb-3 d-flex justify-content-between align-items-center">
+                                            <h3 className="font-oswald fw-bold text-uppercase m-0" style={{ letterSpacing: '1.5px', fontSize: '18px', color: '#111' }}>PHỐ SNEAKER</h3>
+                                            <div className="epic-rank-badge" style={{ background: rankInfo?.colorCode || '#e50914', color: '#fff', fontWeight: '800' }}>
+                                                {rankInfo ? rankInfo.rankName : (userInfo.rank_name || 'THÀNH VIÊN')}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="text-uppercase fw-bold text-muted small letter-spacing-1 text-end">NFC</div>
-                                            <i className="fa-solid fa-nfc-symbol nfc-icon text-end d-block" style={{ color: rankInfo?.colorCode || '#e50914' }}></i>
+                                        <div className="id-card-middle flex-grow-1 d-flex flex-column justify-content-center">
+                                            <div className="card-chip"></div>
+                                            <div className="card-number">{formatCardNumber(userInfo.user_code)}</div>
+                                        </div>
+                                        <div className="id-card-bottom pt-3 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div className="text-uppercase fw-bold text-muted-custom small letter-spacing-1">CHỦ THẺ</div>
+                                                <div className="card-holder-name text-uppercase">{userInfo.full_name || userInfo.email}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-uppercase fw-bold text-muted-custom small letter-spacing-1 text-end">CHÍP BẢO MẬT</div>
+                                                <i className="fa-solid fa-microchip nfc-icon text-end d-block" style={{ color: rankInfo?.colorCode || '#e50914' }}></i>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div className="col-lg-7">
+                <div className="container py-4">
+                    <div className="row g-4">
+                        <div className="col-12">
                             {/* EPIC STATS */}
-                            <div className="epic-stats-box animate__animated animate__fadeInRight">
+                            <div className="epic-stats-box animate__animated animate__fadeInUp">
                                 <h3 className="font-oswald fw-bold text-uppercase mb-4 pb-2">TIẾN ĐỘ THĂNG HẠNG CỦA BẠN</h3>
                                 
-                                <div className="d-flex justify-content-between font-oswald fw-bold text-uppercase mb-2" style={{ fontSize: '13px', color: '#555' }}>
-                                    <span>{rankInfo ? rankInfo.rankName : (userInfo.rank_name || 'CURRENT')}</span>
+                                <div className="d-flex justify-content-between font-oswald fw-bold text-uppercase mb-2" style={{ fontSize: '13px', color: '#666' }}>
+                                    <span>{rankInfo ? rankInfo.rankName : (userInfo.rank_name || 'HẠNG HIỆN TẠI')}</span>
                                     <span>{nextRank ? nextRank.rankName : 'HẠNG TỐI ĐA'}</span>
                                 </div>
                                 
@@ -228,21 +251,21 @@ const Membership = () => {
                                 </div>
                                 
                                 {nextRank ? (
-                                    <p className="fw-bold mb-4" style={{ fontSize: '15px', color: '#444' }}>
+                                    <p className="fw-bold mb-4" style={{ fontSize: '15px', color: '#333' }}>
                                         Cần tích lũy thêm <span className="text-red fs-5" style={{ fontWeight: '700' }}>{formatNumber(nextRank.minPoints - totalSpent)} điểm</span> để thăng hạng <span className="font-oswald text-red" style={{ fontWeight: '700' }}>{nextRank.rankName}</span>
                                     </p>
                                 ) : (
                                     <p className="fw-bold text-success mb-4" style={{ fontSize: '15px' }}>Chúc mừng! Bạn đã đạt hạng thẻ cao nhất và sở hữu toàn bộ đặc quyền.</p>
                                 )}
 
-                                <div className="row g-4 pt-3 mt-2">
+                                <div className="row g-4 pt-3 mt-2 stats-details-row">
                                     <div className="col-6">
-                                        <div className="text-uppercase fw-bold text-muted letter-spacing-1">ĐIỂM TÍCH LŨY HIỆN TẠI</div>
+                                        <div className="text-uppercase fw-bold text-muted-custom letter-spacing-1">ĐIỂM TÍCH LŨY HIỆN TẠI</div>
                                         <div className="font-numeric fs-2 text-red">{formatNumber(totalSpent)}</div>
                                     </div>
-                                    <div className="col-6 border-start">
-                                        <div className="text-uppercase fw-bold text-muted letter-spacing-1 ps-3">MÃ THÀNH VIÊN</div>
-                                        <div className="font-numeric fs-2 ps-3" style={{ color: '#111' }}>{userInfo.user_code || 'MEMBER'}</div>
+                                    <div className="col-6 border-start border-secondary">
+                                        <div className="text-uppercase fw-bold text-muted-custom letter-spacing-1 ps-3">MÃ THÀNH VIÊN</div>
+                                        <div className="font-numeric fs-2 ps-3 text-dark">{userInfo.user_code || 'THÀNH VIÊN'}</div>
                                     </div>
                                 </div>
                             </div>
@@ -298,7 +321,7 @@ const Membership = () => {
                     <div className="mt-5 pt-5">
                         <div className="section-header">
                             <h2>HƯỚNG DẪN TÍCH ĐIỂM</h2>
-                            <p>Cách hoạt động cực kỳ đơn giản để bạn thăng hạng và nhận các quyền lợi VIP.</p>
+                            <p>Cách hoạt động cực kỳ đơn giản để bạn thăng hạng và nhận các đặc quyền cao nhất.</p>
                         </div>
                         <div className="how-it-works-grid">
                             <div className="step-card">
@@ -322,8 +345,8 @@ const Membership = () => {
                                 <div className="step-icon-wrapper">
                                     <i className="fa-solid fa-gift"></i>
                                 </div>
-                                <h4>Nhận Đặc Quyền VIP</h4>
-                                <p>Tự động giảm giá trực tiếp vào hóa đơn tiếp theo, nhận ưu đãi sinh nhật và đặc quyền mua các đôi giày limited trước mọi người.</p>
+                                <h4>Nhận Đặc Quyền Ưu Tiên</h4>
+                                <p>Tự động giảm giá trực tiếp vào hóa đơn tiếp theo, nhận ưu đãi sinh nhật và đặc quyền mua các đôi giày giới hạn trước mọi người.</p>
                             </div>
                         </div>
                     </div>
@@ -394,20 +417,20 @@ const Membership = () => {
                             </div>
                             <div className={`faq-item ${activeFaq === 2 ? 'active-faq' : ''}`}>
                                 <button className="faq-question-btn" onClick={() => toggleFaq(2)}>
-                                    Chiết khấu thành viên có áp dụng đồng thời với các voucher khác không?
+                                    Chiết khấu thành viên có áp dụng đồng thời với các mã giảm giá khác không?
                                     <i className="fa-solid fa-chevron-down"></i>
                                 </button>
                                 <div className="faq-answer">
-                                    Có! Chiết khấu theo hạng thành viên (ví dụ Bạc giảm 5%, Vàng giảm 10%, Kim Cương giảm 15%) được trừ trực tiếp vào giá trị của từng sản phẩm. Bạn vẫn có thể nhập thêm các mã giảm giá voucher, mã vận chuyển hoặc điểm tích lũy bổ sung ở bước thanh toán để tối đa hóa ưu đãi.
+                                    Có! Chiết khấu theo hạng thành viên (ví dụ Bạc giảm 5%, Vàng giảm 10%, Kim Cương giảm 15%) được trừ trực tiếp vào giá trị của từng sản phẩm. Bạn vẫn có thể nhập thêm các mã giảm giá, mã vận chuyển hoặc điểm tích lũy bổ sung ở bước thanh toán để tối đa hóa ưu đãi.
                                 </div>
                             </div>
                             <div className={`faq-item ${activeFaq === 3 ? 'active-faq' : ''}`}>
                                 <button className="faq-question-btn" onClick={() => toggleFaq(3)}>
-                                    Đặc quyền mua trước Sneaker giới hạn hoạt động như thế nào?
+                                    Đặc quyền đặt mua trước giày giới hạn hoạt động như thế nào?
                                     <i className="fa-solid fa-chevron-down"></i>
                                 </button>
                                 <div className="faq-answer">
-                                    Đối với các dòng giày giới hạn (Limited Edition), thành viên hạng Vàng và Kim Cương sẽ được gửi email thông báo và mở trang đặt trước (pre-order) sớm từ 24h - 48h trước khi sản phẩm được bán công khai ngoài thị trường để đảm bảo bạn không bỏ lỡ đôi giày yêu thích.
+                                    Đối với các dòng giày giới hạn đặc biệt, thành viên hạng Vàng và Kim Cương sẽ được gửi thư thông báo và mở trang đặt hàng trước sớm từ 24 giờ - 48 giờ trước khi sản phẩm được bán công khai ngoài thị trường để đảm bảo không bỏ lỡ đôi giày yêu thích.
                                 </div>
                             </div>
                         </div>
