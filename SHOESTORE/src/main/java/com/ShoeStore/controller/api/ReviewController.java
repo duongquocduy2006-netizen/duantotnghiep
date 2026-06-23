@@ -123,6 +123,53 @@ public class ReviewController {
         return response;
     }
 
+    @PostMapping("/edit")
+    public Map<String, Object> editReview(
+            @RequestParam("id") Integer id,
+            @RequestParam("content") String content,
+            @RequestParam(value = "rating", required = false) Integer rating,
+            HttpSession session) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        @SuppressWarnings("unchecked")
+        Map<String, Object> account = (Map<String, Object>) session.getAttribute("account");
+        
+        if (account == null) {
+            response.put("success", false);
+            response.put("message", "Vui lòng đăng nhập!");
+            return response;
+        }
+        
+        Integer currentUserId = (Integer) account.get("id");
+        
+        try {
+            Map<String, Object> review = jdbc.queryForMap("SELECT user_id, parent_id FROM product_reviews WHERE id = ?", id);
+            Integer authorId = (Integer) review.get("user_id");
+            Integer parentId = (Integer) review.get("parent_id");
+            
+            if (!currentUserId.equals(authorId)) {
+                response.put("success", false);
+                response.put("message", "Bạn không có quyền sửa bình luận này!");
+                return response;
+            }
+            
+            if (parentId == null) {
+                int finalRating = (rating == null || rating <= 0) ? 5 : rating;
+                jdbc.update("UPDATE product_reviews SET rating = ?, content = ? WHERE id = ?", finalRating, content, id);
+            } else {
+                jdbc.update("UPDATE product_reviews SET content = ? WHERE id = ?", content, id);
+            }
+            
+            response.put("success", true);
+            response.put("message", "Đã cập nhật bình luận!");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi: " + e.getMessage());
+        }
+        return response;
+    }
+
     @PostMapping("/delete")
     public Map<String, Object> deleteReview(@RequestParam("id") Integer id, HttpSession session) {
         Map<String, Object> response = new HashMap<>();

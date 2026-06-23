@@ -72,10 +72,18 @@ public class OrderService {
             updateUserRank(userId);
         }
 
-        // 4. Nếu chuyển sang trạng thái "Đã hủy" (4) và trước đó chưa hủy
+        // Nếu chuyển sang trạng thái "Đang giao" (2) và trước đó là "Chờ duyệt" (1)
+        if (newStatus == 2 && oldStatus == 1) {
+            // Trừ tồn kho sản phẩm
+            updateInventory(orderCode);
+        }
+
+        // Nếu chuyển sang trạng thái "Đã hủy" (4)
         if (newStatus == 4 && oldStatus != 4) {
-            // Khôi phục tồn kho sản phẩm
-            restoreInventory(orderCode);
+            // Chỉ khôi phục tồn kho nếu trước đó đã bị trừ (tức là trạng thái 2 hoặc 3)
+            if (oldStatus == 2 || oldStatus == 3) {
+                restoreInventory(orderCode);
+            }
         }
     }
 

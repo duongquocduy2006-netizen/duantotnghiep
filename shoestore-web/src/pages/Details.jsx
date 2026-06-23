@@ -17,6 +17,19 @@ const Details = () => {
     const [variants, setVariants] = useState([]);
     const [relatedProducts, setRelatedProducts] = useState([]);
     const [vouchers, setVouchers] = useState([]);
+    const [reviews, setReviews] = useState([]);
+    const [reviewCount, setReviewCount] = useState(0);
+    const [avgRating, setAvgRating] = useState(0);
+    const [hasPurchased, setHasPurchased] = useState(false);
+    const [reviewContent, setReviewContent] = useState('');
+    const [reviewRating, setReviewRating] = useState(5);
+
+    const [currentUser, setCurrentUser] = useState(null);
+    const [activeReplyId, setActiveReplyId] = useState(null);
+    const [replyContent, setReplyContent] = useState('');
+    const [activeEditId, setActiveEditId] = useState(null);
+    const [editContent, setEditContent] = useState('');
+    const [editRating, setEditRating] = useState(null);
 
     const [mainImage, setMainImage] = useState('');
     const [selectedVariantId, setSelectedVariantId] = useState(null);
@@ -39,14 +52,14 @@ const Details = () => {
         return `http://localhost:8080${path}`;
     };
 
-    const fetchProductDetails = async () => {
+    const fetchProductDetails = async (showLoading = true) => {
         if (!productId) {
             setError("Mã sản phẩm không hợp lệ!");
             setLoading(false);
             return;
         }
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             const response = await api.get(`/api/products/${productId}`);
             if (response.data && response.data.success) {
                 const prodData = response.data.product;
@@ -76,6 +89,11 @@ const Details = () => {
                     setDisplayPrice(inStockVariant.price);
                 }
 
+                setReviews(response.data.reviews || []);
+                setReviewCount(response.data.reviewCount || 0);
+                setAvgRating(response.data.avgRating || 0);
+                setHasPurchased(response.data.hasPurchased || false);
+
                 fetchRelated(prodData.brandName, prodData.categoryId);
                 fetchVouchers();
                 fetchWishlistStatus();
@@ -87,6 +105,187 @@ const Details = () => {
             setError("Lỗi kết nối máy chủ.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const submitReview = async (e) => {
+        e.preventDefault();
+        if (!reviewContent.trim()) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Vui lòng nhập nội dung đánh giá!" }));
+            return;
+        }
+        try {
+            const fd = new FormData();
+            fd.append("productId", productId);
+            fd.append("rating", reviewRating);
+            fd.append("content", reviewContent);
+
+            const response = await api.post('/api/reviews/add', fd);
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Đã gửi đánh giá thành công!" }));
+                setReviewContent('');
+                setReviewRating(5);
+                fetchProductDetails(false);
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Gửi đánh giá thất bại." }));
+            }
+        } catch (err) {
+            console.error("Lỗi gửi đánh giá:", err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể gửi đánh giá." }));
+        }
+    };
+
+    const handleLikeReview = async (id) => {
+        // Snapshot state before optimistic update for rollback
+        const previousReviews = reviews;
+
+        // Optimistic UI update (tạm thời toggle để UI phản ứng ngay)
+        setReviews(prevReviews => {
+            return prevReviews.map(r => {
+                if (r.id === id) {
+                    const currentlyLiked = Number(r.user_liked) > 0;
+                    return {
+                        ...r,
+                        user_liked: currentlyLiked ? 0 : 1,
+                        like_count: (r.like_count || 0) + (currentlyLiked ? -1 : 1)
+                    };
+                }
+                if (r.replies && r.replies.length > 0) {
+                    return {
+                        ...r,
+                        replies: r.replies.map(reply => {
+                            if (reply.id === id) {
+                                const currentlyLiked = Number(reply.user_liked) > 0;
+                                return {
+                                    ...reply,
+                                    user_liked: currentlyLiked ? 0 : 1,
+                                    like_count: (reply.like_count || 0) + (currentlyLiked ? -1 : 1)
+                                };
+                            }
+                            return reply;
+                        })
+                    };
+                }
+                return r;
+            });
+        });
+
+        try {
+            const fd = new FormData();
+            fd.append("id", id);
+            const response = await api.post('/api/reviews/like', fd);
+            if (response.data && response.data.success) {
+                // Luôn dùng giá trị thực từ server để đảm bảo đồng bộ với DB
+                const serverLiked = response.data.liked;   // true | false
+                const serverCount = response.data.likeCount; // số like thực tế
+                setReviews(prevReviews => {
+                    return prevReviews.map(r => {
+                        if (r.id === id) {
+                            return {
+                                ...r,
+                                user_liked: serverLiked ? 1 : 0,
+                                like_count: serverCount
+                            };
+                        }
+                        if (r.replies && r.replies.length > 0) {
+                            return {
+                                ...r,
+                                replies: r.replies.map(reply => {
+                                    if (reply.id === id) {
+                                        return {
+                                            ...reply,
+                                            user_liked: serverLiked ? 1 : 0,
+                                            like_count: serverCount
+                                        };
+                                    }
+                                    return reply;
+                                })
+                            };
+                        }
+                        return r;
+                    });
+                });
+            } else {
+                // Rollback nếu API thất bại
+                setReviews(previousReviews);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: (response.data && response.data.message) || "Lỗi khi thích bình luận." }));
+            }
+        } catch (err) {
+            console.error(err);
+            // Rollback khi lỗi mạng
+            setReviews(previousReviews);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối." }));
+        }
+    };
+
+    const handleReplyReview = async (parentId) => {
+        if (!replyContent.trim()) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Vui lòng nhập nội dung phản hồi!" }));
+            return;
+        }
+        try {
+            const fd = new FormData();
+            fd.append("productId", productId);
+            fd.append("content", replyContent);
+            fd.append("parentId", parentId);
+            const response = await api.post('/api/reviews/add', fd);
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Gửi phản hồi thành công!" }));
+                setReplyContent('');
+                setActiveReplyId(null);
+                fetchProductDetails(false);
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Không thể gửi phản hồi." }));
+            }
+        } catch (err) {
+            console.error(err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối." }));
+        }
+    };
+
+    const handleEditReview = async (id) => {
+        if (!editContent.trim()) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Vui lòng nhập nội dung bình luận!" }));
+            return;
+        }
+        try {
+            const fd = new FormData();
+            fd.append("id", id);
+            fd.append("content", editContent);
+            if (editRating) {
+                fd.append("rating", editRating);
+            }
+            const response = await api.post('/api/reviews/edit', fd);
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Cập nhật bình luận thành công!" }));
+                setActiveEditId(null);
+                setEditContent('');
+                setEditRating(null);
+                fetchProductDetails(false);
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Không thể cập nhật bình luận." }));
+            }
+        } catch (err) {
+            console.error(err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối." }));
+        }
+    };
+
+    const handleDeleteReview = async (id) => {
+        if (!window.confirm("Bạn có chắc muốn xóa bình luận này?")) return;
+        try {
+            const fd = new FormData();
+            fd.append("id", id);
+            const response = await api.post('/api/reviews/delete', fd);
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Đã xóa bình luận thành công!" }));
+                fetchProductDetails(false);
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Không thể xóa bình luận." }));
+            }
+        } catch (err) {
+            console.error(err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối." }));
         }
     };
 
@@ -114,6 +313,9 @@ const Details = () => {
         }
     };
 
+    const [cartError, setCartError] = useState('');
+    const [cartSuccess, setCartSuccess] = useState('');
+
     const fetchWishlistStatus = async () => {
         try {
             const response = await api.get('/api/favourites/ids');
@@ -129,12 +331,26 @@ const Details = () => {
     useEffect(() => {
         window.scrollTo(0, 0);
         fetchProductDetails();
+        
+        const fetchProfile = async () => {
+            try {
+                const res = await api.get('/api/profile');
+                if (res.data && res.data.success) {
+                    setCurrentUser(res.data.account);
+                }
+            } catch (err) {
+                console.error("Lỗi lấy thông tin tài khoản:", err);
+            }
+        };
+        fetchProfile();
     }, [productId]);
 
     const handleVariantClick = (v) => {
         setSelectedVariantId(v.id);
         setCurrentStock(v.quantity);
         setDisplayPrice(v.price);
+        setCartError('');
+        setCartSuccess('');
 
         if (qty > v.quantity && v.quantity > 0) {
             setQty(v.quantity);
@@ -144,44 +360,55 @@ const Details = () => {
     };
 
     const handleIncrease = () => {
-        if (!selectedVariantId) { alert("Vui lòng chọn Size & Màu sắc!"); return; }
+        setCartError('');
+        setCartSuccess('');
+        if (!selectedVariantId) { setCartError("Vui lòng chọn Size & Màu sắc!"); return; }
         if (qty < currentStock) setQty(qty + 1);
+        else setCartError(`Chỉ có thể mua tối đa ${currentStock} sản phẩm`);
     };
 
     const handleDecrease = () => {
+        setCartError('');
+        setCartSuccess('');
         if (qty > 1) setQty(qty - 1);
     };
 
     const handleAddToCart = async () => {
-        if (!selectedVariantId) { alert("Vui lòng chọn Size & Màu sắc!"); return; }
-        if (currentStock <= 0) { alert("Sản phẩm này hết hàng!"); return; }
+        setCartError('');
+        setCartSuccess('');
+        if (!selectedVariantId) { setCartError("Vui lòng chọn Size & Màu sắc!"); return; }
+        if (currentStock <= 0) { setCartError("Sản phẩm này hết hàng!"); return; }
         try {
             const response = await api.post('/api/cart/add', { variantId: selectedVariantId, quantity: qty });
             if (response.data && response.data.success) {
-                alert(`Đã thêm ${qty} sản phẩm vào giỏ hàng!`);
-                window.location.reload();
+                setCartSuccess(`Đã thêm ${qty} sản phẩm vào giỏ hàng!`);
+                // Clear success message after 3 seconds
+                setTimeout(() => setCartSuccess(''), 3000);
+                
+                // Optionally dispatch an event or trigger a fetch for the minicart here, 
+                // but since reload was used before, we can leave it to the user or trigger a custom event.
+                // For better UX, let's just trigger a custom event that header can listen to, or reload if needed.
+                // Since removing alert, auto-reload can be abrupt. Let's stick with success msg for now.
+                window.dispatchEvent(new Event("cartUpdated"));
             } else {
-                alert(response.data.message || 'Lỗi thêm vào giỏ hàng.');
+                setCartError(response.data.message || 'Lỗi thêm vào giỏ hàng.');
             }
         } catch (err) {
-            if (err.response && err.response.status === 401) alert('Vui lòng đăng nhập!');
-            else alert('Lỗi xử lý giỏ hàng.');
+            if (err.response && err.response.status === 401) setCartError('Vui lòng đăng nhập!');
+            else if (err.response && err.response.data && err.response.data.message) {
+                setCartError(err.response.data.message);
+            } else setCartError('Lỗi xử lý giỏ hàng.');
         }
     };
 
     const handleBuyNow = async () => {
-        if (!selectedVariantId) { alert("Vui lòng chọn Size & Màu sắc!"); return; }
-        if (currentStock <= 0) { alert("Sản phẩm này hết hàng!"); return; }
+        setCartError('');
+        if (!selectedVariantId) { setCartError("Vui lòng chọn Size & Màu sắc!"); return; }
+        if (currentStock <= 0) { setCartError("Sản phẩm này hết hàng!"); return; }
         try {
-            const response = await api.post('/api/cart/add', { variantId: selectedVariantId, quantity: qty });
-            if (response.data && response.data.success) {
-                navigate('/checkout');
-            } else {
-                alert('Lỗi xử lý mua ngay.');
-            }
+            navigate(`/checkout?buyNowVariantId=${selectedVariantId}&buyNowQty=${qty}`);
         } catch (err) {
-            if (err.response && err.response.status === 401) alert('Vui lòng đăng nhập!');
-            else alert('Lỗi xử lý mua ngay.');
+            setCartError('Lỗi xử lý mua ngay.');
         }
     };
 
@@ -319,6 +546,16 @@ const Details = () => {
                                         </div>
                                     </div>
 
+                                    {cartError && (
+                                        <div style={{ color: '#e50914', fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', background: 'rgba(229, 9, 20, 0.08)', padding: '10px', borderRadius: '8px', borderLeft: '4px solid #e50914' }}>
+                                            <i className="fa-solid fa-triangle-exclamation"></i> {cartError}
+                                        </div>
+                                    )}
+                                    {cartSuccess && (
+                                        <div style={{ color: '#0d9488', fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', background: 'rgba(13, 148, 136, 0.08)', padding: '10px', borderRadius: '8px', borderLeft: '4px solid #0d9488' }}>
+                                            <i className="fa-solid fa-circle-check"></i> {cartSuccess}
+                                        </div>
+                                    )}
                                     <div className="det-actions-row">
                                         <div className="det-qty-control">
                                             <button className="det-qty-btn" onClick={handleDecrease}><i className="fa-solid fa-minus"></i></button>
@@ -370,6 +607,12 @@ const Details = () => {
                             >
                                 <i className="fa-solid fa-sliders"></i> THÔNG SỐ KỸ THUẬT
                             </button>
+                            <button 
+                                className={`det-tab-btn ${activeTab === 'reviews' ? 'active' : ''}`} 
+                                onClick={() => setActiveTab('reviews')}
+                            >
+                                <i className="fa-solid fa-star"></i> ĐÁNH GIÁ ({reviewCount})
+                            </button>
                         </div>
                         
                         <div className="det-tab-content">
@@ -407,6 +650,275 @@ const Details = () => {
                                     <div className="det-spec-row">
                                         <div className="det-spec-key">DANH MỤC</div>
                                         <div className="det-spec-val">{product.categoryName || 'N/A'}</div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'reviews' && (
+                                <div className="det-reviews-body">
+                                    <div className="row">
+                                        <div className="col-md-5">
+                                            <div className="det-rating-summary">
+                                                <div className="det-rating-avg">{Number(avgRating).toFixed(1)}</div>
+                                                <div className="det-rating-stars" style={{ color: '#ffb800', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                                                    {Array.from({length: 5}).map((_, i) => (
+                                                        <i key={i} className={i < Math.round(avgRating) ? "fa-solid fa-star" : "fa-regular fa-star"}></i>
+                                                    ))}
+                                                </div>
+                                                <div className="det-rating-count">dựa trên {reviewCount} đánh giá</div>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-7">
+                                            {hasPurchased ? (
+                                                <form className="det-review-form" onSubmit={submitReview}>
+                                                    <h5>Viết đánh giá của bạn</h5>
+                                                    <div className="mb-3">
+                                                        <label className="form-label">Chọn mức điểm:</label>
+                                                        <div className="det-rating-select">
+                                                            {[1, 2, 3, 4, 5].map(num => (
+                                                                <button type="button" key={num} onClick={() => setReviewRating(num)} style={{ border: 'none', background: 'none', color: num <= reviewRating ? '#ffb800' : '#ddd', fontSize: '1.5rem', cursor: 'pointer' }}>
+                                                                    <i className="fa-solid fa-star"></i>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mb-3">
+                                                        <textarea className="form-control" rows="3" placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..." value={reviewContent} onChange={e => setReviewContent(e.target.value)}></textarea>
+                                                    </div>
+                                                    <button type="submit" className="btn btn-dark w-100">Gửi đánh giá</button>
+                                                </form>
+                                            ) : (
+                                                <div className="alert alert-warning text-center" style={{ borderRadius: '12px' }}>
+                                                    <i className="fa-solid fa-lock mb-2" style={{ fontSize: '2rem' }}></i>
+                                                    <p className="mb-0">Bạn cần mua sản phẩm này và nhận hàng thành công để có thể viết đánh giá.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="det-review-list mt-5">
+                                        <h5 className="mb-4">Khách hàng nhận xét</h5>
+                                        {reviews.length === 0 ? (
+                                            <p className="text-muted">Chưa có đánh giá nào cho sản phẩm này.</p>
+                                        ) : (
+                                            reviews.map(r => {
+                                                const isAuthor = currentUser && currentUser.id === r.user_id;
+                                                const canDelete = currentUser && (currentUser.id === r.user_id || currentUser.role === 'ADMIN');
+                                                const isEditing = activeEditId === r.id;
+                                                const isReplying = activeReplyId === r.id;
+
+                                                return (
+                                                    <div key={r.id} className="det-review-item-container mb-4 p-3 rounded" style={{ background: '#fff', border: '1px solid #f1f5f9' }}>
+                                                        {/* Parent Review Card */}
+                                                        <div className="det-review-item">
+                                                            <div className="d-flex align-items-center mb-2">
+                                                                <div className="det-review-avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: '1rem' }}>
+                                                                    {r.user_name ? r.user_name.charAt(0).toUpperCase() : 'U'}
+                                                                </div>
+                                                                <div className="flex-grow-1">
+                                                                    <div className="d-flex align-items-center gap-2">
+                                                                        <strong className="text-dark">{r.user_name}</strong>
+                                                                        {r.role === 'ADMIN' && (
+                                                                            <span className="badge bg-danger" style={{ fontSize: '10px' }}>QTV</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="det-rating-stars" style={{ color: '#ffb800', fontSize: '0.85rem' }}>
+                                                                        {Array.from({length: 5}).map((_, i) => (
+                                                                            <i key={i} className={i < r.rating ? "fa-solid fa-star" : "fa-regular fa-star"}></i>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Edit Form or Static content */}
+                                                            {isEditing ? (
+                                                                <div className="mt-2 mb-3">
+                                                                    <div className="mb-2">
+                                                                        <label className="form-label small">Sửa điểm số:</label>
+                                                                        <div>
+                                                                            {[1, 2, 3, 4, 5].map(num => (
+                                                                                <button type="button" key={num} onClick={() => setEditRating(num)} style={{ border: 'none', background: 'none', color: num <= (editRating || r.rating) ? '#ffb800' : '#ddd', fontSize: '1.2rem', cursor: 'pointer', padding: '0 2px' }}>
+                                                                                    <i className="fa-solid fa-star"></i>
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                    <textarea 
+                                                                        className="form-control mb-2" 
+                                                                        rows="2" 
+                                                                        value={editContent} 
+                                                                        onChange={e => setEditContent(e.target.value)}
+                                                                    />
+                                                                    <div className="d-flex gap-2">
+                                                                        <button onClick={() => handleEditReview(r.id)} className="btn btn-sm btn-dark">Lưu</button>
+                                                                        <button onClick={() => { setActiveEditId(null); setEditContent(''); setEditRating(null); }} className="btn btn-sm btn-outline-secondary">Hủy</button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="mb-2 text-secondary" style={{ fontSize: '15px', lineHeight: '1.6' }}>{r.content}</p>
+                                                            )}
+
+                                                            <div className="d-flex align-items-center justify-content-between">
+                                                                <small className="text-muted">{new Date(r.created_at).toLocaleString('vi-VN')}</small>
+                                                                
+                                                                {/* Action Buttons: Like, Reply, Edit, Delete */}
+                                                                <div className="d-flex align-items-center gap-3">
+                                                                    {/* Heart button (Like) */}
+                                                                    <button 
+                                                                        onClick={() => handleLikeReview(r.id)}
+                                                                        style={{ border: 'none', background: 'none', color: Number(r.user_liked) > 0 ? '#ef4444' : '#64748b', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: 0 }}
+                                                                    >
+                                                                        <i className={Number(r.user_liked) > 0 ? "fa-solid fa-heart" : "fa-regular fa-heart"}></i>
+                                                                        <span>{r.like_count || 0}</span>
+                                                                    </button>
+
+                                                                    {/* Reply button */}
+                                                                    {currentUser && (
+                                                                        <button 
+                                                                            onClick={() => {
+                                                                                setActiveReplyId(isReplying ? null : r.id);
+                                                                                setReplyContent('');
+                                                                            }}
+                                                                            style={{ border: 'none', background: 'none', color: '#3b82f6', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                        >
+                                                                            Trả lời
+                                                                        </button>
+                                                                    )}
+
+                                                                    {/* Edit button */}
+                                                                    {isAuthor && !isEditing && (
+                                                                        <button 
+                                                                            onClick={() => {
+                                                                                setActiveEditId(r.id);
+                                                                                setEditContent(r.content);
+                                                                                setEditRating(r.rating);
+                                                                            }}
+                                                                            style={{ border: 'none', background: 'none', color: '#0f172a', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                        >
+                                                                            Sửa
+                                                                        </button>
+                                                                    )}
+
+                                                                    {/* Delete button */}
+                                                                    {canDelete && (
+                                                                        <button 
+                                                                            onClick={() => handleDeleteReview(r.id)}
+                                                                            style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                        >
+                                                                            Xóa
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Reply form (Nested) */}
+                                                        {isReplying && (
+                                                            <div className="mt-3 p-3 rounded" style={{ background: '#f8fafc', borderLeft: '3px solid #3b82f6', marginLeft: '2rem' }}>
+                                                                <h6 className="mb-2 small fw-bold">Viết phản hồi:</h6>
+                                                                <textarea 
+                                                                    className="form-control mb-2" 
+                                                                    rows="2" 
+                                                                    placeholder="Nhập nội dung phản hồi của bạn..."
+                                                                    value={replyContent} 
+                                                                    onChange={e => setReplyContent(e.target.value)}
+                                                                />
+                                                                <div className="d-flex gap-2">
+                                                                    <button onClick={() => handleReplyReview(r.id)} className="btn btn-sm btn-primary">Gửi</button>
+                                                                    <button onClick={() => { setActiveReplyId(null); setReplyContent(''); }} className="btn btn-sm btn-outline-secondary">Hủy</button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Replies list (Nested) */}
+                                                        {r.replies && r.replies.length > 0 && (
+                                                            <div className="det-replies-list mt-3" style={{ marginLeft: '2.5rem' }}>
+                                                                {r.replies.map(reply => {
+                                                                    const isReplyAuthor = currentUser && currentUser.id === reply.user_id;
+                                                                    const canDeleteReply = currentUser && (currentUser.id === reply.user_id || currentUser.role === 'ADMIN');
+                                                                    const isEditingReply = activeEditId === reply.id;
+
+                                                                    return (
+                                                                        <div key={reply.id} className="p-3 mb-2 rounded position-relative" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                                                                            <div className="d-flex align-items-center mb-2">
+                                                                                <div className="det-review-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#64748b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: '0.75rem', fontSize: '0.85rem' }}>
+                                                                                    {reply.user_name ? reply.user_name.charAt(0).toUpperCase() : 'U'}
+                                                                                </div>
+                                                                                <div className="flex-grow-1">
+                                                                                    <div className="d-flex align-items-center gap-2">
+                                                                                        <strong className="text-dark" style={{ fontSize: '0.9rem' }}>{reply.user_name}</strong>
+                                                                                        {reply.role === 'ADMIN' && (
+                                                                                            <span className="badge bg-danger" style={{ fontSize: '9px', padding: '2px 4px' }}>QTV</span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {/* Reply Edit or content */}
+                                                                            {isEditingReply ? (
+                                                                                <div className="mt-2 mb-2">
+                                                                                    <textarea 
+                                                                                        className="form-control mb-2" 
+                                                                                        rows="2" 
+                                                                                        value={editContent} 
+                                                                                        onChange={e => setEditContent(e.target.value)}
+                                                                                    />
+                                                                                    <div className="d-flex gap-2">
+                                                                                        <button onClick={() => handleEditReview(reply.id)} className="btn btn-sm btn-dark">Lưu</button>
+                                                                                        <button onClick={() => { setActiveEditId(null); setEditContent(''); }} className="btn btn-sm btn-outline-secondary">Hủy</button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <p className="mb-2 text-secondary" style={{ fontSize: '14px', lineHeight: '1.5' }}>{reply.content}</p>
+                                                                            )}
+
+                                                                            <div className="d-flex align-items-center justify-content-between">
+                                                                                <small className="text-muted" style={{ fontSize: '12px' }}>{new Date(reply.created_at).toLocaleString('vi-VN')}</small>
+                                                                                
+                                                                                {/* Reply actions */}
+                                                                                <div className="d-flex align-items-center gap-3">
+                                                                                    {/* Reply like */}
+                                                                                    <button 
+                                                                                        onClick={() => handleLikeReview(reply.id)}
+                                                                                        style={{ border: 'none', background: 'none', color: Number(reply.user_liked) > 0 ? '#ef4444' : '#64748b', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer', padding: 0 }}
+                                                                                    >
+                                                                                        <i className={Number(reply.user_liked) > 0 ? "fa-solid fa-heart" : "fa-regular fa-heart"}></i>
+                                                                                        <span>{reply.like_count || 0}</span>
+                                                                                    </button>
+
+                                                                                    {/* Reply edit */}
+                                                                                    {isReplyAuthor && !isEditingReply && (
+                                                                                        <button 
+                                                                                            onClick={() => {
+                                                                                                setActiveEditId(reply.id);
+                                                                                                setEditContent(reply.content);
+                                                                                            }}
+                                                                                            style={{ border: 'none', background: 'none', color: '#0f172a', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                                        >
+                                                                                            Sửa
+                                                                                        </button>
+                                                                                    )}
+
+                                                                                    {/* Reply delete */}
+                                                                                    {canDeleteReply && (
+                                                                                        <button 
+                                                                                            onClick={() => handleDeleteReview(reply.id)}
+                                                                                            style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                                        >
+                                                                                            Xóa
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
+                                        )}
                                     </div>
                                 </div>
                             )}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import ReviewModal from '../components/ReviewModal';
 import './Profile.css';
 import './Orders.css';
 
@@ -13,6 +14,7 @@ const Orders = () => {
     const [account, setAccount] = useState(null);
     const [orders, setOrders] = useState([]);
     const [visibleCount, setVisibleCount] = useState(ORDERS_PER_PAGE);
+    const [reviewOrderCode, setReviewOrderCode] = useState(null);
 
     const fetchOrdersData = async () => {
         try {
@@ -94,18 +96,15 @@ const Orders = () => {
         try {
             const response = await api.post('/api/orders/cancel', { orderCode });
             if (response.data && response.data.success) {
-                alert('Đã hủy đơn hàng thành công!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã hủy đơn hàng thành công!' }));
                 fetchOrdersData();
             } else {
-                alert('Không thể hủy đơn hàng: ' + response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể hủy đơn hàng: ' + response.data.message }));
             }
         } catch (err) {
             console.error("Lỗi hủy đơn hàng:", err);
-            if (err.response && err.response.data && err.response.data.message) {
-                alert('Lỗi: ' + err.response.data.message);
-            } else {
-                alert('Lỗi kết nối khi hủy đơn hàng.');
-            }
+            const errMsg = err.response?.data?.message || 'Lỗi kết nối khi hủy đơn hàng.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
         }
     };
 
@@ -115,18 +114,16 @@ const Orders = () => {
         try {
             const response = await api.post('/api/orders/confirm', { orderCode });
             if (response.data && response.data.success) {
-                alert('Đã xác nhận nhận hàng thành công và cộng điểm tích lũy!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xác nhận nhận hàng thành công và cộng điểm tích lũy!' }));
                 fetchOrdersData();
+                setReviewOrderCode(orderCode); // Show review popup
             } else {
-                alert('Không thể xác nhận đơn hàng: ' + response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể xác nhận đơn hàng: ' + response.data.message }));
             }
         } catch (err) {
             console.error("Lỗi xác nhận đơn hàng:", err);
-            if (err.response && err.response.data && err.response.data.message) {
-                alert('Lỗi: ' + err.response.data.message);
-            } else {
-                alert('Lỗi kết nối khi xác nhận đơn hàng.');
-            }
+            const errMsg = err.response?.data?.message || 'Lỗi kết nối khi xác nhận đơn hàng.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
         }
     };
 
@@ -388,6 +385,15 @@ const Orders = () => {
                     </div>
                 </div>
             </div>
+            {reviewOrderCode && (
+                <ReviewModal 
+                    orderCode={reviewOrderCode} 
+                    onClose={() => {
+                        setReviewOrderCode(null);
+                        fetchOrdersData();
+                    }} 
+                />
+            )}
         </Layout>
     );
 };

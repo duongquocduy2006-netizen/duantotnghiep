@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { Link, useParams } from 'react-router-dom';
 import api from '../services/api';
+import ReviewModal from '../components/ReviewModal';
 import 'animate.css';
 import './OrderDetail.css';
 
@@ -12,9 +13,9 @@ const OrderDetail = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const fetchOrderDetail = async () => {
+    const fetchOrderDetail = async (showLoading = true) => {
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             const response = await api.get(`/api/orders/${id}`);
             if (response.data && response.data.success) {
                 setOrder(response.data.order);
@@ -26,7 +27,7 @@ const OrderDetail = () => {
             console.error("Lỗi lấy chi tiết đơn hàng:", err);
             setError("Lỗi kết nối máy chủ khi tải chi tiết đơn hàng.");
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -53,20 +54,24 @@ const OrderDetail = () => {
         return `http://localhost:8080${prefix}${url}`;
     };
 
+    const [reviewOrderCode, setReviewOrderCode] = useState(null);
+
     const handleConfirm = async (e) => {
         e.preventDefault();
         if (!window.confirm('Xác nhận bạn đã nhận được gói hàng này?')) return;
         try {
             const response = await api.post('/api/orders/confirm', { orderCode: id });
             if (response.data && response.data.success) {
-                alert('Đã xác nhận nhận hàng thành công và cộng điểm tích lũy thành viên VIP!');
-                fetchOrderDetail();
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xác nhận nhận hàng thành công và cộng điểm tích lũy thành viên VIP!' }));
+                fetchOrderDetail(false);
+                setReviewOrderCode(id); // Show review popup
             } else {
-                alert('Không thể xác nhận đơn hàng: ' + response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể xác nhận đơn hàng: ' + response.data.message }));
             }
         } catch (err) {
             console.error("Lỗi xác nhận:", err);
-            alert('Lỗi kết nối khi xác nhận đơn hàng.');
+            const errMsg = err.response?.data?.message || 'Lỗi kết nối khi xác nhận đơn hàng.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
         }
     };
 
@@ -76,14 +81,15 @@ const OrderDetail = () => {
         try {
             const response = await api.post('/api/orders/cancel', { orderCode: id });
             if (response.data && response.data.success) {
-                alert('Đã hủy đơn hàng thành công!');
-                fetchOrderDetail();
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã hủy đơn hàng thành công!' }));
+                fetchOrderDetail(false);
             } else {
-                alert('Không thể hủy đơn hàng: ' + response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể hủy đơn hàng: ' + response.data.message }));
             }
         } catch (err) {
             console.error("Lỗi hủy đơn hàng:", err);
-            alert('Lỗi kết nối khi hủy đơn hàng.');
+            const errMsg = err.response?.data?.message || 'Lỗi kết nối khi hủy đơn hàng.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
         }
     };
 
@@ -130,9 +136,9 @@ const OrderDetail = () => {
     const statusInfo = getStatusInfo(order.status);
 
     let progressWidth = '0%';
-    if (order.status >= 2 && order.status !== 4) progressWidth = '33%';
-    if (order.status >= 5 && order.status !== 4) progressWidth = '66%';
-    if (order.status === 3) progressWidth = '100%';
+    if (order.status >= 2 && order.status !== 4) progressWidth = '25%';
+    if (order.status >= 5 && order.status !== 4) progressWidth = '50%';
+    if (order.status === 3) progressWidth = '75%';
 
     return (
         <Layout>
@@ -284,6 +290,16 @@ const OrderDetail = () => {
                     </div>
                 </div>
             </div>
+
+            {reviewOrderCode && (
+                <ReviewModal 
+                    orderCode={reviewOrderCode} 
+                    onClose={() => {
+                        setReviewOrderCode(null);
+                        fetchOrderDetail(false);
+                    }} 
+                />
+            )}
         </Layout>
     );
 };

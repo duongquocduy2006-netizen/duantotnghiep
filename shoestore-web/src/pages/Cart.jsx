@@ -11,6 +11,8 @@ const Cart = () => {
     const [cartItems, setCartItems] = useState([]);
     const [totalPrice, setTotalPrice] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [cartError, setCartError] = useState('');
+    const [cartSuccess, setCartSuccess] = useState('');
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -22,6 +24,16 @@ const Cart = () => {
         return `http://localhost:8080${url}`;
     };
 
+    const showError = (msg) => {
+        setCartError(msg);
+        setTimeout(() => setCartError(''), 4000);
+    };
+
+    const showSuccess = (msg) => {
+        setCartSuccess(msg);
+        setTimeout(() => setCartSuccess(''), 3000);
+    };
+
     const loadCart = async () => {
         try {
             const response = await api.get('/api/cart');
@@ -29,14 +41,14 @@ const Cart = () => {
                 setCartItems(response.data.cartItems || []);
                 setTotalPrice(response.data.totalPrice || 0);
             } else {
-                alert(response.data.message || 'Lỗi tải giỏ hàng!');
+                showError(response.data.message || 'Lỗi tải giỏ hàng!');
             }
         } catch (err) {
             console.error('Lỗi load giỏ hàng:', err);
             if (err.response && err.response.status === 401) {
                 navigate('/login');
             } else {
-                alert('Không thể tải giỏ hàng. Vui lòng kiểm tra kết nối backend!');
+                showError('Không thể tải giỏ hàng. Vui lòng kiểm tra kết nối backend!');
             }
         } finally {
             setLoading(false);
@@ -50,7 +62,7 @@ const Cart = () => {
 
     const updateQty = async (itemId, newQty, stock) => {
         if (newQty > stock) {
-            alert('Sản phẩm này chỉ còn ' + stock + ' cái trong kho!');
+            showError('Sản phẩm này chỉ còn ' + stock + ' cái trong kho!');
             return;
         }
         if (newQty < 1) {
@@ -65,11 +77,15 @@ const Cart = () => {
             if (response.data && response.data.success) {
                 loadCart();
             } else {
-                alert(response.data.message || 'Lỗi cập nhật số lượng!');
+                showError(response.data.message || 'Lỗi cập nhật số lượng!');
             }
         } catch (err) {
             console.error('Lỗi update qty:', err);
-            alert('Lỗi kết nối máy chủ!');
+            if (err.response && err.response.data && err.response.data.message) {
+                showError(err.response.data.message);
+            } else {
+                showError('Lỗi kết nối máy chủ!');
+            }
         }
     };
 
@@ -82,12 +98,13 @@ const Cart = () => {
             });
             if (response.data && response.data.success) {
                 loadCart();
+                showSuccess('Đã xóa sản phẩm!');
             } else {
-                alert(response.data.message || 'Lỗi xóa sản phẩm!');
+                showError(response.data.message || 'Lỗi xóa sản phẩm!');
             }
         } catch (err) {
             console.error('Lỗi xóa sản phẩm:', err);
-            alert('Lỗi kết nối máy chủ!');
+            showError('Lỗi kết nối máy chủ!');
         }
     };
 
@@ -133,6 +150,16 @@ const Cart = () => {
 
                     <div className="row g-5">
                         <div className="col-lg-8 animate__animated animate__fadeInUp">
+                            {cartError && (
+                                <div className="mb-4 bg-danger-subtle text-danger p-3 rounded-3 border border-danger-subtle d-flex align-items-center font-oswald fw-bold" style={{ fontSize: '14px', letterSpacing: '0.5px' }}>
+                                    <i className="fa-solid fa-triangle-exclamation me-2 fs-5"></i> {cartError}
+                                </div>
+                            )}
+                            {cartSuccess && (
+                                <div className="mb-4 bg-success-subtle text-success p-3 rounded-3 border border-success-subtle d-flex align-items-center font-oswald fw-bold" style={{ fontSize: '14px', letterSpacing: '0.5px' }}>
+                                    <i className="fa-solid fa-circle-check me-2 fs-5"></i> {cartSuccess}
+                                </div>
+                            )}
 
                             {cartItems.length > 0 && (
                                 <div className="mb-4 bg-white p-3 rounded-3 border border-light-subtle d-flex flex-column" style={{ boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
