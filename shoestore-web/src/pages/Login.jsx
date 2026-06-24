@@ -9,6 +9,8 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
+    const [showPassword, setShowPassword] = useState(false);
     const [successMsg, setSuccessMsg] = useState('');
 
     useEffect(() => {
@@ -24,7 +26,27 @@ const Login = () => {
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
-        
+
+        // Validate fields
+        const errors = { email: '', password: '' };
+        let hasError = false;
+
+        if (!email.trim()) {
+            errors.email = 'Vui lòng nhập email tài khoản!';
+            hasError = true;
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            errors.email = 'Email không đúng định dạng!';
+            hasError = true;
+        }
+
+        if (!password) {
+            errors.password = 'Vui lòng nhập mật khẩu!';
+            hasError = true;
+        }
+
+        setFieldErrors(errors);
+        if (hasError) return;
+
         try {
             const response = await api.post('/api/auth/login', {
                 email,
@@ -84,29 +106,40 @@ const Login = () => {
 
                     {error && <div className="alert alert-danger p-2 text-center" style={{fontSize: '14px', borderRadius: '12px', marginBottom: '16px'}}>{error}</div>}
 
-                    <form onSubmit={handleLogin}>
+                    <form onSubmit={handleLogin} noValidate>
                         <div className="mb-3">
                             <label className="form-label">Email tài khoản</label>
                             <input 
                                 type="email" 
-                                className="form-control custom-input" 
+                                className={`form-control custom-input${fieldErrors.email ? ' input-error' : ''}`}
                                 placeholder="NHẬP EMAIL CỦA BẠN"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
+                                onChange={(e) => { setEmail(e.target.value); setFieldErrors(prev => ({ ...prev, email: '' })); }}
                             />
+                            {fieldErrors.email && <div className="field-error-msg">{fieldErrors.email}</div>}
                         </div>
 
                         <div className="mb-3">
                             <label className="form-label">Mật khẩu</label>
-                            <input 
-                                type="password" 
-                                className="form-control custom-input" 
-                                placeholder="NHẬP MẬT KHẨU"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
+                            <div className="password-wrapper">
+                                <input 
+                                    type={showPassword ? 'text' : 'password'}
+                                    className={`form-control custom-input${fieldErrors.password ? ' input-error' : ''}`}
+                                    placeholder="NHẬP MẬT KHẨU"
+                                    value={password}
+                                    onChange={(e) => { setPassword(e.target.value); setFieldErrors(prev => ({ ...prev, password: '' })); }}
+                                />
+                                <button
+                                    type="button"
+                                    className="toggle-password-btn"
+                                    onClick={() => setShowPassword(prev => !prev)}
+                                    tabIndex={-1}
+                                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                >
+                                    <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                </button>
+                            </div>
+                            {fieldErrors.password && <div className="field-error-msg">{fieldErrors.password}</div>}
                         </div>
 
                         <div className="d-flex justify-content-between align-items-center mb-4">
