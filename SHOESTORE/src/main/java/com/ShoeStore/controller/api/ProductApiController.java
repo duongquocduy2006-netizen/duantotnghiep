@@ -142,7 +142,7 @@ public class ProductApiController {
 
     // 2. LẤY CHI TIẾT SẢN PHẨM DÀNH CHO ADMIN
     @GetMapping("/{id}")
-    public ResponseEntity<?> getProductDetail(@PathVariable Integer id) {
+    public ResponseEntity<?> getProductDetail(@PathVariable Integer id, jakarta.servlet.http.HttpSession session) {
         java.util.Optional<Product> productOpt = productRepository.findById(id);
         if (productOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -213,15 +213,83 @@ public class ProductApiController {
             return cMap;
         }).collect(Collectors.toList());
 
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "product", prodMap,
-                "variants", variantsList,
-                "images", imagesList,
-                "categories", categories,
-                "brands", brands,
-                "sizes", sizes,
-                "colors", colors));
+        // --- FETCH REVIEWS DATA ---
+        @SuppressWarnings("unchecked")
+        Map<String, Object> account = (Map<String, Object>) session.getAttribute("account");
+        
+        String sqlAllReviews;
+        List<Map<String, Object>> allEntries;
+        
+        if (account != null) {
+            Integer currentUserId = (Integer) account.get("id");
+            sqlAllReviews = "SELECT r.*, a.full_name as user_name, a.role, r.like_count, " +
+                    "(SELECT COUNT(*) FROM product_review_likes prl WHERE prl.review_id = r.id AND prl.user_id = ?) as user_liked " +
+                    "FROM product_reviews r " +
+                    "JOIN accounts a ON r.user_id = a.id " +
+                    "WHERE r.product_id = ? " +
+                    "ORDER BY r.created_at ASC";
+            allEntries = jdbc.queryForList(sqlAllReviews, currentUserId, id);
+        } else {
+            sqlAllReviews = "SELECT r.*, a.full_name as user_name, a.role, r.like_count, 0 as user_liked " +
+                    "FROM product_reviews r " +
+                    "JOIN accounts a ON r.user_id = a.id " +
+                    "WHERE r.product_id = ? " +
+                    "ORDER BY r.created_at ASC";
+            allEntries = jdbc.queryForList(sqlAllReviews, id);
+        }
+
+        List<Map<String, Object>> parents = new java.util.ArrayList<>();
+        Map<Integer, Map<String, Object>> parentMap = new java.util.HashMap<>();
+
+        for (Map<String, Object> entry : allEntries) {
+            Integer entryId = (Integer) entry.get("id");
+            if (entry.get("parent_id") == null) {
+                entry.put("replies", new java.util.ArrayList<Map<String, Object>>());
+                parents.add(entry);
+                parentMap.put(entryId, entry);
+            }
+        }
+        for (Map<String, Object> entry : allEntries) {
+            Integer parentId = (Integer) entry.get("parent_id");
+            if (parentId != null) {
+                Map<String, Object> parent = parentMap.get(parentId);
+                if (parent != null) {
+                    ((java.util.List<Map<String, Object>>) parent.get("replies")).add(entry);
+                }
+            }
+        }
+        parents.sort((a, b) -> ((java.util.Date) b.get("created_at")).compareTo((java.util.Date) a.get("created_at")));
+
+        String sqlRatingStats = "SELECT COUNT(*) as count, AVG(CAST(rating AS FLOAT)) as avg_rating " +
+                "FROM product_reviews WHERE product_id = ? AND parent_id IS NULL";
+        Map<String, Object> stats = jdbc.queryForMap(sqlRatingStats, id);
+        
+        boolean hasPurchased = false;
+        if (account != null) {
+            String sqlCheckPurchase = "SELECT COUNT(*) FROM orders o " +
+                    "JOIN order_items oi ON o.id = oi.order_id " +
+                    "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+                    "WHERE o.user_id = ? AND pv.product_id = ? AND o.status = 3";
+            Integer count = jdbc.queryForObject(sqlCheckPurchase, Integer.class, account.get("id"), id);
+            hasPurchased = (count != null && count > 0);
+        }
+        // --------------------------
+
+        Map<String, Object> responseMap = new HashMap<>();
+        responseMap.put("success", true);
+        responseMap.put("product", prodMap);
+        responseMap.put("variants", variantsList);
+        responseMap.put("images", imagesList);
+        responseMap.put("categories", categories);
+        responseMap.put("brands", brands);
+        responseMap.put("sizes", sizes);
+        responseMap.put("colors", colors);
+        responseMap.put("reviews", parents);
+        responseMap.put("reviewCount", stats.get("count"));
+        responseMap.put("avgRating", stats.get("avg_rating") != null ? stats.get("avg_rating") : 0.0);
+        responseMap.put("hasPurchased", hasPurchased);
+
+        return ResponseEntity.ok(responseMap);
     }
 
     // 3. LƯU HOẶC CẬP NHẬT SẢN PHẨM
@@ -667,10 +735,16 @@ public class ProductApiController {
             List<Object> params = new java.util.ArrayList<>();
 
             String searchTerm = keyword != null ? keyword : q;
-            // Lọc theo từ khóa
+            // Lọc theo từ khóa (Tên sản phẩm, thương hiệu hoặc danh mục) - Smart Search
             if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                sql.append("AND p.product_name LIKE ? ");
-                params.add("%" + searchTerm.trim() + "%");
+                String[] words = searchTerm.trim().split("\\s+");
+                for (String word : words) {
+                    String term = "%" + word + "%";
+                    sql.append("AND (p.product_name LIKE ? OR p.brand_name LIKE ? OR c.category_name LIKE ?) ");
+                    params.add(term);
+                    params.add(term);
+                    params.add(term);
+                }
             }
 
             // Lọc theo Thương hiệu (IN)

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 import './ForgotPassword.css';
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,10 +22,24 @@ const ForgotPassword = () => {
         }
 
         setError('');
-        // Mocking the request
-        console.log('Sending OTP to:', email);
-        // On success, navigate to verify-otp
-        navigate('/verify-otp', { state: { email } });
+        setLoading(true);
+        try {
+            const response = await api.post('/api/auth/forgot-password', { email });
+            if (response.data.success) {
+                navigate('/verify-otp', { state: { email } });
+            } else {
+                setError(response.data.message || 'Đã xảy ra lỗi!');
+            }
+        } catch (err) {
+            console.error('Lỗi gửi OTP:', err);
+            if (err.response && err.response.data && err.response.data.message) {
+                setError(err.response.data.message);
+            } else {
+                setError('Không thể gửi mã xác thực. Vui lòng kiểm tra lại kết nối!');
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -53,9 +69,12 @@ const ForgotPassword = () => {
                                 onChange={(e) => { setEmail(e.target.value); setError(''); }}
                                 className="form-control custom-input" 
                                 placeholder="email@example.com" 
+                                disabled={loading}
                             />
                         </div>
-                        <button type="submit" className="btn-action">Gửi mã xác thực</button>
+                        <button type="submit" className="btn-action" disabled={loading}>
+                            {loading ? 'Đang gửi mã...' : 'Gửi mã xác thực'}
+                        </button>
                     </form>
                 </div>
             </div>

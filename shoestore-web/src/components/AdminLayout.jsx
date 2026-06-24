@@ -128,41 +128,50 @@ const AdminLayout = ({ children }) => {
                     </div>
 
                     <div className="header-right">
-                        <div className="notification-btn" title="Thông báo">
-                            <i className="bi bi-bell"></i>
-                            <span className="dot-badge"></span>
-                        </div>
-
-                        <Link to="/admin/chat" className="notification-btn" title="Tin nhắn">
-                            <i className="bi bi-chat-dots"></i>
-                        </Link>
-
                         <div className="user-profile-wrapper" style={{ position: 'relative' }}>
                             <div
                                 className="user-profile"
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                style={{ cursor: 'pointer' }}
                             >
                                 <div className="user-info" style={{ marginRight: '10px' }}>
                                     <span className="user-name" style={{ fontSize: '11px', color: '#000' }}>QUẢN TRỊ VIÊN</span>
-                                    <span className="user-role" style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>ADMIN</span>
+                                    <span className="user-role" style={{ fontSize: '12px', color: '#e50914', fontWeight: 'bold' }}>ADMIN</span>
                                 </div>
-                                <div className="user-avatar" style={{ background: '#fff', border: '3px solid #000', color: '#000' }}>
-                                    <span style={{ color: '#000', fontWeight: 'bold' }}>QU</span>
+                                <div className="user-avatar" style={{ background: '#fff', border: '2px solid #e50914', color: '#e50914' }}>
+                                    <span style={{ color: '#e50914', fontWeight: 'bold' }}>QU</span>
                                 </div>
                             </div>
 
                             {isProfileOpen && (
                                 <ul className="profile-dropdown-menu" style={{
-                                    position: 'absolute', top: '100%', right: 0,
-                                    background: '#fff', border: '3px solid #000', borderRadius: '0',
-                                    listStyle: 'none', padding: '10px 0', margin: '10px 0 0 0',
-                                    width: '180px', boxShadow: '8px 8px 0 rgba(0,0,0,1)', zIndex: 100
+                                    position: 'absolute', top: 'calc(100% + 10px)', right: 0,
+                                    background: '#fff', border: '1px solid rgba(0, 0, 0, 0.08)', borderRadius: '12px',
+                                    listStyle: 'none', padding: '8px 0', margin: 0,
+                                    width: '200px', boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)', zIndex: 100,
+                                    overflow: 'hidden'
                                 }}>
-                                    <li><Link to="/" style={{ display: 'block', padding: '10px 20px', color: '#000', textDecoration: 'none', fontSize: '13px', transition: '0.2s', fontWeight: 'bold' }} className="dropdown-item-admin"><i className="bi bi-house me-2"></i> Về Trang Chủ</Link></li>
-                                    <li><Link to="/profile" style={{ display: 'block', padding: '10px 20px', color: '#000', textDecoration: 'none', fontSize: '13px', transition: '0.2s', fontWeight: 'bold' }} className="dropdown-item-admin"><i className="bi bi-person me-2"></i> Hồ sơ</Link></li>
-                                    <li><Link to="/settings" style={{ display: 'block', padding: '10px 20px', color: '#000', textDecoration: 'none', fontSize: '13px', transition: '0.2s', fontWeight: 'bold' }} className="dropdown-item-admin"><i className="bi bi-gear me-2"></i> Cài đặt</Link></li>
-                                    <li className="divider" style={{ height: '3px', background: '#000', margin: '5px 0' }}></li>
-                                    <li><Link to="/login" style={{ display: 'block', padding: '10px 20px', color: '#e50914', textDecoration: 'none', fontSize: '13px', transition: '0.2s', fontWeight: 'bold' }} className="dropdown-item-admin"><i className="bi bi-box-arrow-right me-2"></i> Đăng xuất</Link></li>
+                                    <li>
+                                        <Link to="/" style={{ display: 'flex', alignItems: 'center', padding: '10px 20px', color: '#333', textDecoration: 'none', fontSize: '13.5px', transition: 'all 0.2s ease', fontWeight: '600' }} className="dropdown-item-admin">
+                                            <i className="bi bi-house me-3" style={{ fontSize: '16px', color: '#71717a' }}></i> Về Trang Chủ
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link to="/profile" style={{ display: 'flex', alignItems: 'center', padding: '10px 20px', color: '#333', textDecoration: 'none', fontSize: '13.5px', transition: 'all 0.2s ease', fontWeight: '600' }} className="dropdown-item-admin">
+                                            <i className="bi bi-person me-3" style={{ fontSize: '16px', color: '#71717a' }}></i> Hồ sơ
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link to="/settings" style={{ display: 'flex', alignItems: 'center', padding: '10px 20px', color: '#333', textDecoration: 'none', fontSize: '13.5px', transition: 'all 0.2s ease', fontWeight: '600' }} className="dropdown-item-admin">
+                                            <i className="bi bi-gear me-3" style={{ fontSize: '16px', color: '#71717a' }}></i> Cài đặt
+                                        </Link>
+                                    </li>
+                                    <li className="divider" style={{ height: '1px', background: 'rgba(0, 0, 0, 0.08)', margin: '6px 0' }}></li>
+                                    <li>
+                                        <Link to="/login" style={{ display: 'flex', alignItems: 'center', padding: '10px 20px', color: '#e50914', textDecoration: 'none', fontSize: '13.5px', transition: 'all 0.2s ease', fontWeight: '700' }} className="dropdown-item-admin dropdown-item-logout">
+                                            <i className="bi bi-box-arrow-right me-3" style={{ fontSize: '16px', color: '#e50914' }}></i> Đăng xuất
+                                        </Link>
+                                    </li>
                                 </ul>
                             )}
                         </div>
@@ -170,7 +179,22 @@ const AdminLayout = ({ children }) => {
                 </header>
 
                 <style>{`
-                    .dropdown-item-admin:hover { background: rgba(0,0,0,0.05); }
+                    .dropdown-item-admin:hover {
+                        background: rgba(229, 9, 20, 0.04);
+                        color: #e50914 !important;
+                        padding-left: 24px !important;
+                    }
+                    .dropdown-item-admin:hover i {
+                        color: #e50914 !important;
+                    }
+                    .dropdown-item-logout:hover {
+                        background: #e50914 !important;
+                        color: #ffffff !important;
+                        padding-left: 24px !important;
+                    }
+                    .dropdown-item-logout:hover i {
+                        color: #ffffff !important;
+                    }
                 `}</style>
 
                 {/* PAGE BODY */}

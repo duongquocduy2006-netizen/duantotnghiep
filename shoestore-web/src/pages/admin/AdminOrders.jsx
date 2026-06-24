@@ -244,14 +244,15 @@ const AdminOrders = () => {
                                                     className={`filter-select status-select-badge ${statusInfo.class}`}
                                                     style={{ padding: '5px 30px 5px 10px', fontSize: '12px', margin: 0 }}
                                                     value={order.status}
-                                                    disabled={order.status === 3 || order.status === 4}
+                                                    disabled={order.status === 3 || order.status === 4 || order.status === 5}
                                                     onChange={(e) => handleStatusChange(order.orderCode, parseInt(e.target.value))}
                                                 >
                                                     <option value="1">Chờ xác nhận</option>
                                                     <option value="2">Đang giao hàng</option>
-                                                    <option value="5">Đã nhận hàng (Chờ duyệt)</option>
-                                                    <option value="3">Thành công</option>
-                                                    <option value="4">Đã hủy</option>
+                                                    {order.status !== 4 && <option value="4">Hủy đơn</option>}
+                                                    {order.status === 4 && <option value="4">Đã hủy</option>}
+                                                    {order.status === 3 && <option value="3">Thành công</option>}
+                                                    {order.status === 5 && <option value="5">Đã nhận hàng (Chờ duyệt)</option>}
                                                 </select>
                                             </div>
                                         </td>

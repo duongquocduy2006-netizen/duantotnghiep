@@ -116,7 +116,7 @@ const Login = () => {
                                     GHI NHỚ TÔI
                                 </label>
                             </div>
-                            <Link to="#" className="forgot-pass">QUÊN MẬT KHẨU?</Link>
+                            <Link to="/forgot-password" className="forgot-pass">QUÊN MẬT KHẨU?</Link>
                         </div>
 
                         <button type="submit" className="btn-login">

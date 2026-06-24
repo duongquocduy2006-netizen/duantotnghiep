@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import api from '../services/api';
 import './VerifyOTP.css';
 
 const VerifyOTP = () => {
@@ -11,6 +12,7 @@ const VerifyOTP = () => {
     const [timeLeft, setTimeLeft] = useState(180);
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
     const inputRefs = useRef([]);
 
     useEffect(() => {
@@ -60,7 +62,7 @@ const VerifyOTP = () => {
         inputRefs.current[focusIndex].focus();
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const fullOtp = otp.join('');
         if (fullOtp.length !== 6) {
@@ -69,16 +71,49 @@ const VerifyOTP = () => {
         }
 
         setError('');
-        console.log('Verifying OTP:', fullOtp);
-        // Mock success
-        navigate('/reset-password', { state: { email, otp: fullOtp } });
+        setLoading(true);
+        try {
+            const response = await api.post('/api/auth/verify-otp', { email, otp: fullOtp });
+            if (response.data.success) {
+                navigate('/reset-password', { state: { email, otp: fullOtp } });
+            } else {
+                setError(response.data.message || 'Xác thực OTP thất bại!');
+            }
+        } catch (err) {
+            console.error('Lỗi xác thực OTP:', err);
+            if (err.response && err.response.data && err.response.data.message) {
+                setError(err.response.data.message);
+            } else {
+                setError('Không thể kết nối đến server để xác thực OTP!');
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleResend = () => {
-        if (timeLeft === 0) {
-            setTimeLeft(180);
-            setMessage('Mã OTP mới đã được gửi!');
-            console.log('Resending OTP to:', email);
+    const handleResend = async () => {
+        if (timeLeft === 0 && !loading) {
+            setError('');
+            setMessage('');
+            setLoading(true);
+            try {
+                const response = await api.post('/api/auth/resend-otp', { email });
+                if (response.data.success) {
+                    setTimeLeft(180);
+                    setMessage('Mã OTP mới đã được gửi vào email của bạn!');
+                } else {
+                    setError(response.data.message || 'Gửi lại OTP thất bại!');
+                }
+            } catch (err) {
+                console.error('Lỗi gửi lại OTP:', err);
+                if (err.response && err.response.data && err.response.data.message) {
+                    setError(err.response.data.message);
+                } else {
+                    setError('Không thể gửi lại mã xác thực. Vui lòng kết nối lại!');
+                }
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -111,11 +146,14 @@ const VerifyOTP = () => {
                                     onChange={(e) => handleChange(index, e.target.value)}
                                     onKeyDown={(e) => handleKeyDown(index, e)}
                                     onPaste={handlePaste}
+                                    disabled={loading}
                                 />
                             ))}
                         </div>
 
-                        <button type="submit" className="btn-action">Xác nhận mã</button>
+                        <button type="submit" className="btn-action" disabled={loading}>
+                            {loading ? 'Đang xác nhận...' : 'Xác nhận mã'}
+                        </button>
                     </form>
 
                     <div className="d-flex justify-content-between align-items-center mt-4">
@@ -124,10 +162,10 @@ const VerifyOTP = () => {
                         </Link>
                         <button 
                             type="button" 
-                            className={`auth-link-btn ${timeLeft > 0 ? 'disabled' : ''}`}
+                            className={`auth-link-btn ${timeLeft > 0 || loading ? 'disabled' : ''}`}
                             onClick={handleResend}
-                            disabled={timeLeft > 0}
-                            style={{ background: 'none', border: 'none', cursor: timeLeft > 0 ? 'default' : 'pointer' }}
+                            disabled={timeLeft > 0 || loading}
+                            style={{ background: 'none', border: 'none', cursor: (timeLeft > 0 || loading) ? 'default' : 'pointer' }}
                         >
                             {timeLeft > 0 ? `Gửi lại mã (${formatTime(timeLeft)})` : 'GỬI MÃ MỚI'}
                         </button>

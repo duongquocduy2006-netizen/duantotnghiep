@@ -105,14 +105,18 @@ const AdminCustomerDetail = () => {
                             <span 
                                 className="badge-custom"
                                 style={{ 
-                                    background: `${customer.rankColor}20`, 
-                                    border: '3px solid #000', boxShadow: '4px 4px 0 #000', 
+                                    background: `${customer.rankColor}15`, 
+                                    border: `1.5px solid ${customer.rankColor}`,
+                                    boxShadow: 'none', 
                                     color: customer.rankColor,
-                                    padding: '4px 12px',
-                                    borderRadius: '0px',
+                                    padding: '4px 14px',
+                                    borderRadius: '24px',
                                     fontSize: '12px',
                                     fontWeight: 700,
-                                    textTransform: 'uppercase'
+                                    textTransform: 'uppercase',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
                                 }}
                             >
                                 <i className="bi bi-star-fill"></i> {customer.rankName}
@@ -149,7 +153,7 @@ const AdminCustomerDetail = () => {
                         <h3 className="info-title font-oswald" style={{ marginTop: '30px' }}><i className="bi bi-clock-history"></i> LỊCH SỬ MUA HÀNG (MỚI NHẤT)</h3>
  
                         {orders.length === 0 ? (
-                            <div className="text-center py-4" style={{ padding: '20px 0', border: '1px dashed #222', textAlign: 'center' }}>
+                            <div className="text-center py-4" style={{ padding: '20px 0', border: '1px dashed #dadce0', borderRadius: '8px', textAlign: 'center' }}>
                                 <p style={{ color: '#555', fontSize: '13px', margin: 0 }}>Khách hàng này chưa thực hiện đơn hàng nào.</p>
                             </div>
                         ) : (

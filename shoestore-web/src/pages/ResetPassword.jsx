@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import api from '../services/api';
 import './ResetPassword.css';
 
 const ResetPassword = () => {
@@ -11,8 +12,9 @@ const ResetPassword = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         
         if (!password || !confirmPassword) {
@@ -24,10 +26,25 @@ const ResetPassword = () => {
         }
 
         setError('');
-        console.log('Resetting password for:', email, 'with OTP:', otp, 'new password:', password);
-        // Mock success
-        alert('Đổi mật khẩu thành công!');
-        navigate('/login');
+        setLoading(true);
+        try {
+            const response = await api.post('/api/auth/reset-password', { email, password, confirmPassword });
+            if (response.data.success) {
+                alert('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
+                navigate('/login');
+            } else {
+                setError(response.data.message || 'Đặt lại mật khẩu thất bại!');
+            }
+        } catch (err) {
+            console.error('Lỗi đặt lại mật khẩu:', err);
+            if (err.response && err.response.data && err.response.data.message) {
+                setError(err.response.data.message);
+            } else {
+                setError('Không thể kết nối đến server để đặt lại mật khẩu!');
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -51,6 +68,7 @@ const ResetPassword = () => {
                                 placeholder="Nhập mật khẩu..." 
                                 value={password}
                                 onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                                disabled={loading}
                             />
                         </div>
                         <div className="mb-4">
@@ -61,9 +79,12 @@ const ResetPassword = () => {
                                 placeholder="Xác nhận lại..." 
                                 value={confirmPassword}
                                 onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                                disabled={loading}
                             />
                         </div>
-                        <button type="submit" className="btn-action">Đổi mật khẩu</button>
+                        <button type="submit" className="btn-action" disabled={loading}>
+                            {loading ? 'Đang cập nhật...' : 'Đổi mật khẩu'}
+                        </button>
                     </form>
                 </div>
             </div>

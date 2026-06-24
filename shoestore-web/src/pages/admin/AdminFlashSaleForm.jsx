@@ -392,7 +392,7 @@ const AdminFlashSaleForm = () => {
 
                         <div style={{ display: 'flex', gap: '15px', marginBottom: '50px', marginTop: '30px' }}>
                             <button type="submit" className="btn-red-skew" style={{ minWidth: '200px' }}>LƯU CHIẾN DỊCH</button>
-                            <Link to="/admin/flashsales" className="btn-red-skew" style={{ background: 'transparent', border: '1px solid #333', color: '#000' }}>HỦY BỎ</Link>
+                            <Link to="/admin/flashsales" className="btn-red-skew" style={{ background: 'transparent', border: '1px solid #dadce0', color: '#000', borderRadius: '8px', boxShadow: 'none' }}>HỦY BỎ</Link>
                         </div>
                     </form>
                 </div>
@@ -401,106 +401,29 @@ const AdminFlashSaleForm = () => {
     .sub-title-neon { display: block; color: var(--accent-red) !important; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
     .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
     
-    .card-cinematic { background: #fff !important; border: 1px solid rgba(0, 0, 0, 0.05) !important; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.03) !important; padding: 30px; margin-bottom: 30px; border-radius: 12px !important; }
-    .card-section-title { font-family: 'Oswald'; color: #000; font-size: 20px; font-weight: 800; letter-spacing: 1px; margin-bottom: 25px; border-bottom: 2px solid var(--accent-red) !important; padding-bottom: 10px; display: inline-block; text-transform: uppercase; }
-    .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 2px solid rgba(0,0,0,0.05) !important; padding-bottom: 10px; }
+    .card-cinematic { background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 30px; margin-bottom: 30px; border-radius: 12px; }
+    .card-section-title { font-family: 'Oswald'; color: #000; font-size: 20px; font-weight: 800; letter-spacing: 1px; margin-bottom: 25px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; display: inline-block; text-transform: uppercase; }
+    .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
 
     .form-grid-cinematic { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
     .form-label { display: block; color: #000; font-size: 13px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; font-family: 'Oswald'; }
-    .form-input-cinematic { width: 100%; background: #fff !important; border: 1.5px solid #dadce0 !important; padding: 12px; color: #3c4043 !important; outline: none; transition: 0.2s; font-size: 14px; font-weight: 500; box-shadow: none !important; border-radius: 8px !important; }
-    .form-input-cinematic:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
+    .form-input-cinematic { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 12px; color: #3c4043; outline: none; transition: 0.2s; font-size: 14px; font-weight: 500; box-shadow: none; border-radius: 8px; }
+    .form-input-cinematic:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
 
-    .btn-red-skew:not([style*="transparent"]) { 
-        background: var(--accent-red) !important;
-        border: 1px solid var(--accent-red) !important;
-        color: #fff !important;
-        box-shadow: 0 4px 12px rgba(229, 9, 20, 0.2) !important;
-        padding: 12px 30px;
-        font-family: 'Oswald', sans-serif;
-        font-weight: 800;
-        text-transform: uppercase; 
-        transition: all 0.3s ease;
-        cursor: pointer;
-        font-size: 14px;
-        display: inline-flex;
-        align-items: center;
-        text-decoration: none;
-        justify-content: center;
-        border-radius: 8px !important;
+    .btn-red-skew { 
+        background: #fff; color: #000; border: none; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+        transition: 0.3s; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px;
     }
-    .btn-red-skew:not([style*="transparent"]):hover {
-        background: #b30000 !important;
-        border-color: #b30000 !important;
-    }
+    .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
 
-    .btn-red-skew[style*="transparent"] {
-        background: transparent !important;
-        border: 2px solid #d1d5db !important;
-        color: #374151 !important;
-        box-shadow: none !important;
-        padding: 12px 30px;
-        font-family: 'Oswald', sans-serif;
-        font-weight: 800;
-        text-transform: uppercase; 
-        transition: all 0.3s ease;
-        cursor: pointer;
-        font-size: 14px;
-        display: inline-flex;
-        align-items: center;
-        text-decoration: none;
-        justify-content: center;
-        border-radius: 8px !important;
-    }
-    .btn-red-skew[style*="transparent"]:hover {
-        background: #f3f4f6 !important;
-        border-color: #9ca3af !important;
-        color: #111827 !important;
-    }
-
-    .product-list-container-alt { border: 1px solid #e2e8f0 !important; overflow: hidden; background: #fff; border-radius: 8px !important; }
-    .product-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 60px; gap: 15px; padding: 15px 20px; border-bottom: 1px solid #f1f5f9 !important; align-items: center; }
-    .product-row.header { background: #f8fafc !important; border-bottom: 2px solid #e2e8f0 !important; }
+    .product-list-container-alt { border: 1px solid #e2e8f0; overflow: hidden; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .product-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 60px; gap: 15px; padding: 15px 20px; border-bottom: 1px solid #f1f5f9; align-items: center; }
+    .product-row.header { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .product-row.header { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
     
-    .action-btn-icon {
-        background: #fff !important;
-        border: 1px solid #e2e8f0 !important;
-        color: #64748b !important;
-        width: 35px !important;
-        height: 35px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        transition: 0.2s !important;
-        text-decoration: none !important;
-        cursor: pointer !important;
-        font-size: 14px !important;
-        border-radius: 8px !important;
-        box-shadow: none !important;
-    }
-    .action-btn-icon:hover {
-    }
-    .action-btn-icon.icon-delete {
-        background: rgba(239, 68, 68, 0.1) !important;
-        border-color: rgba(239, 68, 68, 0.4) !important;
-        color: #dc2626 !important;
-    }
-    .action-btn-icon.icon-delete:hover {
-        background: #ef4444 !important;
-        border-color: #ef4444 !important;
-        color: #ffffff !important;
-    }
-    .input-error {
-        border-color: #ef4444 !important;
-        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
-    }
-    .field-error {
-        display: block;
-        color: #ef4444;
-        font-size: 11px;
-        font-weight: 600;
-        margin-top: 5px;
-        letter-spacing: 0.3px;
-    }
+    .action-btn-icon { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; }
+    .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); background: #000; color: #fff; }
+    .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 0 4px 12px rgba(229,9,20,0.2); }
 `}</style>
             </AdminLayout>
         );

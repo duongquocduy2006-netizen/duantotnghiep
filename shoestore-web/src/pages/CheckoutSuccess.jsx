@@ -4,7 +4,7 @@ import './CheckoutSuccess.css';
 
 const CheckoutSuccess = () => {
     return (
-        <div className="success-page">
+        <div className="success-page position-relative" style={{ minHeight: '80vh' }}>
             <div className="success-card animate__animated animate__zoomIn">
                 <div className="success-icon animate__animated animate__bounceInDown animate__delay-1s">
                     <i className="fa fa-circle-check"></i>

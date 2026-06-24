@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import './Profile.css';
 import './Orders.css';
-import './OrderHistory.css';
+import ReviewModal from '../components/ReviewModal';
 
 const PAGE_SIZE = 10;
 
@@ -22,6 +22,7 @@ const OrderHistory = () => {
     const [loading, setLoading] = useState(true);
     const [account, setAccount] = useState(null);
     const [orders, setOrders] = useState([]);
+    const [reviewOrderCode, setReviewOrderCode] = useState(null);
 
     // Filter state
     const [fromDate, setFromDate] = useState('');
@@ -31,9 +32,9 @@ const OrderHistory = () => {
     const [currentPage, setCurrentPage] = useState(1);
 
     // ── Fetch ──
-    const fetchData = async () => {
+    const fetchData = async (showLoading = true) => {
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             const [profileRes, ordersRes] = await Promise.all([
                 api.get('/api/profile'),
                 api.get('/api/orders'),
@@ -50,7 +51,7 @@ const OrderHistory = () => {
         } catch {
             navigate('/login');
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -115,10 +116,15 @@ const OrderHistory = () => {
         if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
         try {
             const res = await api.post('/api/orders/cancel', { orderCode });
-            if (res.data?.success) { alert('Đã hủy thành công!'); fetchData(); }
-            else alert('Không thể hủy: ' + res.data.message);
+            if (res.data?.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã hủy đơn hàng thành công!' }));
+                fetchData(false);
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể hủy: ' + res.data.message }));
+            }
         } catch (err) {
-            alert(err.response?.data?.message || 'Lỗi kết nối.');
+            const errMsg = err.response?.data?.message || 'Lỗi kết nối.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
         }
     };
 
@@ -127,10 +133,17 @@ const OrderHistory = () => {
         if (!window.confirm('Xác nhận bạn đã nhận được hàng?')) return;
         try {
             const res = await api.post('/api/orders/confirm', { orderCode });
-            if (res.data?.success) { alert('Xác nhận thành công! Điểm đã được cộng.'); fetchData(); }
-            else alert('Không thể xác nhận: ' + res.data.message);
+            if (res.data?.success) { 
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Xác nhận thành công! Điểm đã được cộng.' })); 
+                fetchData(false); 
+                setReviewOrderCode(orderCode); // Show review popup
+            }
+            else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể xác nhận: ' + res.data.message }));
+            }
         } catch (err) {
-            alert(err.response?.data?.message || 'Lỗi kết nối.');
+            const errMsg = err.response?.data?.message || 'Lỗi kết nối.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
         }
     };
 
@@ -485,6 +498,16 @@ const OrderHistory = () => {
                     </div>
                 </div>
             </div>
+
+            {reviewOrderCode && (
+                <ReviewModal 
+                    orderCode={reviewOrderCode} 
+                    onClose={() => {
+                        setReviewOrderCode(null);
+                        fetchData(false);
+                    }} 
+                />
+            )}
         </Layout>
     );
 };

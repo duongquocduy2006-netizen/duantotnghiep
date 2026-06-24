@@ -338,7 +338,7 @@ const AdminDashboard = () => {
             </div>
 
             <div className="grid-2-1">
-                <div className="card-box bg-white border border-dark">
+                <div className="card-box bg-white border" style={{ borderColor: '#e2e8f0', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                     <div className="card-header">
                         <span className="card-title">DOANH THU & CHI PHÍ</span>
                         <i className="bi bi-three-dots" style={{ color: '#555', cursor: 'pointer' }}></i>
@@ -357,7 +357,7 @@ const AdminDashboard = () => {
                         <div className="chart-stats-table-wrapper" style={{ marginTop: '20px', borderTop: '2px dashed rgba(0, 0, 0, 0.1)', paddingTop: '15px' }}>
                             <table className="chart-stats-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                                 <thead>
-                                    <tr style={{ borderBottom: '2px solid #000000', textAlign: 'left', fontFamily: 'Oswald, sans-serif', textTransform: 'uppercase', color: '#000' }}>
+                                    <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontFamily: 'Oswald, sans-serif', textTransform: 'uppercase', color: '#64748b' }}>
                                         <th style={{ padding: '8px 10px', fontWeight: 800 }}>Thời gian</th>
                                         <th style={{ padding: '8px 10px', color: '#cc0000', fontWeight: 800 }}>Doanh thu</th>
                                         <th style={{ padding: '8px 10px', color: '#000000', fontWeight: 800 }}>Chi phí</th>
@@ -386,7 +386,7 @@ const AdminDashboard = () => {
                     )}
                 </div>
 
-                <div className="card-box bg-white border border-dark">
+                <div className="card-box bg-white border" style={{ borderColor: '#e2e8f0', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                     <div className="card-header">
                         <span className="card-title">THÔNG BÁO</span>
                     </div>
@@ -405,7 +405,7 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            <div className="card-box bg-white border border-dark" style={{ borderRightWidth: '4px', borderBottomWidth: '4px' }}>
+            <div className="card-box bg-white border" style={{ borderColor: '#e2e8f0', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                 <div className="card-header">
                     <span className="card-title">SẢN PHẨM BÁN CHẠY</span>
                     <Link to="/admin/products" style={{ fontSize: '12px', color: 'var(--accent-cyan)', textDecoration: 'none' }}>
@@ -426,7 +426,7 @@ const AdminDashboard = () => {
                             <tr key={product.id}>
                                 <td>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        <div style={{ width: '40px', height: '40px', background: '#fff', border: '2px solid #000', borderRadius: '0', overflow: 'hidden' }}>
+                                        <div style={{ width: '40px', height: '40px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
                                             <img src={getImageUrl(product.image) || `https://placehold.co/40x40/000/fff?text=${product.sku}`} alt={product.name} style={{ width:'100%', height:'100%', objectFit: 'cover' }} />
                                         </div>
                                         <div>

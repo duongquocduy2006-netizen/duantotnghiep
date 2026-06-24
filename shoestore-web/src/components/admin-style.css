@@ -64,6 +64,26 @@
     padding: 0 15px;
     flex-grow: 1;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a2f var(--sidebar-bg);
+}
+
+/* Tùy chỉnh thanh cuộn sidebar cho các trình duyệt Webkit */
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: var(--sidebar-bg);
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: #2a2a2f;
+    border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-red);
 }
 
 .nav-label {

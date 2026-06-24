@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import 'animate.css';
 
 const Header = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [account, setAccount] = useState(null);
     const [cartCount, setCartCount] = useState(0);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('search') || '';
+    });
     const [isListening, setIsListening] = useState(false);
     const [toast, setToast] = useState(null);
 
@@ -61,6 +65,12 @@ const Header = () => {
         }
     }, [toast]);
 
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const searchVal = params.get('search') || '';
+        setSearchQuery(searchVal);
+    }, [location.search]);
+
     const handleLogout = async () => {
         try {
             await api.post('/api/auth/logout');
@@ -80,6 +90,13 @@ const Header = () => {
         e.preventDefault();
         if (searchQuery.trim()) {
             navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
+        }
+    };
+
+    const handleClearSearch = () => {
+        setSearchQuery('');
+        if (location.pathname === '/shop') {
+            navigate('/shop');
         }
     };
 
@@ -134,14 +151,19 @@ const Header = () => {
                         <div className="col-md-5 my-3 my-md-0">
                             <form onSubmit={handleSearch} className="search-wrapper">
                                 <div className="input-group">
-                                    <input type="text" name="q" className="form-control search-input"
+                                    <input type="text" name="q" className="search-input"
                                         placeholder="Tìm kiếm phong cách, thương hiệu..." 
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)} />
-                                    <button type="button" onClick={startListening} className="btn search-btn" style={{ color: isListening ? '#e50914' : '#fff' }} title="Tìm kiếm bằng giọng nói">
-                                        <i className={`fa ${isListening ? 'fa-microphone-slash' : 'fa-microphone'}`} style={{ animation: isListening ? 'pulse 1.5s infinite' : 'none' }}></i>
+                                    {searchQuery && (
+                                        <button type="button" onClick={handleClearSearch} className="btn search-btn clear-btn" title="Xóa tìm kiếm">
+                                            <i className="bi bi-x-lg"></i>
+                                        </button>
+                                    )}
+                                    <button type="button" onClick={startListening} className={`btn search-btn mic-btn ${isListening ? 'mic-btn-active' : ''}`} title="Tìm kiếm bằng giọng nói">
+                                        <i className={`fa ${isListening ? 'fa-microphone-slash' : 'fa-microphone'}`}></i>
                                     </button>
-                                    <button className="btn search-btn" type="submit"><i className="fa fa-search"></i></button>
+                                    <button className="btn search-btn submit-btn" type="submit"><i className="fa fa-search"></i></button>
                                 </div>
                             </form>
                         </div>
