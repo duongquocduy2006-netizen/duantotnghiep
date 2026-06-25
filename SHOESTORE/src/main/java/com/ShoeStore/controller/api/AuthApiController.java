@@ -65,15 +65,23 @@ public class AuthApiController {
         String password = loginRequest.getPassword();
 
         try {
-            // 2. Tải thông tin người dùng (có kiểm tra khóa tài khoản)
+            // 2. Tải thông tin người dùng
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            // 3. So khớp mật khẩu
+            // 3. Kiểm tra tài khoản có bị khóa không
+            if (!userDetails.isAccountNonLocked()) {
+                response.put("success", false);
+                response.put("message", "Tài khoản của bạn đã bị khóa! Vui lòng liên hệ Admin.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            }
+
+            // 4. So khớp mật khẩu
             if (!passwordEncoder.matches(password, userDetails.getPassword())) {
                 response.put("success", false);
                 response.put("message", "Email hoặc mật khẩu không chính xác!");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
             }
+
 
             // 4. Đăng nhập thành công -> Thiết lập SecurityContext
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(

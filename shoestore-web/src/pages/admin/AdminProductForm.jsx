@@ -36,6 +36,15 @@ const AdminProductForm = () => {
     const [sizes, setSizes] = useState([]);
     const [colors, setColors] = useState([]);
 
+    // Inline add new size / color
+    const [showNewSizeField, setShowNewSizeField] = useState(false);
+    const [newSizeName, setNewSizeName] = useState('');
+    const [showNewColorField, setShowNewColorField] = useState(false);
+    const [newColorName, setNewColorName] = useState('');
+
+    // Validation errors
+    const [formErrors, setFormErrors] = useState({});
+
     const [images, setImages] = useState([]); // List of { id, url, isPrimary }
 
     // Fetch form metadata (and edit details if relevant)
@@ -143,9 +152,82 @@ const AdminProductForm = () => {
         }
     };
 
+    const handleAddNewSize = async () => {
+        if (!newSizeName.trim()) {
+            setFormErrors(prev => ({ ...prev, newSize: 'Vui lòng nhập tên size!' }));
+            return;
+        }
+        try {
+            const params = new URLSearchParams();
+            params.append('sizeName', newSizeName.trim());
+            const res = await api.post('/api/products/size/add', params, {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
+            if (res.data && res.data.success) {
+                setSizes(prev => [...prev, { id: res.data.id, sizeName: newSizeName.trim() }]);
+                setVariant(prev => ({ ...prev, sizeId: String(res.data.id) }));
+                setNewSizeName('');
+                setShowNewSizeField(false);
+                setFormErrors(prev => ({ ...prev, newSize: null }));
+            } else {
+                setFormErrors(prev => ({ ...prev, newSize: res.data.message || 'Lỗi thêm size!' }));
+            }
+        } catch (err) {
+            console.error('Size add error:', err);
+            setFormErrors(prev => ({ ...prev, newSize: 'Lỗi kết nối: ' + (err.response?.data?.message || err.message) }));
+        }
+    };
+
+    const handleAddNewColor = async () => {
+        if (!newColorName.trim()) {
+            setFormErrors(prev => ({ ...prev, newColor: 'Vui lòng nhập tên màu!' }));
+            return;
+        }
+        try {
+            const params = new URLSearchParams();
+            params.append('colorName', newColorName.trim());
+            const res = await api.post('/api/products/color/add', params, {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
+            if (res.data && res.data.success) {
+                setColors(prev => [...prev, { id: res.data.id, colorName: newColorName.trim() }]);
+                setVariant(prev => ({ ...prev, colorId: String(res.data.id) }));
+                setNewColorName('');
+                setShowNewColorField(false);
+                setFormErrors(prev => ({ ...prev, newColor: null }));
+            } else {
+                setFormErrors(prev => ({ ...prev, newColor: res.data.message || 'Lỗi thêm màu!' }));
+            }
+        } catch (err) {
+            console.error('Color add error:', err);
+            setFormErrors(prev => ({ ...prev, newColor: 'Lỗi kết nối: ' + (err.response?.data?.message || err.message) }));
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // --- Custom Validation ---
+        const errors = {};
+        if (!product.productName.trim()) errors.productName = 'Vui lòng nhập tên sản phẩm!';
+        if (!product.categoryId) errors.categoryId = 'Vui lòng chọn danh mục!';
+        if (!product.brandName) errors.brandName = 'Vui lòng chọn thương hiệu!';
+        if (!isEdit) {
+            if (!variant.sizeId) errors.sizeId = 'Vui lòng chọn size!';
+            if (!variant.colorId) errors.colorId = 'Vui lòng chọn màu!';
+            if (!variant.price || Number(variant.price) < 5000) errors.price = 'Giá bán phải tối thiểu 5,000 VNĐ!';
+            if (!variant.quantity || Number(variant.quantity) < 1) errors.quantity = 'Số lượng phải ít nhất là 1!';
+        }
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            const firstKey = Object.keys(errors)[0];
+            const el = document.getElementById(`field-${firstKey}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
+        setFormErrors({});
         setSaving(true);
+
 
         const productPayload = {
             id: isEdit ? parseInt(id) : null,
@@ -220,7 +302,7 @@ const AdminProductForm = () => {
     return (
         <AdminLayout>
             <div className="admin-product-form-page">
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                     <div className="page-header">
                         <div>
                             <span className="sub-title font-oswald">QUẢN LÝ SẢN PHẨM</span>
@@ -246,13 +328,14 @@ const AdminProductForm = () => {
                                 <div className="form-group">
                                     <label className="form-label">Tên sản phẩm *</label>
                                     <input
+                                        id="field-productName"
                                         type="text"
-                                        className="form-control"
+                                        className={`form-control ${formErrors.productName ? 'is-invalid' : ''}`}
                                         placeholder="VD: Nike Air Force 1"
-                                        required
                                         value={product.productName}
                                         onChange={(e) => setProduct({ ...product, productName: e.target.value })}
                                     />
+                                    {formErrors.productName && <div className="invalid-feedback" style={{ display: 'block', color: '#e50914', fontSize: '12px', marginTop: '4px' }}><i className="bi bi-exclamation-circle" /> {formErrors.productName}</div>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Mô tả chi tiết</label>
@@ -274,48 +357,119 @@ const AdminProductForm = () => {
                                         <label className="form-label" style={{ color: 'var(--accent-cyan)' }}>* Hệ thống sẽ tự tạo 1 biến thể mặc định từ các thông số này để khởi tạo sản phẩm.</label>
                                     </div>
                                     <div className="variant-row">
+                                        {/* SIZE */}
                                         <div className="form-group">
                                             <label className="form-label">Kích cỡ (Size) *</label>
-                                            <select className="form-control" required value={variant.sizeId} onChange={(e) => setVariant({ ...variant, sizeId: e.target.value })}>
-                                                <option value="">-- Chọn Size --</option>
-                                                {sizes.map(s => (
-                                                    <option key={s.id} value={s.id}>Size {s.sizeName}</option>
-                                                ))}
-                                            </select>
+                                            {showNewSizeField ? (
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <input
+                                                        id="field-sizeId"
+                                                        type="text"
+                                                        className={`form-control ${formErrors.newSize ? 'is-invalid' : ''}`}
+                                                        placeholder="VD: 41, 42, 43..."
+                                                        value={newSizeName}
+                                                        onChange={e => { setNewSizeName(e.target.value); setFormErrors(p => ({ ...p, newSize: null })); }}
+                                                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddNewSize())}
+                                                    />
+                                                    <button type="button" onClick={handleAddNewSize} style={{ background: '#e50914', color: '#fff', border: 'none', borderRadius: '8px', padding: '0 14px', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer' }}>Thêm</button>
+                                                </div>
+                                            ) : (
+                                                <select
+                                                    id="field-sizeId"
+                                                    className={`form-control ${formErrors.sizeId ? 'is-invalid' : ''}`}
+                                                    value={variant.sizeId}
+                                                    onChange={(e) => { setVariant({ ...variant, sizeId: e.target.value }); setFormErrors(p => ({ ...p, sizeId: null })); }}
+                                                >
+                                                    <option value="">-- Chọn Size --</option>
+                                                    {sizes.map(s => (
+                                                        <option key={s.id} value={s.id}>Size {s.sizeName}</option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                            {(formErrors.sizeId || formErrors.newSize) && (
+                                                <div style={{ color: '#e50914', fontSize: '12px', marginTop: '4px' }}>
+                                                    <i className="bi bi-exclamation-circle" /> {formErrors.sizeId || formErrors.newSize}
+                                                </div>
+                                            )}
+                                            <span
+                                                onClick={() => { setShowNewSizeField(!showNewSizeField); setNewSizeName(''); setFormErrors(p => ({ ...p, sizeId: null, newSize: null })); }}
+                                                style={{ color: '#e50914', fontSize: '12px', cursor: 'pointer', marginTop: '5px', display: 'inline-block', fontWeight: 700, textDecoration: 'underline' }}
+                                            >
+                                                {showNewSizeField ? '← Chọn size có sẵn' : '+ Thêm size mới'}
+                                            </span>
                                         </div>
+
+                                        {/* COLOR */}
                                         <div className="form-group">
                                             <label className="form-label">Màu sắc (Color) *</label>
-                                            <select className="form-control" required value={variant.colorId} onChange={(e) => setVariant({ ...variant, colorId: e.target.value })}>
-                                                <option value="">-- Chọn Màu --</option>
-                                                {colors.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.colorName}</option>
-                                                ))}
-                                            </select>
+                                            {showNewColorField ? (
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <input
+                                                        id="field-colorId"
+                                                        type="text"
+                                                        className={`form-control ${formErrors.newColor ? 'is-invalid' : ''}`}
+                                                        placeholder="VD: Đỏ, Xanh Navy..."
+                                                        value={newColorName}
+                                                        onChange={e => { setNewColorName(e.target.value); setFormErrors(p => ({ ...p, newColor: null })); }}
+                                                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddNewColor())}
+                                                    />
+                                                    <button type="button" onClick={handleAddNewColor} style={{ background: '#e50914', color: '#fff', border: 'none', borderRadius: '8px', padding: '0 14px', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer' }}>Thêm</button>
+                                                </div>
+                                            ) : (
+                                                <select
+                                                    id="field-colorId"
+                                                    className={`form-control ${formErrors.colorId ? 'is-invalid' : ''}`}
+                                                    value={variant.colorId}
+                                                    onChange={(e) => { setVariant({ ...variant, colorId: e.target.value }); setFormErrors(p => ({ ...p, colorId: null })); }}
+                                                >
+                                                    <option value="">-- Chọn Màu --</option>
+                                                    {colors.map(c => (
+                                                        <option key={c.id} value={c.id}>{c.colorName}</option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                            {(formErrors.colorId || formErrors.newColor) && (
+                                                <div style={{ color: '#e50914', fontSize: '12px', marginTop: '4px' }}>
+                                                    <i className="bi bi-exclamation-circle" /> {formErrors.colorId || formErrors.newColor}
+                                                </div>
+                                            )}
+                                            <span
+                                                onClick={() => { setShowNewColorField(!showNewColorField); setNewColorName(''); setFormErrors(p => ({ ...p, colorId: null, newColor: null })); }}
+                                                style={{ color: '#e50914', fontSize: '12px', cursor: 'pointer', marginTop: '5px', display: 'inline-block', fontWeight: 700, textDecoration: 'underline' }}
+                                            >
+                                                {showNewColorField ? '← Chọn màu có sẵn' : '+ Thêm màu mới'}
+                                            </span>
                                         </div>
+
+                                        {/* PRICE */}
                                         <div className="form-group">
                                             <label className="form-label">Giá bán (VNĐ) *</label>
                                             <input
+                                                id="field-price"
                                                 type="number"
                                                 min="5000"
-                                                className="form-control"
+                                                className={`form-control ${formErrors.price ? 'is-invalid' : ''}`}
                                                 placeholder="VD: 1500000"
-                                                required
                                                 value={variant.price}
-                                                onChange={(e) => setVariant({ ...variant, price: e.target.value })}
+                                                onChange={(e) => { setVariant({ ...variant, price: e.target.value }); setFormErrors(p => ({ ...p, price: null })); }}
                                             />
+                                            {formErrors.price && <div style={{ color: '#e50914', fontSize: '12px', marginTop: '4px' }}><i className="bi bi-exclamation-circle" /> {formErrors.price}</div>}
                                         </div>
+
+                                        {/* QUANTITY */}
                                         <div className="form-group">
                                             <label className="form-label">Số lượng tồn *</label>
                                             <input
+                                                id="field-quantity"
                                                 type="number"
                                                 min="1"
-                                                max="100"
-                                                className="form-control"
+                                                max="9999"
+                                                className={`form-control ${formErrors.quantity ? 'is-invalid' : ''}`}
                                                 placeholder="VD: 100"
-                                                required
                                                 value={variant.quantity}
-                                                onChange={(e) => setVariant({ ...variant, quantity: e.target.value })}
+                                                onChange={(e) => { setVariant({ ...variant, quantity: e.target.value }); setFormErrors(p => ({ ...p, quantity: null })); }}
                                             />
+                                            {formErrors.quantity && <div style={{ color: '#e50914', fontSize: '12px', marginTop: '4px' }}><i className="bi bi-exclamation-circle" /> {formErrors.quantity}</div>}
                                         </div>
                                     </div>
                                 </div>
@@ -366,21 +520,33 @@ const AdminProductForm = () => {
                                 <h3 className="card-custom-title font-oswald"><i className="bi bi-tags"></i> PHÂN LOẠI & TRẠNG THÁI</h3>
                                 <div className="form-group">
                                     <label className="form-label">Danh mục *</label>
-                                    <select className="form-control" required value={product.categoryId} onChange={(e) => setProduct({ ...product, categoryId: e.target.value })}>
+                                    <select
+                                        id="field-categoryId"
+                                        className={`form-control ${formErrors.categoryId ? 'is-invalid' : ''}`}
+                                        value={product.categoryId}
+                                        onChange={(e) => { setProduct({ ...product, categoryId: e.target.value }); setFormErrors(p => ({ ...p, categoryId: null })); }}
+                                    >
                                         <option value="">-- Chọn danh mục --</option>
                                         {categories.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
+                                    {formErrors.categoryId && <div style={{ color: '#e50914', fontSize: '12px', marginTop: '4px' }}><i className="bi bi-exclamation-circle" /> {formErrors.categoryId}</div>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Thương hiệu *</label>
-                                    <select className="form-control" required value={product.brandName} onChange={(e) => setProduct({ ...product, brandName: e.target.value })}>
+                                    <select
+                                        id="field-brandName"
+                                        className={`form-control ${formErrors.brandName ? 'is-invalid' : ''}`}
+                                        value={product.brandName}
+                                        onChange={(e) => { setProduct({ ...product, brandName: e.target.value }); setFormErrors(p => ({ ...p, brandName: null })); }}
+                                    >
                                         <option value="">-- Chọn thương hiệu --</option>
                                         {brands.map(b => (
                                             <option key={b.id} value={b.brandName}>{b.brandName}</option>
                                         ))}
                                     </select>
+                                    {formErrors.brandName && <div style={{ color: '#e50914', fontSize: '12px', marginTop: '4px' }}><i className="bi bi-exclamation-circle" /> {formErrors.brandName}</div>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Trạng thái</label>

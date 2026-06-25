@@ -502,10 +502,13 @@ const Home = () => {
                                          className={`brand-grid-item reveal-item god-hidden ${idx === 0 ? 'large' : ''}`}
                                          style={{ animationDelay: `${idx * 0.12}s` }}>
                                         <Link to={`/shop?brand=${brand.id}`}
-                                              className={`brand-card-inner text-decoration-none ${hasImg ? 'has-image' : ''}`}>
-                                            {hasImg && (
-                                                <img src={imgUrl(brand.imageUrl)} alt={name} className="brand-img" />
-                                            )}
+                                              className={`brand-card-inner text-decoration-none ${hasImg ? 'has-image' : ''}`}
+                                              style={hasImg ? {
+                                                  backgroundImage: `url(${imgUrl(brand.imageUrl)})`,
+                                                  backgroundSize: 'cover',
+                                                  backgroundPosition: 'center',
+                                                  backgroundRepeat: 'no-repeat'
+                                              } : {}}>
                                             <span className="brand-card-name">{name.toUpperCase()}</span>
                                             <span className="brand-card-explore">KHÁM PHÁ <i className="fa-solid fa-arrow-right" /></span>
                                         </Link>

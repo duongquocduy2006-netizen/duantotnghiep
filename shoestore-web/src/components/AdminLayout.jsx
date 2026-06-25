@@ -54,6 +54,7 @@ const AdminLayout = ({ children }) => {
         { path: '/admin/products', icon: 'bi-box-seam-fill', label: 'Sản Phẩm' },
         { path: '/admin/categories', icon: 'bi-tags-fill', label: 'Danh Mục' },
         { path: '/admin/brands', icon: 'bi-award-fill', label: 'Thương Hiệu' },
+        { path: '/admin/sizes-colors', icon: 'bi-rulers', label: 'Size & Màu Sắc' },
 
         { label: 'QUẢN LÝ NÂNG CAO', type: 'label' },
         { path: '/admin/banners', icon: 'bi-collection-play-fill', label: 'Quản Lý Banners' },
