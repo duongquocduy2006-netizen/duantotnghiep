@@ -114,6 +114,45 @@
     letter-spacing: 0.2px;
 }
 
+/* --- PASSWORD WRAPPER --- */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper .custom-input {
+    padding-right: 46px !important;
+}
+
+.toggle-password-btn {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #9ca3af;
+    font-size: 15px;
+    line-height: 1;
+    transition: color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.toggle-password-btn:hover {
+    color: #374151;
+}
+
+.toggle-password-btn:focus {
+    outline: none;
+}
+
+
 .login-card .custom-input {
     background: var(--input-bg);
     border: 1px solid #e5e7eb;
@@ -137,6 +176,55 @@
 .login-card .custom-input::placeholder {
     color: #9ca3af;
     font-size: 13px;
+}
+
+/* --- FIELD INLINE ERROR MESSAGES --- */
+.field-error-msg {
+    color: #e50914;
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    animation: errorFadeIn 0.2s ease;
+}
+
+.field-error-msg::before {
+    content: '!';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    min-width: 14px;
+    background-color: #e50914;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+@keyframes errorFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.login-card .custom-input.input-error {
+    border-color: #e50914 !important;
+    background: #fff5f5 !important;
+}
+
+.login-card .custom-input.input-error:focus {
+    border-color: #e50914 !important;
+    box-shadow: none !important;
 }
 
 /* Checkbox */
