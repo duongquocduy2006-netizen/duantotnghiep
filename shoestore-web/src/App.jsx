@@ -28,6 +28,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminPOS from './pages/admin/AdminPOS';
 import AdminVouchers from './pages/admin/AdminVouchers';
 import AdminProducts from './pages/admin/AdminProducts';
+import AdminSizesColors from './pages/admin/AdminSizesColors';
 import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminBrands from './pages/admin/AdminBrands';
@@ -117,6 +118,7 @@ function App() {
         <Route path="/admin/products/create" element={<AdminProductForm />} />
         <Route path="/admin/products/edit/:id" element={<AdminProductForm />} />
         <Route path="/admin/products/detail/:id" element={<AdminProductDetail />} />
+        <Route path="/admin/sizes-colors" element={<AdminSizesColors />} />
 
         <Route path="/admin/customers" element={<AdminCustomers />} />
         <Route path="/admin/customers/detail/:id" element={<AdminCustomerDetail />} />

@@ -140,6 +140,127 @@ public class ProductApiController {
         }
     }
 
+    // 1.6. THÊM SIZE MỚI
+    @PostMapping("/size/add")
+    public ResponseEntity<?> addSize(@RequestParam("sizeName") String sizeName) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            if (sizeName == null || sizeName.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Tên size không được để trống!");
+                return ResponseEntity.badRequest().body(response);
+            }
+            // Kiểm tra trùng
+            boolean exists = sizeRepository.findAll().stream()
+                    .anyMatch(s -> s.getSizeName().equalsIgnoreCase(sizeName.trim()));
+            if (exists) {
+                response.put("success", false);
+                response.put("message", "Size \"" + sizeName.trim() + "\" đã tồn tại!");
+                return ResponseEntity.badRequest().body(response);
+            }
+            Size newSize = new Size();
+            newSize.setSizeName(sizeName.trim());
+            Size saved = sizeRepository.save(newSize);
+            response.put("success", true);
+            response.put("id", saved.getId());
+            response.put("sizeName", saved.getSizeName());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi thêm size: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // 1.7. THÊM MÀU MỚI
+    @PostMapping("/color/add")
+    public ResponseEntity<?> addColor(@RequestParam("colorName") String colorName) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            if (colorName == null || colorName.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Tên màu không được để trống!");
+                return ResponseEntity.badRequest().body(response);
+            }
+            boolean exists = colorRepository.findAll().stream()
+                    .anyMatch(c -> c.getColorName().equalsIgnoreCase(colorName.trim()));
+            if (exists) {
+                response.put("success", false);
+                response.put("message", "Màu \"" + colorName.trim() + "\" đã tồn tại!");
+                return ResponseEntity.badRequest().body(response);
+            }
+            Color newColor = new Color();
+            newColor.setColorName(colorName.trim());
+            Color saved = colorRepository.save(newColor);
+            response.put("success", true);
+            response.put("id", saved.getId());
+            response.put("colorName", saved.getColorName());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi thêm màu: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // 1.8. SỬA SIZE
+    @PostMapping("/size/update")
+    public ResponseEntity<?> updateSize(@RequestParam("id") Integer id, @RequestParam("sizeName") String sizeName) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            java.util.Optional<Size> opt = sizeRepository.findById(id);
+            if (opt.isEmpty()) { response.put("success", false); response.put("message", "Không tìm thấy size!"); return ResponseEntity.badRequest().body(response); }
+            boolean exists = sizeRepository.findAll().stream().anyMatch(s -> !s.getId().equals(id) && s.getSizeName().equalsIgnoreCase(sizeName.trim()));
+            if (exists) { response.put("success", false); response.put("message", "Size \"" + sizeName.trim() + "\" đã tồn tại!"); return ResponseEntity.badRequest().body(response); }
+            Size s = opt.get(); s.setSizeName(sizeName.trim()); sizeRepository.save(s);
+            response.put("success", true); return ResponseEntity.ok(response);
+        } catch (Exception e) { response.put("success", false); response.put("message", "Lỗi: " + e.getMessage()); return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response); }
+    }
+
+    // 1.9. XÓA SIZE
+    @PostMapping("/size/delete")
+    public ResponseEntity<?> deleteSize(@RequestParam("id") Integer id) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            sizeRepository.deleteById(id);
+            response.put("success", true);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Không thể xóa size này (có thể đang được dùng bởi biến thể sản phẩm).");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // 1.10. SỬA MÀU
+    @PostMapping("/color/update")
+    public ResponseEntity<?> updateColor(@RequestParam("id") Integer id, @RequestParam("colorName") String colorName) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            java.util.Optional<Color> opt = colorRepository.findById(id);
+            if (opt.isEmpty()) { response.put("success", false); response.put("message", "Không tìm thấy màu!"); return ResponseEntity.badRequest().body(response); }
+            boolean exists = colorRepository.findAll().stream().anyMatch(c -> !c.getId().equals(id) && c.getColorName().equalsIgnoreCase(colorName.trim()));
+            if (exists) { response.put("success", false); response.put("message", "Màu \"" + colorName.trim() + "\" đã tồn tại!"); return ResponseEntity.badRequest().body(response); }
+            Color c = opt.get(); c.setColorName(colorName.trim()); colorRepository.save(c);
+            response.put("success", true); return ResponseEntity.ok(response);
+        } catch (Exception e) { response.put("success", false); response.put("message", "Lỗi: " + e.getMessage()); return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response); }
+    }
+
+    // 1.11. XÓA MÀU
+    @PostMapping("/color/delete")
+    public ResponseEntity<?> deleteColor(@RequestParam("id") Integer id) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            colorRepository.deleteById(id);
+            response.put("success", true);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Không thể xóa màu này (có thể đang được dùng bởi biến thể sản phẩm).");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
     // 2. LẤY CHI TIẾT SẢN PHẨM DÀNH CHO ADMIN
     @GetMapping("/{id}")
     public ResponseEntity<?> getProductDetail(@PathVariable Integer id, jakarta.servlet.http.HttpSession session) {
