@@ -319,33 +319,18 @@
     position: relative;
     overflow: hidden;
 }
-/* Has image — background-image approach */
-.brand-card-inner.has-image {
-    opacity: 1;
-    transition: opacity 0.4s ease;
-}
-.brand-card-inner.has-image::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-        to bottom,
-        rgba(0,0,0,0.25) 0%,
-        rgba(0,0,0,0.5) 100%
-    );
-    z-index: 1;
-    transition: background 0.4s ease;
-}
-.brand-grid-item:hover .brand-card-inner.has-image::after {
-    background: linear-gradient(
-        to bottom,
-        rgba(0,0,0,0.15) 0%,
-        rgba(0,0,0,0.4) 100%
-    );
-}
-/* Legacy img fallback (unused now but kept safe) */
+/* Has image */
 .brand-card-inner.has-image .brand-img {
-    display: none;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0.35;
+    transition: opacity 0.4s ease, transform 0.6s ease;
+}
+.brand-grid-item:hover .brand-card-inner.has-image .brand-img {
+    opacity: 0.5;
+    transform: scale(1.06);
 }
 .brand-card-name {
     font-family: 'Oswald', sans-serif;
@@ -357,7 +342,7 @@
     text-align: center;
     position: relative;
     z-index: 2;
-    text-shadow: 0 2px 16px rgba(0,0,0,0.9);
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
 }
 .brand-card-explore {
     position: relative;
@@ -365,7 +350,7 @@
     font-family: 'Oswald', sans-serif;
     font-size: 12px;
     letter-spacing: 2px;
-    color: rgba(255,255,255,0.7);
+    color: rgba(255,255,255,0.5);
     text-transform: uppercase;
     margin-top: 8px;
     transition: color 0.3s;
