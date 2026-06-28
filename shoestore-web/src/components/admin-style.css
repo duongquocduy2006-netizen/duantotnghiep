@@ -1,4 +1,15 @@
 /* --- ADMIN DESIGN SYSTEM --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+.admin-wrapper,
+.admin-wrapper *,
+.admin-wrapper button,
+.admin-wrapper input,
+.admin-wrapper select,
+.admin-wrapper textarea {
+    font-family: 'Inter', sans-serif !important;
+}
+
 :root {
     --bg-body: #f4f5f7;
     --bg-card: #ffffff;
@@ -17,7 +28,6 @@
     min-height: 100vh;
     background-color: var(--bg-body);
     color: var(--text-main);
-    font-family: 'Poppins', sans-serif;
 }
 
 /* --- SIDEBAR --- */
@@ -64,6 +74,26 @@
     padding: 0 15px;
     flex-grow: 1;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a2f var(--sidebar-bg);
+}
+
+/* Tùy chỉnh thanh cuộn sidebar cho các trình duyệt Webkit */
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: var(--sidebar-bg);
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: #2a2a2f;
+    border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-red);
 }
 
 .nav-label {
@@ -682,7 +712,7 @@
     background: #fff;
     border: 1.5px solid #e2e8f0;
     border-bottom: none;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
     transition: transform 0.3s ease, background 0.3s, box-shadow 0.3s;
     position: relative;
 }
@@ -700,6 +730,7 @@
     background: #fff;
     box-shadow: 6px -6px 0 var(--accent-red);
 }
+
 .bar-group:hover .bar-max {
     background: var(--accent-red);
 }
@@ -1151,7 +1182,7 @@ tr:hover .avatar {
 
 .search-input:focus {
     border-color: #1a73e8;
-    box-shadow: 0 0 0 3px rgba(26,115,232,0.1);
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
 }
 
 .filter-select {
@@ -1237,7 +1268,7 @@ tr:hover .avatar {
     align-items: center;
     gap: 8px;
     border-radius: 8px;
-    box-shadow: 0 4px 14px rgba(204,0,0,0.25);
+    box-shadow: 0 4px 14px rgba(204, 0, 0, 0.25);
 }
 
 .btn-neon:hover {
@@ -1264,7 +1295,7 @@ tr:hover .avatar {
     border: 1px solid #e2e8f0;
     border-radius: 16px;
     position: relative;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     max-width: 90%;
 }
 
@@ -1316,7 +1347,7 @@ tr:hover .avatar {
 
 .form-input:focus {
     border-color: #1a73e8;
-    box-shadow: 0 0 0 3px rgba(26,115,232,0.1);
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
     background: #fff;
 }
 
@@ -1566,7 +1597,7 @@ tr:hover .avatar {
 .search-input:focus,
 .filter-select:focus {
     border-color: #1a73e8 !important;
-    box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important;
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1) !important;
     background: #fff !important;
 }
 
@@ -1784,12 +1815,12 @@ table tr:hover td {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
 }
 
-.admin-settings-page input:checked + .slider {
+.admin-settings-page input:checked+.slider {
     background-color: var(--accent-red) !important;
     box-shadow: 0 0 10px rgba(204, 0, 0, 0.3) !important;
 }
 
-.admin-settings-page input:checked + .slider:before {
+.admin-settings-page input:checked+.slider:before {
     background-color: #ffffff !important;
 }
 
@@ -1972,4 +2003,4 @@ table tr:hover td {
 .pos-catalog {
     background: transparent !important;
     border: none !important;
-}
+}
