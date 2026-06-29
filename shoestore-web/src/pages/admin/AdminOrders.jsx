@@ -394,7 +394,7 @@ const AdminOrders = () => {
                 .btn-red-skew:hover { background: #fff; color: #000; box-shadow: 0 8px 24px rgba(229,9,20,0.25); transform: translateY(-3px); }
                 .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }
                 .search-box { position: relative; flex: 1; max-width: none; min-width: 220px; }
-                .search-input { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 9px 14px 9px 38px; color: #3c4043; outline: none; transition: all 0.2s; height: 40px; border-radius: 24px; font-weight: 400; font-size: 14px; font-family: 'Poppins', sans-serif; }
+                .search-input { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 9px 14px 9px 38px; color: #3c4043; outline: none; transition: all 0.2s; height: 40px; border-radius: 24px; font-weight: 400; font-size: 14px; font-family: 'Inter', sans-serif; }
                 .search-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
                 .search-input::placeholder { color: #9aa0a6; }
                 .bi-search { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9aa0a6; font-size: 14px; pointer-events: none; }
@@ -412,7 +412,7 @@ const AdminOrders = () => {
                 .action-btn { background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; height: 34px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; padding: 0 10px; cursor: pointer; font-weight: 600; border-radius: 8px; }
                 .btn-view:hover { background: #1e293b; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-1px); }
                 
-                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Poppins'; font-size: 14px; transition: all 0.2s; }
+                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.2s; }
                 .filter-select:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
 
                 /* Status badging */

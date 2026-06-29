@@ -17,7 +17,7 @@
     min-height: 100vh;
     background-color: var(--bg-body);
     color: var(--text-main);
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
 /* --- SIDEBAR --- */
@@ -578,7 +578,7 @@
     border-radius: 6px;
     font-size: 11px;
     font-weight: 700;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     line-height: 1;
 }
 
@@ -1164,7 +1164,7 @@ tr:hover .avatar {
     border: 1.5px solid #dadce0;
     border-radius: 24px;
     color: #3c4043;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     outline: none;
     transition: 0.2s;
 }
@@ -1330,7 +1330,7 @@ tr:hover .avatar {
     outline: none;
     transition: 0.2s;
     box-sizing: border-box;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     border-radius: 8px;
 }
 
@@ -1560,7 +1560,7 @@ tr:hover .avatar {
     color: #3c4043 !important;
     border-radius: 24px !important;
     padding: 10px 16px !important;
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     outline: none !important;
     font-size: 14px !important;
     font-weight: 400 !important;

@@ -7,7 +7,7 @@
 .home-god-tier {
     background-color: #ffffff;
     color: #0a0a0a;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 .font-oswald { font-family: 'Oswald', sans-serif; }
 .letter-spacing-1 { letter-spacing: 1px; }
@@ -540,7 +540,7 @@
     text-transform: uppercase;
 }
 .flat-name {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     line-height: 1.4;
     font-weight: 700;
 }
