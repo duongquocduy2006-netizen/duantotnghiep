@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Chỉnh Sửa Danh Mục | ShoeStore Professional</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+        /* --- THEME CONFIGURATION --- */
+        :root {
+            --bg-body: #050505;
+            --bg-card: #121212;
+            --accent-red: #e50914;
+            --accent-cyan: #00f2ff;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --radius: 6px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-size: 14px;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, .font-oswald { font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* --- LAYOUT --- */
+        .admin-wrapper { display: flex; min-height: 100vh; }
+        
+        .main-content {
+            flex-grow: 1; 
+            margin-left: 260px; /* Khớp với sidebar */
+            padding: 30px 40px;
+            background-image: radial-gradient(circle at 80% 10%, rgba(0, 242, 255, 0.05) 0%, transparent 40%);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- PAGE HEADER --- */
+        .page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; margin-top: 20px; }
+        .page-title { font-size: 32px; font-weight: 700; margin: 0; line-height: 1; text-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .sub-title { font-size: 13px; color: var(--accent-cyan); font-weight: 600; letter-spacing: 2px; display: block; margin-bottom: 5px; }
+
+        /* --- FORM STYLES --- */
+        .card-form {
+            background: var(--bg-card);
+            padding: 40px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .form-header { margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 20px; }
+        .form-header h2 { font-size: 20px; color: var(--text-main); margin-bottom: 5px; }
+        .form-header p { color: var(--text-muted); font-size: 13px; }
+        
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; margin-bottom: 10px; font-weight: 500; color: var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .form-control { 
+            width: 100%; padding: 14px 15px; background: #050505; border: 1px solid #333; 
+            border-radius: 4px; color: #fff; outline: none; transition: 0.3s; font-family: 'Poppins';
+        }
+        .form-control:focus { border-color: var(--accent-cyan); box-shadow: 0 0 10px rgba(0, 242, 255, 0.2); }
+
+        /* Mũi tên Custom cho thẻ Select */
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat; background-position: right 15px top 50%; background-size: 10px; padding-right: 40px;
+        }
+
+        /* --- BUTTONS --- */
+        .btn-group { display: flex; gap: 15px; margin-top: 40px; }
+
+        .btn-neon {
+            background: var(--accent-cyan); color: #000; border: none; padding: 14px 30px;
+            font-family: 'Oswald', sans-serif; letter-spacing: 1px; text-transform: uppercase;
+            cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            font-weight: 600; text-decoration: none; font-size: 15px; flex: 1;
+        }
+        .btn-neon:hover { background: #fff; box-shadow: 0 0 20px rgba(0, 242, 255, 0.5); }
+
+        .btn-back {
+            background: transparent; color: #fff; border: 1px solid #333; padding: 14px 30px;
+            font-family: 'Oswald', sans-serif; letter-spacing: 1px; text-transform: uppercase;
+            cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            text-decoration: none; font-weight: 500; border-radius: 4px; flex: 1;
+        }
+        .btn-back:hover { border-color: #fff; background: rgba(255,255,255,0.05); }
+
+        /* --- ALERT --- */
+        .alert-success { 
+            background: rgba(74, 222, 128, 0.1); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3);
+            padding: 15px 20px; border-radius: 4px; margin-bottom: 25px; display: flex; align-items: center; gap: 10px;
+            font-weight: 500; max-width: 800px;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-wrapper">
+        
+        <aside th:replace="~{admin/fragments/sidebar :: sidebar}"></aside>
+
+        <div class="main-content">
+            
+            <header th:replace="~{admin/fragments/header :: header}"></header>
+
+            <div class="page-header">
+                <div>
+                    <span class="sub-title"><i class="bi bi-pencil-square"></i> CẬP NHẬT DỮ LIỆU</span>
+                    <h1 class="page-title font-oswald">CHỈNH SỬA DANH MỤC</h1>
+                </div>
+            </div>
+
+            <div th:if="${message}" class="alert-success">
+                <i class="bi bi-check-circle-fill"></i> <span th:text="${message}"></span>
+            </div>
+
+            <div class="card-form">
+                <div class="form-header">
+                    <h2 class="font-oswald">Mã Danh Mục #<span th:text="${category.id}" style="color: var(--accent-cyan);"></span></h2>
+                    <p>Cập nhật thông tin chi tiết cho loại sản phẩm này.</p>
+                </div>
+
+                <form th:action="@{/admin/categories/edit/{id}(id=${category.id})}" th:object="${category}" method="post">
+                    
+                    <input type="hidden" th:field="*{id}">
+
+                    <div class="form-group">
+                        <label><i class="bi bi-bookmark-star"></i> Tên loại sản phẩm</label>
+                        <input type="text" th:field="*{name}" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="bi bi-link-45deg"></i> Slug (Đường dẫn tĩnh)</label>
+                        <input type="text" th:field="*{slug}" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="bi bi-eye"></i> Trạng thái hiển thị</label>
+                        <select th:field="*{active}" class="form-control">
+                            <option th:value="true">Hiển thị công khai</option>
+                            <option th:value="false">Tạm ẩn</option>
+                        </select>
+                    </div>
+
+                    <div class="btn-group">
+                        <a th:href="@{/admin/categories}" class="btn-back">
+                            <i class="bi bi-x-lg"></i> HỦY BỎ
+                        </a>
+                        <button type="submit" class="btn-neon">
+                            <i class="bi bi-check2-circle"></i> CẬP NHẬT THAY ĐỔI
+                        </button>
+                    </div>
+                    
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

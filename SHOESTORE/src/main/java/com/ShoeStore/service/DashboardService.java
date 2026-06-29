@@ -83,7 +83,7 @@ public class DashboardService {
         
         String sql = "SELECT TOP 4 " +
                 "p.id, p.product_name, p.product_code, " +
-                "(SELECT TOP 1 image_url FROM product_images pi WHERE pi.product_id = p.id) as image_url, "
+                "(SELECT TOP 1 image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = 1) as image_url, "
                 +
                 "c.category_name, " +
                 "SUM(oi.quantity) as soldCount, " +
