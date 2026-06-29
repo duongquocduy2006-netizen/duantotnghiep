@@ -302,22 +302,6 @@
             font-weight: 500;
         }
 
-        label.error {
-            color: #ff4d4d;
-            font-size: 12px;
-            margin-top: 5px;
-            display: block;
-            font-weight: 500;
-            text-transform: none;
-            letter-spacing: normal;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        input.error {
-            border-color: #ff4d4d !important;
-            box-shadow: 0 0 10px rgba(255, 77, 77, 0.2) !important;
-        }
-
         @media (max-width: 576px) {
             .register-card {
                 padding: 30px 20px;
@@ -358,7 +342,7 @@
 
             <div th:if="${success}" class="alert-success" th:text="${success}"></div>
 
-            <form id="registerForm" th:action="@{/register}" th:object="${registerRequest}" method="post" novalidate>
+            <form th:action="@{/register}" th:object="${registerRequest}" method="post">
                 <div class="mb-3">
                     <label class="form-label">Họ và tên</label>
                     <input type="text" th:field="*{fullName}" class="form-control custom-input"
@@ -411,64 +395,7 @@
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            $('#registerForm').validate({
-                rules: {
-                    fullName: {
-                        required: true,
-                        minlength: 3
-                    },
-                    email: {
-                        required: true,
-                        email: true
-                    },
-                    password: {
-                        required: true,
-                        minlength: 6
-                    },
-                    confirmPassword: {
-                        required: true,
-                        equalTo: "#password"
-                    },
-                    agreeTerms: {
-                        required: true
-                    }
-                },
-                messages: {
-                    fullName: {
-                        required: "Vui lòng nhập họ và tên!",
-                        minlength: "Họ tên phải có ít nhất 3 ký tự!"
-                    },
-                    email: {
-                        required: "Vui lòng nhập địa chỉ email!",
-                        email: "Email không đúng định dạng!"
-                    },
-                    password: {
-                        required: "Vui lòng nhập mật khẩu!",
-                        minlength: "Mật khẩu phải có ít nhất 6 ký tự!"
-                    },
-                    confirmPassword: {
-                        required: "Vui lòng xác nhận mật khẩu!",
-                        equalTo: "Mật khẩu xác nhận không khớp!"
-                    },
-                    agreeTerms: {
-                        required: "Bạn phải đồng ý với điều khoản sử dụng!"
-                    }
-                },
-                errorPlacement: function(error, element) {
-                    if (element.attr("name") == "agreeTerms") {
-                        error.appendTo(element.closest('.mb-4'));
-                    } else {
-                        error.insertAfter(element);
-                    }
-                }
-            });
-        });
-    </script>
 </body>
 
 </html>

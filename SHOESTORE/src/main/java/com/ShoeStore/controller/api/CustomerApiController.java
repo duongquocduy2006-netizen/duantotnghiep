@@ -102,7 +102,6 @@ public class CustomerApiController {
         }
     }
 
-
     // 5. CẬP NHẬT QUYỀN TRUY CẬP (ROLE) DÀNH CHO ADMIN
     @PostMapping("/update-role")
     public ResponseEntity<?> updateRole(@RequestBody Map<String, Object> payload) {

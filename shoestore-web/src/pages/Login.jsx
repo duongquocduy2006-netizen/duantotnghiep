@@ -9,8 +9,7 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
-    const [showPassword, setShowPassword] = useState(false);
+    const [errors, setErrors] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
 
     useEffect(() => {
@@ -26,27 +25,25 @@ const Login = () => {
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
-
-        // Validate fields
-        const errors = { email: '', password: '' };
-        let hasError = false;
-
-        if (!email.trim()) {
-            errors.email = 'Vui lòng nhập email tài khoản!';
-            hasError = true;
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            errors.email = 'Email không đúng định dạng!';
-            hasError = true;
+        
+        let newErrors = {};
+        if (!email) {
+            newErrors.email = 'Vui lòng nhập email của bạn!';
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+            newErrors.email = 'Email không đúng định dạng!';
         }
-
+        
         if (!password) {
-            errors.password = 'Vui lòng nhập mật khẩu!';
-            hasError = true;
+            newErrors.password = 'Vui lòng nhập mật khẩu!';
         }
 
-        setFieldErrors(errors);
-        if (hasError) return;
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
 
+        setErrors({});
+        
         try {
             const response = await api.post('/api/auth/login', {
                 email,
@@ -111,35 +108,32 @@ const Login = () => {
                             <label className="form-label">Email tài khoản</label>
                             <input 
                                 type="email" 
-                                className={`form-control custom-input${fieldErrors.email ? ' input-error' : ''}`}
+                                className={`form-control custom-input ${errors.email ? 'is-invalid border-danger' : ''}`}
+                                style={errors.email ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
                                 placeholder="NHẬP EMAIL CỦA BẠN"
                                 value={email}
-                                onChange={(e) => { setEmail(e.target.value); setFieldErrors(prev => ({ ...prev, email: '' })); }}
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    if(errors.email) setErrors({...errors, email: ''});
+                                }}
                             />
-                            {fieldErrors.email && <div className="field-error-msg">{fieldErrors.email}</div>}
+                            {errors.email && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.email}</div>}
                         </div>
 
                         <div className="mb-3">
                             <label className="form-label">Mật khẩu</label>
-                            <div className="password-wrapper">
-                                <input 
-                                    type={showPassword ? 'text' : 'password'}
-                                    className={`form-control custom-input${fieldErrors.password ? ' input-error' : ''}`}
-                                    placeholder="NHẬP MẬT KHẨU"
-                                    value={password}
-                                    onChange={(e) => { setPassword(e.target.value); setFieldErrors(prev => ({ ...prev, password: '' })); }}
-                                />
-                                <button
-                                    type="button"
-                                    className="toggle-password-btn"
-                                    onClick={() => setShowPassword(prev => !prev)}
-                                    tabIndex={-1}
-                                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                                >
-                                    <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                </button>
-                            </div>
-                            {fieldErrors.password && <div className="field-error-msg">{fieldErrors.password}</div>}
+                            <input 
+                                type="password" 
+                                className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
+                                style={errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
+                                placeholder="NHẬP MẬT KHẨU"
+                                value={password}
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    if(errors.password) setErrors({...errors, password: ''});
+                                }}
+                            />
+                            {errors.password && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.password}</div>}
                         </div>
 
                         <div className="d-flex justify-content-between align-items-center mb-4">

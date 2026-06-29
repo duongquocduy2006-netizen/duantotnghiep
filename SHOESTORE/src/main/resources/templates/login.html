@@ -336,22 +336,6 @@
             font-weight: 500;
         }
 
-        label.error {
-            color: #ff4d4d;
-            font-size: 12px;
-            margin-top: 5px;
-            display: block;
-            font-weight: 500;
-            text-transform: none;
-            letter-spacing: normal;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        input.error {
-            border-color: #ff4d4d !important;
-            box-shadow: 0 0 10px rgba(255, 77, 77, 0.2) !important;
-        }
-
         /* Responsive Mobile */
         @media (max-width: 576px) {
             .login-card {
@@ -415,7 +399,7 @@
                 <span id="dynamicSuccessMsg"></span>
             </div>
 
-            <form id="loginForm" th:action="@{/login}" th:object="${loginRequest}" method="post" novalidate>
+            <form id="loginForm" th:action="@{/login}" th:object="${loginRequest}" method="post">
                 <div class="mb-3">
                     <label class="form-label">Email tài khoản</label>
                     <input type="email" th:field="*{email}" class="form-control custom-input"
@@ -458,11 +442,10 @@
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('loginForm');
             const dynamicAlert = document.getElementById('dynamicAlert');
             const dynamicAlertMsg = document.getElementById('dynamicAlertMsg');
             const dynamicSuccess = document.getElementById('dynamicSuccess');
@@ -484,28 +467,18 @@
                 });
             });
 
-            $('#loginForm').validate({
-                rules: {
-                    email: {
-                        required: true,
-                        email: true
-                    },
-                    password: {
-                        required: true
-                    }
-                },
-                messages: {
-                    email: {
-                        required: "Vui lòng nhập email của bạn!",
-                        email: "Email không đúng định dạng!"
-                    },
-                    password: {
-                        required: "Vui lòng nhập mật khẩu!"
-                    }
-                },
-                submitHandler: function(form) {
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
                     const emailVal = document.getElementById('email').value.trim();
                     const passwordVal = document.getElementById('password').value;
+
+                    // Client validation
+                    if (!emailVal || !passwordVal) {
+                        showError("Vui lòng điền đầy đủ email và mật khẩu!");
+                        return;
+                    }
 
                     // Disable button & show loading state
                     btnLogin.disabled = true;
@@ -554,8 +527,8 @@
                         // clear password
                         document.getElementById('password').value = '';
                     });
-                }
-            });
+                });
+            }
 
             function showError(msg) {
                 dynamicAlertMsg.textContent = msg;
