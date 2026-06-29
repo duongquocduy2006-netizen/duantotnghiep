@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 import './Chatbox.css';
 
@@ -63,6 +64,13 @@ const Chatbox = () => {
         }
         return <span>{msg.content}</span>;
     };
+
+    const location = useLocation();
+    const isHiddenPath = location.pathname.startsWith('/admin') || location.pathname.startsWith('/shipper');
+
+    if (isHiddenPath) {
+        return null;
+    }
 
     return (
         <div className={`chatbox-container ${isOpen ? 'open' : ''}`}>

@@ -180,6 +180,7 @@
 
 .main-content.expanded {
     margin-left: 80px;
+    width: calc(100% - 80px);
 }
 
 .logout-wrapper {
@@ -215,11 +216,12 @@
 .main-content {
     flex-grow: 1;
     margin-left: 260px;
+    width: calc(100% - 260px);
     display: flex;
     flex-direction: column;
     min-width: 0;
     position: relative;
-    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-header-admin {
@@ -233,8 +235,10 @@
     position: sticky;
     top: 0;
     width: 100%;
+    max-width: 100%;
     z-index: 1001;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    box-sizing: border-box;
 }
 
 .page-header-admin .header-left {
@@ -397,6 +401,9 @@
 /* --- CONTENT BODY & DASHBOARD CARDS --- */
 .content-body {
     padding: 15px 40px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
 }
 
 .dashboard-actions {

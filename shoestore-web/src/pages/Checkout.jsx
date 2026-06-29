@@ -20,6 +20,11 @@ const Checkout = () => {
     const [discount, setDiscount] = useState(0);
     const [note, setNote] = useState('');
     
+    // Validate states
+    const [voucherError, setVoucherError] = useState('');
+    const [voucherSuccess, setVoucherSuccess] = useState('');
+    const [submitError, setSubmitError] = useState('');
+    
     // Address & GHN state
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -402,10 +407,13 @@ const Checkout = () => {
     const handleApplyVoucher = async (codeToApply) => {
         const code = typeof codeToApply === 'string' ? codeToApply : voucherCode;
         if (!code || !code.trim()) {
-            alert('Vui lòng nhập mã giảm giá!');
+            setVoucherError('Vui lòng nhập mã giảm giá!');
+            setVoucherSuccess('');
             return;
         }
         try {
+            setVoucherError('');
+            setVoucherSuccess('');
             const response = await api.post('/api/vouchers/apply', {
                 voucherCode: code.trim().toUpperCase(),
                 cartTotal: totalPrice
@@ -419,16 +427,16 @@ const Checkout = () => {
                     discountValue: v.discountValue || v.discount_value
                 });
                 setDiscount(discountValue);
-                alert(response.data.message || 'Áp dụng mã giảm giá thành công!');
+                setVoucherSuccess(response.data.message || 'Áp dụng mã giảm giá thành công!');
             } else {
-                alert(response.data.message || 'Mã giảm giá không hợp lệ!');
+                setVoucherError(response.data.message || 'Mã giảm giá không hợp lệ!');
                 setAppliedVoucher(null);
                 setDiscount(0);
             }
         } catch (err) {
             console.error('Lỗi áp dụng voucher:', err);
             const errMsg = err.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc không đủ điều kiện!';
-            alert(errMsg);
+            setVoucherError(errMsg);
             setAppliedVoucher(null);
             setDiscount(0);
         }
@@ -438,6 +446,8 @@ const Checkout = () => {
         setAppliedVoucher(null);
         setDiscount(0);
         setVoucherCode('');
+        setVoucherError('');
+        setVoucherSuccess('');
     };
 
     const formatCurrency = (amount) => {
@@ -452,9 +462,10 @@ const Checkout = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setSubmitError('');
         
         if (!selectedProvince || !selectedDistrict || !selectedWard || !streetDetail.trim()) {
-            alert('Vui lòng điền đầy đủ địa chỉ nhận hàng!');
+            setSubmitError('Vui lòng điền đầy đủ địa chỉ nhận hàng!');
             return;
         }
 
@@ -492,15 +503,14 @@ const Checkout = () => {
                 if (response.data.paymentMethod === 'BANK' && response.data.checkoutUrl) {
                     window.location.href = response.data.checkoutUrl;
                 } else {
-                    alert('Đặt hàng thành công!');
                     navigate(`/checkout-success?orderCode=${response.data.orderCode}`);
                 }
             } else {
-                alert(response.data.message || 'Đặt hàng thất bại!');
+                setSubmitError(response.data.message || 'Đặt hàng thất bại!');
             }
         } catch (err) {
             console.error('Lỗi đặt hàng:', err);
-            alert(err.response?.data?.message || 'Lỗi hệ thống khi đặt hàng!');
+            setSubmitError(err.response?.data?.message || 'Lỗi hệ thống khi đặt hàng!');
         }
     };
 
@@ -672,9 +682,15 @@ const Checkout = () => {
 
                                     <div className="mt-3 mb-4">
                                         <div className="input-group mb-2">
-                                            <input type="text" className="form-control" placeholder="Nhập mã giảm giá..." value={voucherCode} onChange={e => setVoucherCode(e.target.value)} />
+                                            <input type="text" className="form-control" placeholder="Nhập mã giảm giá..." value={voucherCode} onChange={e => {
+                                                setVoucherCode(e.target.value);
+                                                if (voucherError) setVoucherError('');
+                                                if (voucherSuccess) setVoucherSuccess('');
+                                            }} />
                                             <button className="btn btn-outline-danger" type="button" onClick={() => handleApplyVoucher()}>ÁP DỤNG</button>
                                         </div>
+                                        {voucherError && <div className="text-danger mt-1 fw-bold" style={{ fontSize: '13px' }}><i className="fa-solid fa-circle-exclamation me-1"></i>{voucherError}</div>}
+                                        {voucherSuccess && <div className="text-success mt-1 fw-bold" style={{ fontSize: '13px' }}><i className="fa-solid fa-circle-check me-1"></i>{voucherSuccess}</div>}
                                         {availableVouchers.length > 0 && (
                                             <div className="available-vouchers mt-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                                 {availableVouchers.map(v => {
@@ -716,6 +732,11 @@ const Checkout = () => {
                                     </div>
                                 </div>
 
+                                {submitError && (
+                                    <div className="alert alert-danger py-2 px-3 mb-3 text-center animate__animated animate__shakeX" style={{ fontSize: '13px', borderRadius: '8px', border: 'none', background: 'rgba(229, 9, 20, 0.1)', color: '#ea868f' }}>
+                                        <i className="fa-solid fa-triangle-exclamation me-1"></i> {submitError}
+                                    </div>
+                                )}
                                 <button type="submit" className="btn-place-order" disabled={cartItems.length === 0}>
                                     XÁC NHẬN ĐẶT HÀNG <i className="fa fa-arrow-right ms-2"></i>
                                 </button>

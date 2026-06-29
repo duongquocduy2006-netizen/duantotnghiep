@@ -332,6 +332,17 @@ const Details = () => {
         window.scrollTo(0, 0);
         fetchProductDetails();
         
+        const tab = queryParams.get('tab');
+        if (tab) {
+            setActiveTab(tab);
+            if (tab === 'reviews') {
+                setTimeout(() => {
+                    const el = document.getElementById('details-tabs');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }, 400);
+            }
+        }
+        
         const fetchProfile = async () => {
             try {
                 const res = await api.get('/api/profile');
@@ -539,7 +550,7 @@ const Details = () => {
                                             {variants.map(v => (
                                                 <button key={v.id} 
                                                     className={`det-variant-chip ${selectedVariantId === v.id ? 'det-variant-chip--active' : ''} ${v.quantity === 0 ? 'det-variant-chip--disabled' : ''}`}
-                                                    onClick={() => { if(v.quantity > 0) handleVariantClick(v) }}>
+                                                    onClick={() => handleVariantClick(v)}>
                                                     {v.size_name} - {v.color_name}
                                                 </button>
                                             ))}
@@ -557,18 +568,26 @@ const Details = () => {
                                         </div>
                                     )}
                                     <div className="det-actions-row">
-                                        <div className="det-qty-control">
-                                            <button className="det-qty-btn" onClick={handleDecrease}><i className="fa-solid fa-minus"></i></button>
-                                            <input type="text" className="det-qty-val" value={qty} readOnly />
-                                            <button className="det-qty-btn" onClick={handleIncrease}><i className="fa-solid fa-plus"></i></button>
+                                        <div className="det-qty-control" style={{ opacity: currentStock <= 0 ? 0.5 : 1, pointerEvents: currentStock <= 0 ? 'none' : 'auto' }}>
+                                            <button className="det-qty-btn" onClick={handleDecrease} disabled={currentStock <= 0}><i className="fa-solid fa-minus"></i></button>
+                                            <input type="text" className="det-qty-val" value={currentStock <= 0 ? 0 : qty} readOnly />
+                                            <button className="det-qty-btn" onClick={handleIncrease} disabled={currentStock <= 0}><i className="fa-solid fa-plus"></i></button>
                                         </div>
-                                        <button className="det-btn-cart" onClick={handleAddToCart}>
+                                        <button 
+                                            className={`det-btn-cart ${currentStock <= 0 ? 'det-btn-disabled' : ''}`} 
+                                            onClick={handleAddToCart}
+                                            disabled={currentStock <= 0}
+                                        >
                                             <i className="fa-solid fa-cart-plus"></i> THÊM GIỎ HÀNG
                                         </button>
                                     </div>
-
-                                    <button className="det-btn-buy" onClick={handleBuyNow}>
-                                        MUA NGAY
+ 
+                                    <button 
+                                        className={`det-btn-buy ${currentStock <= 0 ? 'det-btn-disabled' : ''}`} 
+                                        onClick={handleBuyNow}
+                                        disabled={currentStock <= 0}
+                                    >
+                                        {currentStock <= 0 ? 'HẾT HÀNG' : 'MUA NGAY'}
                                     </button>
 
                                     <div className="det-guarantee-strip">
@@ -592,7 +611,7 @@ const Details = () => {
                 </div>
 
                 {/* TABS */}
-                <div className="det-tabs-section">
+                <div className="det-tabs-section" id="details-tabs">
                     <div className="container">
                         <div className="det-tabs-header">
                             <button 

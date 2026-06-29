@@ -88,11 +88,11 @@ const AdminRanks = () => {
                 </div>
  
                 <div className="toolbar">
-                    <div className="search-box">
-                        <i className="bi bi-search"></i>
+                    <div className="admin-search-box-wrap">
+                        <i className="bi bi-search admin-search-icon"></i>
                         <input 
                             type="text" 
-                            className="search-input" 
+                            className="admin-search-input" 
                             placeholder="Tìm kiếm hạng thành viên..." 
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
@@ -180,16 +180,16 @@ const AdminRanks = () => {
                 }
                 .btn-red-flat:hover { background: #b8070f; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(229, 9, 20, 0.35); color: #fff; }
  
-                .toolbar { background: #ffffff; border: 1px solid #eaeaea; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
-                .search-box { position: relative; width: 100%; display: flex; align-items: center; background: #fff; border: 1px solid #dcdcdc; border-radius: 8px; transition: all 0.3s ease; }
-                .search-box:focus-within { border-color: #e50914; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1); }
-                .search-box i { position: absolute; left: 16px; color: #888; font-size: 16px; }
-                .search-input { 
-                    width: 100%; background: transparent; border: none; padding: 12px 12px 12px 45px; 
-                    color: #222; outline: none; font-size: 14px; font-family: 'Inter', sans-serif;
+                .toolbar { background: #ffffff; border: 1px solid #eaeaea; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); max-width: 100%; box-sizing: border-box; }
+                .admin-search-box-wrap { position: relative; width: 100%; display: flex; align-items: center; background: #fff !important; border: 1px solid #dcdcdc !important; border-radius: 8px !important; transition: all 0.3s ease; box-sizing: border-box; padding: 0 !important; }
+                .admin-search-box-wrap:focus-within { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1) !important; }
+                .admin-search-icon { position: absolute; left: 16px; color: #888 !important; font-size: 16px; z-index: 5; }
+                .admin-search-input { 
+                    width: 100%; background: transparent !important; border: none !important; padding: 12px 12px 12px 45px !important; 
+                    color: #222 !important; outline: none; font-size: 14px; font-family: 'Inter', sans-serif; box-sizing: border-box;
                 }
  
-                .table-card { background: #fff; border: 1px solid #eaeaea; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+                .table-card { background: #fff; border: 1px solid #eaeaea; border-radius: 12px; overflow-x: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.02); width: 100%; box-sizing: border-box; }
                 table { width: 100%; border-collapse: collapse; min-width: 700px; }
                 th { background: #f8f9fa; color: #444; font-size: 13px; text-transform: uppercase; padding: 16px 20px; text-align: left; border-bottom: 1px solid #eaeaea; font-weight: 700; }
                 td { padding: 14px 20px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #444; vertical-align: middle; }

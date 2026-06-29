@@ -19,6 +19,14 @@ const AdminCustomers = () => {
     const [modalRoleOpen, setModalRoleOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
 
+    // Custom Confirm Modal State
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        userId: null,
+        currentStatus: null,
+        message: ""
+    });
+
     // Selected options for modals
     const [selectedRankId, setSelectedRankId] = useState("");
     const [selectedRole, setSelectedRole] = useState("USER");
@@ -57,23 +65,44 @@ const AdminCustomers = () => {
         setModalRoleOpen(true);
     };
 
-    const toggleStatus = async (userId, currentStatus) => {
+    const toggleStatus = (userId, currentStatus) => {
         const action = currentStatus === 1 ? "khóa" : "mở khóa";
-        if (window.confirm(`Bạn có chắc chắn muốn ${action} tài khoản này?`)) {
-            try {
-                const newStatus = currentStatus === 1 ? 0 : 1;
-                const response = await api.post("/api/admin/customers/toggle-status", {
-                    userId,
-                    status: newStatus
-                });
-                if (response.data && response.data.success) {
-                    alert(response.data.message);
-                    setCustomers(customers.map(c => c.id === userId ? { ...c, status: newStatus } : c));
-                }
-            } catch (err) {
-                console.error("Lỗi thay đổi trạng thái tài khoản:", err);
-                alert("Không thể thay đổi trạng thái tài khoản.");
+        setConfirmModal({
+            isOpen: true,
+            userId,
+            currentStatus,
+            message: `Bạn có chắc chắn muốn ${action} tài khoản này?`
+        });
+    };
+
+    const cancelStatusChange = () => {
+        setConfirmModal({
+            isOpen: false,
+            userId: null,
+            currentStatus: null,
+            message: ""
+        });
+    };
+
+    const submitStatusChange = async () => {
+        const { userId, currentStatus } = confirmModal;
+        if (!userId) return;
+
+        try {
+            const newStatus = currentStatus === 1 ? 0 : 1;
+            const response = await api.post("/api/admin/customers/toggle-status", {
+                userId,
+                status: newStatus
+            });
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message }));
+                setCustomers(customers.map(c => c.id === userId ? { ...c, status: newStatus } : c));
             }
+        } catch (err) {
+            console.error("Lỗi thay đổi trạng thái tài khoản:", err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể thay đổi trạng thái tài khoản." }));
+        } finally {
+            cancelStatusChange();
         }
     };
 
@@ -85,7 +114,7 @@ const AdminCustomers = () => {
                 rankId: parseInt(selectedRankId)
             });
             if (response.data && response.data.success) {
-                alert(response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message }));
                 setModalRankOpen(false);
                 const newRankObj = ranks.find(r => r.id === parseInt(selectedRankId));
                 setCustomers(customers.map(c => c.id === selectedCustomer.id ? {
@@ -97,7 +126,7 @@ const AdminCustomers = () => {
             }
         } catch (err) {
             console.error("Lỗi cập nhật hạng thành viên:", err);
-            alert("Không thể cập nhật hạng thành viên.");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể cập nhật hạng thành viên." }));
         }
     };
 
@@ -109,7 +138,7 @@ const AdminCustomers = () => {
                 role: selectedRole
             });
             if (response.data && response.data.success) {
-                alert(response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message }));
                 setModalRoleOpen(false);
                 setCustomers(customers.map(c => c.id === selectedCustomer.id ? { ...c, role: selectedRole } : c));
             }
@@ -118,7 +147,7 @@ const AdminCustomers = () => {
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể thay đổi quyền tài khoản.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         }
     };
 
@@ -160,11 +189,11 @@ const AdminCustomers = () => {
             </div>
 
             <div className="toolbar">
-                <div className="search-box">
-                    <i className="bi bi-search"></i>
+                <div className="admin-search-box-wrap">
+                    <i className="bi bi-search admin-search-icon"></i>
                     <input
                         type="text"
-                        className="search-input"
+                        className="admin-search-input"
                         placeholder="Tìm tên, email, số điện thoại..."
                         value={searchKeyword}
                         onChange={(e) => setSearchKeyword(e.target.value)}
@@ -257,23 +286,24 @@ const AdminCustomers = () => {
                                             <span className={`badge-role ${cust.role === 'ADMIN' ? 'role-admin' : (cust.role === 'SHIPPER' ? 'role-shipper' : 'role-user')}`} style={cust.status === 0 ? { opacity: 0.5 } : {}}>
                                                 {cust.role}
                                             </span>
-                                            <span className="tier-badge"
-                                                style={{
-                                                    color: cust.rankColor,
-                                                    border: `2px solid ${cust.rankColor}`,
-                                                    background: '#fff',
-                                                    padding: '2px 6px',
-                                                    fontWeight: 800,
-                                                    fontSize: '10px',
-                                                    textTransform: 'uppercase',
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px'
-                                                }}
-                                            >
-                                                <i className="bi bi-star-fill"></i>
-                                                {cust.rankName}
-                                            </span>
+                                             <span className="tier-badge"
+                                                 style={{
+                                                     color: cust.rankColor,
+                                                     border: `2px solid ${cust.rankColor}`,
+                                                     background: '#fff',
+                                                     padding: '4px 8px',
+                                                     fontWeight: 800,
+                                                     fontSize: '10px',
+                                                     textTransform: 'uppercase',
+                                                     display: 'inline-flex',
+                                                     alignItems: 'center',
+                                                     gap: '4px',
+                                                     whiteSpace: 'nowrap'
+                                                 }}
+                                             >
+                                                 <i className="bi bi-star-fill"></i>
+                                                 {cust.rankName}
+                                             </span>
                                         </div>
                                     </td>
                                     <td className="total-spent" style={cust.status === 0 ? { color: '#555' } : {}}>
@@ -385,6 +415,23 @@ const AdminCustomers = () => {
                 </div>
             )}
 
+            {/* CUSTOM CONFIRM MODAL */}
+            {confirmModal.isOpen && (
+                <div className="admin-confirm-overlay">
+                    <div className="admin-confirm-box animate__animated animate__zoomIn">
+                        <div className="admin-confirm-icon">
+                            <i className="bi bi-exclamation-circle"></i>
+                        </div>
+                        <h4 className="admin-confirm-title">Xác nhận thay đổi</h4>
+                        <p className="admin-confirm-message">{confirmModal.message}</p>
+                        <div className="admin-confirm-actions">
+                            <button className="admin-btn-confirm-cancel" onClick={cancelStatusChange}>Hủy bỏ</button>
+                            <button className="admin-btn-confirm-ok" onClick={submitStatusChange}>Đồng ý</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
                 .sub-title-neon { display: block; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
@@ -397,20 +444,20 @@ const AdminCustomers = () => {
                 }
                 .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
 
-                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }
-                .search-box { position: relative; flex: 1; min-width: 220px; max-width: none; }
-                .search-input { width: 100%; background: #fff !important; border: 1.5px solid #dadce0; padding: 9px 14px 9px 38px; color: #3c4043 !important; outline: none; height: 40px; font-weight: 400; border-radius: 24px; font-size: 14px; transition: all 0.2s; font-family: 'Inter', sans-serif; }
-                .search-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
-                .search-input::placeholder { color: #9aa0a6; }
-                .bi-search { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9aa0a6; font-size: 14px; pointer-events: none; }
+                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; max-width: 100%; box-sizing: border-box; }
+                .admin-search-box-wrap { position: relative; flex: 1; max-width: 100%; min-width: 220px; box-sizing: border-box; background: transparent !important; border: none !important; padding: 0 !important; display: block !important; }
+                .admin-search-input { width: 100%; background: #fff !important; border: 1.5px solid #dadce0; padding: 10px 16px 10px 42px !important; color: #3c4043 !important; outline: none; height: 44px; font-weight: 500; border-radius: 12px !important; font-size: 14px; transition: all 0.2s; font-family: 'Inter', sans-serif; box-sizing: border-box; }
+                .admin-search-input:focus { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1) !important; }
+                .admin-search-input::placeholder { color: #9aa0a6; }
+                .admin-search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888 !important; font-size: 16px; pointer-events: none; z-index: 5; }
                 .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.2s; }
                 .filter-select:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
-
+ 
                 /* Compact Brutalist Table */
-                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-top: 20px; border-radius: 14px; }
-                table { width: 100%; border-collapse: collapse; }
-                th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 20px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; white-space: nowrap; }
-                td { padding: 14px 20px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; vertical-align: middle; }
+                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-top: 20px; border-radius: 14px; overflow-x: auto; width: 100%; box-sizing: border-box; }
+                table { width: 100%; border-collapse: collapse; min-width: 800px; }
+                th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 16px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; white-space: nowrap; }
+                td { padding: 14px 16px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; vertical-align: middle; }
                 
                 .customer-profile { display: flex; align-items: center; }
                 .avatar { width: 45px; height: 45px; border: 1px solid #e2e8f0; border-radius: 8px; color: #000 !important; display: flex; align-items: center; justify-content: center; font-family: 'Oswald'; font-weight: 800; font-size: 16px; background-color: #fff !important; flex-shrink: 0; }
@@ -425,8 +472,8 @@ const AdminCustomers = () => {
                 
                 .total-spent { font-size: 15px; font-weight: 800; }
 
-                .badge-status-active { background: #4ade80; color: #000; padding: 4px 8px; font-size: 11px; font-weight: 800; font-family: 'Oswald'; border: 1px solid #e2e8f0; border-radius: 6px; }
-                .badge-status-locked { background: var(--accent-red); color: #fff; padding: 4px 8px; font-size: 11px; font-weight: 800; font-family: 'Oswald'; border: 1px solid #e2e8f0; border-radius: 6px; }
+                .badge-status-active { background: #4ade80; color: #000; padding: 6px 12px; font-size: 11px; font-weight: 800; font-family: 'Oswald'; border: 1px solid #e2e8f0; border-radius: 6px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; }
+                .badge-status-locked { background: var(--accent-red); color: #fff; padding: 6px 12px; font-size: 11px; font-weight: 800; font-family: 'Oswald'; border: 1px solid #e2e8f0; border-radius: 6px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; }
 
                 /* Action Icon Buttons */
                 .action-btn-icon { width: 34px; height: 34px; border: 1px solid #e2e8f0; color: #64748b; border-radius: 8px; background: #f8fafc; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; cursor: pointer; text-decoration: none; font-size: 14px; }
@@ -447,6 +494,103 @@ const AdminCustomers = () => {
                 .modal-actions { display: flex; gap: 15px; }
 
                 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+                /* Admin Confirm Modal (Sleek Premium Theme) */
+                .admin-confirm-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(15, 23, 42, 0.6);
+                    backdrop-filter: blur(8px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                }
+                .admin-confirm-box {
+                    background: #fff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 24px;
+                    padding: 36px 32px;
+                    width: 90%;
+                    max-width: 420px;
+                    text-align: center;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+                    border-bottom: 4px solid #e50914;
+                }
+                .admin-confirm-icon {
+                    width: 72px;
+                    height: 72px;
+                    background: #fef2f2;
+                    color: #e50914;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 32px;
+                    margin: 0 auto 20px;
+                    animation: iconPulse 2s infinite;
+                }
+                .admin-confirm-title {
+                    font-family: 'Inter', sans-serif;
+                    font-weight: 800;
+                    font-size: 20px;
+                    color: #0f172a;
+                    margin-bottom: 12px;
+                }
+                .admin-confirm-message {
+                    font-size: 14px;
+                    color: #475569;
+                    line-height: 1.6;
+                    margin-bottom: 28px;
+                    font-weight: 500;
+                }
+                .admin-confirm-actions {
+                    display: flex;
+                    gap: 12px;
+                    justify-content: center;
+                }
+                .admin-btn-confirm-cancel {
+                    background: #f1f5f9;
+                    color: #475569;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                }
+                .admin-btn-confirm-cancel:hover {
+                    background: #e2e8f0;
+                    color: #0f172a;
+                }
+                .admin-btn-confirm-ok {
+                    background: #e50914;
+                    color: #fff;
+                    border: none;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                    box-shadow: 0 4px 6px -1px rgba(229, 9, 20, 0.2);
+                }
+                .admin-btn-confirm-ok:hover {
+                    background: #b8070f;
+                    box-shadow: 0 10px 15px -3px rgba(229, 9, 20, 0.3);
+                    transform: translateY(-1px);
+                }
+                @keyframes iconPulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.08); }
+                    100% { transform: scale(1); }
+                }
             `}</style>
         </AdminLayout>
     );
