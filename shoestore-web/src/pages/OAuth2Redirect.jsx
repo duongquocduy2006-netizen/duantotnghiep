@@ -36,7 +36,7 @@ const OAuth2Redirect = () => {
             alignItems: 'center',
             backgroundColor: '#111',
             color: '#fff',
-            fontFamily: 'Poppins, sans-serif'
+            fontFamily: 'Inter, sans-serif'
         }}>
             <div className="spinner-border text-danger mb-3" role="status">
                 <span className="visually-hidden">Loading...</span>
