@@ -310,10 +310,26 @@
     border-color: #111;
 }
 .det-variant-chip.det-variant-chip--disabled {
-    opacity: 0.4;
+    opacity: 0.6;
     text-decoration: line-through;
-    cursor: not-allowed;
-    background: #f9fafb;
+    cursor: pointer;
+    background: #f3f4f6;
+    color: #9ca3af;
+    border: 1px dashed #d1d5db;
+}
+.det-variant-chip.det-variant-chip--active.det-variant-chip--disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    border: 2px solid #ef4444;
+}
+.det-btn-disabled,
+.det-btn-disabled:hover {
+    background: #e5e7eb !important;
+    color: #9ca3af !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    transform: none !important;
+    opacity: 0.7;
 }
 
 /* Qty + Actions */

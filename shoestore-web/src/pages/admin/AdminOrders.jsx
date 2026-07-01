@@ -18,6 +18,14 @@ const AdminOrders = () => {
     const [modalLoading, setModalLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    // Custom confirm modal state
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        orderCode: null,
+        newStatus: null,
+        message: ""
+    });
+
     // Fetch orders with optional filters
     const fetchOrders = async (searchKeyword = "", statusVal = "") => {
         try {
@@ -53,13 +61,19 @@ const AdminOrders = () => {
         return () => clearTimeout(delayDebounceFn);
     }, [keyword, statusFilter]);
 
-    // Handle single order status update
-    const handleStatusChange = async (orderCode, newStatus) => {
-        if (!window.confirm(`Bạn có chắc chắn muốn chuyển đơn hàng ${orderCode} sang trạng thái mới?`)) {
-            // Re-fetch to revert the dropdown choice in UI
-            fetchOrders(keyword, statusFilter);
-            return;
-        }
+    // Handle single order status update (Open custom confirm modal)
+    const handleStatusChange = (orderCode, newStatus) => {
+        setConfirmModal({
+            isOpen: true,
+            orderCode,
+            newStatus,
+            message: `Bạn có chắc chắn muốn chuyển đơn hàng ${orderCode} sang trạng thái mới?`
+        });
+    };
+
+    const submitStatusChange = async () => {
+        const { orderCode, newStatus } = confirmModal;
+        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "" });
 
         try {
             const response = await api.post("/api/orders/update-status", {
@@ -68,7 +82,6 @@ const AdminOrders = () => {
             });
 
             if (response.data && response.data.success) {
-                alert(response.data.message || "Cập nhật trạng thái đơn hàng thành công!");
                 // Update local status state of the updated order
                 setOrders(prevOrders =>
                     prevOrders.map(o => o.orderCode === orderCode ? { ...o, status: newStatus } : o)
@@ -83,6 +96,12 @@ const AdminOrders = () => {
             // Re-fetch to sync state with server
             fetchOrders(keyword, statusFilter);
         }
+    };
+
+    const cancelStatusChange = () => {
+        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "" });
+        // Re-fetch to revert the dropdown choice in UI
+        fetchOrders(keyword, statusFilter);
     };
 
     // Open detail modal and fetch order info
@@ -156,11 +175,11 @@ const AdminOrders = () => {
             </div>
 
             <div className="toolbar">
-                <div className="search-box">
-                    <i className="bi bi-search"></i>
+                <div className="admin-search-box-wrap">
+                    <i className="bi bi-search admin-search-icon"></i>
                     <input
                         type="text"
-                        className="search-input"
+                        className="admin-search-input"
                         placeholder="Tìm kiếm Mã đơn, Tên khách hàng..."
                         value={keyword}
                         onChange={(e) => setKeyword(e.target.value)}
@@ -264,12 +283,11 @@ const AdminOrders = () => {
                                         <td style={{ textAlign: 'right' }}>
                                             <button
                                                 onClick={() => openOrderDetail(order.orderCode)}
-                                                className="action-btn btn-view"
+                                                className="admin-btn-view-details"
                                                 title="Xem chi tiết"
-                                                style={{ width: 'auto', padding: '0 10px', gap: '5px' }}
                                             >
                                                 <i className="bi bi-eye"></i>
-                                                <span style={{ fontSize: '11px', fontWeight: '600' }}>Xem</span>
+                                                <span>Xem</span>
                                             </button>
                                         </td>
                                     </tr>
@@ -380,6 +398,22 @@ const AdminOrders = () => {
                     </div>
                 </div>
             )}
+            {/* CUSTOM CONFIRM MODAL */}
+            {confirmModal.isOpen && (
+                <div className="admin-confirm-overlay">
+                    <div className="admin-confirm-box animate__animated animate__zoomIn">
+                        <div className="admin-confirm-icon">
+                            <i className="bi bi-exclamation-circle"></i>
+                        </div>
+                        <h4 className="admin-confirm-title">Xác nhận thay đổi</h4>
+                        <p className="admin-confirm-message">{confirmModal.message}</p>
+                        <div className="admin-confirm-actions">
+                            <button className="admin-btn-confirm-cancel" onClick={cancelStatusChange}>Hủy bỏ</button>
+                            <button className="admin-btn-confirm-ok" onClick={submitStatusChange}>Đồng ý</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
@@ -392,27 +426,58 @@ const AdminOrders = () => {
                     transition: 0.3s; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none;
                 }
                 .btn-red-skew:hover { background: #fff; color: #000; box-shadow: 0 8px 24px rgba(229,9,20,0.25); transform: translateY(-3px); }
-                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; }
-                .search-box { position: relative; flex: 1; max-width: none; min-width: 220px; }
-                .search-input { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 9px 14px 9px 38px; color: #3c4043; outline: none; transition: all 0.2s; height: 40px; border-radius: 24px; font-weight: 400; font-size: 14px; font-family: 'Poppins', sans-serif; }
-                .search-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
-                .search-input::placeholder { color: #9aa0a6; }
-                .bi-search { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9aa0a6; font-size: 14px; pointer-events: none; }
-
-                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); overflow: hidden; margin-top: 20px; border-radius: 14px; }
-                table { width: 100%; border-collapse: collapse; }
-                th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 20px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; letter-spacing: 0.5px; }
-                td { padding: 16px 20px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; }
+                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; max-width: 100%; box-sizing: border-box; }
+                .admin-search-box-wrap { position: relative; flex: 1; max-width: 100%; min-width: 220px; box-sizing: border-box; background: transparent !important; border: none !important; padding: 0 !important; display: block !important; }
+                .admin-search-input { width: 100%; background: #fff !important; border: 1.5px solid #dadce0 !important; padding: 10px 16px 10px 42px !important; color: #000 !important; outline: none; transition: all 0.2s ease; height: 44px; border-radius: 12px !important; font-weight: 500; font-size: 14px; font-family: 'Inter', sans-serif; box-sizing: border-box; }
+                .admin-search-input:focus { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1) !important; }
+                .admin-search-input::placeholder { color: #9aa0a6; }
+                .admin-search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888 !important; font-size: 16px; pointer-events: none; z-index: 5; }
+                
+                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); overflow-x: auto; margin-top: 20px; border-radius: 14px; width: 100%; box-sizing: border-box; }
+                table { width: 100%; border-collapse: collapse; min-width: 850px; }
+                th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 16px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; letter-spacing: 0.5px; }
+                td { padding: 14px 16px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; }
                 
                 .order-id { font-family: 'Oswald'; color: #000; font-weight: 800; text-decoration: none; transition: 0.2s; font-size: 16px; }
                 .order-id:hover { color: var(--accent-red); text-shadow: none; text-decoration: underline; }
                 .customer-name { display: block; font-weight: 800; color: #000; font-size: 15px; }
                 .customer-date { font-size: 12px; color: #555; display: flex; align-items: center; gap: 5px; margin-top: 3px; font-weight: 600; }
-
-                .action-btn { background: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; height: 34px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; padding: 0 10px; cursor: pointer; font-weight: 600; border-radius: 8px; }
+ 
+                .admin-btn-view-details {
+                    background: #f8fafc !important;
+                    border: 1px solid #e2e8f0 !important;
+                    color: #64748b !important;
+                    height: 36px !important;
+                    width: auto !important;
+                    padding: 0 14px !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 6px !important;
+                    border-radius: 8px !important;
+                    font-weight: 700 !important;
+                    font-size: 12px !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s ease !important;
+                    box-shadow: none !important;
+                    text-decoration: none !important;
+                    margin: 0 !important;
+                }
+                .admin-btn-view-details:hover {
+                    background: #1e293b !important;
+                    color: #fff !important;
+                    border-color: #1e293b !important;
+                    transform: translateY(-1px) !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+                }
+                .admin-btn-view-details i {
+                    font-size: 14px !important;
+                    margin: 0 !important;
+                    line-height: 1 !important;
+                }
                 .btn-view:hover { background: #1e293b; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-1px); }
                 
-                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Poppins'; font-size: 14px; transition: all 0.2s; }
+                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.2s; }
                 .filter-select:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
 
                 /* Status badging */
@@ -470,6 +535,97 @@ const AdminOrders = () => {
 
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+                /* Admin Confirm Modal (Sleek Premium Theme) */
+                .admin-confirm-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(15, 23, 42, 0.6);
+                    backdrop-filter: blur(8px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                }
+                .admin-confirm-box {
+                    background: #fff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 24px;
+                    padding: 36px 32px;
+                    width: 90%;
+                    max-width: 420px;
+                    text-align: center;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+                    border-bottom: 4px solid #e50914;
+                }
+                .admin-confirm-icon {
+                    width: 72px;
+                    height: 72px;
+                    background: #fef2f2;
+                    color: #e50914;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 32px;
+                    margin: 0 auto 20px;
+                    animation: iconPulse 2s infinite;
+                }
+                .admin-confirm-title {
+                    font-family: 'Inter', sans-serif;
+                    font-weight: 800;
+                    font-size: 20px;
+                    color: #0f172a;
+                    margin-bottom: 12px;
+                }
+                .admin-confirm-message {
+                    font-size: 14px;
+                    color: #475569;
+                    line-height: 1.6;
+                    margin-bottom: 28px;
+                    font-weight: 500;
+                }
+                .admin-confirm-actions {
+                    display: flex;
+                    gap: 12px;
+                    justify-content: center;
+                }
+                .admin-btn-confirm-cancel {
+                    background: #f1f5f9;
+                    color: #475569;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                }
+                .admin-btn-confirm-cancel:hover {
+                    background: #e2e8f0;
+                    color: #0f172a;
+                }
+                .admin-btn-confirm-ok {
+                    background: #e50914;
+                    color: #fff;
+                    border: none;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                    box-shadow: 0 4px 6px -1px rgba(229, 9, 20, 0.2);
+                }
+                .admin-btn-confirm-ok:hover {
+                    background: #b91c1c;
+                    box-shadow: 0 8px 12px -1px rgba(229, 9, 20, 0.3);
+                }
             `}</style>
         </AdminLayout>
     );

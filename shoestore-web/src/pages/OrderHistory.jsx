@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import './Profile.css';
 import './Orders.css';
-import ReviewModal from '../components/ReviewModal';
 
 const PAGE_SIZE = 10;
 
@@ -22,7 +21,12 @@ const OrderHistory = () => {
     const [loading, setLoading] = useState(true);
     const [account, setAccount] = useState(null);
     const [orders, setOrders] = useState([]);
-    const [reviewOrderCode, setReviewOrderCode] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        step: 1,
+        orderCode: null,
+        productId: null
+    });
 
     // Filter state
     const [fromDate, setFromDate] = useState('');
@@ -128,22 +132,42 @@ const OrderHistory = () => {
         }
     };
 
-    const handleConfirm = async (e, orderCode) => {
-        e.preventDefault();
-        if (!window.confirm('Xác nhận bạn đã nhận được hàng?')) return;
+    const triggerConfirm = (orderCode) => {
+        const oObj = orders.find(o => o.order_code === orderCode);
+        const productId = oObj ? oObj.first_product_id : null;
+        setConfirmModal({
+            isOpen: true,
+            step: 1,
+            orderCode,
+            productId
+        });
+    };
+
+    const handleConfirmSubmit = async () => {
+        const { orderCode, productId } = confirmModal;
         try {
             const res = await api.post('/api/orders/confirm', { orderCode });
             if (res.data?.success) { 
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Xác nhận thành công! Điểm đã được cộng.' })); 
-                fetchData(false); 
-                setReviewOrderCode(orderCode); // Show review popup
-            }
-            else {
+                if (productId) {
+                    setConfirmModal({
+                        isOpen: true,
+                        step: 2,
+                        orderCode,
+                        productId
+                    });
+                } else {
+                    setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
+                    fetchData(false);
+                }
+            } else {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể xác nhận: ' + res.data.message }));
+                setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
             }
         } catch (err) {
             const errMsg = err.response?.data?.message || 'Lỗi kết nối.';
             window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
+            setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
         }
     };
 
@@ -431,9 +455,19 @@ const OrderHistory = () => {
                                                     <i className="fa-regular fa-file-lines me-1"></i> Chi tiết
                                                 </Link>
                                                 {order.status === 3 && (
-                                                    <Link to="/shop" className="btn-outline-luxury" style={{ background: '#0f172a', color: '#fff', border: '1px solid #0f172a' }}>
-                                                        Mua lại
-                                                    </Link>
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            className="btn-outline-luxury"
+                                                            style={{background: '#e50914', color: '#fff', border: '1px solid #e50914'}}
+                                                            onClick={() => navigate(`/details?id=${order.first_product_id}&tab=reviews`)}
+                                                        >
+                                                            <i className="fa-regular fa-star me-1"></i> Đánh giá
+                                                        </button>
+                                                        <Link to="/shop" className="btn-outline-luxury" style={{ background: '#0f172a', color: '#fff', border: '1px solid #0f172a' }}>
+                                                            Mua lại
+                                                        </Link>
+                                                    </>
                                                 )}
                                                 {order.status === 1 && (
                                                     <button type="button" className="btn-outline-luxury text-danger" onClick={e => handleCancel(e, order.order_code)}>
@@ -441,7 +475,7 @@ const OrderHistory = () => {
                                                     </button>
                                                 )}
                                                 {order.status === 2 && (
-                                                    <button type="button" className="btn-super" style={{ padding: '8px 16px', fontSize: '13px' }} onClick={e => handleConfirm(e, order.order_code)}>
+                                                    <button type="button" className="btn-super" style={{ padding: '8px 16px', fontSize: '13px' }} onClick={e => { e.preventDefault(); triggerConfirm(order.order_code); }}>
                                                         <i className="fa-solid fa-box-open me-1"></i> Đã nhận hàng
                                                     </button>
                                                 )}
@@ -499,14 +533,42 @@ const OrderHistory = () => {
                 </div>
             </div>
 
-            {reviewOrderCode && (
-                <ReviewModal 
-                    orderCode={reviewOrderCode} 
-                    onClose={() => {
-                        setReviewOrderCode(null);
-                        fetchData(false);
-                    }} 
-                />
+            {confirmModal.isOpen && (
+                <div className="epic-modal-overlay">
+                    <div className="epic-modal-box animate__animated animate__zoomIn">
+                        {confirmModal.step === 1 ? (
+                            <>
+                                <div className="epic-modal-icon">
+                                    <i className="fa-solid fa-box-open"></i>
+                                </div>
+                                <h4 className="epic-modal-title">Xác nhận nhận hàng</h4>
+                                <p className="epic-modal-message">Xác nhận bạn đã nhận được gói hàng này? Đơn hàng sẽ được chuyển sang trạng thái thành công.</p>
+                                <div className="epic-modal-actions">
+                                    <button className="epic-btn-modal-cancel" onClick={() => setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null })}>Hủy bỏ</button>
+                                    <button className="epic-btn-modal-confirm" onClick={handleConfirmSubmit}>Đồng ý</button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="epic-modal-icon">
+                                    <i className="fa-solid fa-star-half-stroke"></i>
+                                </div>
+                                <h4 className="epic-modal-title">Đánh giá sản phẩm</h4>
+                                <p className="epic-modal-message">Xác nhận nhận hàng thành công! Bạn có muốn đánh giá sản phẩm này ngay để tích luỹ thêm điểm không?</p>
+                                <div className="epic-modal-actions">
+                                    <button className="epic-btn-modal-cancel" onClick={() => {
+                                        setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
+                                        fetchData(false);
+                                    }}>Để sau</button>
+                                    <button className="epic-btn-modal-confirm" onClick={() => {
+                                        navigate(`/details?id=${confirmModal.productId}&tab=reviews`);
+                                        setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
+                                    }}>Đánh giá ngay</button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
             )}
         </Layout>
     );

@@ -1,10 +1,10 @@
 /* --- GLOBAL BRAND THEME FOR MEMBERSHIP (WHITE, BLACK, RED) --- */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Oswald:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Oswald:wght@500;700&display=swap');
 
 .member-epic-theme {
     background-color: #ffffff;
     color: #1a1a1e;
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overflow-x: hidden;
     min-height: 100vh;
     background-image: 
@@ -20,7 +20,7 @@
 .member-epic-theme h5,
 .member-epic-theme h6,
 .member-epic-theme button {
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 .font-oswald { 
@@ -28,11 +28,11 @@
 }
 
 .font-outfit {
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 .font-numeric {
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-weight: 800;
     letter-spacing: 0.5px;
 }
@@ -71,7 +71,7 @@
 }
 
 .mbr-status-tag {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 2px;
@@ -239,7 +239,7 @@
 }
 
 .epic-rank-badge {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 800;
     font-size: 11px;
     padding: 5px 14px;
@@ -270,7 +270,7 @@
 .id-card-middle .card-holder-name {
     font-size: 19px !important;
     font-weight: 700 !important;
-    font-family: 'Outfit', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     letter-spacing: -0.3px;
     margin-top: 2px;
 }
@@ -304,7 +304,7 @@
 }
 
 .epic-stats-box h3 {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 22px;
     letter-spacing: -0.5px;
@@ -619,7 +619,7 @@
 }
 
 .voucher-left .font-oswald {
-    font-family: 'Outfit', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     font-size: 15px;
     font-weight: 700;
     color: #ffffff;
@@ -634,7 +634,7 @@
 }
 
 .voucher-right h4 {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 18px;
     letter-spacing: 0.5px;
@@ -721,7 +721,7 @@
     background: #111827;
     color: #ffffff !important;
     border: none;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 14px;
     font-weight: 800;
     letter-spacing: 1.5px;
@@ -746,7 +746,7 @@
     background: transparent;
     color: #e50914 !important;
     border: 1px solid rgba(229, 9, 20, 0.4);
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-weight: 700;
     font-size: 13px;
     text-transform: uppercase;
@@ -769,7 +769,7 @@
     background: #111827;
     color: #ffffff !important;
     border: none;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 15px;
     font-weight: 700;
     letter-spacing: 1px;
