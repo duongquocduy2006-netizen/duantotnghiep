@@ -40,6 +40,7 @@ const Details = () => {
     const [isWishlist, setIsWishlist] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [flashSale, setFlashSale] = useState(null);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -93,6 +94,9 @@ const Details = () => {
                 setReviewCount(response.data.reviewCount || 0);
                 setAvgRating(response.data.avgRating || 0);
                 setHasPurchased(response.data.hasPurchased || false);
+
+                // Flash Sale data
+                setFlashSale(response.data.flashSale || null);
 
                 fetchRelated(prodData.brandName, prodData.categoryId);
                 fetchVouchers();
@@ -511,13 +515,52 @@ const Details = () => {
                                         <i className="fa-solid fa-folder"></i> {product.categoryName || 'Giày thể thao'}
                                     </div>
                                     
-                                    <div className="det-price-block">
-                                        <div>
-                                            <div className="det-price-label">Giá bán chính thức</div>
-                                            <div className="det-price-value">{formatCurrency(displayPrice)}</div>
+                                    {flashSale ? (
+                                        <>
+                                            <div className="det-flash-sale-banner">
+                                                <div className="det-flash-sale-icon">
+                                                    <i className="fa-solid fa-bolt"></i>
+                                                </div>
+                                                <div className="det-flash-sale-info">
+                                                    <span className="det-flash-sale-tag">FLASH SALE</span>
+                                                    <span className="det-flash-sale-name">{flashSale.campaignName}</span>
+                                                </div>
+                                                <div className="det-flash-sale-discount-badge">
+                                                    -{flashSale.discountPercent}%
+                                                </div>
+                                            </div>
+                                            <div className="det-price-block det-price-block--sale">
+                                                <div>
+                                                    <div className="det-price-label">Giá Flash Sale</div>
+                                                    <div className="det-price-value det-price-value--sale">{formatCurrency(flashSale.salePrice)}</div>
+                                                    <div className="det-price-original">
+                                                        <span className="det-price-old">{formatCurrency(displayPrice)}</span>
+                                                        <span className="det-price-save">Tiết kiệm {formatCurrency(displayPrice - flashSale.salePrice)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="det-price-badge det-price-badge--sale">Flash Sale</div>
+                                            </div>
+                                            {flashSale.quantityLimit > 0 && (
+                                                <div className="det-flash-sale-progress">
+                                                    <div className="det-flash-progress-text">
+                                                        <span>{(flashSale.soldQuantity / flashSale.quantityLimit * 100) >= 80 ? <><i className="fa-solid fa-fire text-danger me-1"></i>Sắp hết</> : 'Đang bán'}</span>
+                                                        <span>Đã bán {flashSale.soldQuantity}/{flashSale.quantityLimit}</span>
+                                                    </div>
+                                                    <div className="det-flash-progress-bar">
+                                                        <div className="det-flash-progress-fill" style={{ width: `${Math.min((flashSale.soldQuantity / flashSale.quantityLimit) * 100, 100)}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="det-price-block">
+                                            <div>
+                                                <div className="det-price-label">Giá bán chính thức</div>
+                                                <div className="det-price-value">{formatCurrency(displayPrice)}</div>
+                                            </div>
+                                            <div className="det-price-badge">Chính hãng</div>
                                         </div>
-                                        <div className="det-price-badge">Chính hãng</div>
-                                    </div>
+                                    )}
 
                                     {/* VOUCHERS */}
                                     {vouchers.length > 0 && (

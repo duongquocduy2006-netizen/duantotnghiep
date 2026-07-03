@@ -46,6 +46,9 @@ public class ProductApiController {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
+    @Autowired
+    private com.ShoeStore.service.FlashSaleService flashSaleService;
+
     // 1. LẤY DANH SÁCH SẢN PHẨM
     @GetMapping
     public ResponseEntity<?> getAllProducts() {
@@ -275,6 +278,44 @@ public class ProductApiController {
         }
         // --------------------------
 
+        // --- FLASH SALE CHECK ---
+        Map<String, Object> flashSaleInfo = null;
+        try {
+            java.util.Optional<com.ShoeStore.model.FlashSale> activeFs = flashSaleService.getActiveFlashSale();
+            if (activeFs.isPresent()) {
+                com.ShoeStore.model.FlashSale fs = activeFs.get();
+                List<com.ShoeStore.model.FlashSaleProduct> fspList = flashSaleService.getProductsByFlashSaleId(fs.getId());
+                for (com.ShoeStore.model.FlashSaleProduct fsp : fspList) {
+                    if (fsp.getProduct() != null && fsp.getProduct().getId().equals(id)) {
+                        flashSaleInfo = new HashMap<>();
+                        flashSaleInfo.put("salePrice", fsp.getSalePrice());
+                        flashSaleInfo.put("quantityLimit", fsp.getQuantityLimit());
+                        flashSaleInfo.put("soldQuantity", fsp.getSoldQuantity());
+                        flashSaleInfo.put("campaignName", fs.getName());
+                        flashSaleInfo.put("endDate", fs.getEndDate());
+                        // Calculate original price from first variant
+                        double origPrice = 0;
+                        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+                            var firstVar = product.getVariants().iterator().next();
+                            if (firstVar != null && firstVar.getPrice() != null) {
+                                origPrice = firstVar.getPrice().doubleValue();
+                            }
+                        }
+                        flashSaleInfo.put("originalPrice", origPrice);
+                        if (origPrice > 0 && fsp.getSalePrice() != null) {
+                            int discountPercent = (int) Math.round((1.0 - fsp.getSalePrice().doubleValue() / origPrice) * 100);
+                            flashSaleInfo.put("discountPercent", discountPercent);
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Silently fail - flash sale info is optional
+            e.printStackTrace();
+        }
+        // --------------------------
+
         Map<String, Object> responseMap = new HashMap<>();
         responseMap.put("success", true);
         responseMap.put("product", prodMap);
@@ -288,6 +329,9 @@ public class ProductApiController {
         responseMap.put("reviewCount", stats.get("count"));
         responseMap.put("avgRating", stats.get("avg_rating") != null ? stats.get("avg_rating") : 0.0);
         responseMap.put("hasPurchased", hasPurchased);
+        if (flashSaleInfo != null) {
+            responseMap.put("flashSale", flashSaleInfo);
+        }
 
         return ResponseEntity.ok(responseMap);
     }
