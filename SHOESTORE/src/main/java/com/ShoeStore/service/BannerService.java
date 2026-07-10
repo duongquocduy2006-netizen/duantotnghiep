@@ -20,7 +20,7 @@ public class BannerService {
     }
 
     public List<Banner> findActiveBanners() {
-        return bannerRepository.findByStatusTrue();
+        return bannerRepository.findActiveBanners(java.time.LocalDateTime.now());
     }
 
     public Optional<Banner> findById(Long id) {

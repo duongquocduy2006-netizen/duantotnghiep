@@ -54,10 +54,18 @@ const Home = () => {
             }
 
             if (bannerRes.data && Array.isArray(bannerRes.data)) {
-                const active = bannerRes.data.filter(b => b.status === true);
+                const now = new Date();
+                const active = bannerRes.data.filter(b => {
+                    if (b.status !== true) return false;
+                    if (b.startDate && new Date(b.startDate) > now) return false;
+                    if (b.endDate && new Date(b.endDate) < now) return false;
+                    return true;
+                });
                 if (active.length > 0) {
-                    const sorted = (active[0].images || []).sort((a, b) => a.displayOrder - b.displayOrder);
+                    const sorted = (active[0].images || []).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
                     setBanners(sorted);
+                } else {
+                    setBanners([]);
                 }
             }
         } catch (e) {
