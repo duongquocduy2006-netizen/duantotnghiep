@@ -27,6 +27,27 @@ const AdminDashboard = () => {
 
     const [startDate, setStartDate] = useState(formatDate(firstDay));
     const [endDate, setEndDate] = useState(formatDate(today));
+    const [selectedPreset, setSelectedPreset] = useState('thisMonth');
+
+    const setPreset = (presetType) => {
+        const today = new Date();
+        let start = new Date();
+        let end = today;
+        
+        if (presetType === 'today') {
+            start = today;
+        } else if (presetType === '7days') {
+            start.setDate(today.getDate() - 7);
+        } else if (presetType === '30days') {
+            start.setDate(today.getDate() - 30);
+        } else if (presetType === 'thisMonth') {
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+        }
+        
+        setSelectedPreset(presetType);
+        setStartDate(formatDate(start));
+        setEndDate(formatDate(end));
+    };
 
     const fetchDashboardData = async () => {
         setLoading(true);
@@ -86,7 +107,7 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         fetchDashboardData();
-    }, []);
+    }, [startDate, endDate]);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -153,6 +174,8 @@ const AdminDashboard = () => {
                 return '';
         }
     };
+
+    const hasValidStats = monthlyStats && monthlyStats.length > 0 && monthlyStats[0].month !== "Không có";
 
     const chartOptions = {
         chart: {
@@ -301,14 +324,19 @@ const AdminDashboard = () => {
                     <h2 className="page-title">TỔNG QUAN KINH DOANH</h2>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div className="btn-group-presets" style={{ display: 'flex', gap: '5px' }}>
+                        <button type="button" className={`btn-preset ${selectedPreset === 'today' ? 'active' : ''}`} onClick={() => setPreset('today')}>Hôm nay</button>
+                        <button type="button" className={`btn-preset ${selectedPreset === '7days' ? 'active' : ''}`} onClick={() => setPreset('7days')}>7 ngày</button>
+                        <button type="button" className={`btn-preset ${selectedPreset === '30days' ? 'active' : ''}`} onClick={() => setPreset('30days')}>30 ngày</button>
+                        <button type="button" className={`btn-preset ${selectedPreset === 'thisMonth' ? 'active' : ''}`} onClick={() => setPreset('thisMonth')}>Tháng này</button>
+                    </div>
                     <div className="date-range-picker-admin">
                         <span>TỪ:</span>
-                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                        <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }} />
                         <span>ĐẾN:</span>
-                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                        <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }} />
                     </div>
-                    <button className="btn-action btn-primary-glow" onClick={fetchDashboardData}><i className="bi bi-filter"></i> LỌC</button>
-                    <button className="btn-action" onClick={exportToExcel}><i className="bi bi-download"></i></button>
+                    <button className="btn-action" onClick={exportToExcel} title="Xuất Excel báo cáo"><i className="bi bi-download"></i></button>
                 </div>
             </div>
 
@@ -351,10 +379,10 @@ const AdminDashboard = () => {
                     </div>
                     
                     <div style={{ flexGrow: 1, minHeight: '320px' }}>
-                        {monthlyStats && monthlyStats.length > 0 && monthlyStats[0].month !== "Không có" ? (
+                        {hasValidStats ? (
                             <Chart options={chartOptions} series={chartSeries} type="line" height={320} />
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>Không có dữ liệu trong khoảng thời gian này</div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666', minHeight: '320px' }}>Không có dữ liệu trong khoảng thời gian này</div>
                         )}
                     </div>
 
