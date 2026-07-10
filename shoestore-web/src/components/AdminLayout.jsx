@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./admin-style.css";
@@ -8,6 +8,7 @@ const AdminLayout = ({ children }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [toast, setToast] = useState(null);
+    const sidebarNavRef = useRef(null);
 
     useEffect(() => {
         // Thay đổi nền body sang màu xám sáng khi ở trang admin
@@ -17,6 +18,17 @@ const AdminLayout = ({ children }) => {
             document.body.style.backgroundColor = '';
         };
     }, []);
+
+    useEffect(() => {
+        const savedScroll = sessionStorage.getItem("admin_sidebar_scroll");
+        if (savedScroll && sidebarNavRef.current) {
+            sidebarNavRef.current.scrollTop = parseFloat(savedScroll);
+        }
+    }, [location.pathname]);
+
+    const handleSidebarScroll = (e) => {
+        sessionStorage.setItem("admin_sidebar_scroll", e.target.scrollTop);
+    };
 
     useEffect(() => {
         // Check for toast message in sessionStorage
@@ -93,7 +105,7 @@ const AdminLayout = ({ children }) => {
                     </button>
                 </div>
 
-                <nav className="sidebar-nav">
+                <nav ref={sidebarNavRef} className="sidebar-nav" onScroll={handleSidebarScroll}>
                     {menuItems.map((item, index) => {
                         if (item.type === 'label') {
                             return <div key={index} className="nav-label">{item.label}</div>;
