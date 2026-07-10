@@ -501,7 +501,7 @@ const Home = () => {
                                     <div key={brand.id || idx}
                                          className={`brand-grid-item reveal-item god-hidden ${idx === 0 ? 'large' : ''}`}
                                          style={{ animationDelay: `${idx * 0.12}s` }}>
-                                        <Link to={`/shop?brand=${brand.id}`}
+                                        <Link to={`/shop?brand=${encodeURIComponent(name)}`}
                                               className={`brand-card-inner text-decoration-none ${hasImg ? 'has-image' : ''}`}>
                                             {hasImg && (
                                                 <img src={imgUrl(brand.imageUrl)} alt={name} className="brand-img" />

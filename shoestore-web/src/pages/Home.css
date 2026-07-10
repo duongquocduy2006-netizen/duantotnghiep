@@ -307,6 +307,8 @@
 }
 .brand-grid-item.large {
     height: 416px;
+    grid-row: span 2;
+    grid-column: span 2;
 }
 .brand-grid-item:hover {
     transform: translateY(-6px);
@@ -367,7 +369,11 @@
     .brand-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    .brand-grid-item.large { height: 200px; }
+    .brand-grid-item.large {
+        height: 200px;
+        grid-row: span 1;
+        grid-column: span 2;
+    }
 }
 @media (max-width: 575px) {
     .brand-grid {

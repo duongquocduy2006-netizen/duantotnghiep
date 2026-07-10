@@ -30,7 +30,22 @@ const Shop = () => {
     const observerRef = useRef(null);
 
     useEffect(() => {
-        window.scrollTo(0, 0);
+        const queryParams = new URLSearchParams(window.location.search);
+        const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
+        
+        if (hasFilter) {
+            const scrollTarget = () => {
+                const section = document.getElementById('shop-products-section');
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth' });
+                }
+            };
+            scrollTarget();
+            const timer = setTimeout(scrollTarget, 100);
+            return () => clearTimeout(timer);
+        } else {
+            window.scrollTo(0, 0);
+        }
     }, []);
 
     useEffect(() => {
@@ -290,7 +305,7 @@ const Shop = () => {
                     </div>
                 </div>
 
-                <div className="container py-5">
+                <div id="shop-products-section" className="container py-5">
                     <div className="row g-5">
                         {/* FILTER SIDEBAR */}
                         <div className="col-lg-3">
