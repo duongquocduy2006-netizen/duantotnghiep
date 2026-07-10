@@ -95,7 +95,13 @@ const AdminDashboard = () => {
     const getImageUrl = (url) => {
         if (!url) return '';
         if (url.startsWith('http')) return url;
-        return `http://localhost:8080${url}`;
+        if (url.startsWith('/images/') || url.startsWith('/uploads/')) {
+            return `http://localhost:8080${url}`;
+        }
+        if (url.startsWith('images/') || url.startsWith('uploads/')) {
+            return `http://localhost:8080/${url}`;
+        }
+        return `http://localhost:8080/images/${url}`;
     };
 
     if (loading) {
@@ -427,7 +433,15 @@ const AdminDashboard = () => {
                                 <td>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                         <div style={{ width: '40px', height: '40px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-                                            <img src={getImageUrl(product.image) || `https://placehold.co/40x40/000/fff?text=${product.sku}`} alt={product.name} style={{ width:'100%', height:'100%', objectFit: 'cover' }} />
+                                             <img 
+                                                 src={getImageUrl(product.image)} 
+                                                 alt={product.name} 
+                                                 style={{ width:'100%', height:'100%', objectFit: 'cover' }} 
+                                                 onError={(e) => {
+                                                     e.target.onerror = null;
+                                                     e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=f4f5f7&color=000&bold=true`;
+                                                 }}
+                                             />
                                         </div>
                                         <div>
                                             <Link to={`/admin/products/edit/${product.id}`} className="p-name">{product.name}</Link>
