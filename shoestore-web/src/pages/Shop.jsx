@@ -32,18 +32,7 @@ const Shop = () => {
     useEffect(() => {
         const queryParams = new URLSearchParams(window.location.search);
         const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
-        
-        if (hasFilter) {
-            const scrollTarget = () => {
-                const section = document.getElementById('shop-products-section');
-                if (section) {
-                    section.scrollIntoView({ behavior: 'smooth' });
-                }
-            };
-            scrollTarget();
-            const timer = setTimeout(scrollTarget, 100);
-            return () => clearTimeout(timer);
-        } else {
+        if (!hasFilter) {
             window.scrollTo(0, 0);
         }
     }, []);
@@ -84,6 +73,19 @@ const Shop = () => {
                     setSelectedCategory(matchedCat.id);
                 }
             }
+        }
+
+        // 4. Nếu URL có chứa bộ lọc (click từ header hoặc home), cuộn mượt mà xuống vùng sản phẩm
+        const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
+        if (hasFilter) {
+            const scrollTarget = () => {
+                const section = document.getElementById('shop-products-section');
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth' });
+                }
+            };
+            scrollTarget();
+            setTimeout(scrollTarget, 100);
         }
     }, [location.search, categories]);
 

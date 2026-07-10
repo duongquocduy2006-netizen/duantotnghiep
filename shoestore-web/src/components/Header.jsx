@@ -14,6 +14,8 @@ const Header = () => {
     });
     const [isListening, setIsListening] = useState(false);
     const [toast, setToast] = useState(null);
+    const [categories, setCategories] = useState([]);
+    const [brands, setBrands] = useState([]);
 
     useEffect(() => {
         const fetchHeaderData = async () => {
@@ -35,6 +37,28 @@ const Header = () => {
                 }
             } catch (err) {
                 setCartCount(0);
+            }
+
+            try {
+                const brandRes = await api.get('/api/brands');
+                if (brandRes.data && brandRes.data.success) {
+                    setBrands(brandRes.data.brands || []);
+                } else if (Array.isArray(brandRes.data)) {
+                    setBrands(brandRes.data);
+                }
+            } catch (err) {
+                console.error("Lỗi tải thương hiệu ở header:", err);
+            }
+
+            try {
+                const catRes = await api.get('/api/categories');
+                if (catRes.data && catRes.data.success) {
+                    setCategories(catRes.data.categories || []);
+                } else if (Array.isArray(catRes.data)) {
+                    setCategories(catRes.data);
+                }
+            } catch (err) {
+                console.error("Lỗi tải danh mục ở header:", err);
             }
         };
 
@@ -242,15 +266,41 @@ const Header = () => {
                                                 <div className="mega-column">
                                                     <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Thương Hiệu</h5>
                                                     <ul className="list-unstyled">
-                                                        <li className="mb-2"><Link to="/shop?brand=Nike">Nike</Link></li>
-                                                        <li className="mb-2"><Link to="/shop?brand=Adidas">Adidas</Link></li>
+                                                        {brands.length > 0 ? (
+                                                            brands.map(brand => {
+                                                                const bName = brand.name || brand.brand_name || brand.brandName || '';
+                                                                return (
+                                                                    <li className="mb-2" key={brand.id}>
+                                                                        <Link to={`/shop?brand=${encodeURIComponent(bName)}`}>{bName}</Link>
+                                                                    </li>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <>
+                                                                <li className="mb-2"><Link to="/shop?brand=Nike">Nike</Link></li>
+                                                                <li className="mb-2"><Link to="/shop?brand=Adidas">Adidas</Link></li>
+                                                            </>
+                                                        )}
                                                     </ul>
                                                 </div>
                                                 <div className="mega-column">
                                                     <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Dòng Sản Phẩm</h5>
                                                     <ul className="list-unstyled">
-                                                        <li className="mb-2"><Link to="/shop?category=Sneaker">Sneaker</Link></li>
-                                                        <li className="mb-2"><Link to="/shop?category=Running">Running</Link></li>
+                                                        {categories.length > 0 ? (
+                                                            categories.map(cat => {
+                                                                const cName = cat.name || cat.category_name || cat.categoryName || '';
+                                                                return (
+                                                                    <li className="mb-2" key={cat.id}>
+                                                                        <Link to={`/shop?category=${cat.id}`}>{cName}</Link>
+                                                                    </li>
+                                                                );
+                                                            })
+                                                        ) : (
+                                                            <>
+                                                                <li className="mb-2"><Link to="/shop?category=Sneaker">Sneaker</Link></li>
+                                                                <li className="mb-2"><Link to="/shop?category=Running">Running</Link></li>
+                                                            </>
+                                                        )}
                                                     </ul>
                                                 </div>
                                             </div>
