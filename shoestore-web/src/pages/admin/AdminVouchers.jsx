@@ -437,6 +437,15 @@ const AdminVouchers = () => {
                             <div className="form-group" style={{ marginTop: '10px' }}>
                                 <label className="form-label">Hạng thành viên áp dụng (Để trống = Áp dụng tất cả)</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: '#fff', padding: '15px', border: '1.5px solid #dadce0', borderRadius: '8px' }}>
+                                    <div className="rank-check-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', gridColumn: 'span 2', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            className="rank-cbx" 
+                                            checked={selectedRankIds.length === 0}
+                                            onChange={() => setSelectedRankIds([])}
+                                        />
+                                        <span style={{ color: '#000', fontSize: '13px', fontWeight: '800', fontFamily: 'Oswald' }}>ÁP DỤNG TẤT CẢ HẠNG THÀNH VIÊN</span>
+                                    </div>
                                     {ranks.map(r => {
                                         const isChecked = selectedRankIds.includes(r.id);
                                         return (
