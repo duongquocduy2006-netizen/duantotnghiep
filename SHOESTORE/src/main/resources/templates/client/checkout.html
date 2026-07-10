@@ -235,18 +235,21 @@
                                 <label class="form-label">Email</label>
                                 <input type="email" class="form-control" th:value="${account.email}" readonly>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Tỉnh / Thành phố</label>
                                 <select id="province" class="form-select form-control" required>
                                     <option value="">Chọn Tỉnh/Thành</option>
                                 </select>
                             </div>
-                            <select id="district" class="form-select form-control" required style="display: none;">
-                                <option value="">Chọn Quận/Huyện</option>
-                            </select>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <label class="form-label">Quận / Huyện</label>
+                                <select id="district" class="form-select form-control" required disabled style="opacity: 0.5; filter: blur(1px); transition: 0.3s;">
+                                    <option value="">Chọn Quận/Huyện</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label">Phường / Xã</label>
-                                <select id="ward" class="form-select form-control" required disabled>
+                                <select id="ward" class="form-select form-control" required disabled style="opacity: 0.5; filter: blur(1px); transition: 0.3s;">
                                     <option value="">Chọn Phường/Xã</option>
                                 </select>
                             </div>
@@ -490,11 +493,23 @@
                     }
                 });
 
+            const setDropdownDisabled = (el, disabled) => {
+                el.disabled = disabled;
+                if (disabled) {
+                    el.style.opacity = '0.5';
+                    el.style.filter = 'blur(1px)';
+                } else {
+                    el.style.opacity = '1';
+                    el.style.filter = 'none';
+                }
+            };
+
             provinceSelect.onchange = function() {
                  const pId = this.value;
                  districtSelect.innerHTML = '<option value="">Chọn Quận/Huyện</option>';
                  wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
-                 wardSelect.disabled = true;
+                 setDropdownDisabled(districtSelect, true);
+                 setDropdownDisabled(wardSelect, true);
                  
                  if (pId) {
                      fetch(`/api/ghn/districts?provinceId=${pId}`)
@@ -506,56 +521,43 @@
                                      const opt = new Option(d.DistrictName, d.DistrictID);
                                      districtSelect.add(opt);
                                  });
-
-                                 const wardPromises = districtsList.map(d => {
-                                     return fetch(`/api/ghn/wards?districtId=${d.DistrictID}`)
-                                         .then(res => res.json())
-                                         .then(wData => {
-                                             if (wData.code === 200) {
-                                                 return (wData.data || []).map(w => ({
-                                                     ...w,
-                                                     DistrictID: d.DistrictID,
-                                                     DistrictName: d.DistrictName
-                                                 }));
-                                             }
-                                             return [];
-                                         })
-                                         .catch(() => []);
-                                 });
-
-                                 Promise.all(wardPromises).then(wardsNested => {
-                                     const allWards = wardsNested.flat();
-                                     allWards.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
-                                     
-                                     wardSelect.disabled = false;
-                                     allWards.forEach(w => {
-                                         const opt = document.createElement('option');
-                                         opt.value = w.WardCode;
-                                         opt.text = w.WardName + (w.DistrictName ? ` (${w.DistrictName})` : '');
-                                         opt.setAttribute('data-district-id', w.DistrictID);
-                                         wardSelect.add(opt);
-                                     });
-                                 });
+                                 setDropdownDisabled(districtSelect, false);
                              }
                          });
                  }
                  updateFullAddress();
              };
 
-             wardSelect.onchange = function() {
-                 const selectedOpt = this.options[this.selectedIndex];
-                 const dId = selectedOpt ? selectedOpt.getAttribute('data-district-id') : '';
-                 districtSelect.value = dId;
-
+             districtSelect.onchange = function() {
+                 const dId = this.value;
+                 wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+                 setDropdownDisabled(wardSelect, true);
+                 
+                 if (dId) {
+                     fetch(`/api/ghn/wards?districtId=${dId}`)
+                         .then(res => res.json())
+                         .then(data => {
+                             if (data.code === 200) {
+                                 const wardsList = data.data || [];
+                                 wardsList.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
+                                 wardsList.forEach(w => {
+                                     const opt = new Option(w.WardName, w.WardCode);
+                                     wardSelect.add(opt);
+                                 });
+                                 setDropdownDisabled(wardSelect, false);
+                             }
+                         });
+                 }
                  updateFullAddress();
                  calculateFee();
              };
 
-            districtSelect.onchange = function() {
-                calculateFee();
-            };
+             wardSelect.onchange = function() {
+                 updateFullAddress();
+                 calculateFee();
+             };
 
-            streetDetail.oninput = updateFullAddress;
+             streetDetail.oninput = updateFullAddress;
 
             // --- Map Picker JS ---
             let pickerMap = null;
@@ -687,113 +689,126 @@
                         provText.toLowerCase().includes(opt.text.toLowerCase())
                     );
                     if (matchedOpt) {
-                        provinceSelect.value = matchedOpt.value;
-                        provinceSelect.dispatchEvent(new Event('change'));
+                        const provId = matchedOpt.value;
+                        provinceSelect.value = provId;
                         
-                        // Collect all ward text candidates from OSM address
-                        const wardCandidates = [
-                            addr.suburb, addr.village, addr.quarter, addr.town,
-                            addr.commune, addr.city_district, addr.neighbourhood
-                        ].filter(Boolean);
-
-                        const stripPrefix = (s) => s.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/i, '').trim();
-
-                        // Wait for wards to load then match
-                        const checkWardsInterval = setInterval(() => {
-                            const wardOpts = Array.from(wardSelect.options);
-                            if (wardOpts.length > 1) {
-                                clearInterval(checkWardsInterval);
-                                
-                                let matchedWardOpt = null;
-
-                                // Try each candidate
-                                for (const candidate of wardCandidates) {
-                                    if (matchedWardOpt) break;
-                                    const candidateLower = candidate.toLowerCase();
-                                    const strippedCandidate = stripPrefix(candidate);
+                        // Load Districts for this province
+                        fetch(`/api/ghn/districts?provinceId=${provId}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.code === 200) {
+                                    const districtsList = data.data || [];
                                     
-                                    matchedWardOpt = wardOpts.find(opt => {
-                                        const optLower = opt.text.toLowerCase();
-                                        return optLower.includes(candidateLower) || candidateLower.includes(optLower);
+                                    // Populate district dropdown
+                                    districtSelect.innerHTML = '<option value="">Chọn Quận/Huyện</option>';
+                                    districtsList.forEach(d => {
+                                        const opt = new Option(d.DistrictName, d.DistrictID);
+                                        districtSelect.add(opt);
                                     });
-                                    if (!matchedWardOpt && strippedCandidate) {
-                                        matchedWardOpt = wardOpts.find(opt => {
-                                            const strippedOpt = stripPrefix(opt.text);
-                                            return strippedOpt === strippedCandidate || strippedOpt.includes(strippedCandidate) || strippedCandidate.includes(strippedOpt);
-                                        });
-                                    }
-                                }
-
-                                // Final fallback: search display_name for ward names
-                                if (!matchedWardOpt && resolvedAddress.display_name) {
-                                    const dispLower = resolvedAddress.display_name.toLowerCase();
-                                    matchedWardOpt = wardOpts.find(opt => {
-                                        if (!opt.value) return false;
-                                        return dispLower.includes(opt.text.toLowerCase());
-                                    });
-                                    if (!matchedWardOpt) {
-                                        matchedWardOpt = wardOpts.find(opt => {
-                                            if (!opt.value) return false;
-                                            const stripped = stripPrefix(opt.text);
-                                            return stripped.length >= 3 && dispLower.includes(stripped);
-                                        });
-                                    }
-                                }
-
-                                // District-level fallback: match district name, pick first ward in it
-                                if (!matchedWardOpt) {
+                                    setDropdownDisabled(districtSelect, false);
+                                    
+                                    // Match District
                                     const distCandidates = [
                                         addr.city_district, addr.suburb, addr.village,
                                         addr.quarter, addr.town, addr.commune
                                     ].filter(Boolean);
                                     const stripDistPrefix = (s) => s.toLowerCase().replace(/^(phường|xã|thị trấn|quận|huyện|thị xã|thành phố)\s+/i, '').trim();
                                     
-                                    const distOpts = Array.from(districtSelect.options);
-                                    let matchedDistOpt = null;
-                                    
+                                    let matchedDistrict = null;
                                     for (const candidate of distCandidates) {
-                                        if (matchedDistOpt) break;
+                                        if (matchedDistrict) break;
                                         const stripped = stripDistPrefix(candidate);
                                         if (stripped.length < 2) continue;
-                                        matchedDistOpt = distOpts.find(opt => {
-                                            if (!opt.value) return false;
-                                            const optStripped = stripDistPrefix(opt.text);
+                                        matchedDistrict = districtsList.find(d => {
+                                            const optStripped = stripDistPrefix(d.DistrictName);
                                             return optStripped === stripped || optStripped.includes(stripped) || stripped.includes(optStripped);
                                         });
                                     }
-
-                                    // Also try from display_name
-                                    if (!matchedDistOpt && resolvedAddress.display_name) {
-                                        const dispLower2 = resolvedAddress.display_name.toLowerCase();
-                                        matchedDistOpt = distOpts.find(opt => {
-                                            if (!opt.value) return false;
-                                            return dispLower2.includes(opt.text.toLowerCase());
-                                        });
+                                    
+                                    if (!matchedDistrict && resolvedAddress.display_name) {
+                                        const dispLower = resolvedAddress.display_name.toLowerCase();
+                                        matchedDistrict = districtsList.find(d => dispLower.includes(d.DistrictName.toLowerCase()));
                                     }
-
-                                    if (matchedDistOpt) {
-                                        districtSelect.value = matchedDistOpt.value;
-                                        // Pick first ward in matched district so form is not empty
-                                        const distName = matchedDistOpt.text;
-                                        matchedWardOpt = wardOpts.find(opt => {
-                                            if (!opt.value) return false;
-                                            return opt.text.includes('(' + distName + ')');
-                                        });
+                                    
+                                    if (matchedDistrict) {
+                                        const dId = matchedDistrict.DistrictID;
+                                        districtSelect.value = dId;
+                                        
+                                        // Load Wards for this district
+                                        fetch(`/api/ghn/wards?districtId=${dId}`)
+                                            .then(res => res.json())
+                                            .then(wData => {
+                                                if (wData.code === 200) {
+                                                    const wardsList = wData.data || [];
+                                                    wardsList.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
+                                                    
+                                                    // Populate ward dropdown
+                                                    wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+                                                    wardsList.forEach(w => {
+                                                        const opt = new Option(w.WardName, w.WardCode);
+                                                        wardSelect.add(opt);
+                                                    });
+                                                    setDropdownDisabled(wardSelect, false);
+                                                    
+                                                    // Match Ward
+                                                    const wardCandidates = [
+                                                        addr.suburb, addr.village, addr.quarter, addr.town,
+                                                        addr.commune, addr.city_district, addr.neighbourhood
+                                                    ].filter(Boolean);
+                                                    const stripPrefix = (s) => s.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/i, '').trim();
+                                                    
+                                                    let matchedWard = null;
+                                                    for (const candidate of wardCandidates) {
+                                                        if (matchedWard) break;
+                                                        const candidateLower = candidate.toLowerCase();
+                                                        const strippedCandidate = stripPrefix(candidate);
+                                                        
+                                                        matchedWard = wardsList.find(w => {
+                                                            const optLower = w.WardName.toLowerCase();
+                                                            return optLower.includes(candidateLower) || candidateLower.includes(optLower);
+                                                        });
+                                                        if (!matchedWard && strippedCandidate) {
+                                                            matchedWard = wardsList.find(w => {
+                                                                const strippedOpt = stripPrefix(w.WardName);
+                                                                return strippedOpt === strippedCandidate || strippedOpt.includes(strippedCandidate) || strippedCandidate.includes(strippedOpt);
+                                                            });
+                                                        }
+                                                    }
+                                                    
+                                                    if (!matchedWard && resolvedAddress.display_name) {
+                                                        const dispLower = resolvedAddress.display_name.toLowerCase();
+                                                        matchedWard = wardsList.find(w => dispLower.includes(w.WardName.toLowerCase()));
+                                                        if (!matchedWard) {
+                                                            matchedWard = wardsList.find(w => {
+                                                                const stripped = stripPrefix(w.WardName);
+                                                                return stripped.length >= 3 && dispLower.includes(stripped);
+                                                            });
+                                                        }
+                                                    }
+                                                    
+                                                    if (!matchedWard && wardsList.length > 0) {
+                                                        matchedWard = wardsList[0]; // fallback to first ward
+                                                    }
+                                                    
+                                                    if (matchedWard) {
+                                                        wardSelect.value = matchedWard.WardCode;
+                                                    }
+                                                    
+                                                    updateFullAddress();
+                                                    calculateFee();
+                                                }
+                                            });
+                                    } else {
+                                        // Reset ward dropdown if district not matched
+                                        wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+                                        setDropdownDisabled(wardSelect, true);
+                                        updateFullAddress();
                                     }
                                 }
-
-                                if (matchedWardOpt) {
-                                    wardSelect.value = matchedWardOpt.value;
-                                    wardSelect.dispatchEvent(new Event('change'));
-                                }
-                            }
-                        }, 100);
-                        
-                        setTimeout(() => clearInterval(checkWardsInterval), 5000);
+                            });
                     }
                 }
 
-                // 2. Điền địa chỉ chi tiết = toàn bộ display_name gốc, không cắt bỏ gì
                 streetDetail.value = resolvedAddress.display_name || '';
                 updateFullAddress();
                 closeModal();

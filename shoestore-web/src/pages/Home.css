@@ -303,6 +303,10 @@
     background: #111;
     border: 1px solid #1e1e1e;
     transition: transform 0.4s ease, box-shadow 0.4s ease;
+    height: 200px;
+}
+.brand-grid-item.large {
+    height: 416px;
 }
 .brand-grid-item:hover {
     transform: translateY(-6px);
@@ -313,7 +317,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 200px;
+    height: 100%;
     text-decoration: none;
     padding: 24px;
     position: relative;
@@ -358,13 +362,12 @@
 .brand-grid-item:hover .brand-card-explore {
     color: #e50914;
 }
-.brand-grid-item.large .brand-card-inner { height: 416px; } /* 2 rows */
 
 @media (max-width: 991px) {
     .brand-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    .brand-grid-item.large .brand-card-inner { height: 200px; }
+    .brand-grid-item.large { height: 200px; }
 }
 @media (max-width: 575px) {
     .brand-grid {
