@@ -191,8 +191,13 @@ const Shop = () => {
             if (catRes.data && catRes.data.success) setCategories(catRes.data.categories || []);
             else if (Array.isArray(catRes.data)) setCategories(catRes.data);
 
-            if (brandRes.data && brandRes.data.success) setBrands(brandRes.data.brands || []);
-            else if (Array.isArray(brandRes.data)) setBrands(brandRes.data);
+            if (brandRes.data && brandRes.data.success) {
+                const activeBrands = (brandRes.data.brands || []).filter(b => b.active !== false);
+                setBrands(activeBrands);
+            } else if (Array.isArray(brandRes.data)) {
+                const activeBrands = brandRes.data.filter(b => b.active !== false);
+                setBrands(activeBrands);
+            }
         } catch (error) {
             console.error("Lỗi tải bộ lọc:", error);
         }

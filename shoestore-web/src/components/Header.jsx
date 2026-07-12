@@ -42,9 +42,11 @@ const Header = () => {
             try {
                 const brandRes = await api.get('/api/brands');
                 if (brandRes.data && brandRes.data.success) {
-                    setBrands(brandRes.data.brands || []);
+                    const activeBrands = (brandRes.data.brands || []).filter(b => b.active !== false);
+                    setBrands(activeBrands);
                 } else if (Array.isArray(brandRes.data)) {
-                    setBrands(brandRes.data);
+                    const activeBrands = brandRes.data.filter(b => b.active !== false);
+                    setBrands(activeBrands);
                 }
             } catch (err) {
                 console.error("Lỗi tải thương hiệu ở header:", err);

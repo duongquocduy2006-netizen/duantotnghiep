@@ -291,10 +291,48 @@
 /* =====================================================
    BRAND GRID (typography style – no broken images)
    ===================================================== */
+.brand-slider-wrapper {
+    position: relative;
+    width: 100%;
+}
+.brand-slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.3s ease;
+}
+.brand-slider-btn:hover {
+    background: #e50914;
+    border-color: #e50914;
+    transform: translateY(-50%) scale(1.1);
+}
+.brand-slider-btn.prev {
+    left: -22px;
+}
+.brand-slider-btn.next {
+    right: -22px;
+}
 .brand-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: flex;
     gap: 16px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    width: 100%;
+    scrollbar-width: none;
+}
+.brand-grid::-webkit-scrollbar {
+    display: none;
 }
 .brand-grid-item {
     position: relative;
@@ -304,11 +342,7 @@
     border: 1px solid #1e1e1e;
     transition: transform 0.4s ease, box-shadow 0.4s ease;
     height: 200px;
-}
-.brand-grid-item.large {
-    height: 416px;
-    grid-row: span 2;
-    grid-column: span 2;
+    flex: 0 0 calc(25% - 12px);
 }
 .brand-grid-item:hover {
     transform: translateY(-6px);
@@ -366,19 +400,27 @@
 }
 
 @media (max-width: 991px) {
-    .brand-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .brand-grid-item {
+        flex: 0 0 calc(50% - 8px);
     }
-    .brand-grid-item.large {
-        height: 200px;
-        grid-row: span 1;
-        grid-column: span 2;
+    .brand-slider-btn.prev {
+        left: -10px;
+    }
+    .brand-slider-btn.next {
+        right: -10px;
+    }
+}
+@media (max-width: 768px) {
+    .brand-slider-btn {
+        display: none;
     }
 }
 @media (max-width: 575px) {
     .brand-grid {
-        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
+    }
+    .brand-grid-item {
+        flex: 0 0 100%;
     }
 }
 
