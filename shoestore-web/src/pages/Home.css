@@ -417,10 +417,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-<<<<<<< HEAD
     min-height: 200px;
-=======
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
     text-decoration: none;
     padding: 24px;
     position: relative;
@@ -472,15 +469,7 @@
 .brand-grid-item:hover .brand-card-explore {
     color: #e50914;
 }
-<<<<<<< HEAD
 
-.brand-grid-item.large .brand-card-inner {
-    height: 416px;
-}
-
-/* 2 rows */
-=======
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
 
 @media (max-width: 991px) {
     .brand-grid-item {
@@ -497,13 +486,7 @@
     .brand-slider-btn {
         display: none;
     }
-<<<<<<< HEAD
 
-    .brand-grid-item.large .brand-card-inner {
-        height: 200px;
-    }
-=======
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
 }
 
 @media (max-width: 575px) {

@@ -531,33 +531,6 @@ const Home = () => {
                                 XEM TẤT CẢ <i className="fa-solid fa-arrow-right ms-2" />
                             </Link>
                         </div>
-<<<<<<< HEAD
-                        <div className="brand-grid">
-                            {(brands.length > 0 ? brands.slice(0, 5) : [
-                                { id: 1, name: 'Nike' },
-                                { id: 2, name: 'Adidas' },
-                                { id: 3, name: 'New Balance' },
-                                { id: 4, name: 'Vans' },
-                                { id: 5, name: 'Converse' },
-                            ]).map((brand, idx) => {
-                                const name = brand.brand_name || brand.brandName || brand.name || `Brand ${idx + 1}`;
-                                const hasImg = !!brand.imageUrl;
-                                return (
-                                    <div key={brand.id || idx}
-                                        className="brand-grid-item large reveal-item god-hidden"
-                                        style={{ animationDelay: `${idx * 0.12}s` }}>
-                                        <Link to={`/shop?brand=${brand.id}`}
-                                            className={`brand-card-inner text-decoration-none ${hasImg ? 'has-image' : ''}`}>
-                                            {hasImg && (
-                                                <img src={imgUrl(brand.imageUrl)} alt={name} className="brand-img" />
-                                            )}
-                                            <span className="brand-card-name">{name.toUpperCase()}</span>
-                                            <span className="brand-card-explore">KHÁM PHÁ <i className="fa-solid fa-arrow-right" /></span>
-                                        </Link>
-                                    </div>
-                                );
-                            })}
-=======
                         <div className="brand-slider-wrapper reveal-item god-hidden">
                             {canScrollLeft && (
                                 <button className="brand-slider-btn prev" onClick={() => scrollBrands('left')}>
@@ -597,7 +570,6 @@ const Home = () => {
                                     <i className="fa-solid fa-chevron-right" />
                                 </button>
                             )}
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                         </div>
                     </div>
                 </div>

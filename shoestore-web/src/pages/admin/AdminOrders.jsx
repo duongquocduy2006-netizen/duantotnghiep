@@ -177,7 +177,6 @@ const AdminOrders = () => {
                     </button>
                 </div>
 
-<<<<<<< HEAD
                 {/* TOOLBAR */}
                 <div className="toolbar-container">
                     <div className="search-input-pill">
@@ -202,18 +201,6 @@ const AdminOrders = () => {
                         <option value="3">ĐÃ GIAO THÀNH CÔNG</option>
                         <option value="4">ĐÃ HỦY</option>
                     </select>
-=======
-            <div className="toolbar">
-                <div className="admin-search-box-wrap">
-                    <i className="bi bi-search admin-search-icon"></i>
-                    <input
-                        type="text"
-                        className="admin-search-input"
-                        placeholder="Tìm kiếm Mã đơn, Tên khách hàng..."
-                        value={keyword}
-                        onChange={(e) => setKeyword(e.target.value)}
-                    />
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                 </div>
 
                 {/* TABLE */}
@@ -225,7 +212,6 @@ const AdminOrders = () => {
                             </div>
                             <p style={{ marginTop: '20px', letterSpacing: '1px', fontSize: '13px', fontWeight: '800' }}>ĐANG TẢI DANH SÁCH ĐƠN HÀNG...</p>
                         </div>
-<<<<<<< HEAD
                     ) : error ? (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--accent-red)' }}>
                             <i className="bi bi-exclamation-triangle" style={{ fontSize: '40px' }}></i>
@@ -314,98 +300,6 @@ const AdminOrders = () => {
                         </table>
                     )}
                 </div>
-=======
-                        <p style={{ marginTop: '20px', letterSpacing: '1px', fontSize: '13px' }}>ĐANG TẢI DANH SÁCH ĐƠN HÀNG...</p>
-                    </div>
-                ) : error ? (
-                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--accent-red)' }}>
-                        <i className="bi bi-exclamation-triangle" style={{ fontSize: '40px' }}></i>
-                        <p style={{ marginTop: '10px' }}>{error}</p>
-                    </div>
-                ) : orders.length === 0 ? (
-                    <div style={{ padding: '60px 40px', textAlign: 'center', color: '#000' }}>
-                        <i className="bi bi-inbox" style={{ fontSize: '48px', color: '#333' }}></i>
-                        <p style={{ marginTop: '15px' }}>Không có đơn hàng nào khớp với tìm kiếm.</p>
-                    </div>
-                ) : (
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>MÃ ĐƠN HÀNG</th>
-                                <th>KHÁCH HÀNG / THỜI GIAN</th>
-                                <th>TỔNG THANH TOÁN</th>
-                                <th>TRẠNG THÁI ĐƠN HÀNG</th>
-                                <th>THANH TOÁN</th>
-                                <th style={{ textAlign: 'right' }}>CHI TIẾT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {orders.map((order) => {
-                                const statusInfo = getStatusInfo(order.status);
-                                return (
-                                    <tr key={order.orderCode} style={order.status === 4 ? { background: 'rgba(229, 9, 20, 0.03)' } : {}}>
-                                        <td>
-                                            <span
-                                                onClick={() => openOrderDetail(order.orderCode)}
-                                                className="order-id"
-                                                style={order.status === 4 ? { color: '#000', textDecoration: 'line-through', cursor: 'pointer' } : { cursor: 'pointer' }}
-                                            >
-                                                {order.orderCode}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="customer-info">
-                                                <span className="customer-name" style={order.status === 4 ? { color: '#555' } : {}}>
-                                                    {order.customerName || "Khách vãng lai"}
-                                                </span>
-                                                <span className="customer-date" style={order.status === 4 ? { color: '#555' } : {}}>
-                                                    <i className="bi bi-clock"></i> {formatDate(order.createdAt)}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="total-amount" style={order.status === 4 ? { color: '#555' } : {}}>
-                                            {formatCurrency(order.finalAmount)}
-                                        </td>
-                                        <td>
-                                            <div className="d-flex gap-1 align-items-center">
-                                                <select
-                                                    className={`filter-select status-select-badge ${statusInfo.class}`}
-                                                    style={{ padding: '5px 30px 5px 10px', fontSize: '12px', margin: 0 }}
-                                                    value={order.status}
-                                                    disabled={order.status === 3 || order.status === 4 || order.status === 5}
-                                                    onChange={(e) => handleStatusChange(order.orderCode, parseInt(e.target.value))}
-                                                >
-                                                    <option value="1">Chờ xác nhận</option>
-                                                    <option value="2">Đang giao hàng</option>
-                                                    {order.status !== 4 && <option value="4">Hủy đơn</option>}
-                                                    {order.status === 4 && <option value="4">Đã hủy</option>}
-                                                    {order.status === 3 && <option value="3">Thành công</option>}
-                                                    {order.status === 5 && <option value="5">Đã nhận hàng (Chờ duyệt)</option>}
-                                                </select>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span className={`badge-payment ${order.paymentMethod === 'BANK' || order.paymentMethod?.toLowerCase().includes('chuyển khoản') ? 'payment-vnpay' : ''}`} style={order.status === 4 ? { opacity: 0.5 } : {}}>
-                                                {order.paymentMethod === 'BANK' ? 'Chuyển khoản' : (order.paymentMethod || 'COD')}
-                                            </span>
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <button
-                                                onClick={() => openOrderDetail(order.orderCode)}
-                                                className="admin-btn-view-details"
-                                                title="Xem chi tiết"
-                                            >
-                                                <i className="bi bi-eye"></i>
-                                                <span>Xem</span>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                )}
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
             </div>
 
             {/* HIGH-END DETAIL MODAL */}
@@ -526,75 +420,10 @@ const AdminOrders = () => {
             )}
 
             <style>{`
-<<<<<<< HEAD
-=======
-                .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
-                .sub-title-neon { display: block; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; text-transform: uppercase; font-family: 'Oswald'; }
-                .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
-                
-                .header-right-actions { display: flex; align-items: center; }
-                .btn-red-skew { 
-                    background: #e50914; color: #fff; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
-                    transition: 0.3s; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none;
-                }
-                .btn-red-skew:hover { background: #fff; color: #000; box-shadow: 0 8px 24px rgba(229,9,20,0.25); transform: translateY(-3px); }
-                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; max-width: 100%; box-sizing: border-box; }
-                .admin-search-box-wrap { position: relative; flex: 1; max-width: 100%; min-width: 220px; box-sizing: border-box; background: transparent !important; border: none !important; padding: 0 !important; display: block !important; }
-                .admin-search-input { width: 100%; background: #fff !important; border: 1.5px solid #dadce0 !important; padding: 10px 16px 10px 42px !important; color: #000 !important; outline: none; transition: all 0.2s ease; height: 44px; border-radius: 12px !important; font-weight: 500; font-size: 14px; font-family: 'Inter', sans-serif; box-sizing: border-box; }
-                .admin-search-input:focus { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1) !important; }
-                .admin-search-input::placeholder { color: #9aa0a6; }
-                .admin-search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888 !important; font-size: 16px; pointer-events: none; z-index: 5; }
-                
-                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); overflow-x: auto; margin-top: 20px; border-radius: 14px; width: 100%; box-sizing: border-box; }
-                table { width: 100%; border-collapse: collapse; min-width: 850px; }
-                th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 16px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; letter-spacing: 0.5px; }
-                td { padding: 14px 16px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; }
-                
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                 .order-id { font-family: 'Oswald'; color: #000; font-weight: 800; text-decoration: none; transition: 0.2s; font-size: 16px; }
                 .order-id:hover { color: var(--accent-red); text-decoration: underline; }
                 .customer-name { display: block; font-weight: 800; color: #000; font-size: 15px; }
                 .customer-date { font-size: 12px; color: #555; display: flex; align-items: center; gap: 5px; margin-top: 3px; font-weight: 600; }
-<<<<<<< HEAD
-=======
- 
-                .admin-btn-view-details {
-                    background: #f8fafc !important;
-                    border: 1px solid #e2e8f0 !important;
-                    color: #64748b !important;
-                    height: 36px !important;
-                    width: auto !important;
-                    padding: 0 14px !important;
-                    display: inline-flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    gap: 6px !important;
-                    border-radius: 8px !important;
-                    font-weight: 700 !important;
-                    font-size: 12px !important;
-                    cursor: pointer !important;
-                    transition: all 0.2s ease !important;
-                    box-shadow: none !important;
-                    text-decoration: none !important;
-                    margin: 0 !important;
-                }
-                .admin-btn-view-details:hover {
-                    background: #1e293b !important;
-                    color: #fff !important;
-                    border-color: #1e293b !important;
-                    transform: translateY(-1px) !important;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-                }
-                .admin-btn-view-details i {
-                    font-size: 14px !important;
-                    margin: 0 !important;
-                    line-height: 1 !important;
-                }
-                .btn-view:hover { background: #1e293b; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-1px); }
-                
-                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.2s; }
-                .filter-select:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
 
                 /* Status badging */
                 .status-select-badge { border-radius: 0px; font-weight: 800; font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 13px; border: 1px solid #ddd !important; cursor: pointer; outline: none; background: #fff; }

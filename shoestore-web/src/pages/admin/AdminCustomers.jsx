@@ -187,11 +187,10 @@ const AdminCustomers = () => {
                         <h1 className="header-title">DANH SÁCH KHÁCH HÀNG</h1>
                     </div>
                     <button className="btn-add-pill" onClick={() => window.print()}>
-                        <i className="bi bi-file-earmark-excel"></i> &nbsp;XUẤT DANH SÁCH
+                        <i className="bi bi-file-earmark-excel"></i> &nbsp;XUẤT BÁO CÁO
                     </button>
                 </div>
 
-<<<<<<< HEAD
                 {/* TOOLBAR */}
                 <div className="toolbar-container">
                     <div className="search-input-pill">
@@ -224,18 +223,6 @@ const AdminCustomers = () => {
                         <option value="active">Hoạt động</option>
                         <option value="locked">Đã khóa</option>
                     </select>
-=======
-            <div className="toolbar">
-                <div className="admin-search-box-wrap">
-                    <i className="bi bi-search admin-search-icon"></i>
-                    <input
-                        type="text"
-                        className="admin-search-input"
-                        placeholder="Tìm tên, email, số điện thoại..."
-                        value={searchKeyword}
-                        onChange={(e) => setSearchKeyword(e.target.value)}
-                    />
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                 </div>
 
                 {/* TABLE */}
@@ -247,7 +234,6 @@ const AdminCustomers = () => {
                             </div>
                             <p style={{ marginTop: '20px', letterSpacing: '1px', fontSize: '13px', fontWeight: '800' }}>ĐANG TẢI DANH SÁCH KHÁCH HÀNG...</p>
                         </div>
-<<<<<<< HEAD
                     ) : error ? (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--accent-red)' }}>
                             <i className="bi bi-exclamation-triangle" style={{ fontSize: '40px' }}></i>
@@ -266,121 +252,7 @@ const AdminCustomers = () => {
                                     <th>Phân Loại</th>
                                     <th>Chi Tiêu</th>
                                     <th>Trạng Thái</th>
-                                    <th style={{ textAlign: 'right' }}>Hành Động</th>
-=======
-                        <p style={{ marginTop: '20px', letterSpacing: '1px', fontSize: '13px' }}>ĐANG TẢI DANH SÁCH KHÁCH HÀNG...</p>
-                    </div>
-                ) : error ? (
-                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--accent-red)' }}>
-                        <i className="bi bi-exclamation-triangle" style={{ fontSize: '40px' }}></i>
-                        <p style={{ marginTop: '10px' }}>{error}</p>
-                    </div>
-                ) : filteredCustomers.length === 0 ? (
-                    <div style={{ padding: '60px 40px', textAlign: 'center', color: '#000' }}>
-                        <i className="bi bi-inbox" style={{ fontSize: '48px', color: '#000' }}></i>
-                        <p style={{ marginTop: '15px' }}>Không tìm thấy khách hàng nào.</p>
-                    </div>
-                ) : (
-                    
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Khách Hàng</th>
-                                <th>Phân Loại</th>
-                                <th>Chi Tiêu</th>
-                                <th>Trạng Thái</th>
-                                <th style={{ textAlign: 'right' }}>Hành Động</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredCustomers.map((cust) => (
-                                <tr key={cust.id} style={cust.status === 0 ? { backgroundColor: '#f8d7da' } : {}}>
-                                    <td>
-                                        <div className="customer-profile">
-                                            <div className="avatar"
-                                                style={cust.status === 0 ? { color: '#000', borderColor: '#333', backgroundColor: '#fff' } : { backgroundColor: '#fff', color: '#000' }}
-                                            >
-                                                {getInitials(cust.fullName)}
-                                            </div>
-                                            <div className="customer-info" style={{ marginLeft: '15px' }}>
-                                                <span className="customer-name"
-                                                    style={cust.status === 0 ? { color: '#000', textDecoration: 'line-through' } : {}}
-                                                >
-                                                    {cust.fullName || "Chưa thiết lập"}
-                                                </span>
-                                                <span className="customer-email"
-                                                    style={cust.status === 0 ? { color: '#555' } : {}}
-                                                >
-                                                    <i className="bi bi-envelope"></i> {cust.email}
-                                                </span>
-                                                <span className="customer-phone"
-                                                    style={cust.status === 0 ? { color: '#555' } : {}}
-                                                >
-                                                    <i className="bi bi-telephone"></i> {cust.phone || "N/A"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start' }}>
-                                            <span className={`badge-role ${cust.role === 'ADMIN' ? 'role-admin' : (cust.role === 'SHIPPER' ? 'role-shipper' : 'role-user')}`} style={cust.status === 0 ? { opacity: 0.5 } : {}}>
-                                                {cust.role}
-                                            </span>
-                                             <span className="tier-badge"
-                                                 style={{
-                                                     color: cust.rankColor,
-                                                     border: `2px solid ${cust.rankColor}`,
-                                                     background: '#fff',
-                                                     padding: '4px 8px',
-                                                     fontWeight: 800,
-                                                     fontSize: '10px',
-                                                     textTransform: 'uppercase',
-                                                     display: 'inline-flex',
-                                                     alignItems: 'center',
-                                                     gap: '4px',
-                                                     whiteSpace: 'nowrap'
-                                                 }}
-                                             >
-                                                 <i className="bi bi-star-fill"></i>
-                                                 {cust.rankName}
-                                             </span>
-                                        </div>
-                                    </td>
-                                    <td className="total-spent" style={cust.status === 0 ? { color: '#555' } : {}}>
-                                        {cust.totalSpent.toLocaleString("vi-VN")} ₫
-                                    </td>
-                                    <td>
-                                        {cust.status === 1 ? (
-                                            <span className="badge-status-active">HOẠT ĐỘNG</span>
-                                        ) : (
-                                            <span className="badge-status-locked">ĐÃ KHÓA</span>
-                                        )}
-                                    </td>
-                                    <td style={{ textAlign: 'right' }}>
-                                        <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
-                                            <Link to={`/admin/customers/detail/${cust.id}`} className="action-btn-icon" title="Xem chi tiết">
-                                                <i className="bi bi-eye"></i>
-                                            </Link>
-                                            <button className="action-btn-icon" title="Chỉnh sửa Rank" onClick={() => openRankModal(cust)}>
-                                                <i className="bi bi-star-fill"></i>
-                                            </button>
-                                            {cust.role !== 'ADMIN' && (
-                                                <button className="action-btn-icon" title="Phân Quyền (Role)" onClick={() => openRoleModal(cust)}>
-                                                    <i className="bi bi-person-badge"></i>
-                                                </button>
-                                            )}
-                                            {cust.role !== 'ADMIN' && (
-                                                <button
-                                                    className={`action-btn-icon ${cust.status === 1 ? 'icon-lock' : 'icon-unlock'}`}
-                                                    title={cust.status === 1 ? "Khóa tài khoản" : "Mở khóa"}
-                                                    onClick={() => toggleStatus(cust.id, cust.status)}
-                                                >
-                                                    <i className={`bi ${cust.status === 1 ? 'bi-lock' : 'bi-unlock-fill'}`}></i>
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
+                                    <th style={{ textAlign: 'right' }}>HÀNH ĐỘNG</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -569,35 +441,7 @@ const AdminCustomers = () => {
             )}
 
             <style>{`
-<<<<<<< HEAD
-=======
-                .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
-                .sub-title-neon { display: block; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
-                .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
-                
-                .header-right-actions { display: flex; align-items: center; }
-                .btn-cyan-skew { 
-                    background: #fff; color: #000; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
-                    transition: 0.3s; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none;
-                }
-                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
 
-                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; max-width: 100%; box-sizing: border-box; }
-                .admin-search-box-wrap { position: relative; flex: 1; max-width: 100%; min-width: 220px; box-sizing: border-box; background: transparent !important; border: none !important; padding: 0 !important; display: block !important; }
-                .admin-search-input { width: 100%; background: #fff !important; border: 1.5px solid #dadce0; padding: 10px 16px 10px 42px !important; color: #3c4043 !important; outline: none; height: 44px; font-weight: 500; border-radius: 12px !important; font-size: 14px; transition: all 0.2s; font-family: 'Inter', sans-serif; box-sizing: border-box; }
-                .admin-search-input:focus { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1) !important; }
-                .admin-search-input::placeholder { color: #9aa0a6; }
-                .admin-search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888 !important; font-size: 16px; pointer-events: none; z-index: 5; }
-                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.2s; }
-                .filter-select:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
- 
-                /* Compact Brutalist Table */
-                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-top: 20px; border-radius: 14px; overflow-x: auto; width: 100%; box-sizing: border-box; }
-                table { width: 100%; border-collapse: collapse; min-width: 800px; }
-                th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 16px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; white-space: nowrap; }
-                td { padding: 14px 16px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; vertical-align: middle; }
-                
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                 .customer-profile { display: flex; align-items: center; }
                 .avatar { width: 45px; height: 45px; border: 1px solid #000; border-radius: 0px; color: #000 !important; display: flex; align-items: center; justify-content: center; font-family: 'Oswald'; font-weight: 800; font-size: 16px; background-color: #fff !important; flex-shrink: 0; }
                 .customer-name { display: block; font-weight: 800; color: #000; font-size: 16px; margin-bottom: 2px; }
@@ -611,19 +455,7 @@ const AdminCustomers = () => {
                 
                 .total-spent { font-size: 15px; font-weight: 800; }
 
-<<<<<<< HEAD
-=======
-                .badge-status-active { background: #4ade80; color: #000; padding: 6px 12px; font-size: 11px; font-weight: 800; font-family: 'Oswald'; border: 1px solid #e2e8f0; border-radius: 6px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; }
-                .badge-status-locked { background: var(--accent-red); color: #fff; padding: 6px 12px; font-size: 11px; font-weight: 800; font-family: 'Oswald'; border: 1px solid #e2e8f0; border-radius: 6px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; }
 
-                /* Action Icon Buttons */
-                .action-btn-icon { width: 34px; height: 34px; border: 1px solid #e2e8f0; color: #64748b; border-radius: 8px; background: #f8fafc; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; cursor: pointer; text-decoration: none; font-size: 14px; }
-                .action-btn-icon:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #1e293b; color: #fff; }
-                .icon-lock:hover { background: #e50914; border-color: #e50914; }
-                .icon-unlock:hover { background: #4ade80; color: #1e293b; border-color: #4ade80; }
-                .icon-eye-hover { background: #1e293b; color: #fff; }
-
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                 .pagination { margin-top: 20px; font-weight: 700; color: #000; padding: 0 20px 20px 20px; }
                 
                 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(2px); z-index: 2000; align-items: center; justify-content: center; display: flex; }
