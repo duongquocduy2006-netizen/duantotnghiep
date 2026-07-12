@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
-import "./AdminBanners.css";
 
 const AdminProducts = () => {
     const [products, setProducts] = useState([]);
@@ -102,18 +101,36 @@ const AdminProducts = () => {
         return `http://localhost:8080${url}`;
     };
 
+    if (loading) {
+        return (
+            <AdminLayout>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#000' }}>
+                    <div className="spinner-border text-cyan" role="status" style={{ width: '3rem', height: '3rem', color: '#000' }}>
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <p style={{ marginTop: '20px', letterSpacing: '1px', fontSize: '14px' }}>ĐANG TẢI DANH SÁCH SẢN PHẨM...</p>
+                </div>
+            </AdminLayout>
+        );
+    }
+
+    if (error) {
+        return (
+            <AdminLayout>
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--accent-red)' }}>
+                    <i className="bi bi-exclamation-triangle" style={{ fontSize: '48px' }}></i>
+                    <h3 style={{ marginTop: '20px', fontFamily: 'Oswald' }}>LỖI TẢI DỮ LIỆU</h3>
+                    <p style={{ color: '#555', marginTop: '10px' }}>{error}</p>
+                    <button className="btn-action btn-primary-glow" onClick={() => window.location.reload()} style={{ marginTop: '20px' }}>
+                        THỬ LẠI
+                    </button>
+                </div>
+            </AdminLayout>
+        );
+    }
+
     return (
         <AdminLayout>
-<<<<<<< HEAD
-            <div className="admin-banners-page">
-                {/* HEADER */}
-                <div className="page-header-wrapper">
-                    <div>
-                        <div className="header-label">
-                            <i className="bi bi-box-seam me-2"></i> REST API SERVICES
-                        </div>
-                        <h1 className="header-title">DANH SÁCH SẢN PHẨM</h1>
-=======
             <div className="admin-page-header" style={{ marginBottom: '35px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div className="header-left">
                     <span className="sub-title-neon">⌨ SINGLE PAGE APPLICATION (REST API)</span>
@@ -174,68 +191,10 @@ const AdminProducts = () => {
                     <div style={{ padding: '40px', textAlign: 'center', color: '#555' }}>
                         <i className="bi bi-inbox" style={{ fontSize: '48px' }}></i>
                         <p style={{ marginTop: '10px' }}>Không có sản phẩm nào trong kho hàng.</p>
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                     </div>
-                    <Link to="/admin/products/create" className="btn-add-pill">
-                        <i className="bi bi-plus-lg"></i> &nbsp;THÊM MỚI
-                    </Link>
-                </div>
-
-                {/* TOOLBAR */}
-                <div className="toolbar-container">
-                    <div className="search-input-pill">
-                        <i className="bi bi-search"></i>
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm sản phẩm theo tên, SKU..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    <select
-                        className="filter-select-pill"
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                    >
-                        <option value="all">Danh mục: Tất cả</option>
-                        {categories.map(c => (
-                            <option key={c.id} value={c.name}>{c.name}</option>
-                        ))}
-                    </select>
-
-                    <select
-                        className="filter-select-pill"
-                        value={selectedStatus}
-                        onChange={(e) => setSelectedStatus(e.target.value)}
-                    >
-                        <option value="all">Trạng thái: Tất cả</option>
-                        <option value="1">Đang bán</option>
-                        <option value="0">Tạm ẩn</option>
-                    </select>
-                </div>
-
-                {/* TABLE */}
-                <div className="table-main-wrapper" style={{ overflowX: 'auto' }}>
-                    {loading ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', color: '#000' }}>
-                            <div className="spinner-border text-danger" role="status" style={{ width: '3rem', height: '3rem' }}>
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                            <p style={{ marginTop: '20px', letterSpacing: '1px', fontSize: '13px', fontWeight: '800' }}>ĐANG TẢI DANH SÁCH SẢN PHẨM...</p>
-                        </div>
-                    ) : error ? (
-                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--accent-red)' }}>
-                            <i className="bi bi-exclamation-triangle" style={{ fontSize: '40px' }}></i>
-                            <p style={{ marginTop: '10px', fontWeight: '800' }}>{error}</p>
-                        </div>
-                    ) : filteredProducts.length === 0 ? (
-                        <div style={{ padding: '60px 40px', textAlign: 'center', color: '#000' }}>
-                            <i className="bi bi-inbox" style={{ fontSize: '48px', color: '#000' }}></i>
-                            <p style={{ marginTop: '15px', fontWeight: '800', color: '#888' }}>Không có sản phẩm nào trong kho hàng.</p>
-                        </div>
-                    ) : (
-                        <table className="data-table">
+                ) : (
+                    <div className="table-responsive-wrapper">
+                        <table className="compact-table">
                             <thead>
                                 <tr>
                                     <th style={{ width: '40%' }}>Sản Phẩm</th>
@@ -249,11 +208,13 @@ const AdminProducts = () => {
                                 {filteredProducts.map(p => (
                                     <tr key={p.id}>
                                         <td>
-                                            <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                                <div className="table-img-box" style={{ width: '60px', height: '70px', border: '1.5px solid #000', flexShrink: 0 }}>
+                                            <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <div style={{ width: '50px', height: '50px', background: '#fff', overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: '8px', flexShrink: 0 }}>
                                                     <img
                                                         src={getImageUrl(p.imageUrl)}
+                                                        className="product-img"
                                                         alt={p.productName}
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                         onError={(e) => {
                                                             e.target.onerror = null;
                                                             e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.productName)}&background=fff&color=000&bold=true`;
@@ -261,88 +222,57 @@ const AdminProducts = () => {
                                                     />
                                                 </div>
                                                 <div style={{ minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                                    <Link to={`/admin/products/detail/${p.id}`} className="caption-link" style={{
+                                                    <span className="product-name" style={{
+                                                        fontWeight: 800,
+                                                        color: '#000',
                                                         fontSize: '15px',
+                                                        fontFamily: 'Oswald',
                                                         whiteSpace: 'nowrap',
                                                         overflow: 'hidden',
                                                         textOverflow: 'ellipsis',
                                                         textTransform: 'uppercase'
-                                                    }} title={p.productName}>
-                                                        {p.productName}
-                                                    </Link>
-                                                    <span className="product-sku-code" style={{ fontSize: '12px', color: '#555', fontWeight: 600, marginTop: '4px' }}>
-                                                        <i className="bi bi-upc-scan" style={{ color: 'var(--accent-red)', marginRight: '4px' }}></i> SKU: {p.productCode}
-                                                    </span>
+                                                    }} title={p.productName}>{p.productName}</span>
+                                                    <span className="product-id" style={{ fontSize: '12px', color: '#555', fontWeight: 600, marginTop: '2px' }}><i className="bi bi-upc-scan"></i> SKU: {p.productCode}</span>
                                                 </div>
                                             </div>
                                         </td>
 
                                         <td>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                                <span style={{ fontSize: '13px', fontWeight: 800, color: '#000', fontFamily: 'Oswald', textTransform: 'uppercase' }}>
-                                                    {p.categoryName}
-                                                </span>
-                                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}>
-                                                    <i className="bi bi-tag-fill"></i> {p.brandName}
-                                                </span>
+                                                <span style={{ fontSize: '13px', fontWeight: 800, color: '#000', fontFamily: 'Oswald', textTransform: 'uppercase', borderBottom: '1px solid #f1f5f9' }}>{p.categoryName}</span>
+                                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}><i className="bi bi-tag-fill"></i> {p.brandName}</span>
                                             </div>
                                         </td>
 
                                         <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start' }}>
-                                                <span className="product-price-item" style={{ fontWeight: 800, fontSize: '16px', color: '#000' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                                <span className="price" style={{ fontWeight: 800, color: '#000', fontFamily: 'Oswald', fontSize: '16px' }}>
                                                     {p.price != null ? `${p.price.toLocaleString()} ₫` : 'N/A'}
                                                 </span>
-                                                <span className="variant-badge-modern" style={{
-                                                    padding: '2px 8px',
-                                                    border: '1.5px solid #000',
-                                                    borderRadius: '0px',
-                                                    color: '#000',
-                                                    fontSize: '10px',
-                                                    fontWeight: '800',
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px'
-                                                }}>
+                                                <span style={{ fontSize: '11px', fontWeight: 800, color: '#000', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '2px 6px' }}>
                                                     <i className="bi bi-box-seam"></i> {p.variantCount} BIẾN THỂ
                                                 </span>
                                             </div>
                                         </td>
 
                                         <td>
-<<<<<<< HEAD
-                                            {p.status === 1 ? (
-                                                <span className="status-badge-modern">
-                                                    <div className="status-dot"></div> ĐANG BÁN
-                                                </span>
-                                            ) : (
-                                                <span className="status-badge-modern inactive">
-                                                    <div className="status-dot"></div> TẠM ẨN
-                                                </span>
-                                            )}
-=======
                                              <span className={`status-badge ${p.status === 1 ? 'status-active' : 'status-cancel'}`} style={{
                                                  padding: '6px 12px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', border: '1px solid #e2e8f0',
                                                  whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
                                              }}>
                                                  {p.status === 1 ? 'ĐANG BÁN' : 'TẠM ẨN'}
                                              </span>
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                                         </td>
 
                                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                                             <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
-                                                <Link to={`/admin/products/detail/${p.id}`} className="btn-icon-action" title="Xem chi tiết">
+                                                <Link to={`/admin/products/detail/${p.id}`} className="action-btn-icon" title="Xem chi tiết">
                                                     <i className="bi bi-eye"></i>
                                                 </Link>
-                                                <Link to={`/admin/products/edit/${p.id}`} className="btn-icon-action" title="Chỉnh sửa">
+                                                <Link to={`/admin/products/edit/${p.id}`} className="action-btn-icon icon-edit" title="Chỉnh sửa">
                                                     <i className="bi bi-pencil-square"></i>
                                                 </Link>
-<<<<<<< HEAD
-                                                <button className="btn-icon-action" style={{ color: 'var(--accent-red)' }} title="Xóa" onClick={() => handleDelete(p.id, p.productName)}>
-=======
                                                 <button className="action-btn-icon icon-delete" title="Xóa" onClick={() => triggerDeleteConfirm(p.id, p.productName)}>
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                                                     <i className="bi bi-trash"></i>
                                                 </button>
                                             </div>
@@ -351,12 +281,9 @@ const AdminProducts = () => {
                                 ))}
                             </tbody>
                         </table>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
-<<<<<<< HEAD
-        </AdminLayout>
-=======
 
             {/* CUSTOM CONFIRM MODAL */}
             {confirmModal.isOpen && (
@@ -516,7 +443,6 @@ const AdminProducts = () => {
                 }
             `}</style>
         </AdminLayout >
->>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
     );
 };
 

@@ -13,6 +13,7 @@ const Header = () => {
         return params.get('search') || '';
     });
     const [isListening, setIsListening] = useState(false);
+    const [isUploadingImg, setIsUploadingImg] = useState(false);
     const [toast, setToast] = useState(null);
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
@@ -160,6 +161,64 @@ const Header = () => {
         recognition.start();
     };
 
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsUploadingImg(true);
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đang phân tích hình ảnh bằng AI...' }));
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await api.post('/api/ai/image-search', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (res.data && res.data.success || res.status === 200) {
+                // If it fails structurally, the API returns a string message or success false, but wait, if it fails but returns 200 OK:
+                // From ImageSearchRestController: if success==false due to not match, it returns success: false. Wait, no: "success", false but it's ResponseEntity.ok. Let's redirect anyway or show toast.
+
+                if (res.data.success === false) {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.message || 'Lỗi nhận diện hình ảnh' }));
+                    // Navigate even when success false to show aiResult?
+                    // Let's only navigate if aiResult exists.
+                    if (res.data.aiResult) {
+                        const imageUrl = URL.createObjectURL(file);
+                        navigate('/image-search', {
+                            state: {
+                                aiResult: res.data.aiResult,
+                                products: res.data.products || [],
+                                imageUrl: imageUrl
+                            }
+                        });
+                    }
+                    return;
+                }
+
+                const imageUrl = URL.createObjectURL(file);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Phân tích thành công!' }));
+
+                navigate('/image-search', {
+                    state: {
+                        aiResult: res.data.aiResult,
+                        products: res.data.products,
+                        imageUrl: imageUrl
+                    }
+                });
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Lỗi nhận diện hình ảnh' }));
+            }
+        } catch (err) {
+            console.error(err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Có lỗi xảy ra khi gọi AI nhận diện' }));
+        } finally {
+            setIsUploadingImg(false);
+            e.target.value = null; // reset input file
+        }
+    };
+
     return (
         <>
             <header className="cinematic-header">
@@ -172,22 +231,29 @@ const Header = () => {
                                 </h2>
                             </Link>
                         </div>
-                        
+
 
                         <div className="col-md-5 my-3 my-md-0">
                             <form onSubmit={handleSearch} className="search-wrapper">
                                 <div className="input-group">
-                                    <input type="text" name="q" className="search-input"
-                                        placeholder="Tìm kiếm phong cách, thương hiệu..." 
+                                    <input type="text" name="q" className="form-control search-input"
+                                        placeholder="Tìm kiếm phong cách, thương hiệu..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)} />
+
                                     {searchQuery && (
                                         <button type="button" onClick={handleClearSearch} className="btn search-btn clear-btn" title="Xóa tìm kiếm">
                                             <i className="bi bi-x-lg"></i>
                                         </button>
                                     )}
+
+                                    <input type="file" id="imageSearchInput" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+                                    <button type="button" onClick={() => document.getElementById('imageSearchInput').click()} className="btn search-btn" style={{ color: isUploadingImg ? '#e50914' : '#fff' }} title="Tìm kiếm bằng hình ảnh">
+                                        <i className={`fa ${isUploadingImg ? 'fa-spinner fa-spin' : 'fa-camera'}`}></i>
+                                    </button>
+
                                     <button type="button" onClick={startListening} className={`btn search-btn mic-btn ${isListening ? 'mic-btn-active' : ''}`} title="Tìm kiếm bằng giọng nói">
-                                        <i className={`fa ${isListening ? 'fa-microphone-slash' : 'fa-microphone'}`}></i>
+                                        <i className={`fa ${isListening ? 'fa-microphone-slash' : 'fa-microphone'}`} style={{ animation: isListening ? 'pulse 1.5s infinite' : 'none' }}></i>
                                     </button>
                                     <button className="btn search-btn submit-btn" type="submit"><i className="fa fa-search"></i></button>
                                 </div>
@@ -266,7 +332,7 @@ const Header = () => {
                                         <div className="container">
                                             <div className="mega-content d-flex flex-wrap justify-content-center gap-5 py-3">
                                                 <div className="mega-column">
-                                                    <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Thương Hiệu</h5>
+                                                    <h5 className="text-danger mb-3" style={{ fontSize: '16px', fontWeight: 600, textTransform: 'uppercase' }}>Thương Hiệu</h5>
                                                     <ul className="list-unstyled">
                                                         {brands.length > 0 ? (
                                                             brands.map(brand => {
@@ -286,7 +352,7 @@ const Header = () => {
                                                     </ul>
                                                 </div>
                                                 <div className="mega-column">
-                                                    <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Dòng Sản Phẩm</h5>
+                                                    <h5 className="text-danger mb-3" style={{ fontSize: '16px', fontWeight: 600, textTransform: 'uppercase' }}>Dòng Sản Phẩm</h5>
                                                     <ul className="list-unstyled">
                                                         {categories.length > 0 ? (
                                                             categories.map(cat => {
@@ -309,24 +375,24 @@ const Header = () => {
                                         </div>
                                     </div>
                                 </li>
-                            <li className="nav-item">
-                                <Link className="nav-link nav-link-custom" to="/new-arrivals">
-                                    <i className="fa fa-star me-1"></i>HÀNG MỚI
-                                </Link>
-                            </li>
-                            <li className="nav-item">
-                                <Link className="nav-link nav-link-custom" to="/membership">
-                                    <i className="fa fa-fire me-1"></i>HẠNG THÀNH VIÊN
-                                </Link>
-                            </li>
-                            <li className="nav-item">
-                                <Link className="nav-link nav-link-custom" to="/flash-sale">
-                                    <i className="fa fa-fire me-1"></i>SALE SỐC
-                                </Link>
-                            </li>
-                            <li className="nav-item">
-                                <Link className="nav-link nav-link-custom" to="/shop">CỬA HÀNG</Link>
-                            </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link nav-link-custom" to="/new-arrivals">
+                                        <i className="fa fa-star me-1"></i>HÀNG MỚI
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link nav-link-custom" to="/membership">
+                                        <i className="fa fa-fire me-1"></i>HẠNG THÀNH VIÊN
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link nav-link-custom" to="/flash-sale">
+                                        <i className="fa fa-fire me-1"></i>SALE SỐC
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link nav-link-custom" to="/shop">CỬA HÀNG</Link>
+                                </li>
                             </ul>
                         </div>
                     </div>
