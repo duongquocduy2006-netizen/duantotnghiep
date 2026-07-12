@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 import com.ShoeStore.model.LoginRequest;
 import com.ShoeStore.model.RegisterRequest;
 import com.ShoeStore.service.CustomUserDetailsService;
+import com.ShoeStore.service.EmailService;
+import com.ShoeStore.service.OTPService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -37,6 +39,12 @@ public class AuthApiController {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private EmailService emailService;
+
+    @Autowired
+    private OTPService otpService;
 
     // ==================== ĐĂNG NHẬP ====================
     @PostMapping("/login")
@@ -194,5 +202,154 @@ public class AuthApiController {
         response.put("success", true);
         response.put("message", "Đăng xuất thành công!");
         return ResponseEntity.ok(response);
+    }
+
+    // ==================== QUÊN MẬT KHẨU REST ENDPOINTS ====================
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body, HttpSession session) {
+        Map<String, Object> response = new HashMap<>();
+        String email = body.get("email");
+
+        if (email == null || email.trim().isEmpty()) {
+            response.put("success", false);
+            response.put("message", "Vui lòng nhập địa chỉ email!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        String sql = "SELECT COUNT(*) FROM accounts WHERE email = ?";
+        Integer count = jdbc.queryForObject(sql, Integer.class, email);
+
+        if (count == null || count == 0) {
+            response.put("success", false);
+            response.put("message", "Email không tồn tại trong hệ thống!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        try {
+            String otp = otpService.generateOTP();
+            otpService.saveOTP(session, email, otp);
+            emailService.sendOtpEmail(email, otp);
+
+            response.put("success", true);
+            response.put("message", "Mã OTP đã được gửi đến email của bạn.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi gửi email: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @PostMapping("/resend-otp")
+    public ResponseEntity<?> resendOtp(@RequestBody Map<String, String> body, HttpSession session) {
+        Map<String, Object> response = new HashMap<>();
+        String email = body.get("email");
+        if (email == null || email.trim().isEmpty()) {
+            email = (String) session.getAttribute("otp_email");
+        }
+
+        if (email == null) {
+            response.put("success", false);
+            response.put("message", "Không tìm thấy thông tin email để gửi lại mã!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        try {
+            String otp = otpService.generateOTP();
+            otpService.saveOTP(session, email, otp);
+            emailService.sendOtpEmail(email, otp);
+
+            response.put("success", true);
+            response.put("message", "Mã OTP mới đã được gửi lại vào email của bạn.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi gửi email: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> body, HttpSession session) {
+        Map<String, Object> response = new HashMap<>();
+        String otp = body.get("otp");
+        String email = body.get("email");
+
+        if (otp == null || otp.trim().isEmpty() || otp.length() != 6) {
+            response.put("success", false);
+            response.put("message", "Vui lòng nhập đầy đủ mã OTP 6 số!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        if (email == null || email.trim().isEmpty()) {
+            email = (String) session.getAttribute("otp_email");
+        }
+
+        if (email == null) {
+            response.put("success", false);
+            response.put("message", "Không tìm thấy thông tin email xác thực!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        if (otpService.validateOTP(session, email, otp)) {
+            session.setAttribute("otp_verified", true);
+            session.setAttribute("otp_email", email);
+            response.put("success", true);
+            response.put("message", "Xác thực OTP thành công!");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("success", false);
+            response.put("message", "Mã OTP không chính xác hoặc đã hết hạn!");
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body, HttpSession session) {
+        Map<String, Object> response = new HashMap<>();
+        String email = body.get("email");
+        String password = body.get("password");
+        String confirmPassword = body.get("confirmPassword");
+
+        Boolean verified = (Boolean) session.getAttribute("otp_verified");
+        String sessionEmail = (String) session.getAttribute("otp_email");
+
+        if (email == null || email.trim().isEmpty()) {
+            email = sessionEmail;
+        }
+
+        if (verified == null || !verified || email == null || !email.equalsIgnoreCase(sessionEmail)) {
+            response.put("success", false);
+            response.put("message", "Yêu cầu không hợp lệ hoặc phiên xác thực đã hết hạn!");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+        }
+
+        if (password == null || password.trim().isEmpty() || confirmPassword == null || confirmPassword.trim().isEmpty()) {
+            response.put("success", false);
+            response.put("message", "Vui lòng nhập đầy đủ mật khẩu mới!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        if (!password.equals(confirmPassword)) {
+            response.put("success", false);
+            response.put("message", "Mật khẩu xác nhận không khớp!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        try {
+            String sql = "UPDATE accounts SET password = ? WHERE email = ?";
+            jdbc.update(sql, password, email);
+
+            otpService.clearOTP(session);
+            session.removeAttribute("otp_verified");
+
+            response.put("success", true);
+            response.put("message", "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi cập nhật mật khẩu: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 }

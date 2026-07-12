@@ -18,6 +18,40 @@ const Home = () => {
     const [timeLeft, setTimeLeft] = useState({ days: '00', hours: '00', minutes: '00', seconds: '00' });
     const [quickAddProductId, setQuickAddProductId] = useState(null);
     const observerRef = useRef(null);
+    const brandContainerRef = useRef(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const checkBrandScroll = () => {
+        const container = brandContainerRef.current;
+        if (container) {
+            setCanScrollLeft(container.scrollLeft > 5);
+            setCanScrollRight(container.scrollLeft + container.clientWidth < container.scrollWidth - 5);
+        }
+    };
+
+    const scrollBrands = (direction) => {
+        const container = brandContainerRef.current;
+        if (container) {
+            const scrollAmount = direction === 'left' ? -container.clientWidth : container.clientWidth;
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    };
+
+    useEffect(() => {
+        const container = brandContainerRef.current;
+        if (container) {
+            container.addEventListener('scroll', checkBrandScroll);
+            window.addEventListener('resize', checkBrandScroll);
+            setTimeout(checkBrandScroll, 500);
+        }
+        return () => {
+            if (container) {
+                container.removeEventListener('scroll', checkBrandScroll);
+            }
+            window.removeEventListener('resize', checkBrandScroll);
+        };
+    }, [brands]);
 
     /* ── DATA FETCHING ── */
     const fetchData = async () => {
@@ -48,16 +82,26 @@ const Home = () => {
             }
 
             if (brandRes.data?.success) {
-                setBrands(brandRes.data.brands || []);
+                const activeBrands = (brandRes.data.brands || []).filter(b => b.active !== false);
+                setBrands(activeBrands);
             } else if (Array.isArray(brandRes.data)) {
-                setBrands(brandRes.data);
+                const activeBrands = brandRes.data.filter(b => b.active !== false);
+                setBrands(activeBrands);
             }
 
             if (bannerRes.data && Array.isArray(bannerRes.data)) {
-                const active = bannerRes.data.filter(b => b.status === true);
+                const now = new Date();
+                const active = bannerRes.data.filter(b => {
+                    if (b.status !== true) return false;
+                    if (b.startDate && new Date(b.startDate) > now) return false;
+                    if (b.endDate && new Date(b.endDate) < now) return false;
+                    return true;
+                });
                 if (active.length > 0) {
-                    const sorted = (active[0].images || []).sort((a, b) => a.displayOrder - b.displayOrder);
+                    const sorted = (active[0].images || []).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
                     setBanners(sorted);
+                } else {
+                    setBanners([]);
                 }
             }
         } catch (e) {
@@ -487,6 +531,7 @@ const Home = () => {
                                 XEM TẤT CẢ <i className="fa-solid fa-arrow-right ms-2" />
                             </Link>
                         </div>
+<<<<<<< HEAD
                         <div className="brand-grid">
                             {(brands.length > 0 ? brands.slice(0, 5) : [
                                 { id: 1, name: 'Nike' },
@@ -512,6 +557,47 @@ const Home = () => {
                                     </div>
                                 );
                             })}
+=======
+                        <div className="brand-slider-wrapper reveal-item god-hidden">
+                            {canScrollLeft && (
+                                <button className="brand-slider-btn prev" onClick={() => scrollBrands('left')}>
+                                    <i className="fa-solid fa-chevron-left" />
+                                </button>
+                            )}
+                            
+                            <div className="brand-grid" ref={brandContainerRef}>
+                                {(brands.length > 0 ? brands : [
+                                    { id: 1, name: 'Nike' },
+                                    { id: 2, name: 'Adidas' },
+                                    { id: 3, name: 'New Balance' },
+                                    { id: 4, name: 'Vans' },
+                                    { id: 5, name: 'Converse' },
+                                ]).map((brand, idx) => {
+                                    const name = brand.brand_name || brand.brandName || brand.name || `Brand ${idx + 1}`;
+                                    const hasImg = brand.imageUrl && !brand.imageUrl.includes('localhost');
+                                    return (
+                                        <div key={brand.id || idx}
+                                             className="brand-grid-item"
+                                             style={{ animationDelay: `${idx * 0.12}s` }}>
+                                            <Link to={`/shop?brand=${encodeURIComponent(name)}`}
+                                                  className={`brand-card-inner text-decoration-none ${hasImg ? 'has-image' : ''}`}>
+                                                {hasImg && (
+                                                    <img src={imgUrl(brand.imageUrl)} alt={name} className="brand-img" />
+                                                )}
+                                                <span className="brand-card-name">{name.toUpperCase()}</span>
+                                                <span className="brand-card-explore">KHÁM PHÁ <i className="fa-solid fa-arrow-right" /></span>
+                                            </Link>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {canScrollRight && (
+                                <button className="brand-slider-btn next" onClick={() => scrollBrands('right')}>
+                                    <i className="fa-solid fa-chevron-right" />
+                                </button>
+                            )}
+>>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
                         </div>
                     </div>
                 </div>

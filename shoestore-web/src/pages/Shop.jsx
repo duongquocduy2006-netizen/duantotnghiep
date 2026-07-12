@@ -10,8 +10,7 @@ const Shop = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
-    const initialCategory = queryParams.get('category') ? parseInt(queryParams.get('category')) : null;
-    const initialBrand = queryParams.get('brand') ? parseInt(queryParams.get('brand')) : null;
+    const initialBrand = queryParams.get('brand') || '';
     const initialSearch = queryParams.get('search') || '';
 
     const [products, setProducts] = useState([]);
@@ -21,9 +20,9 @@ const Shop = () => {
     const [wishlistIds, setWishlistIds] = useState([]);
     const [lookbooks, setLookbooks] = useState([]);
 
-    const [selectedCategory, setSelectedCategory] = useState(initialCategory || '');
-    const [selectedBrand, setSelectedBrand] = useState(initialBrand || '');
-    const [priceRange, setPriceRange] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [selectedBrand, setSelectedBrand] = useState(initialBrand);
+    const [maxPrice, setMaxPrice] = useState(5000000);
     const [sortOption, setSortOption] = useState('');
     const [searchQuery, setSearchQuery] = useState(initialSearch);
     const [quickAddProductId, setQuickAddProductId] = useState(null);
@@ -31,15 +30,74 @@ const Shop = () => {
     const observerRef = useRef(null);
 
     useEffect(() => {
-        window.scrollTo(0, 0);
+        const queryParams = new URLSearchParams(window.location.search);
+        const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
+        if (!hasFilter) {
+            window.scrollTo(0, 0);
+        }
     }, []);
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        
+        // 1. Đồng bộ từ khóa tìm kiếm
+        const searchParam = queryParams.get('search') || '';
+        if (searchParam !== searchQuery) {
+            setSearchQuery(searchParam);
+        }
+
+        // 2. Đồng bộ thương hiệu (Chuỗi tên thương hiệu)
+        const brandParam = queryParams.get('brand') || '';
+        if (brandParam !== selectedBrand) {
+            setSelectedBrand(brandParam);
+        }
+
+        // 3. Đồng bộ danh mục (Hỗ trợ cả ID số hoặc Tên danh mục chữ từ URL)
+        const catParam = queryParams.get('category') || '';
+        if (catParam !== '') {
+            const parsedId = parseInt(catParam);
+            if (!isNaN(parsedId)) {
+                if (parsedId !== selectedCategory) {
+                    setSelectedCategory(parsedId);
+                }
+            } else if (categories.length > 0) {
+                const matchedCat = categories.find(c => {
+                    const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
+                    const param = catParam.toLowerCase();
+                    if (name.includes(param) || param.includes(name)) return true;
+                    if (param === 'running' && name.includes('chạy bộ')) return true;
+                    if (param === 'sneaker' && name.includes('sneaker')) return true;
+                    return false;
+                });
+                if (matchedCat && matchedCat.id !== selectedCategory) {
+                    setSelectedCategory(matchedCat.id);
+                }
+            }
+        }
+
+        // 4. Nếu URL có chứa bộ lọc (click từ header hoặc home), cuộn mượt mà xuống vùng sản phẩm
+        const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
+        if (hasFilter) {
+            const scrollTarget = () => {
+                const section = document.getElementById('shop-products-section');
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth' });
+                }
+            };
+            scrollTarget();
+            setTimeout(scrollTarget, 100);
+        }
+    }, [location.search, categories]);
 
     useEffect(() => {
         fetchFilters();
         fetchWishlistIds();
-        fetchProducts();
         fetchLookbooks();
-    }, [selectedCategory, selectedBrand, priceRange, sortOption]);
+    }, []);
+
+    useEffect(() => {
+        fetchProducts();
+    }, [selectedCategory, selectedBrand, maxPrice, sortOption]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -47,6 +105,50 @@ const Shop = () => {
         }, 500);
         return () => clearTimeout(handler);
     }, [searchQuery]);
+
+    useEffect(() => {
+        if (!searchQuery) return;
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return;
+
+        const words = query.split(/\s+/);
+
+        // 1. Quét tìm danh mục trùng khớp thông minh (cộng các ký tự)
+        if (categories.length > 0) {
+            const matchedCat = categories.find(c => {
+                const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
+                // Match if any of the words match the category name
+                for (let word of words) {
+                    if (name === word || name.includes(word) || word.includes(name)) return true;
+                    if (word === 'running' && name.includes('chạy bộ')) return true;
+                    if (word === 'sneaker' && name.includes('sneaker')) return true;
+                }
+                if (query.includes('chạy bộ') && name.includes('chạy bộ')) return true;
+                if (query.includes('thể thao') && name.includes('thể thao')) return true;
+                return false;
+            });
+            if (matchedCat && matchedCat.id !== selectedCategory) {
+                setSelectedCategory(matchedCat.id);
+            }
+        }
+
+        // 2. Quét tìm thương hiệu trùng khớp thông minh
+        if (brands.length > 0) {
+            const matchedBrand = brands.find(b => {
+                const name = (b.name || b.brand_name || b.brandName || '').toLowerCase();
+                for (let word of words) {
+                    if (name === word || name.includes(word) || word.includes(name)) return true;
+                }
+                return false;
+            });
+            if (matchedBrand) {
+                const bName = matchedBrand.name || matchedBrand.brand_name || matchedBrand.brandName;
+                if (bName !== selectedBrand) {
+                    setSelectedBrand(bName);
+                }
+            }
+        }
+    }, [searchQuery, categories, brands]);
 
     useEffect(() => {
         observerRef.current = new IntersectionObserver((entries) => {
@@ -89,8 +191,13 @@ const Shop = () => {
             if (catRes.data && catRes.data.success) setCategories(catRes.data.categories || []);
             else if (Array.isArray(catRes.data)) setCategories(catRes.data);
 
-            if (brandRes.data && brandRes.data.success) setBrands(brandRes.data.brands || []);
-            else if (Array.isArray(brandRes.data)) setBrands(brandRes.data);
+            if (brandRes.data && brandRes.data.success) {
+                const activeBrands = (brandRes.data.brands || []).filter(b => b.active !== false);
+                setBrands(activeBrands);
+            } else if (Array.isArray(brandRes.data)) {
+                const activeBrands = brandRes.data.filter(b => b.active !== false);
+                setBrands(activeBrands);
+            }
         } catch (error) {
             console.error("Lỗi tải bộ lọc:", error);
         }
@@ -144,12 +251,10 @@ const Shop = () => {
             let data = [];
             if (response.data && response.data.success) data = response.data.products || [];
             
-            if (priceRange) {
-                const [min, max] = priceRange.split('-').map(Number);
+            if (maxPrice < 5000000) {
                 data = data.filter(p => {
                     const price = p.min_price || 0;
-                    if (max) return price >= min && price <= max;
-                    return price >= min;
+                    return price <= maxPrice;
                 });
             }
             setProducts(data);
@@ -173,25 +278,47 @@ const Shop = () => {
     return (
         <Layout>
             <div className="shop-epic-theme">
-                <div className="epic-page-header py-5 bg-black text-white">
-                    <div className="container text-center">
-                        <span className="bg-danger px-2 py-1 font-oswald fw-bold fs-5 text-uppercase">CỬA HÀNG</span>
-                        <h1 className="font-oswald display-3 fw-bold mt-2 mb-0">BỘ SƯU TẬP GIÀY</h1>
+                {/* CREATIVE BRUTALIST LOOKBOOK BOARD (CENTERED & 100% INNOVATIVE) */}
+                <div className="shop-editorial-header py-5 text-center">
+                    <div className="container">
+                        <div className="animate__animated animate__fadeInDown">
+                            <span className="shop-tag-accent">CỬA HÀNG CHÍNH THỨC</span>
+                            <h1 className="shop-main-title font-oswald text-uppercase mt-3 mb-2">
+                                BỘ SƯU TẬP <span className="text-red-accent">GIÀY THỂ THAO</span>
+                            </h1>
+                            <p className="shop-sub-desc mx-auto">
+                                Khám phá phong cách thời trang đường phố từ cộng đồng ShoeStore Việt Nam.
+                            </p>
+                        </div>
+                        
+                        <div className="shop-lookbook-board mt-5 animate__animated animate__fadeInUp">
+                            <div className="collage-card card-1">
+                                <img src={getImageUrl(lookbooks[0]?.imageUrl || lookbooks[0]?.image_url || 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=600')} alt="Bộ sưu tập 1" />
+                                <span>{lookbooks[0]?.caption || '#ĐƯỜNG_PHỐ'}</span>
+                            </div>
+                            <div className="collage-card card-2">
+                                <img src={getImageUrl(lookbooks[1]?.imageUrl || lookbooks[1]?.image_url || 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600')} alt="Bộ sưu tập 2" />
+                                <span>{lookbooks[1]?.caption || '#CÁ_TÍNH'}</span>
+                            </div>
+                            <div className="collage-card card-3">
+                                <img src={getImageUrl(lookbooks[2]?.imageUrl || lookbooks[2]?.image_url || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600')} alt="Bộ sưu tập 3" />
+                                <span>{lookbooks[2]?.caption || '#THỜI_TRANG'}</span>
+                            </div>
+                            <div className="collage-card card-4">
+                                <img src={getImageUrl(lookbooks[3]?.imageUrl || lookbooks[3]?.image_url || 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600')} alt="Bộ sưu tập 4" />
+                                <span>{lookbooks[3]?.caption || '#NĂNG_ĐỘNG'}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div className="container py-5">
+                <div id="shop-products-section" className="container py-5">
                     <div className="row g-5">
                         {/* FILTER SIDEBAR */}
                         <div className="col-lg-3">
                             <div className="epic-filter-sidebar bg-white border border-light-subtle p-4 rounded-3">
                                 <h4 className="font-oswald fw-bold text-uppercase mb-4 pb-2 border-bottom border-light-subtle">BỘ LỌC TÌM KIẾM</h4>
 
-                                <div className="mb-4">
-                                    <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">TÌM KIẾM</h6>
-                                    <input type="text" className="epic-input w-100" placeholder="Nhập tên sản phẩm..."
-                                        value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                                </div>
 
                                 <div className="mb-4">
                                     <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">DANH MỤC</h6>
@@ -219,30 +346,45 @@ const Shop = () => {
                                                 checked={selectedBrand === ''} onChange={() => setSelectedBrand('')} />
                                             <label className="form-check-label fw-bold" htmlFor="brandAll">Tất cả</label>
                                         </div>
-                                        {brands.map(brand => (
-                                            <div className="form-check epic-radio" key={brand.id}>
-                                                <input className="form-check-input" type="radio" name="brand" id={`brand${brand.id}`}
-                                                    checked={selectedBrand === brand.id} onChange={() => setSelectedBrand(brand.id)} />
-                                                <label className="form-check-label fw-bold" htmlFor={`brand${brand.id}`}>{brand.name || brand.brand_name || brand.brandName}</label>
-                                            </div>
-                                        ))}
+                                        {brands.map(brand => {
+                                            const bName = brand.name || brand.brand_name || brand.brandName || '';
+                                            return (
+                                                <div className="form-check epic-radio" key={brand.id}>
+                                                    <input className="form-check-input" type="radio" name="brand" id={`brand${brand.id}`}
+                                                        checked={selectedBrand === bName} onChange={() => setSelectedBrand(bName)} />
+                                                    <label className="form-check-label fw-bold" htmlFor={`brand${brand.id}`}>{bName}</label>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
                                 <div className="mb-4">
-                                    <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">MỨC GIÁ</h6>
-                                    <select className="epic-select w-100" value={priceRange} onChange={(e) => setPriceRange(e.target.value)}>
-                                        <option value="">Tất cả các mức giá</option>
-                                        <option value="0-1000000">Dưới 1,000,000đ</option>
-                                        <option value="1000000-2000000">1,000,000đ - 2,000,000đ</option>
-                                        <option value="2000000-3000000">2,000,000đ - 3,000,000đ</option>
-                                        <option value="3000000-">Trên 3,000,000đ</option>
-                                    </select>
+                                    <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">MỨC GIÁ TỐI ĐA</h6>
+                                    <div className="epic-slider-wrapper">
+                                        <div className="epic-slider-label fw-bold mb-2 text-dark" style={{ fontSize: '14px' }}>
+                                            {maxPrice === 5000000 ? "Tất cả các mức giá" : `Dưới ${formatCurrency(maxPrice)}`}
+                                        </div>
+                                        <input 
+                                            type="range" 
+                                            min="500000" 
+                                            max="5000000" 
+                                            step="100000" 
+                                            value={maxPrice} 
+                                            onChange={(e) => setMaxPrice(Number(e.target.value))} 
+                                            className="epic-range-input w-100" 
+                                        />
+                                        <div className="d-flex justify-content-between mt-1 text-muted" style={{ fontSize: '11px', fontWeight: '600' }}>
+                                            <span>500.000đ</span>
+                                            <span>5.000.000đ+</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
                                     <button className="btn-brutal-outline w-100 mt-2" onClick={() => {
-                                        setSelectedCategory(''); setSelectedBrand(''); setPriceRange(''); setSortOption(''); setSearchQuery('');
+                                        navigate('/shop');
+                                        setSelectedCategory(''); setSelectedBrand(''); setMaxPrice(5000000); setSortOption(''); setSearchQuery('');
                                     }}>XÓA BỘ LỌC</button>
                                 </div>
                             </div>
@@ -333,7 +475,7 @@ const Shop = () => {
                     <div className="row g-4 mt-5 pt-5 border-top border-light-subtle align-items-center">
                         <div className="col-md-6 animate__animated animate__fadeInLeft">
                             <div className="campaign-img-box overflow-hidden rounded-3 border border-light-subtle" style={{ aspectRatio: '16/9', background: '#f5f5f5' }}>
-                                <img src="https://images.unsplash.com/photo-1512374382149-433853003064?w=800&auto=format&fit=crop" alt="Chiến dịch" className="w-100 h-100 object-fit-cover" style={{ transition: 'transform 0.5s ease' }} />
+                                <img src="/campaign_banner.png" alt="Chiến dịch" className="w-100 h-100 object-fit-cover" style={{ transition: 'transform 0.5s ease' }} />
                             </div>
                         </div>
                         <div className="col-md-6 p-4 animate__animated animate__fadeInRight">

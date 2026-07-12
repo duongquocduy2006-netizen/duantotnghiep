@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import './Checkout.css';
+import './Membership.css';
 
 const Checkout = () => {
     const navigate = useNavigate();
@@ -19,6 +20,11 @@ const Checkout = () => {
     const [discount, setDiscount] = useState(0);
     const [note, setNote] = useState('');
     
+    // Validate states
+    const [voucherError, setVoucherError] = useState('');
+    const [voucherSuccess, setVoucherSuccess] = useState('');
+    const [submitError, setSubmitError] = useState('');
+    
     // Address & GHN state
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -31,10 +37,13 @@ const Checkout = () => {
     
     const [shippingFee, setShippingFee] = useState(30000);
 
-    // Map states & refs
-    const [map, setMap] = useState(null);
-    const customerMarkerRef = useRef(null);
-    const routeLineRef = useRef(null);
+    // Map Picker states
+    const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+    const [mapSearchText, setMapSearchText] = useState('');
+    const [pickerMap, setPickerMap] = useState(null);
+    const [resolvedAddress, setResolvedAddress] = useState(null);
+    const [mapLoading, setMapLoading] = useState(false);
+    const [isDraggingMap, setIsDraggingMap] = useState(false);
 
     useEffect(() => {
         const fetchCheckoutData = async () => {
@@ -57,7 +66,17 @@ const Checkout = () => {
 
             let cartTotal = 0;
             try {
-                const cartRes = await api.get('/api/cart');
+                const urlParams = new URLSearchParams(window.location.search);
+                const buyNowVariantId = urlParams.get('buyNowVariantId');
+                const buyNowQty = urlParams.get('buyNowQty');
+
+                let cartRes;
+                if (buyNowVariantId && buyNowQty) {
+                    cartRes = await api.get(`/api/cart/buy-now?variantId=${buyNowVariantId}&qty=${buyNowQty}`);
+                } else {
+                    cartRes = await api.get('/api/cart');
+                }
+
                 if (cartRes.data && cartRes.data.success) {
                     const items = cartRes.data.cartItems || [];
                     setCartItems(items);
@@ -72,7 +91,8 @@ const Checkout = () => {
                 }
             } catch (err) {
                 console.error('Lỗi cart:', err);
-                alert('Không thể lấy thông tin giỏ hàng!');
+                const msg = err.response?.data?.message || err.message;
+                alert('Không thể lấy thông tin sản phẩm hoặc giỏ hàng! Chi tiết: ' + msg);
                 return;
             }
 
@@ -111,9 +131,9 @@ const Checkout = () => {
                 const parts = lastAddr.street_detail.split(',').map(p => p.trim());
                 if (parts.length >= 3) {
                     const provinceText = parts[parts.length - 1];
-                    const districtText = parts[parts.length - 2];
-                    const wardText = parts[parts.length - 3];
-                    const streetText = parts.slice(0, parts.length - 3).join(', ');
+                    const districtText = parts.length >= 4 ? parts[parts.length - 2] : '';
+                    const wardText = parts.length >= 4 ? parts[parts.length - 3] : parts[parts.length - 2];
+                    const streetText = parts.slice(0, parts.length >= 4 ? parts.length - 3 : parts.length - 2).join(', ');
 
                     setStreetDetail(streetText);
 
@@ -127,43 +147,46 @@ const Checkout = () => {
                         const provId = matchedProv.ProvinceID;
                         setSelectedProvince(provId);
 
-                        // Match District
+                        // Match District and Wards
                         try {
                             const distRes = await api.get(`/api/ghn/districts?provinceId=${provId}`);
                             if (distRes.data && distRes.data.code === 200) {
                                 const districtsList = distRes.data.data || [];
                                 setDistricts(districtsList);
 
-                                const matchedDist = districtsList.find(d => 
-                                    d.DistrictName.toLowerCase().includes(districtText.toLowerCase()) ||
-                                    districtText.toLowerCase().includes(d.DistrictName.toLowerCase())
-                                );
-
-                                if (matchedDist) {
-                                    const distId = matchedDist.DistrictID;
-                                    setSelectedDistrict(distId);
-
-                                    // Match Ward
+                                const wardPromises = districtsList.map(async (d) => {
                                     try {
-                                        const wardRes = await api.get(`/api/ghn/wards?districtId=${distId}`);
-                                        if (wardRes.data && wardRes.data.code === 200) {
-                                            const wardsList = wardRes.data.data || [];
-                                            setWards(wardsList);
-
-                                            const matchedWard = wardsList.find(w => 
-                                                w.WardName.toLowerCase().includes(wardText.toLowerCase()) ||
-                                                wardText.toLowerCase().includes(w.WardName.toLowerCase())
-                                            );
-
-                                            if (matchedWard) {
-                                                setSelectedWard(matchedWard.WardCode);
-                                                // calculate fee
-                                                calculateGHNFee(distId, matchedWard.WardCode, cartTotal, accountData.membership_rank_id);
-                                            }
+                                        const wRes = await api.get(`/api/ghn/wards?districtId=${d.DistrictID}`);
+                                        if (wRes.data && wRes.data.code === 200) {
+                                            return (wRes.data.data || []).map(w => ({
+                                                ...w,
+                                                DistrictID: d.DistrictID,
+                                                DistrictName: d.DistrictName
+                                            }));
                                         }
                                     } catch (err) {
-                                        console.error('Lỗi tải xã khi prefill:', err);
+                                        console.error('Lỗi tải xã prefill:', err);
                                     }
+                                    return [];
+                                });
+
+                                const wardsNested = await Promise.all(wardPromises);
+                                const allWards = wardsNested.flat();
+                                allWards.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
+                                setWards(allWards);
+
+                                const matchedWard = allWards.find(w => 
+                                    w.WardName.toLowerCase().includes(wardText.toLowerCase()) ||
+                                    wardText.toLowerCase().includes(w.WardName.toLowerCase())
+                                );
+
+                                if (matchedWard) {
+                                    setSelectedWard(matchedWard.WardCode);
+                                    setSelectedDistrict(matchedWard.DistrictID);
+                                    const districtWards = allWards.filter(w => w.DistrictID === matchedWard.DistrictID);
+                                    setWards(districtWards);
+                                    // calculate fee
+                                    calculateGHNFee(matchedWard.DistrictID, matchedWard.WardCode, cartTotal, accountData.membership_rank_id);
                                 }
                             }
                         } catch (err) {
@@ -181,125 +204,264 @@ const Checkout = () => {
         fetchCheckoutData();
     }, [navigate]);
 
-    // Load Leaflet dynamically
-    useEffect(() => {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet/dist/leaflet.css';
-        document.head.appendChild(link);
+    const openMapModal = () => {
+        setIsMapModalOpen(true);
+        // Load Leaflet dynamically if not loaded
+        if (!window.L) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet/dist/leaflet.css';
+            document.head.appendChild(link);
 
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/leaflet/dist/leaflet.js';
-        script.async = true;
-        script.onload = () => {
-            initMap();
-        };
-        document.head.appendChild(script);
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/leaflet/dist/leaflet.js';
+            script.async = true;
+            script.onload = () => {
+                setTimeout(initPickerMap, 200);
+            };
+            document.head.appendChild(script);
+        } else {
+            setTimeout(initPickerMap, 200);
+        }
+    };
 
-        return () => {
-            document.head.removeChild(link);
-            document.head.removeChild(script);
-        };
-    }, []);
+    const closeMapModal = () => {
+        setIsMapModalOpen(false);
+        setPickerMap(null);
+        setResolvedAddress(null);
+        setMapSearchText('');
+    };
 
-    const initMap = () => {
+    const initPickerMap = () => {
         if (!window.L) return;
         const L = window.L;
-        const mapContainer = document.getElementById('checkout-map');
+        const mapContainer = document.getElementById('picker-map');
         if (!mapContainer) return;
-        
-        const m = L.map('checkout-map').setView([10.0009, 105.7851], 13);
+
+        const defaultLat = 10.0009;
+        const defaultLng = 105.7851;
+
+        const m = L.map('picker-map').setView([defaultLat, defaultLng], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(m);
 
-        const shopIconHtml = `
-            <div style='text-align:center;'>
-                <i class='fa fa-home text-danger' style='font-size: 18px; margin-bottom:4px;'></i><br>
-                <b style='font-family: Orbitron, sans-serif; font-size: 14px;'>VBee Shoe Store</b><br>
-                <span style='color: #666;'>Lê Bình, Cần Thơ</span>
-            </div>
-        `;
+        setPickerMap(m);
 
-        L.marker([10.0009, 105.7851])
-            .addTo(m)
-            .bindPopup(shopIconHtml)
-            .openPopup();
+        reverseGeocode(defaultLat, defaultLng);
 
-        setMap(m);
+        // Track when map moves to apply bounce animation
+        m.on('movestart', () => {
+            setIsDraggingMap(true);
+        });
+
+        // Geocode coordinates in center when user finishes dragging/panning the map
+        m.on('moveend', () => {
+            setIsDraggingMap(false);
+            const center = m.getCenter();
+            reverseGeocode(center.lat, center.lng);
+        });
     };
 
-    const getCoordinates = async (address) => {
+    const reverseGeocode = async (lat, lng) => {
         try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
-            );
-            const data = await response.json();
-            if (data.length > 0) {
-                return {
-                    lat: parseFloat(data[0].lat),
-                    lng: parseFloat(data[0].lon)
-                };
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=vi`);
+            const data = await res.json();
+            if (data && data.address) {
+                setResolvedAddress(data);
             }
         } catch (err) {
-            console.error('Lỗi geocoding:', err);
+            console.error('Lỗi reverse geocoding:', err);
         }
-        return null;
     };
 
-    const showRoute = async (customerAddress) => {
-        if (!map || !window.L) return;
-        const L = window.L;
-        const customerCoords = await getCoordinates(customerAddress);
-        if (!customerCoords) return;
-
-        if (customerMarkerRef.current) {
-            map.removeLayer(customerMarkerRef.current);
+    const handleSearchLocation = async (e) => {
+        if (e) e.preventDefault();
+        if (!mapSearchText.trim() || !pickerMap) return;
+        setMapLoading(true);
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(mapSearchText)}&limit=1&accept-language=vi`);
+            const data = await res.json();
+            if (data && data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lng = parseFloat(data[0].lon);
+                pickerMap.setView([lat, lng], 16);
+            }
+        } catch (err) {
+            console.error('Lỗi tìm kiếm bản đồ:', err);
+        } finally {
+            setMapLoading(false);
         }
-        if (routeLineRef.current) {
-            map.removeLayer(routeLineRef.current);
-        }
-
-        const newMarker = L.marker([customerCoords.lat, customerCoords.lng])
-            .addTo(map)
-            .bindPopup("Địa chỉ khách")
-            .openPopup();
-        customerMarkerRef.current = newMarker;
-
-        const newLine = L.polyline([
-            [10.0009, 105.7851],
-            [customerCoords.lat, customerCoords.lng]
-        ], {
-            color: 'red',
-            weight: 4
-        }).addTo(map);
-        routeLineRef.current = newLine;
-
-        map.fitBounds(newLine.getBounds(), { padding: [50, 50] });
     };
 
-    useEffect(() => {
-        if (!map) return;
-        const provinceObj = provinces.find(p => String(p.ProvinceID) === String(selectedProvince));
-        const districtObj = districts.find(d => String(d.DistrictID) === String(selectedDistrict));
-        const wardObj = wards.find(w => String(w.WardCode) === String(selectedWard));
-
-        const pText = provinceObj ? provinceObj.ProvinceName : '';
-        const dText = districtObj ? districtObj.DistrictName : '';
-        const wText = wardObj ? wardObj.WardName : '';
-
-        let full = streetDetail.trim();
-        if (wText) full += `, ${wText}`;
-        if (dText) full += `, ${dText}`;
-        if (pText) full += `, ${pText}`;
-
-        if (full.length > 10) {
-            const timer = setTimeout(() => {
-                showRoute(full);
-            }, 1000);
-            return () => clearTimeout(timer);
+    const handleGetCurrentLocation = () => {
+        if (navigator.geolocation && pickerMap) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    pickerMap.setView([lat, lng], 16);
+                },
+                (err) => {
+                    console.error('Lỗi lấy định vị GPS:', err);
+                    alert("Không thể định vị vị trí hiện tại. Vui lòng cấp quyền định vị GPS trên trình duyệt của bạn!");
+                }
+            );
+        } else {
+            alert("Trình duyệt không hỗ trợ dịch vụ định vị GPS!");
         }
-    }, [selectedProvince, selectedDistrict, selectedWard, streetDetail, map]);
+    };
+
+    const confirmLocation = async () => {
+        if (!resolvedAddress || !resolvedAddress.address) return;
+        const addr = resolvedAddress.address;
+
+        // 1. Match Province
+        const provText = addr.city || addr.state || addr.province || '';
+        if (provText) {
+            const matchedProv = provinces.find(p => 
+                p.ProvinceName.toLowerCase().includes(provText.toLowerCase()) ||
+                provText.toLowerCase().includes(p.ProvinceName.toLowerCase())
+            );
+
+            if (matchedProv) {
+                const provId = matchedProv.ProvinceID;
+                setSelectedProvince(provId);
+
+                // 2. Load all wards then match
+                try {
+                    const res = await api.get(`/api/ghn/districts?provinceId=${provId}`);
+                    if (res.data && res.data.code === 200) {
+                        const districtsList = res.data.data || [];
+                        setDistricts(districtsList);
+
+                        const wardPromises = districtsList.map(async (d) => {
+                            try {
+                                const wRes = await api.get(`/api/ghn/wards?districtId=${d.DistrictID}`);
+                                if (wRes.data && wRes.data.code === 200) {
+                                    return (wRes.data.data || []).map(w => ({
+                                        ...w,
+                                        DistrictID: d.DistrictID,
+                                        DistrictName: d.DistrictName
+                                    }));
+                                }
+                            } catch (err) {
+                                console.error('Lỗi tải xã khi geocode:', err);
+                            }
+                            return [];
+                        });
+
+                        const wardsNested = await Promise.all(wardPromises);
+                        const allWards = wardsNested.flat();
+                        allWards.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
+                        setWards(allWards);
+
+                        // Collect all possible ward text candidates from OSM address
+                        const wardCandidates = [
+                            addr.suburb, addr.village, addr.quarter, addr.town, 
+                            addr.commune, addr.city_district, addr.neighbourhood
+                        ].filter(Boolean);
+
+                        let matchedWard = null;
+
+                        // Try each candidate
+                        for (const candidate of wardCandidates) {
+                            if (matchedWard) break;
+                            const candidateLower = candidate.toLowerCase();
+                            // Try exact includes match
+                            matchedWard = allWards.find(w => {
+                                const wNameLower = w.WardName.toLowerCase();
+                                return wNameLower.includes(candidateLower) || candidateLower.includes(wNameLower);
+                            });
+                            if (!matchedWard) {
+                                // Try stripped prefix match (remove Phường/Xã/Thị trấn)
+                                const strippedCandidate = candidateLower.replace(/^(phường|xã|thị trấn)\s+/i, '').trim();
+                                if (strippedCandidate) {
+                                    matchedWard = allWards.find(w => {
+                                        const strippedWard = w.WardName.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/i, '').trim();
+                                        return strippedWard === strippedCandidate || strippedWard.includes(strippedCandidate) || strippedCandidate.includes(strippedWard);
+                                    });
+                                }
+                            }
+                        }
+
+                        // Final fallback: search display_name for any ward name
+                        if (!matchedWard && resolvedAddress.display_name) {
+                            const dispNameLower = resolvedAddress.display_name.toLowerCase();
+                            matchedWard = allWards.find(w => {
+                                const wNameLower = w.WardName.toLowerCase();
+                                return dispNameLower.includes(wNameLower);
+                            });
+                            if (!matchedWard) {
+                                matchedWard = allWards.find(w => {
+                                    const strippedWard = w.WardName.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/i, '').trim();
+                                    return strippedWard.length >= 3 && dispNameLower.includes(strippedWard);
+                                });
+                            }
+                        }
+
+                        // District-level fallback: if no ward matched, try to find the district
+                        // and pick the first ward in that district
+                        if (!matchedWard) {
+                            const districtCandidates = [
+                                addr.city_district, addr.suburb, addr.village, 
+                                addr.quarter, addr.town, addr.commune
+                            ].filter(Boolean);
+
+                            let matchedDistrict = null;
+                            for (const candidate of districtCandidates) {
+                                if (matchedDistrict) break;
+                                const candidateLower = candidate.toLowerCase()
+                                    .replace(/^(phường|xã|thị trấn|quận|huyện|thị xã|thành phố)\s+/i, '').trim();
+                                if (candidateLower.length < 2) continue;
+                                matchedDistrict = districtsList.find(d => {
+                                    const dNameLower = d.DistrictName.toLowerCase()
+                                        .replace(/^(quận|huyện|thị xã|thành phố)\s+/i, '').trim();
+                                    return dNameLower === candidateLower || dNameLower.includes(candidateLower) || candidateLower.includes(dNameLower);
+                                });
+                            }
+
+                            // Also try matching from display_name
+                            if (!matchedDistrict && resolvedAddress.display_name) {
+                                const dispLower = resolvedAddress.display_name.toLowerCase();
+                                matchedDistrict = districtsList.find(d => {
+                                    const dNameLower = d.DistrictName.toLowerCase();
+                                    return dispLower.includes(dNameLower);
+                                });
+                            }
+
+                            if (matchedDistrict) {
+                                setSelectedDistrict(matchedDistrict.DistrictID);
+                                // Pick first ward in matched district so form is not empty
+                                const districtWards = allWards.filter(w => w.DistrictID === matchedDistrict.DistrictID);
+                                if (districtWards.length > 0) {
+                                    setSelectedWard(districtWards[0].WardCode);
+                                    setWards(districtWards);
+                                    calculateGHNFee(matchedDistrict.DistrictID, districtWards[0].WardCode);
+                                }
+                            }
+                        }
+
+                        if (matchedWard) {
+                            setSelectedWard(matchedWard.WardCode);
+                            setSelectedDistrict(matchedWard.DistrictID);
+                            const districtWards = allWards.filter(w => w.DistrictID === matchedWard.DistrictID);
+                            setWards(districtWards);
+                            calculateGHNFee(matchedWard.DistrictID, matchedWard.WardCode);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Lỗi tải thông tin GHN sau geocode:', err);
+                }
+            }
+        }
+
+        // 3. Điền địa chỉ chi tiết = toàn bộ display_name gốc, không cắt bỏ gì
+        setStreetDetail(resolvedAddress.display_name || '');
+        closeMapModal();
+    };
+
+
 
     const handleProvinceChange = async (e) => {
         const pId = e.target.value;
@@ -313,7 +475,8 @@ const Checkout = () => {
             try {
                 const res = await api.get(`/api/ghn/districts?provinceId=${pId}`);
                 if (res.data && res.data.code === 200) {
-                    setDistricts(res.data.data || []);
+                    const districtsList = res.data.data || [];
+                    setDistricts(districtsList);
                 }
             } catch (err) {
                 console.error('Lỗi tải quận huyện:', err);
@@ -326,24 +489,25 @@ const Checkout = () => {
         setSelectedDistrict(dId);
         setSelectedWard('');
         setWards([]);
-
+        
         if (dId) {
             try {
                 const res = await api.get(`/api/ghn/wards?districtId=${dId}`);
                 if (res.data && res.data.code === 200) {
-                    setWards(res.data.data || []);
+                    const wardsList = res.data.data || [];
+                    wardsList.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
+                    setWards(wardsList);
                 }
             } catch (err) {
                 console.error('Lỗi tải phường xã:', err);
             }
-            calculateGHNFee(dId, '');
         }
     };
 
     const handleWardChange = (e) => {
         const wCode = e.target.value;
         setSelectedWard(wCode);
-        if (selectedDistrict) {
+        if (selectedDistrict && wCode) {
             calculateGHNFee(selectedDistrict, wCode);
         }
     };
@@ -390,10 +554,13 @@ const Checkout = () => {
     const handleApplyVoucher = async (codeToApply) => {
         const code = typeof codeToApply === 'string' ? codeToApply : voucherCode;
         if (!code || !code.trim()) {
-            alert('Vui lòng nhập mã giảm giá!');
+            setVoucherError('Vui lòng nhập mã giảm giá!');
+            setVoucherSuccess('');
             return;
         }
         try {
+            setVoucherError('');
+            setVoucherSuccess('');
             const response = await api.post('/api/vouchers/apply', {
                 voucherCode: code.trim().toUpperCase(),
                 cartTotal: totalPrice
@@ -407,16 +574,16 @@ const Checkout = () => {
                     discountValue: v.discountValue || v.discount_value
                 });
                 setDiscount(discountValue);
-                alert(response.data.message || 'Áp dụng mã giảm giá thành công!');
+                setVoucherSuccess(response.data.message || 'Áp dụng mã giảm giá thành công!');
             } else {
-                alert(response.data.message || 'Mã giảm giá không hợp lệ!');
+                setVoucherError(response.data.message || 'Mã giảm giá không hợp lệ!');
                 setAppliedVoucher(null);
                 setDiscount(0);
             }
         } catch (err) {
             console.error('Lỗi áp dụng voucher:', err);
             const errMsg = err.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc không đủ điều kiện!';
-            alert(errMsg);
+            setVoucherError(errMsg);
             setAppliedVoucher(null);
             setDiscount(0);
         }
@@ -426,6 +593,8 @@ const Checkout = () => {
         setAppliedVoucher(null);
         setDiscount(0);
         setVoucherCode('');
+        setVoucherError('');
+        setVoucherSuccess('');
     };
 
     const formatCurrency = (amount) => {
@@ -440,9 +609,10 @@ const Checkout = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setSubmitError('');
         
         if (!selectedProvince || !selectedDistrict || !selectedWard || !streetDetail.trim()) {
-            alert('Vui lòng điền đầy đủ địa chỉ nhận hàng!');
+            setSubmitError('Vui lòng điền đầy đủ địa chỉ nhận hàng!');
             return;
         }
 
@@ -459,13 +629,19 @@ const Checkout = () => {
         if (dText) full += `, ${dText}`;
         if (pText) full += `, ${pText}`;
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const buyNowVariantId = urlParams.get('buyNowVariantId');
+        const buyNowQty = urlParams.get('buyNowQty');
+
         const payload = {
             fullName: account.full_name,
             phone: account.phone,
             fullAddress: full,
             note: note.trim(),
             paymentMethod: paymentMethod,
-            voucherCode: appliedVoucher ? appliedVoucher.code : ''
+            voucherCode: appliedVoucher ? appliedVoucher.code : '',
+            buyNowVariantId: buyNowVariantId ? parseInt(buyNowVariantId) : null,
+            buyNowQty: buyNowQty ? parseInt(buyNowQty) : null
         };
 
         try {
@@ -474,15 +650,14 @@ const Checkout = () => {
                 if (response.data.paymentMethod === 'BANK' && response.data.checkoutUrl) {
                     window.location.href = response.data.checkoutUrl;
                 } else {
-                    alert('Đặt hàng thành công!');
-                    navigate('/checkout-success');
+                    navigate(`/checkout-success?orderCode=${response.data.orderCode}`);
                 }
             } else {
-                alert(response.data.message || 'Đặt hàng thất bại!');
+                setSubmitError(response.data.message || 'Đặt hàng thất bại!');
             }
         } catch (err) {
             console.error('Lỗi đặt hàng:', err);
-            alert(err.response?.data?.message || 'Lỗi hệ thống khi đặt hàng!');
+            setSubmitError(err.response?.data?.message || 'Lỗi hệ thống khi đặt hàng!');
         }
     };
 
@@ -501,8 +676,18 @@ const Checkout = () => {
 
     return (
         <Layout>
-            <div className="container checkout-container">
-                <form onSubmit={handleSubmit}>
+            <div className="shop-epic-theme checkout-page-wrapper position-relative">
+                <div className="epic-member-header">
+                    <div className="container text-center">
+                        <span className="epic-tag animate__animated animate__fadeInDown d-inline-block">THANH TOÁN</span>
+                        <h1 className="epic-header-title mt-3 animate__animated animate__fadeInUp">THANH TOÁN</h1>
+                        <p className="font-oswald text-light mx-auto mt-4 letter-spacing-1 fw-bold text-uppercase fs-5" style={{ maxWidth: '600px', opacity: 0.8 }}>
+                            Hoàn tất thông tin nhận hàng và phương thức thanh toán để nhận ngay đôi giày bạn yêu thích.
+                        </p>
+                    </div>
+                </div>
+                <div className="container checkout-container py-5 position-relative z-1">
+                    <form onSubmit={handleSubmit}>
                     <div className="row g-5">
                         <div className="col-lg-7 animate__animated animate__fadeInLeft">
                             <h3 className="section-title">THÔNG TIN GIAO HÀNG</h3>
@@ -554,6 +739,11 @@ const Checkout = () => {
                                             ))}
                                         </select>
                                     </div>
+                                    <div className="col-12 mt-2">
+                                         <button type="button" className="btn btn-outline-danger w-100 font-orbitron fw-bold py-2 d-flex align-items-center justify-content-center gap-2" onClick={openMapModal} style={{ borderRadius: '8px', border: '1px dashed #e50914', background: 'rgba(229, 9, 20, 0.03)', color: '#e50914', transition: 'all 0.2s' }}>
+                                             <i className="fa-solid fa-map-location-dot"></i> CHỌN VỊ TRÍ TỪ BẢN ĐỒ (GOOGLE MAPS)
+                                         </button>
+                                     </div>
                                     
                                     <div className="col-12">
                                         <label className="form-label">Địa chỉ chi tiết</label>
@@ -594,11 +784,7 @@ const Checkout = () => {
                                 </div>
                             </div>
 
-                            <div className="checkout-card mt-4 animate__animated animate__fadeInUp">
-                                <h4 className="font-orbitron" style={{ fontSize: '16px' }}><i className="fa fa-map-location-dot text-danger me-2"></i>BẢN ĐỒ GIAO HÀNG</h4>
-                                <div id="checkout-map" style={{ height: '400px', width: '100%', borderRadius: '12px', marginTop: '15px' }}></div>
-                            </div>
-                        </div>
+                             </div>
 
                         <div className="col-lg-5 animate__animated animate__fadeInRight">
                             <h3 className="section-title">ĐƠN HÀNG CỦA BẠN</h3>
@@ -644,9 +830,15 @@ const Checkout = () => {
 
                                     <div className="mt-3 mb-4">
                                         <div className="input-group mb-2">
-                                            <input type="text" className="form-control" placeholder="Nhập mã giảm giá..." value={voucherCode} onChange={e => setVoucherCode(e.target.value)} />
+                                            <input type="text" className="form-control" placeholder="Nhập mã giảm giá..." value={voucherCode} onChange={e => {
+                                                setVoucherCode(e.target.value);
+                                                if (voucherError) setVoucherError('');
+                                                if (voucherSuccess) setVoucherSuccess('');
+                                            }} />
                                             <button className="btn btn-outline-danger" type="button" onClick={() => handleApplyVoucher()}>ÁP DỤNG</button>
                                         </div>
+                                        {voucherError && <div className="text-danger mt-1 fw-bold" style={{ fontSize: '13px' }}><i className="fa-solid fa-circle-exclamation me-1"></i>{voucherError}</div>}
+                                        {voucherSuccess && <div className="text-success mt-1 fw-bold" style={{ fontSize: '13px' }}><i className="fa-solid fa-circle-check me-1"></i>{voucherSuccess}</div>}
                                         {availableVouchers.length > 0 && (
                                             <div className="available-vouchers mt-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                                 {availableVouchers.map(v => {
@@ -688,6 +880,11 @@ const Checkout = () => {
                                     </div>
                                 </div>
 
+                                {submitError && (
+                                    <div className="alert alert-danger py-2 px-3 mb-3 text-center animate__animated animate__shakeX" style={{ fontSize: '13px', borderRadius: '8px', border: 'none', background: 'rgba(229, 9, 20, 0.1)', color: '#ea868f' }}>
+                                        <i className="fa-solid fa-triangle-exclamation me-1"></i> {submitError}
+                                    </div>
+                                )}
                                 <button type="submit" className="btn-place-order" disabled={cartItems.length === 0}>
                                     XÁC NHẬN ĐẶT HÀNG <i className="fa fa-arrow-right ms-2"></i>
                                 </button>
@@ -696,6 +893,83 @@ const Checkout = () => {
                     </div>
                 </form>
             </div>
+            </div>
+
+            {isMapModalOpen && (
+                <div className="admin-confirm-overlay" style={{ zIndex: 10000 }}>
+                    <div className="admin-confirm-box" style={{ width: '90%', maxWidth: '700px', padding: '25px', borderRadius: '16px', background: '#fff', color: '#333' }}>
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                            <h4 className="font-orbitron m-0" style={{ fontSize: '18px', fontWeight: 'bold', color: '#111' }}>
+                                <i className="fa-solid fa-map-location-dot text-danger me-2"></i> CHỌN VỊ TRÍ GIAO HÀNG
+                            </h4>
+                            <button type="button" className="btn-close" onClick={closeMapModal}></button>
+                        </div>
+                        
+                        <form onSubmit={handleSearchLocation} className="mb-3">
+                            <div className="input-group">
+                                <input 
+                                    type="text" 
+                                    className="form-control" 
+                                    placeholder="Tìm kiếm địa chỉ, tên đường, khu vực..." 
+                                    value={mapSearchText}
+                                    onChange={e => setMapSearchText(e.target.value)}
+                                    style={{ background: '#f8f9fa', border: '1px solid #ddd', color: '#333' }}
+                                />
+                                <button type="submit" className="btn btn-danger font-orbitron fw-bold" disabled={mapLoading}>
+                                    {mapLoading ? 'ĐANG TÌM...' : 'TÌM KIẾM'}
+                                </button>
+                            </div>
+                        </form>
+
+                        <div className="position-relative" style={{ height: 'min(300px, 40vh)', width: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+                            <div id="picker-map" style={{ height: '100%', width: '100%' }}></div>
+                            
+                            {/* Fixed center pin indicator */}
+                            <div style={{ 
+                                position: 'absolute', 
+                                top: '50%', 
+                                left: '50%', 
+                                transform: isDraggingMap ? 'translate(-50%, -120%)' : 'translate(-50%, -100%)', 
+                                transition: 'transform 0.15s ease-out',
+                                zIndex: 1000, 
+                                pointerEvents: 'none' 
+                            }}>
+                                <i className="fa-solid fa-location-pin text-danger" style={{ fontSize: '38px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}></i>
+                            </div>
+
+                            {/* Geolocation target GPS button */}
+                            <button 
+                                type="button" 
+                                className="btn btn-light" 
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleGetCurrentLocation();
+                                }}
+                                style={{ position: 'absolute', bottom: '20px', right: '20px', zIndex: 1000, borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.15)', border: '1px solid #ddd', background: '#fff', color: '#333' }}
+                                title="Vị trí của tôi"
+                            >
+                                <i className="fa-solid fa-crosshairs fs-5"></i>
+                            </button>
+                        </div>
+                        
+                        {resolvedAddress && (
+                            <div className="mt-3 p-3 bg-light rounded" style={{ fontSize: '13px', borderLeft: '4px solid #e50914', color: '#333', textAlign: 'left' }}>
+                                <strong>Vị trí đã chọn:</strong> {resolvedAddress.display_name}
+                            </div>
+                        )}
+
+                        <div className="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" className="btn btn-secondary font-orbitron fw-bold" onClick={closeMapModal} style={{ borderRadius: '8px' }}>
+                                HỦY BỎ
+                            </button>
+                            <button type="button" className="btn btn-danger font-orbitron fw-bold" onClick={confirmLocation} disabled={!resolvedAddress} style={{ borderRadius: '8px' }}>
+                                XÁC NHẬN VỊ TRÍ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 };

@@ -10,7 +10,7 @@ const ShipperEarnings = () => {
             toolbar: { show: false },
             zoom: { enabled: false },
             foreColor: '#94a3b8',
-            fontFamily: 'Poppins, sans-serif'
+            fontFamily: 'Inter, sans-serif'
         },
         dataLabels: { enabled: false },
         stroke: {

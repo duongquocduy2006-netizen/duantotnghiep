@@ -27,6 +27,27 @@ const AdminDashboard = () => {
 
     const [startDate, setStartDate] = useState(formatDate(firstDay));
     const [endDate, setEndDate] = useState(formatDate(today));
+    const [selectedPreset, setSelectedPreset] = useState('thisMonth');
+
+    const setPreset = (presetType) => {
+        const today = new Date();
+        let start = new Date();
+        let end = today;
+        
+        if (presetType === 'today') {
+            start = today;
+        } else if (presetType === '7days') {
+            start.setDate(today.getDate() - 7);
+        } else if (presetType === '30days') {
+            start.setDate(today.getDate() - 30);
+        } else if (presetType === 'thisMonth') {
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+        }
+        
+        setSelectedPreset(presetType);
+        setStartDate(formatDate(start));
+        setEndDate(formatDate(end));
+    };
 
     const fetchDashboardData = async () => {
         setLoading(true);
@@ -86,7 +107,7 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         fetchDashboardData();
-    }, []);
+    }, [startDate, endDate]);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -95,7 +116,13 @@ const AdminDashboard = () => {
     const getImageUrl = (url) => {
         if (!url) return '';
         if (url.startsWith('http')) return url;
-        return `http://localhost:8080${url}`;
+        if (url.startsWith('/images/') || url.startsWith('/uploads/')) {
+            return `http://localhost:8080${url}`;
+        }
+        if (url.startsWith('images/') || url.startsWith('uploads/')) {
+            return `http://localhost:8080/${url}`;
+        }
+        return `http://localhost:8080/images/${url}`;
     };
 
     if (loading) {
@@ -147,6 +174,8 @@ const AdminDashboard = () => {
                 return '';
         }
     };
+
+    const hasValidStats = monthlyStats && monthlyStats.length > 0 && monthlyStats[0].month !== "Không có";
 
     const chartOptions = {
         chart: {
@@ -295,14 +324,19 @@ const AdminDashboard = () => {
                     <h2 className="page-title">TỔNG QUAN KINH DOANH</h2>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div className="btn-group-presets" style={{ display: 'flex', gap: '5px' }}>
+                        <button type="button" className={`btn-preset ${selectedPreset === 'today' ? 'active' : ''}`} onClick={() => setPreset('today')}>Hôm nay</button>
+                        <button type="button" className={`btn-preset ${selectedPreset === '7days' ? 'active' : ''}`} onClick={() => setPreset('7days')}>7 ngày</button>
+                        <button type="button" className={`btn-preset ${selectedPreset === '30days' ? 'active' : ''}`} onClick={() => setPreset('30days')}>30 ngày</button>
+                        <button type="button" className={`btn-preset ${selectedPreset === 'thisMonth' ? 'active' : ''}`} onClick={() => setPreset('thisMonth')}>Tháng này</button>
+                    </div>
                     <div className="date-range-picker-admin">
                         <span>TỪ:</span>
-                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                        <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }} />
                         <span>ĐẾN:</span>
-                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                        <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }} />
                     </div>
-                    <button className="btn-action btn-primary-glow" onClick={fetchDashboardData}><i className="bi bi-filter"></i> LỌC</button>
-                    <button className="btn-action" onClick={exportToExcel}><i className="bi bi-download"></i></button>
+                    <button className="btn-action" onClick={exportToExcel} title="Xuất Excel báo cáo"><i className="bi bi-download"></i></button>
                 </div>
             </div>
 
@@ -338,17 +372,17 @@ const AdminDashboard = () => {
             </div>
 
             <div className="grid-2-1">
-                <div className="card-box bg-white border border-dark">
+                <div className="card-box bg-white border" style={{ borderColor: '#e2e8f0', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                     <div className="card-header">
                         <span className="card-title">DOANH THU & CHI PHÍ</span>
                         <i className="bi bi-three-dots" style={{ color: '#555', cursor: 'pointer' }}></i>
                     </div>
                     
                     <div style={{ flexGrow: 1, minHeight: '320px' }}>
-                        {monthlyStats && monthlyStats.length > 0 && monthlyStats[0].month !== "Không có" ? (
+                        {hasValidStats ? (
                             <Chart options={chartOptions} series={chartSeries} type="line" height={320} />
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>Không có dữ liệu trong khoảng thời gian này</div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666', minHeight: '320px' }}>Không có dữ liệu trong khoảng thời gian này</div>
                         )}
                     </div>
 
@@ -357,7 +391,7 @@ const AdminDashboard = () => {
                         <div className="chart-stats-table-wrapper" style={{ marginTop: '20px', borderTop: '2px dashed rgba(0, 0, 0, 0.1)', paddingTop: '15px' }}>
                             <table className="chart-stats-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                                 <thead>
-                                    <tr style={{ borderBottom: '2px solid #000000', textAlign: 'left', fontFamily: 'Oswald, sans-serif', textTransform: 'uppercase', color: '#000' }}>
+                                    <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontFamily: 'Oswald, sans-serif', textTransform: 'uppercase', color: '#64748b' }}>
                                         <th style={{ padding: '8px 10px', fontWeight: 800 }}>Thời gian</th>
                                         <th style={{ padding: '8px 10px', color: '#cc0000', fontWeight: 800 }}>Doanh thu</th>
                                         <th style={{ padding: '8px 10px', color: '#000000', fontWeight: 800 }}>Chi phí</th>
@@ -386,7 +420,7 @@ const AdminDashboard = () => {
                     )}
                 </div>
 
-                <div className="card-box bg-white border border-dark">
+                <div className="card-box bg-white border" style={{ borderColor: '#e2e8f0', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                     <div className="card-header">
                         <span className="card-title">THÔNG BÁO</span>
                     </div>
@@ -405,7 +439,7 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            <div className="card-box bg-white border border-dark" style={{ borderRightWidth: '4px', borderBottomWidth: '4px' }}>
+            <div className="card-box bg-white border" style={{ borderColor: '#e2e8f0', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                 <div className="card-header">
                     <span className="card-title">SẢN PHẨM BÁN CHẠY</span>
                     <Link to="/admin/products" style={{ fontSize: '12px', color: 'var(--accent-cyan)', textDecoration: 'none' }}>
@@ -426,8 +460,16 @@ const AdminDashboard = () => {
                             <tr key={product.id}>
                                 <td>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        <div style={{ width: '40px', height: '40px', background: '#fff', border: '2px solid #000', borderRadius: '0', overflow: 'hidden' }}>
-                                            <img src={getImageUrl(product.image) || `https://placehold.co/40x40/000/fff?text=${product.sku}`} alt={product.name} style={{ width:'100%', height:'100%', objectFit: 'cover' }} />
+                                        <div style={{ width: '40px', height: '40px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                                             <img 
+                                                 src={getImageUrl(product.image)} 
+                                                 alt={product.name} 
+                                                 style={{ width:'100%', height:'100%', objectFit: 'cover' }} 
+                                                 onError={(e) => {
+                                                     e.target.onerror = null;
+                                                     e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=f4f5f7&color=000&bold=true`;
+                                                 }}
+                                             />
                                         </div>
                                         <div>
                                             <Link to={`/admin/products/edit/${product.id}`} className="p-name">{product.name}</Link>

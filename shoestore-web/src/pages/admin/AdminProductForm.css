@@ -134,7 +134,7 @@
     border-radius: 8px;
     box-shadow: none;
     color: #000;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     outline: none;
     font-size: 14px;
     font-weight: 600;
@@ -235,7 +235,7 @@
 .set-primary-trigger:hover {
     background: #ffd700;
     transform: translateY(-2px);
-    box-shadow: 2px 2px 0 #000;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .set-primary-trigger.active {
@@ -253,7 +253,7 @@
     background: #000;
     color: #fff;
     transform: translateY(-2px);
-    box-shadow: 2px 2px 0 var(--accent-red);
+    box-shadow: 0 4px 8px rgba(204,0,0,0.15);
 }
 
 .upload-placeholder-large {
@@ -273,7 +273,7 @@
 .upload-placeholder-large:hover {
     background: #f4f4f4;
     transform: translateY(-3px);
-    box-shadow: 6px 6px 0 var(--accent-red);
+    box-shadow: 0 8px 24px rgba(204,0,0,0.15);
 }
 
 .upload-content {

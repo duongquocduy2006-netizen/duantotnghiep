@@ -11,20 +11,33 @@ const Register = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [agreeTerms, setAgreeTerms] = useState(false);
     const [error, setError] = useState('');
+    const [errors, setErrors] = useState({});
 
     const handleRegister = async (e) => {
         e.preventDefault();
         setError('');
 
-        if (password !== confirmPassword) {
-            setError('Mật khẩu nhập lại không khớp!');
+        let newErrors = {};
+        if (!fullName) newErrors.fullName = 'Vui lòng nhập họ và tên!';
+        else if (fullName.length < 3) newErrors.fullName = 'Họ tên phải có ít nhất 3 ký tự!';
+
+        if (!email) newErrors.email = 'Vui lòng nhập địa chỉ email!';
+        else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Email không đúng định dạng!';
+
+        if (!password) newErrors.password = 'Vui lòng nhập mật khẩu!';
+        else if (password.length < 6) newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự!';
+
+        if (!confirmPassword) newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu!';
+        else if (password !== confirmPassword) newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp!';
+
+        if (!agreeTerms) newErrors.agreeTerms = 'Bạn phải đồng ý với điều khoản sử dụng!';
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
             return;
         }
 
-        if (!agreeTerms) {
-            setError('Bạn phải đồng ý với điều khoản sử dụng!');
-            return;
-        }
+        setErrors({});
 
         try {
             const response = await api.post('/api/auth/register', {
@@ -71,66 +84,88 @@ const Register = () => {
 
                     {error && <div className="alert alert-danger p-2 text-center" style={{fontSize: '14px'}}>{error}</div>}
 
-                    <form onSubmit={handleRegister}>
+                    <form onSubmit={handleRegister} noValidate>
                         <div className="mb-3">
                             <label className="form-label">Họ và tên</label>
                             <input 
                                 type="text" 
-                                className="form-control custom-input" 
+                                className={`form-control custom-input ${errors.fullName ? 'is-invalid border-danger' : ''}`}
+                                style={errors.fullName ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
                                 placeholder="NHẬP HỌ VÀ TÊN CỦA BẠN"
                                 value={fullName}
-                                onChange={(e) => setFullName(e.target.value)}
-                                required
+                                onChange={(e) => {
+                                    setFullName(e.target.value);
+                                    if(errors.fullName) setErrors({...errors, fullName: ''});
+                                }}
                             />
+                            {errors.fullName && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.fullName}</div>}
                         </div>
 
                         <div className="mb-3">
                             <label className="form-label">Email tài khoản</label>
                             <input 
                                 type="email" 
-                                className="form-control custom-input" 
+                                className={`form-control custom-input ${errors.email ? 'is-invalid border-danger' : ''}`}
+                                style={errors.email ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
                                 placeholder="NHẬP EMAIL CỦA BẠN"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    if(errors.email) setErrors({...errors, email: ''});
+                                }}
                             />
+                            {errors.email && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.email}</div>}
                         </div>
 
                         <div className="mb-3">
                             <label className="form-label">Mật khẩu</label>
                             <input 
                                 type="password" 
-                                className="form-control custom-input" 
+                                className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
+                                style={errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
                                 placeholder="NHẬP MẬT KHẨU"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    if(errors.password) setErrors({...errors, password: ''});
+                                }}
                             />
+                            {errors.password && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.password}</div>}
                         </div>
 
                         <div className="mb-4">
                             <label className="form-label">Nhập lại mật khẩu</label>
                             <input 
                                 type="password" 
-                                className="form-control custom-input" 
+                                className={`form-control custom-input ${errors.confirmPassword ? 'is-invalid border-danger' : ''}`}
+                                style={errors.confirmPassword ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
                                 placeholder="XÁC NHẬN MẬT KHẨU"
                                 value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                required
+                                onChange={(e) => {
+                                    setConfirmPassword(e.target.value);
+                                    if(errors.confirmPassword) setErrors({...errors, confirmPassword: ''});
+                                }}
                             />
+                            {errors.confirmPassword && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.confirmPassword}</div>}
                         </div>
 
-                        <div className="mb-4 form-check d-flex align-items-center gap-2">
-                            <input 
-                                type="checkbox" 
-                                className="form-check-input m-0" 
-                                id="agreeTerms"
-                                checked={agreeTerms}
-                                onChange={(e) => setAgreeTerms(e.target.checked)}
-                            />
-                            <label className="form-check-label" htmlFor="agreeTerms">
-                                TÔI ĐỒNG Ý VỚI <a href="#" style={{color: '#e50914', textDecoration: 'none'}}>ĐIỀU KHOẢN SỬ DỤNG</a>
-                            </label>
+                        <div className="mb-4">
+                            <div className="form-check d-flex align-items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    className="form-check-input m-0" 
+                                    id="agreeTerms"
+                                    checked={agreeTerms}
+                                    onChange={(e) => {
+                                        setAgreeTerms(e.target.checked);
+                                        if(errors.agreeTerms) setErrors({...errors, agreeTerms: ''});
+                                    }}
+                                />
+                                <label className="form-check-label" htmlFor="agreeTerms">
+                                    TÔI ĐỒNG Ý VỚI <a href="#" style={{color: '#e50914', textDecoration: 'none'}}>ĐIỀU KHOẢN SỬ DỤNG</a>
+                                </label>
+                            </div>
+                            {errors.agreeTerms && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.agreeTerms}</div>}
                         </div>
 
                         <button type="submit" className="btn-login">

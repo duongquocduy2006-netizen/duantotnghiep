@@ -7,7 +7,7 @@
 .home-god-tier {
     background-color: #ffffff;
     color: #0a0a0a;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
 .font-oswald {
@@ -351,10 +351,48 @@
 /* =====================================================
    BRAND GRID (typography style – no broken images)
    ===================================================== */
+.brand-slider-wrapper {
+    position: relative;
+    width: 100%;
+}
+.brand-slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.3s ease;
+}
+.brand-slider-btn:hover {
+    background: #e50914;
+    border-color: #e50914;
+    transform: translateY(-50%) scale(1.1);
+}
+.brand-slider-btn.prev {
+    left: -22px;
+}
+.brand-slider-btn.next {
+    right: -22px;
+}
 .brand-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: flex;
     gap: 16px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    width: 100%;
+    scrollbar-width: none;
+}
+.brand-grid::-webkit-scrollbar {
+    display: none;
 }
 
 .brand-grid-item {
@@ -364,6 +402,8 @@
     background: #111;
     border: 1px solid #1e1e1e;
     transition: transform 0.4s ease, box-shadow 0.4s ease;
+    height: 200px;
+    flex: 0 0 calc(25% - 12px);
 }
 
 .brand-grid-item:hover {
@@ -377,7 +417,10 @@
     align-items: center;
     justify-content: center;
     height: 100%;
+<<<<<<< HEAD
     min-height: 200px;
+=======
+>>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
     text-decoration: none;
     padding: 24px;
     position: relative;
@@ -429,27 +472,46 @@
 .brand-grid-item:hover .brand-card-explore {
     color: #e50914;
 }
+<<<<<<< HEAD
 
 .brand-grid-item.large .brand-card-inner {
     height: 416px;
 }
 
 /* 2 rows */
+=======
+>>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
 
 @media (max-width: 991px) {
-    .brand-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .brand-grid-item {
+        flex: 0 0 calc(50% - 8px);
     }
+    .brand-slider-btn.prev {
+        left: -10px;
+    }
+    .brand-slider-btn.next {
+        right: -10px;
+    }
+}
+@media (max-width: 768px) {
+    .brand-slider-btn {
+        display: none;
+    }
+<<<<<<< HEAD
 
     .brand-grid-item.large .brand-card-inner {
         height: 200px;
     }
+=======
+>>>>>>> 4fcb74ed71d06f30f97a074cd1c3a5a92bba5019
 }
 
 @media (max-width: 575px) {
     .brand-grid {
-        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
+    }
+    .brand-grid-item {
+        flex: 0 0 100%;
     }
 }
 
@@ -658,7 +720,7 @@
 }
 
 .flat-name {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     line-height: 1.4;
     font-weight: 700;
 }

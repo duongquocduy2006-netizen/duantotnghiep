@@ -1,5 +1,5 @@
 /* --- GOOGLE FONTS & GLOBAL VARIABLES --- */
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Poppins:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Oswald:wght@500;700&family=Poppins:wght@300;400;500;600&display=swap');
 
 :root {
   color-scheme: light;
@@ -26,18 +26,50 @@ html {
   width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+/* Custom smooth scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  background: #252525;
+  border-radius: 5px;
+  border: 2px solid #050505;
+  transition: background 0.3s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cine-accent, #e50914);
+}
+
+/* Smooth selection style */
+::selection {
+  background: var(--cine-accent, #e50914);
+  color: #ffffff;
 }
 
 body {
   margin: 0;
   padding: 0;
   width: 100%;
-  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--cine-bg);
   color: var(--cine-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   overflow: visible;
+}
+
+/* Premium Apple/Stripe-like timing curve for all animations */
+a, button, input, select, textarea, .card, .btn, .nav-link, .dropdown-menu, .dropdown-item, .flat-product-card, .product-card-img {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 a {
@@ -69,38 +101,108 @@ a {
   text-shadow: var(--glow-shadow);
 }
 
+.search-wrapper {
+  width: 100%;
+}
+
 .search-wrapper .input-group {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  border-radius: 4px;
-  padding: 5px 15px;
-  transition: var(--transition);
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 50px !important;
+  padding: 4px 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: none !important;
 }
+
+.search-wrapper .input-group:hover {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 .search-wrapper .input-group:focus-within {
-  background: #000;
-  border-color: var(--cine-accent);
-  box-shadow: var(--glow-shadow);
+  background: #0d0d0d !important;
+  border-color: var(--cine-accent) !important;
+  box-shadow: 0 0 15px rgba(229, 9, 20, 0.35) !important;
 }
-.search-input {
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 14px;
-  padding-left: 10px;
+
+.search-wrapper .input-group > .search-input {
+  flex: 1 !important;
+  width: 100% !important;
+  background: transparent !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-size: 14.5px !important;
+  padding: 8px 12px 8px 4px !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
-.search-input:focus {
-  background: transparent;
-  box-shadow: none;
-  color: #fff;
+
+.search-wrapper .input-group > .search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
 }
+
 .search-btn {
-  background: transparent;
-  color: #777;
-  border: none;
-  transition: var(--transition);
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  border: none !important;
+  padding: 6px 10px !important;
+  font-size: 16px !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
 }
-.search-wrapper .input-group:focus-within .search-btn {
-  color: var(--cine-accent);
+
+.search-btn:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.search-btn.clear-btn {
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  padding: 6px !important;
+  margin-right: 2px !important;
+}
+
+.search-btn.clear-btn:hover {
+  color: var(--cine-accent) !important;
+  background: rgba(229, 9, 20, 0.1) !important;
+}
+
+@keyframes pulse-mic {
+  0% {
+    transform: scale(1);
+    text-shadow: 0 0 0 rgba(229, 9, 20, 0.7);
+  }
+  70% {
+    transform: scale(1.15);
+    text-shadow: 0 0 10px rgba(229, 9, 20, 0.9);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: 0 0 0 rgba(229, 9, 20, 0);
+  }
+}
+
+.search-btn.mic-btn-active {
+  color: var(--cine-accent) !important;
+  animation: pulse-mic 1.5s infinite ease-in-out !important;
+  background: rgba(229, 9, 20, 0.08) !important;
+}
+
+.search-btn.submit-btn {
+  color: rgba(255, 255, 255, 0.6) !important;
+  margin-left: 2px !important;
+}
+
+.search-wrapper .input-group:focus-within .search-btn.submit-btn {
+  color: var(--cine-accent) !important;
 }
 
 
@@ -182,8 +284,9 @@ a {
   background: var(--cine-surface) !important;
   border: 1px solid var(--glass-border) !important;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
-  margin-top: 15px !important;
+  margin-top: 8px !important;
   padding: 0 !important;
+  min-width: 220px !important;
 }
 
 .dropdown-item {
@@ -192,12 +295,14 @@ a {
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 1px;
+  border-left: 3px solid transparent !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 .dropdown-item:hover {
   background: rgba(255, 255, 255, 0.05) !important;
   color: #fff !important;
-  border-left: 3px solid var(--cine-accent);
-  padding-left: 22px;
+  border-left: 3px solid var(--cine-accent) !important;
+  padding-left: 25px !important; /* Keep padding consistent to prevent text jumping */
 }
 
 .dropdown-item-text {
@@ -219,18 +324,21 @@ a {
 }
 
 .btn-logout-transparent {
-  color: #ccc;
+  color: #ccc !important;
   text-transform: uppercase;
   font-size: 13px;
   letter-spacing: 1px;
   padding: 12px 25px;
   background: transparent;
   border: none;
+  border-left: 3px solid transparent !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .btn-logout-transparent:hover {
-  background: rgba(229, 9, 20, 0.1);
-  color: var(--cine-accent);
+  background: rgba(229, 9, 20, 0.1) !important;
+  color: var(--cine-accent) !important;
+  border-left: 3px solid var(--cine-accent) !important;
 }
 
 @keyframes fadeIn {
@@ -276,6 +384,22 @@ a {
       box-shadow: none;
       border: none;
   }
+}
+
+.mega-column ul li a {
+  color: #bbb !important;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+  padding: 5px 0;
+  transition: var(--transition);
+}
+
+.mega-column ul li a:hover {
+  color: var(--cine-accent) !important;
+  transform: translateX(10px);
+  text-shadow: var(--glow-shadow);
 }
 
 /* --- FOOTER STYLES --- */
@@ -556,4 +680,41 @@ a {
   cursor: pointer;
   text-transform: uppercase;
   font-size: 13px;
+}
+
+/* --- EPIC MEMBER HEADER FOR CART, CHECKOUT, FAVOURITES --- */
+.epic-member-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 60px 0 45px;
+  position: relative;
+  overflow: hidden;
+}
+
+.epic-member-header .epic-tag {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #e50914; /* Brand Red */
+  background: rgba(229, 9, 20, 0.05);
+  padding: 6px 16px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.epic-member-header .epic-header-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 900;
+  color: #111111 !important; /* Solid Dark */
+  letter-spacing: -1px;
+  text-transform: uppercase;
+}
+
+.epic-member-header p {
+  color: #555555 !important; /* Make text dark gray and readable */
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.5px !important;
 }

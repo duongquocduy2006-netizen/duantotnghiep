@@ -76,14 +76,13 @@ public class CartApiController {
 
         Integer variantId = ((Number) payload.get("variantId")).intValue();
         Integer quantity = ((Number) payload.get("quantity")).intValue();
+
         Long accountId = ((Number) account.get("id")).longValue();
 
         try {
-            // 1. Kiểm tra tồn kho
             String stockSql = "SELECT quantity FROM product_variants WHERE id = ?";
             int availableStock = jdbc.queryForObject(stockSql, Integer.class, variantId);
 
-            // 2. Kiểm tra xem sản phẩm đã có trong giỏ chưa
             String checkSql = "SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_variant_id = ?";
             List<Map<String, Object>> existing = jdbc.queryForList(checkSql, accountId, variantId);
 
@@ -93,20 +92,28 @@ public class CartApiController {
             }
 
             if (currentInCart + quantity > availableStock) {
+                String errorMsg = "";
+                if (currentInCart > 0) {
+                    errorMsg = "Trong giỏ đã có " + currentInCart + " sản phẩm này. Kho chỉ còn " + availableStock + ", không thể thêm vượt quá tồn kho!";
+                } else {
+                    errorMsg = "Xin lỗi, kho chỉ còn " + availableStock + " sản phẩm.";
+                }
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
-                        "message", "Xin lỗi, kho chỉ còn " + availableStock + " sản phẩm."
+                        "message", errorMsg
                 ));
             }
 
-            if (!existing.isEmpty()) {
-                // Update quantity
-                int newQty = currentInCart + quantity;
-                jdbc.update("UPDATE cart_items SET quantity = ? WHERE id = ?", newQty, existing.get(0).get("id"));
-            } else {
-                // Insert new
-                jdbc.update("INSERT INTO cart_items (user_id, product_variant_id, quantity) VALUES (?, ?, ?)",
-                        accountId, variantId, quantity);
+            if (quantity > 0) {
+                if (!existing.isEmpty()) {
+                    // Update quantity
+                    int newQty = currentInCart + quantity;
+                    jdbc.update("UPDATE cart_items SET quantity = ? WHERE id = ?", newQty, existing.get(0).get("id"));
+                } else {
+                    // Insert new
+                    jdbc.update("INSERT INTO cart_items (user_id, product_variant_id, quantity) VALUES (?, ?, ?)",
+                            accountId, variantId, quantity);
+                }
             }
 
             return ResponseEntity.ok(Map.of("success", true, "message", "Đã thêm vào giỏ hàng!"));
@@ -254,6 +261,66 @@ public class CartApiController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Lỗi mua lại đơn hàng: " + e.getMessage()));
+        }
+    }
+    // 6. MUA NGAY (Tạo giỏ hàng ảo)
+    @GetMapping("/buy-now")
+    public ResponseEntity<?> getBuyNowCart(@RequestParam("variantId") Integer variantId, 
+                                           @RequestParam("qty") Integer quantity, 
+                                           HttpSession session) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> account = (Map<String, Object>) session.getAttribute("account");
+
+        if (account == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Bạn chưa đăng nhập!"));
+        }
+
+        try {
+            // Lấy thông tin biến thể sản phẩm
+            String sql = "SELECT -1 as id, v.id as variant_id, p.id as product_id, " +
+                    "p.product_name, s.size_name, col.color_name, v.price as original_price, v.quantity as stock, " +
+                    "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
+                    "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                    "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
+                    "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                    "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price, " +
+                    "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url " +
+                    "FROM product_variants v " +
+                    "JOIN products p ON v.product_id = p.id " +
+                    "JOIN sizes s ON v.size_id = s.id " +
+                    "JOIN colors col ON v.color_id = col.id " +
+                    "WHERE v.id = ?";
+                    
+            List<Map<String, Object>> variants = jdbc.queryForList(sql, variantId);
+            if (variants.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Sản phẩm không tồn tại!"));
+            }
+            
+            Map<String, Object> item = new java.util.HashMap<>(variants.get(0));
+            int stock = ((Number) item.get("stock")).intValue();
+            
+            int finalQty = quantity;
+            if (finalQty > stock) finalQty = stock;
+            if (finalQty <= 0) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Sản phẩm đã hết hàng!"));
+            }
+            
+            item.put("quantity", finalQty);
+            item.put("id", -1); // Fake cart item id
+            
+            double price = ((Number) item.get("price")).doubleValue();
+            double totalPrice = price * finalQty;
+            
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "cartItems", List.of(item),
+                    "totalPrice", totalPrice
+            ));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi tạo giỏ hàng ảo: " + e.getMessage()));
         }
     }
 }

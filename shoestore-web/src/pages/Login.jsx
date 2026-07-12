@@ -9,6 +9,7 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [errors, setErrors] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
 
     useEffect(() => {
@@ -24,6 +25,24 @@ const Login = () => {
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
+        
+        let newErrors = {};
+        if (!email) {
+            newErrors.email = 'Vui lòng nhập email của bạn!';
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+            newErrors.email = 'Email không đúng định dạng!';
+        }
+        
+        if (!password) {
+            newErrors.password = 'Vui lòng nhập mật khẩu!';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+
+        setErrors({});
         
         try {
             const response = await api.post('/api/auth/login', {
@@ -84,29 +103,37 @@ const Login = () => {
 
                     {error && <div className="alert alert-danger p-2 text-center" style={{fontSize: '14px', borderRadius: '12px', marginBottom: '16px'}}>{error}</div>}
 
-                    <form onSubmit={handleLogin}>
+                    <form onSubmit={handleLogin} noValidate>
                         <div className="mb-3">
                             <label className="form-label">Email tài khoản</label>
                             <input 
                                 type="email" 
-                                className="form-control custom-input" 
+                                className={`form-control custom-input ${errors.email ? 'is-invalid border-danger' : ''}`}
+                                style={errors.email ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
                                 placeholder="NHẬP EMAIL CỦA BẠN"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    if(errors.email) setErrors({...errors, email: ''});
+                                }}
                             />
+                            {errors.email && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.email}</div>}
                         </div>
 
                         <div className="mb-3">
                             <label className="form-label">Mật khẩu</label>
                             <input 
                                 type="password" 
-                                className="form-control custom-input" 
+                                className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
+                                style={errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
                                 placeholder="NHẬP MẬT KHẨU"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    if(errors.password) setErrors({...errors, password: ''});
+                                }}
                             />
+                            {errors.password && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.password}</div>}
                         </div>
 
                         <div className="d-flex justify-content-between align-items-center mb-4">
@@ -116,7 +143,7 @@ const Login = () => {
                                     GHI NHỚ TÔI
                                 </label>
                             </div>
-                            <Link to="#" className="forgot-pass">QUÊN MẬT KHẨU?</Link>
+                            <Link to="/forgot-password" className="forgot-pass">QUÊN MẬT KHẨU?</Link>
                         </div>
 
                         <button type="submit" className="btn-login">
