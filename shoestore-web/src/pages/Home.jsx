@@ -512,6 +512,45 @@ const Home = () => {
                                     </div>
                                 );
                             })}
+                        <div className="brand-slider-wrapper reveal-item god-hidden">
+                            {canScrollLeft && (
+                                <button className="brand-slider-btn prev" onClick={() => scrollBrands('left')}>
+                                    <i className="fa-solid fa-chevron-left" />
+                                </button>
+                            )}
+                            
+                            <div className="brand-grid" ref={brandContainerRef}>
+                                {(brands.length > 0 ? brands : [
+                                    { id: 1, name: 'Nike' },
+                                    { id: 2, name: 'Adidas' },
+                                    { id: 3, name: 'New Balance' },
+                                    { id: 4, name: 'Vans' },
+                                    { id: 5, name: 'Converse' },
+                                ]).map((brand, idx) => {
+                                    const name = brand.brand_name || brand.brandName || brand.name || `Brand ${idx + 1}`;
+                                    const hasImg = brand.imageUrl && !brand.imageUrl.includes('localhost');
+                                    return (
+                                        <div key={brand.id || idx}
+                                             className="brand-grid-item"
+                                             style={{ animationDelay: `${idx * 0.12}s` }}>
+                                            <Link to={`/shop?brand=${encodeURIComponent(name)}`}
+                                                  className={`brand-card-inner text-decoration-none ${hasImg ? 'has-image' : ''}`}>
+                                                {hasImg && (
+                                                    <img src={imgUrl(brand.imageUrl)} alt={name} className="brand-img" />
+                                                )}
+                                                <span className="brand-card-name">{name.toUpperCase()}</span>
+                                                <span className="brand-card-explore">KHÁM PHÁ <i className="fa-solid fa-arrow-right" /></span>
+                                            </Link>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {canScrollRight && (
+                                <button className="brand-slider-btn next" onClick={() => scrollBrands('right')}>
+                                    <i className="fa-solid fa-chevron-right" />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -407,7 +407,7 @@ const Shop = () => {
                         <div className="animate__animated animate__fadeInDown">
                             <span className="shop-tag-accent">CỬA HÀNG CHÍNH THỨC</span>
                             <h1 className="shop-main-title font-oswald text-uppercase mt-3 mb-2">
-                                BỘ SƯU TẬP <span className="text-red-accent">GIÀY THỂ THAO</span>
+                                CỬA HÀNG
                             </h1>
                             <p className="shop-sub-desc mx-auto">
                                 Khám phá phong cách thời trang đường phố từ cộng đồng ShoeStore Việt Nam.
@@ -523,9 +523,9 @@ const Shop = () => {
                         <div className="col-lg-9 position-relative">
                             {/* Decorative Watermark background */}
                             <div className="position-absolute w-100 h-100 top-0 left-0 overflow-hidden d-none d-lg-block" style={{ pointerEvents: 'none', zIndex: 0, opacity: 0.015 }}>
-                                <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '10%', top: '5%', letterSpacing: '4px' }}>GIÀY THỂ THAO</div>
+                                <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '10%', top: '5%', letterSpacing: '4px' }}>SẢN PHẨM</div>
                                 <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', right: '5%', top: '40%', letterSpacing: '4px' }}>PHONG CÁCH</div>
-                                <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '15%', top: '75%', letterSpacing: '4px' }}>BỘ SƯU TẬP</div>
+                                <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '15%', top: '75%', letterSpacing: '4px' }}>CỬA HÀNG</div>
                             </div>
 
                             {/* AI RESULT ANALYSIS */}

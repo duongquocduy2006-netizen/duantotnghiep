@@ -172,24 +172,23 @@ const Header = () => {
         formData.append('file', file);
 
         try {
+            console.log('📸 Gửi ảnh lên /api/ai/image-search');
             const res = await api.post('/api/ai/image-search', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            if (res.data && res.data.success || res.status === 200) {
-                // If it fails structurally, the API returns a string message or success false, but wait, if it fails but returns 200 OK:
-                // From ImageSearchRestController: if success==false due to not match, it returns success: false. Wait, no: "success", false but it's ResponseEntity.ok. Let's redirect anyway or show toast.
+            console.log('📥 Response từ Backend:', res.data);
 
+            if (res.data && res.data.success || res.status === 200) {
                 if (res.data.success === false) {
                     window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.message || 'Lỗi nhận diện hình ảnh' }));
-                    // Navigate even when success false to show aiResult?
-                    // Let's only navigate if aiResult exists.
                     if (res.data.aiResult) {
                         const imageUrl = URL.createObjectURL(file);
-                        navigate('/image-search', {
+                        console.log('🔀 Chuyển hướng đến /shop với AI result');
+                        navigate('/shop', {
                             state: {
                                 aiResult: res.data.aiResult,
-                                products: res.data.products || [],
+                                aiResultProducts: res.data.products || [],
                                 imageUrl: imageUrl
                             }
                         });
@@ -200,10 +199,17 @@ const Header = () => {
                 const imageUrl = URL.createObjectURL(file);
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Phân tích thành công!' }));
 
-                navigate('/image-search', {
+                console.log('✅ Phân tích thành công! Trả về:', {
+                    brand: res.data.aiResult?.brand,
+                    color: res.data.aiResult?.color,
+                    category: res.data.aiResult?.category,
+                    productCount: res.data.products?.length || 0
+                });
+
+                navigate('/shop', {
                     state: {
                         aiResult: res.data.aiResult,
-                        products: res.data.products,
+                        aiResultProducts: res.data.products,
                         imageUrl: imageUrl
                     }
                 });
@@ -211,7 +217,7 @@ const Header = () => {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Lỗi nhận diện hình ảnh' }));
             }
         } catch (err) {
-            console.error(err);
+            console.error('❌ Lỗi AI search:', err);
             window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Có lỗi xảy ra khi gọi AI nhận diện' }));
         } finally {
             setIsUploadingImg(false);
