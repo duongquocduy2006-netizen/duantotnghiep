@@ -235,7 +235,7 @@ const AdminCategories = () => {
                                             <button
                                                 className="btn-icon-action"
                                                 style={{ color: 'var(--accent-red)' }}
-                                                onClick={() => handleDelete(cate.id, cate.name)}
+                                                onClick={() => triggerDeleteConfirm(cate.id, cate.name)}
                                                 title="Xóa"
                                             >
                                                 <i className="bi bi-trash"></i>

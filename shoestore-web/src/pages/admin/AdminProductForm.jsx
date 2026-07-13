@@ -37,6 +37,8 @@ const AdminProductForm = () => {
     const [colors, setColors] = useState([]);
 
     const [images, setImages] = useState([]); // List of { id, url, isPrimary }
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [savedId, setSavedId] = useState(null);
 
     // Fetch form metadata (and edit details if relevant)
     const loadFormData = async () => {
@@ -102,7 +104,7 @@ const AdminProductForm = () => {
                 }
             } catch (err) {
                 console.error("Lỗi xóa ảnh:", err);
-                alert("Không thể xóa ảnh này.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể xóa ảnh này.' }));
             }
         }
     };
@@ -111,7 +113,7 @@ const AdminProductForm = () => {
         const file = e.target.files[0];
         if (!file) return;
         if (!id) {
-            alert("Vui lòng tạo sản phẩm trước khi thêm ảnh vào thư viện.");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Vui lòng tạo sản phẩm trước khi thêm ảnh vào thư viện.' }));
             return;
         }
 
@@ -125,7 +127,7 @@ const AdminProductForm = () => {
                 }
             } catch (err) {
                 console.error("Lỗi upload ảnh:", err);
-                alert("Không thể tải ảnh lên.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể tải ảnh lên.' }));
             }
         };
         reader.readAsDataURL(file);
@@ -139,7 +141,7 @@ const AdminProductForm = () => {
             }
         } catch (err) {
             console.error("Lỗi đặt ảnh chính:", err);
-            alert("Không thể đặt ảnh chính.");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể đặt ảnh chính.' }));
         }
     };
 
@@ -175,15 +177,15 @@ const AdminProductForm = () => {
                     await api.post('/api/products/variant/save', variantPayload);
                 }
 
-                alert(isEdit ? 'Cập nhật sản phẩm thành công!' : 'Tạo mới sản phẩm thành công!');
-                navigate(`/admin/products/detail/${savedProductId}`);
+                setSavedId(savedProductId);
+                setShowSuccessModal(true);
             }
         } catch (err) {
             console.error("Lỗi lưu sản phẩm:", err);
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể lưu sản phẩm. Vui lòng kiểm tra lại.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
             setSaving(false);
         }
@@ -394,6 +396,30 @@ const AdminProductForm = () => {
                     </div>
                 </form>
             </div>
+
+            {showSuccessModal && (
+                <div className="admin-confirm-overlay">
+                    <div className="admin-confirm-box success animate__animated animate__zoomIn">
+                        <div className="admin-confirm-icon">
+                            <i className="bi bi-check-circle-fill"></i>
+                        </div>
+                        <h4 className="admin-confirm-title">
+                            {isEdit ? 'Cập nhật thành công!' : 'Tạo mới thành công!'}
+                        </h4>
+                        <p className="admin-confirm-message">
+                            {isEdit ? 'Sản phẩm đã được cập nhật thành công vào hệ thống!' : 'Sản phẩm mới đã được tạo thành công!'}
+                        </p>
+                        <div className="admin-confirm-actions">
+                            <button className="admin-btn-confirm-ok" onClick={() => {
+                                setShowSuccessModal(false);
+                                navigate(`/admin/products/detail/${savedId}`);
+                            }}>
+                                ĐỒNG Ý
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 };

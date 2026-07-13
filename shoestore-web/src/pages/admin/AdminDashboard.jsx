@@ -324,7 +324,7 @@ const AdminDashboard = () => {
                     <h2 className="page-title">TỔNG QUAN KINH DOANH</h2>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div className="btn-group-presets" style={{ display: 'flex', gap: '5px' }}>
+                    <div className="btn-group-presets">
                         <button type="button" className={`btn-preset ${selectedPreset === 'today' ? 'active' : ''}`} onClick={() => setPreset('today')}>Hôm nay</button>
                         <button type="button" className={`btn-preset ${selectedPreset === '7days' ? 'active' : ''}`} onClick={() => setPreset('7days')}>7 ngày</button>
                         <button type="button" className={`btn-preset ${selectedPreset === '30days' ? 'active' : ''}`} onClick={() => setPreset('30days')}>30 ngày</button>

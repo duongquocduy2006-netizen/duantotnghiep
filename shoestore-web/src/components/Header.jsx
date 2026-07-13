@@ -55,9 +55,11 @@ const Header = () => {
             try {
                 const catRes = await api.get('/api/categories');
                 if (catRes.data && catRes.data.success) {
-                    setCategories(catRes.data.categories || []);
+                    const activeCategories = (catRes.data.categories || []).filter(c => c.active !== false);
+                    setCategories(activeCategories);
                 } else if (Array.isArray(catRes.data)) {
-                    setCategories(catRes.data);
+                    const activeCategories = catRes.data.filter(c => c.active !== false);
+                    setCategories(activeCategories);
                 }
             } catch (err) {
                 console.error("Lỗi tải danh mục ở header:", err);
@@ -268,41 +270,27 @@ const Header = () => {
                                                 <div className="mega-column">
                                                     <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Thương Hiệu</h5>
                                                     <ul className="list-unstyled">
-                                                        {brands.length > 0 ? (
-                                                            brands.map(brand => {
-                                                                const bName = brand.name || brand.brand_name || brand.brandName || '';
-                                                                return (
-                                                                    <li className="mb-2" key={brand.id}>
-                                                                        <Link to={`/shop?brand=${encodeURIComponent(bName)}`}>{bName}</Link>
-                                                                    </li>
-                                                                );
-                                                            })
-                                                        ) : (
-                                                            <>
-                                                                <li className="mb-2"><Link to="/shop?brand=Nike">Nike</Link></li>
-                                                                <li className="mb-2"><Link to="/shop?brand=Adidas">Adidas</Link></li>
-                                                            </>
-                                                        )}
+                                                        {brands.map(brand => {
+                                                            const bName = brand.name || brand.brand_name || brand.brandName || '';
+                                                            return (
+                                                                <li className="mb-2" key={brand.id}>
+                                                                    <Link to={`/shop?brand=${encodeURIComponent(bName)}`}>{bName}</Link>
+                                                                </li>
+                                                            );
+                                                        })}
                                                     </ul>
                                                 </div>
                                                 <div className="mega-column">
                                                     <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Dòng Sản Phẩm</h5>
                                                     <ul className="list-unstyled">
-                                                        {categories.length > 0 ? (
-                                                            categories.map(cat => {
-                                                                const cName = cat.name || cat.category_name || cat.categoryName || '';
-                                                                return (
-                                                                    <li className="mb-2" key={cat.id}>
-                                                                        <Link to={`/shop?category=${cat.id}`}>{cName}</Link>
-                                                                    </li>
-                                                                );
-                                                            })
-                                                        ) : (
-                                                            <>
-                                                                <li className="mb-2"><Link to="/shop?category=Sneaker">Sneaker</Link></li>
-                                                                <li className="mb-2"><Link to="/shop?category=Running">Running</Link></li>
-                                                            </>
-                                                        )}
+                                                        {categories.map(cat => {
+                                                            const cName = cat.name || cat.category_name || cat.categoryName || '';
+                                                            return (
+                                                                <li className="mb-2" key={cat.id}>
+                                                                    <Link to={`/shop?category=${cat.id}`}>{cName}</Link>
+                                                                </li>
+                                                            );
+                                                        })}
                                                     </ul>
                                                 </div>
                                             </div>

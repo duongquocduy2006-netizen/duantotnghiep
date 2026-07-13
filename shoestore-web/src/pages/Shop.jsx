@@ -188,8 +188,13 @@ const Shop = () => {
                 api.get('/api/categories'),
                 api.get('/api/brands')
             ]);
-            if (catRes.data && catRes.data.success) setCategories(catRes.data.categories || []);
-            else if (Array.isArray(catRes.data)) setCategories(catRes.data);
+            if (catRes.data && catRes.data.success) {
+                const activeCategories = (catRes.data.categories || []).filter(c => c.active !== false);
+                setCategories(activeCategories);
+            } else if (Array.isArray(catRes.data)) {
+                const activeCategories = catRes.data.filter(c => c.active !== false);
+                setCategories(activeCategories);
+            }
 
             if (brandRes.data && brandRes.data.success) {
                 const activeBrands = (brandRes.data.brands || []).filter(b => b.active !== false);

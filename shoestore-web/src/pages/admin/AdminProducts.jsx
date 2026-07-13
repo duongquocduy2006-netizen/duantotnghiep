@@ -175,11 +175,11 @@ const AdminProducts = () => {
                         <table className="data-table">
                             <thead>
                                 <tr>
-                                    <th style={{ width: '40%' }}>Sản Phẩm</th>
-                                    <th>Phân Loại</th>
-                                    <th>Kho & Giá</th>
-                                    <th>Trạng Thái</th>
-                                    <th style={{ textAlign: 'right' }}>Thao Tác</th>
+                                    <th style={{ width: '35%' }}>Sản Phẩm</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Phân Loại</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Kho & Giá</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Trạng Thái</th>
+                                    <th style={{ textAlign: 'right', whiteSpace: 'nowrap', width: '120px' }}>Thao Tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -187,7 +187,7 @@ const AdminProducts = () => {
                                     <tr key={p.id}>
                                         <td>
                                             <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                                <div className="table-img-box" style={{ width: '60px', height: '70px', border: '1.5px solid #000', flexShrink: 0 }}>
+                                                <div className="table-img-box" style={{ width: '60px', height: '70px', flexShrink: 0 }}>
                                                     <img
                                                         src={getImageUrl(p.imageUrl)}
                                                         alt={p.productName}
@@ -203,7 +203,9 @@ const AdminProducts = () => {
                                                         whiteSpace: 'nowrap',
                                                         overflow: 'hidden',
                                                         textOverflow: 'ellipsis',
-                                                        textTransform: 'uppercase'
+                                                        textTransform: 'uppercase',
+                                                        maxWidth: '220px',
+                                                        display: 'inline-block'
                                                     }} title={p.productName}>
                                                         {p.productName}
                                                     </Link>
@@ -215,7 +217,7 @@ const AdminProducts = () => {
                                         </td>
 
                                         <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start', whiteSpace: 'nowrap' }}>
                                                 <span style={{ fontSize: '13px', fontWeight: 800, color: '#000', fontFamily: 'Oswald', textTransform: 'uppercase' }}>
                                                     {p.categoryName}
                                                 </span>
@@ -226,20 +228,23 @@ const AdminProducts = () => {
                                         </td>
 
                                         <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start' }}>
-                                                <span className="product-price-item" style={{ fontWeight: 800, fontSize: '16px', color: '#000' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start', whiteSpace: 'nowrap' }}>
+                                                <span className="product-price-item" style={{ fontWeight: 800, fontSize: '16px', color: '#000', whiteSpace: 'nowrap' }}>
                                                     {p.price != null ? `${p.price.toLocaleString()} ₫` : 'N/A'}
                                                 </span>
                                                 <span className="variant-badge-modern" style={{
-                                                    padding: '2px 8px',
-                                                    border: '1.5px solid #000',
-                                                    borderRadius: '0px',
-                                                    color: '#000',
-                                                    fontSize: '10px',
-                                                    fontWeight: '800',
+                                                    padding: '4px 10px',
+                                                    background: 'rgba(229, 9, 20, 0.06)',
+                                                    border: '1px solid rgba(229, 9, 20, 0.15)',
+                                                    borderRadius: '20px',
+                                                    color: 'var(--accent-red)',
+                                                    fontSize: '11px',
+                                                    fontWeight: '700',
                                                     display: 'inline-flex',
                                                     alignItems: 'center',
-                                                    gap: '4px'
+                                                    gap: '5px',
+                                                    whiteSpace: 'nowrap',
+                                                    marginTop: '4px'
                                                 }}>
                                                     <i className="bi bi-box-seam"></i> {p.variantCount} BIẾN THỂ
                                                 </span>
@@ -248,11 +253,11 @@ const AdminProducts = () => {
 
                                         <td>
                                             {p.status === 1 ? (
-                                                <span className="status-badge-modern">
+                                                <span className="status-badge-modern" style={{ whiteSpace: 'nowrap' }}>
                                                     <div className="status-dot"></div> ĐANG BÁN
                                                 </span>
                                             ) : (
-                                                <span className="status-badge-modern inactive">
+                                                <span className="status-badge-modern inactive" style={{ whiteSpace: 'nowrap' }}>
                                                     <div className="status-dot"></div> TẠM ẨN
                                                 </span>
                                             )}

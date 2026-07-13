@@ -248,11 +248,11 @@ const AdminCustomers = () => {
                         <table className="data-table">
                             <thead>
                                 <tr>
-                                    <th>Khách Hàng</th>
-                                    <th>Phân Loại</th>
-                                    <th>Chi Tiêu</th>
-                                    <th>Trạng Thái</th>
-                                    <th style={{ textAlign: 'right' }}>HÀNH ĐỘNG</th>
+                                    <th style={{ width: '35%' }}>Khách Hàng</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Phân Loại</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Chi Tiêu</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Trạng Thái</th>
+                                    <th style={{ textAlign: 'right', whiteSpace: 'nowrap', width: '180px' }}>HÀNH ĐỘNG</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -260,9 +260,7 @@ const AdminCustomers = () => {
                                     <tr key={cust.id} style={cust.status === 0 ? { backgroundColor: '#fcf8f8' } : {}}>
                                         <td>
                                             <div className="customer-profile">
-                                                <div className="avatar"
-                                                    style={cust.status === 0 ? { color: '#000', borderColor: '#333', backgroundColor: '#fff' } : { backgroundColor: '#fff', color: '#000' }}
-                                                >
+                                                <div className="avatar">
                                                     {getInitials(cust.fullName)}
                                                 </div>
                                                 <div className="customer-info" style={{ marginLeft: '15px' }}>
@@ -292,15 +290,18 @@ const AdminCustomers = () => {
                                                 <span className="tier-badge"
                                                     style={{
                                                         color: cust.rankColor,
-                                                        border: `1.5px solid ${cust.rankColor}`,
-                                                        background: '#fff',
-                                                        padding: '2px 8px',
-                                                        fontWeight: 800,
-                                                        fontSize: '10px',
+                                                        border: `1px solid ${cust.rankColor}2a`,
+                                                        background: `${cust.rankColor}0a`,
+                                                        padding: '3px 8px',
+                                                        borderRadius: '20px',
+                                                        fontWeight: 700,
+                                                        fontSize: '10.5px',
                                                         textTransform: 'uppercase',
                                                         display: 'inline-flex',
                                                         alignItems: 'center',
-                                                        gap: '4px'
+                                                        gap: '4px',
+                                                        marginTop: '2px',
+                                                        whiteSpace: 'nowrap'
                                                     }}
                                                 >
                                                     <i className="bi bi-star-fill"></i>
@@ -443,15 +444,15 @@ const AdminCustomers = () => {
             <style>{`
 
                 .customer-profile { display: flex; align-items: center; }
-                .avatar { width: 45px; height: 45px; border: 1px solid #000; border-radius: 0px; color: #000 !important; display: flex; align-items: center; justify-content: center; font-family: 'Oswald'; font-weight: 800; font-size: 16px; background-color: #fff !important; flex-shrink: 0; }
+                .avatar { width: 45px; height: 45px; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 50%; color: #000 !important; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 15px; background-color: #f1f5f9 !important; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03); }
                 .customer-name { display: block; font-weight: 800; color: #000; font-size: 16px; margin-bottom: 2px; }
                 .customer-email, .customer-phone { font-size: 12px; color: #555; display: block; font-weight: 600; display: flex; align-items: center; gap: 6px; }
                 .customer-phone { margin-top: 2px; }
 
-                .badge-role { font-size: 11px; font-weight: 800; padding: 2px 8px; font-family: 'Oswald'; text-transform: uppercase; border: 1px solid #000; border-radius: 0px; display: inline-block; }
-                .role-admin { background: #e50914; color: #fff; }
-                .role-shipper { background: #000; color: #fff; }
-                .role-user { background: #fff; color: #000; }
+                .badge-role { font-size: 10px; font-weight: 700; padding: 2px 6px; font-family: 'Inter', sans-serif; text-transform: uppercase; border: none; border-radius: 4px; display: inline-block; letter-spacing: 0.5px; }
+                .role-admin { background: rgba(229, 9, 20, 0.1); color: #e50914; }
+                .role-shipper { background: rgba(15, 23, 42, 0.1); color: #0f172a; }
+                .role-user { background: rgba(100, 116, 139, 0.1); color: #64748b; }
                 
                 .total-spent { font-size: 15px; font-weight: 800; }
 
@@ -459,16 +460,16 @@ const AdminCustomers = () => {
                 .pagination { margin-top: 20px; font-weight: 700; color: #000; padding: 0 20px 20px 20px; }
                 
                 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(2px); z-index: 2000; align-items: center; justify-content: center; display: flex; }
-                .modal-box { padding: 35px; border: 1px solid #000; border-radius: 0px; box-shadow: 10px 10px 0px rgba(0,0,0,1); animation: slideUp 0.25s ease-out; background: #fff; width: 500px; max-width: 95vw; }
+                .modal-box { padding: 35px; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.12); animation: slideUp 0.25s ease-out; background: #fff; width: 500px; max-width: 95vw; }
                 .modal-title { font-family: 'Oswald'; font-size: 22px; color: #000; margin-bottom: 24px; letter-spacing: 0.5px; font-weight: 700; border-bottom: 1px solid #ffe3e3; padding-bottom: 14px; }
                 .form-group { margin-bottom: 25px; display: flex; flex-direction: column; }
                 .form-label { font-size: 13px; color: #000; font-weight: 800; font-family: 'Oswald'; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
-                .form-input { background: #fff; border: 1px solid #000; color: #000; padding: 12px 14px; outline: none; font-size: 14px; font-weight: 500; border-radius: 0px; width: 100%; box-sizing: border-box; transition: 0.2s; }
+                .form-input { background: #fff; border: 1px solid rgba(0, 0, 0, 0.12); color: #000; padding: 12px 14px; outline: none; font-size: 14px; font-weight: 500; border-radius: 8px; width: 100%; box-sizing: border-box; transition: 0.2s; }
                 .form-input:focus { border-color: var(--accent-red); }
                 .modal-actions { display: flex; gap: 15px; }
 
-                .btn-cancel { border: 1px solid #000; background: #fff; color: #000; cursor: pointer; padding: 10px 20px; border-radius: 0px; font-family: 'Oswald'; font-weight: 800; }
-                .btn-cancel:hover { background: #000; color: #fff; }
+                .btn-cancel { border: 1px solid rgba(0, 0, 0, 0.12); background: #fff; color: #555; cursor: pointer; padding: 10px 20px; border-radius: 8px; font-family: 'Oswald'; font-weight: 800; transition: all 0.2s ease; }
+                .btn-cancel:hover { background: #f4f5f7; color: #000; border-color: rgba(0,0,0,0.2); }
                 .btn-neon { transition: 0.2s; }
                 .btn-neon:hover { filter: brightness(0.9); }
 

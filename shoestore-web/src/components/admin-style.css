@@ -484,6 +484,45 @@
     box-shadow: 0 6px 16px rgba(204, 0, 0, 0.3) !important;
 }
 
+.btn-group-presets {
+    display: flex;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    padding: 3px;
+    height: 40px;
+    border-radius: 8px;
+    gap: 2px;
+}
+
+.btn-preset {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #555555;
+    padding: 0 16px;
+    height: 100%;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.btn-preset:hover {
+    color: #000000;
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.btn-preset.active {
+    background: var(--accent-red);
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(204, 0, 0, 0.2);
+}
+
 .date-range-picker-admin {
     display: flex;
     align-items: center;
@@ -2003,4 +2042,147 @@ table tr:hover td {
 .pos-catalog {
     background: transparent !important;
     border: none !important;
+}
+
+/* --- ADMIN CONFIRM & SUCCESS MODAL --- */
+.admin-confirm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+.admin-confirm-box {
+    background: #fff;
+    border: 1.5px solid #000;
+    border-radius: 24px;
+    padding: 36px 32px;
+    width: 90%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    border-bottom: 4px solid #e50914;
+}
+.admin-confirm-box.success {
+    border-bottom: 4px solid #198754;
+}
+.admin-confirm-icon {
+    width: 72px;
+    height: 72px;
+    background: #fef2f2;
+    color: #e50914;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 20px;
+}
+.admin-confirm-box.success .admin-confirm-icon {
+    background: #e6f4ea;
+    color: #198754;
+}
+.admin-confirm-title {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    text-transform: uppercase;
+    color: #0f172a;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+}
+.admin-confirm-message {
+    font-size: 14.5px;
+    color: #475569;
+    line-height: 1.6;
+    margin-bottom: 28px;
+    font-weight: 500;
+}
+.admin-confirm-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+.admin-btn-confirm-cancel {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex: 1;
+}
+.admin-btn-confirm-cancel:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+.admin-btn-confirm-ok {
+    background: #e50914;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex: 1;
+    box-shadow: 0 4px 6px -1px rgba(229, 9, 20, 0.2);
+}
+.admin-btn-confirm-ok:hover {
+    background: #b8070f;
+    box-shadow: 0 10px 15px -3px rgba(229, 9, 20, 0.3);
+}
+.admin-btn-confirm-ok.success {
+    background: #198754;
+    box-shadow: 0 4px 6px -1px rgba(25, 135, 84, 0.2);
+}
+.admin-btn-confirm-ok.success:hover {
+    background: #146c43;
+    box-shadow: 0 10px 15px -3px rgba(25, 135, 84, 0.3);
+}
+
+/* --- MODERN ROUNDED IMAGE & BUTTONS --- */
+.table-img-box {
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03) !important;
+    background: #ffffff !important;
+    overflow: hidden !important;
+}
+.table-img-box img {
+    object-fit: contain !important;
+    padding: 4px !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+.btn-icon-action {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    background: #ffffff !important;
+    color: #555555 !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-left: 8px !important;
+    text-decoration: none !important;
+}
+.btn-icon-action:hover {
+    border-color: var(--accent-red) !important;
+    color: var(--accent-red) !important;
+    background: #fff5f5 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.15) !important;
 }

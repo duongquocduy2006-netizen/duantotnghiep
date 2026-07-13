@@ -230,7 +230,7 @@ const AdminBrands = () => {
                                 {filteredBrands.map((brand) => (
                                     <tr key={brand.id}>
                                         <td>
-                                            <div className="table-img-box" style={{ width: '80px', height: '50px', border: '1.5px solid #000', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', overflow: 'hidden' }}>
+                                            <div className="table-img-box" style={{ width: '80px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', overflow: 'hidden' }}>
                                                 <img
                                                     src={getImageUrl(brand.imageUrl)}
                                                     alt={brand.name}
@@ -268,7 +268,7 @@ const AdminBrands = () => {
                                             <button
                                                 className="btn-icon-action"
                                                 style={{ color: 'var(--accent-red)' }}
-                                                onClick={() => handleDelete(brand.id, brand.name)}
+                                                onClick={() => triggerDeleteConfirm(brand.id, brand.name)}
                                                 title="Xóa"
                                             >
                                                 <i className="bi bi-trash"></i>

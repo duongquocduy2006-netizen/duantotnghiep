@@ -107,13 +107,13 @@ const AdminRanks = () => {
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th style={{ width: '100px' }}>ID</th>
-                                <th>TÊN HẠNG</th>
-                                <th>ĐIỂM TỐI THIỂU</th>
-                                <th>CHIẾT KHẤU GIẢM</th>
-                                <th>FREE SHIP</th>
-                                <th>ƯU ĐÃI VOUCHER</th>
-                                <th style={{ textAlign: 'right' }}>HÀNH ĐỘNG</th>
+                                <th style={{ width: '100px', whiteSpace: 'nowrap' }}>ID</th>
+                                <th style={{ whiteSpace: 'nowrap' }}>TÊN HẠNG</th>
+                                <th style={{ whiteSpace: 'nowrap' }}>ĐIỂM TỐI THIỂU</th>
+                                <th style={{ whiteSpace: 'nowrap' }}>CHIẾT KHẤU GIẢM</th>
+                                <th style={{ whiteSpace: 'nowrap' }}>FREE SHIP</th>
+                                <th style={{ whiteSpace: 'nowrap' }}>ƯU ĐÃI VOUCHER</th>
+                                <th style={{ textAlign: 'right', whiteSpace: 'nowrap', width: '150px' }}>HÀNH ĐỘNG</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -134,24 +134,25 @@ const AdminRanks = () => {
                                     <td className="item-id">#RNK-{r.id}</td>
                                     <td>
                                         <span className="rank-badge-item" style={{
-                                            padding: '6px 16px',
-                                            border: `1.5px solid #000`,
-                                            borderRadius: '0px',
-                                            color: '#fff',
-                                            background: r.color,
+                                            padding: '4px 12px',
+                                            border: `1px solid ${r.color}2a`,
+                                            borderRadius: '20px',
+                                            color: r.color,
+                                            background: `${r.color}0a`,
                                             fontSize: '11px',
-                                            fontWeight: '800',
+                                            fontWeight: '700',
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             gap: '6px',
-                                            textTransform: 'uppercase'
+                                            textTransform: 'uppercase',
+                                            whiteSpace: 'nowrap'
                                         }}>
                                             <i className="bi bi-star-fill" style={{ fontSize: '10px' }}></i> {r.name}
                                         </span>
                                     </td>
-                                    <td style={{ fontWeight: 800, color: '#111' }}>{r.points} điểm</td>
-                                    <td style={{ fontWeight: 800, color: 'var(--accent-red)' }}>-{r.discount}%</td>
-                                    <td>
+                                    <td style={{ fontWeight: 800, color: '#111', whiteSpace: 'nowrap' }}>{r.points} điểm</td>
+                                    <td style={{ fontWeight: 800, color: 'var(--accent-red)', whiteSpace: 'nowrap' }}>-{r.discount}%</td>
+                                    <td style={{ whiteSpace: 'nowrap' }}>
                                         {r.freeShipping ? (
                                             <span className="badge-free-ship-modern">
                                                 <i className="bi bi-truck"></i> FREE SHIP
@@ -169,136 +170,56 @@ const AdminRanks = () => {
                                             {r.vouchers}
                                         </div>
                                     </td>
-                                    <td style={{ textAlign: 'right' }}>
+                                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                                         <Link to={`/admin/ranks/edit/${r.id}`} className="btn-icon-action" title="Sửa"><i className="bi bi-pencil-square"></i></Link>
                                         <button className="btn-icon-action" style={{ color: 'var(--accent-red)' }} title="Xóa" onClick={() => handleDelete(r.id, r.name)}><i className="bi bi-trash"></i></button>
                                     </td>
-                                </tr >
+                                </tr>
                             ))}
-                        </tbody >
-                    </table >
-                </div >
+                        </tbody>
+                    </table>
+                </div>
 
                 <style>{`
                 .item-id { font-weight: 800; color: #555; }
                 .badge-free-ship-modern {
                     background: #ebfbee;
                     color: #2b8a3e;
-                    border: 1px solid #b2f2bb;
+                    border: 1px solid rgba(43, 138, 62, 0.15);
                     padding: 4px 10px;
-                    border-radius: 0px;
+                    border-radius: 20px;
                     font-size: 11px;
-                    font-weight: 800;
+                    font-weight: 700;
                     display: inline-flex;
                     alignItems: center;
                     gap: 4px;
                 }
-                }
-
-
-                .modal-overlay {
-                position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(2px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-                }
-            .modal-box {
-                background: #fff;
-            border-radius: 0px;
-            width: 90%;
-            max-width: 480px;
-            padding: 35px;
-            box-shadow: 10px 10px 0px rgba(0,0,0,1);
-            border: 1px solid rgba(0,0,0,1);
-            animation: slideUp 0.25s ease-out;
-                }
-            .modal-title {
-                font - family: 'Oswald', sans-serif;
-            font-size: 22px;
-            font-weight: 800;
-            color: #000;
-            margin-top: 0;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            border-bottom: 1px solid #ffe3e3;
-            padding-bottom: 14px;
-                }
-            .modal-body {
-                font - size: 14px;
-            color: #334155;
-            margin-bottom: 24px;
-            line-height: 1.6;
-            font-weight: 500;
-                }
-            .modal-actions {
-                display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-                }
-            .btn-cancel {
-                padding: 10px 20px;
-            font-family: 'Oswald', sans-serif;
-            font-weight: 800;
-            text-transform: uppercase;
-            font-size: 13px;
-            border-radius: 0px;
-            cursor: pointer;
-            transition: 0.2s;
-            background: transparent;
-            border: 1px solid #000;
-            color: #000;
-                }
-            .btn-cancel:hover {
-                background: #000;
-            color: #fff;
-                }
-            .btn-neon {
-                padding: 10px 20px;
-            font-family: 'Oswald', sans-serif;
-            font-weight: 800;
-            text-transform: uppercase;
-            font-size: 13px;
-            border-radius: 0px;
-            cursor: pointer;
-            transition: 0.2s;
-            background: var(--accent-red);
-            border: 1px solid #000;
-            color: #fff;
-                }
-            .btn-neon:hover {
-                filter: brightness(0.9);
-                }
-            @keyframes slideUp {from {transform: translateY(20px); opacity: 0; } to {transform: translateY(0); opacity: 1; } }
                 `}</style>
-            </div >
+            </div>
 
             {deleteConfirm && (
-                <div className="modal-overlay">
-                    <div className="modal-box">
-                        <h4 className="modal-title"><i className="bi bi-exclamation-triangle"></i> Xác Nhận Xóa Hạng</h4>
-                        <div className="modal-body">
-                            Bạn có chắc chắn muốn xóa hạng thành viên <strong>"{deleteConfirm.name}"</strong>?
-                            Tất cả tài khoản thuộc hạng này sẽ được chuyển về hạng Đồng mặc định.
+                <div className="admin-confirm-overlay">
+                    <div className="admin-confirm-box">
+                        <div className="admin-confirm-icon">
+                            <i className="bi bi-exclamation-triangle"></i>
                         </div>
-                        <div className="modal-actions">
-                            <button className="btn-cancel" onClick={() => setDeleteConfirm(null)}>
+                        <h4 className="admin-confirm-title">Xác Nhận Xóa Hạng</h4>
+                        <p className="admin-confirm-message">
+                            Bạn có chắc chắn muốn xóa hạng thành viên <strong>"{deleteConfirm.name}"</strong>?<br/>
+                            Tất cả tài khoản thuộc hạng này sẽ được chuyển về hạng Đồng mặc định.
+                        </p>
+                        <div className="admin-confirm-actions">
+                            <button className="admin-btn-confirm-cancel" onClick={() => setDeleteConfirm(null)}>
                                 HỦY BỎ
                             </button>
-                            <button className="btn-neon" onClick={handleConfirmDelete}>
+                            <button className="admin-btn-confirm-ok" onClick={handleConfirmDelete}>
                                 XÁC NHẬN XÓA
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-        </AdminLayout >
+        </AdminLayout>
     );
 };
 
