@@ -512,6 +512,7 @@ const Home = () => {
                                     </div>
                                 );
                             })}
+                        </div>
                         <div className="brand-slider-wrapper reveal-item god-hidden">
                             {canScrollLeft && (
                                 <button className="brand-slider-btn prev" onClick={() => scrollBrands('left')}>
