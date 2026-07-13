@@ -1,15 +1,4 @@
 /* --- ADMIN DESIGN SYSTEM --- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
-.admin-wrapper,
-.admin-wrapper *,
-.admin-wrapper button,
-.admin-wrapper input,
-.admin-wrapper select,
-.admin-wrapper textarea {
-    font-family: 'Inter', sans-serif !important;
-}
-
 :root {
     --bg-body: #f4f5f7;
     --bg-card: #ffffff;
@@ -28,6 +17,7 @@
     min-height: 100vh;
     background-color: var(--bg-body);
     color: var(--text-main);
+    font-family: 'Inter', sans-serif;
 }
 
 /* --- SIDEBAR --- */
@@ -190,6 +180,7 @@
 
 .main-content.expanded {
     margin-left: 80px;
+    width: calc(100% - 80px);
 }
 
 .logout-wrapper {
@@ -225,11 +216,12 @@
 .main-content {
     flex-grow: 1;
     margin-left: 260px;
+    width: calc(100% - 260px);
     display: flex;
     flex-direction: column;
     min-width: 0;
     position: relative;
-    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .page-header-admin {
@@ -243,8 +235,10 @@
     position: sticky;
     top: 0;
     width: 100%;
+    max-width: 100%;
     z-index: 1001;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    box-sizing: border-box;
 }
 
 .page-header-admin .header-left {
@@ -407,6 +401,9 @@
 /* --- CONTENT BODY & DASHBOARD CARDS --- */
 .content-body {
     padding: 15px 40px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
 }
 
 .dashboard-actions {
@@ -588,7 +585,7 @@
     border-radius: 6px;
     font-size: 11px;
     font-weight: 700;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     line-height: 1;
 }
 
@@ -712,7 +709,7 @@
     background: #fff;
     border: 1.5px solid #e2e8f0;
     border-bottom: none;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
     transition: transform 0.3s ease, background 0.3s, box-shadow 0.3s;
     position: relative;
 }
@@ -730,7 +727,6 @@
     background: #fff;
     box-shadow: 6px -6px 0 var(--accent-red);
 }
-
 .bar-group:hover .bar-max {
     background: var(--accent-red);
 }
@@ -1175,14 +1171,14 @@ tr:hover .avatar {
     border: 1.5px solid #dadce0;
     border-radius: 24px;
     color: #3c4043;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     outline: none;
     transition: 0.2s;
 }
 
 .search-input:focus {
     border-color: #1a73e8;
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    box-shadow: 0 0 0 3px rgba(26,115,232,0.1);
 }
 
 .filter-select {
@@ -1268,7 +1264,7 @@ tr:hover .avatar {
     align-items: center;
     gap: 8px;
     border-radius: 8px;
-    box-shadow: 0 4px 14px rgba(204, 0, 0, 0.25);
+    box-shadow: 0 4px 14px rgba(204,0,0,0.25);
 }
 
 .btn-neon:hover {
@@ -1295,7 +1291,7 @@ tr:hover .avatar {
     border: 1px solid #e2e8f0;
     border-radius: 16px;
     position: relative;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
     max-width: 90%;
 }
 
@@ -1341,13 +1337,13 @@ tr:hover .avatar {
     outline: none;
     transition: 0.2s;
     box-sizing: border-box;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     border-radius: 8px;
 }
 
 .form-input:focus {
     border-color: #1a73e8;
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    box-shadow: 0 0 0 3px rgba(26,115,232,0.1);
     background: #fff;
 }
 
@@ -1571,7 +1567,7 @@ tr:hover .avatar {
     color: #3c4043 !important;
     border-radius: 24px !important;
     padding: 10px 16px !important;
-    font-family: 'Poppins', sans-serif !important;
+    font-family: 'Inter', sans-serif !important;
     outline: none !important;
     font-size: 14px !important;
     font-weight: 400 !important;
@@ -1597,7 +1593,7 @@ tr:hover .avatar {
 .search-input:focus,
 .filter-select:focus {
     border-color: #1a73e8 !important;
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1) !important;
+    box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important;
     background: #fff !important;
 }
 
@@ -1815,12 +1811,12 @@ table tr:hover td {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
 }
 
-.admin-settings-page input:checked+.slider {
+.admin-settings-page input:checked + .slider {
     background-color: var(--accent-red) !important;
     box-shadow: 0 0 10px rgba(204, 0, 0, 0.3) !important;
 }
 
-.admin-settings-page input:checked+.slider:before {
+.admin-settings-page input:checked + .slider:before {
     background-color: #ffffff !important;
 }
 

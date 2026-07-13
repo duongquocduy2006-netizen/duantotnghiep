@@ -39,16 +39,13 @@ public class ImageSearchController {
 
             ImageSearchResult aiResult = imageSearchService.analyzeImage(file);
             String brand = aiResult.getBrand();
-
-            if (brand == null || brand.isEmpty()) {
-                model.addAttribute("error",
-                        "AI không thể nhận diện được thương hiệu từ ảnh (ảnh mờ hoặc không có logo rõ). Vui lòng thử lại ảnh khác!");
-                return "image-search";
-            }
+            String category = aiResult.getCategory();
+            String color = aiResult.getColor();
 
             model.addAttribute("aiResult", aiResult);
 
-            List<Product> products = productRepository.searchSimilarProducts(brand, Pageable.unpaged());
+                    
+            List<Product> products = productRepository.searchSimilarProducts(brand, category, color, Pageable.unpaged());
 
             // Bắt buộc map dữ liệu collection để tránh lỗi LazyInitializationException
             for (Product p : products) {
@@ -73,3 +70,4 @@ public class ImageSearchController {
         return "image-search";
     }
 }
+// rebuild
