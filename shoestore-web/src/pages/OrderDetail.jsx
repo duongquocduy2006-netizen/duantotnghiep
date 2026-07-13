@@ -21,6 +21,10 @@ const OrderDetail = () => {
         orderCode: null,
         productId: null
     });
+    const [cancelModal, setCancelModal] = useState({
+        isOpen: false,
+        orderCode: null
+    });
 
     const fetchOrderDetail = async (showLoading = true) => {
         try {
@@ -131,11 +135,18 @@ const OrderDetail = () => {
         }
     };
 
-    const handleCancel = async (e) => {
-        e.preventDefault();
-        if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
+    const triggerCancel = (orderCode) => {
+        setCancelModal({
+            isOpen: true,
+            orderCode
+        });
+    };
+
+    const confirmCancelSubmit = async () => {
+        const { orderCode } = cancelModal;
+        setCancelModal({ isOpen: false, orderCode: null });
         try {
-            const response = await api.post('/api/orders/cancel', { orderCode: id });
+            const response = await api.post('/api/orders/cancel', { orderCode });
             if (response.data && response.data.success) {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã hủy đơn hàng thành công!' }));
                 fetchOrderDetail(false);
@@ -316,6 +327,38 @@ const OrderDetail = () => {
                                         </div>
                                     )}
 
+                                    {/* Lý do hủy đơn */}
+                                    {order.status === 4 && (
+                                        <div style={{
+                                            background: '#fff5f5',
+                                            border: '1.5px solid #fca5a5',
+                                            borderRadius: '12px',
+                                            padding: '16px 20px',
+                                            marginBottom: '28px',
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: '14px'
+                                        }}>
+                                            <div style={{
+                                                width: '40px', height: '40px', borderRadius: '10px',
+                                                background: '#fee2e2', display: 'flex', alignItems: 'center',
+                                                justifyContent: 'center', flexShrink: 0
+                                            }}>
+                                                <i className="fa-solid fa-ban" style={{ color: '#dc2626', fontSize: '18px' }}></i>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '14px', fontWeight: '700', color: '#dc2626', marginBottom: '4px' }}>
+                                                    Đơn hàng đã bị hủy
+                                                </div>
+                                                <div style={{ fontSize: '13px', color: '#7f1d1d' }}>
+                                                    <strong>Lý do:</strong> {order.cancel_reason || 'Không có lý do cụ thể'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+
+
                                     {/* Info Grids */}
                                     <div className="od-info-grid mb-5">
                                         <div className="od-info-card">
@@ -400,7 +443,7 @@ const OrderDetail = () => {
                                     {(order.status === 1 || order.status === 2 || order.status === 3) && (
                                         <div className="od-actions d-flex justify-content-end gap-2 pt-3" style={{borderTop: '1px solid #f1f5f9'}}>
                                             {order.status === 1 && (
-                                                <button onClick={handleCancel} className="btn-outline-luxury text-danger" style={{border: '1px solid #dc3545', background: 'transparent', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'}}>
+                                                <button onClick={(e) => { e.preventDefault(); triggerCancel(order.order_code); }} className="btn-outline-luxury text-danger" style={{border: '1px solid #dc3545', background: 'transparent', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'}}>
                                                     <i className="fa-solid fa-xmark"></i> Hủy đơn hàng
                                                 </button>
                                             )}
@@ -439,6 +482,21 @@ const OrderDetail = () => {
                     </div>
                 </div>
             </div>
+            {cancelModal.isOpen && (
+                <div className="epic-modal-overlay">
+                    <div className="epic-modal-box animate__animated animate__zoomIn">
+                        <div className="epic-modal-icon" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+                            <i className="fa-solid fa-circle-xmark"></i>
+                        </div>
+                        <h4 className="epic-modal-title">Hủy đơn hàng</h4>
+                        <p className="epic-modal-message">Bạn có chắc chắn muốn hủy đơn hàng này không?</p>
+                        <div className="epic-modal-actions">
+                            <button className="epic-btn-modal-cancel" onClick={() => setCancelModal({ isOpen: false, orderCode: null })}>Quay lại</button>
+                            <button className="epic-btn-modal-confirm" style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }} onClick={confirmCancelSubmit}>Xác nhận hủy</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {confirmModal.isOpen && (
                 <div className="epic-modal-overlay">
                     <div className="epic-modal-box animate__animated animate__zoomIn">

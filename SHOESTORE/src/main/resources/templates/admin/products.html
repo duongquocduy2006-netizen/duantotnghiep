@@ -231,7 +231,7 @@
 						showToast(response.message, 'success');
 						loadProducts();
 					} else {
-						showToast(response.error || 'Lỗi hệ thống không thể xóa!', 'error');
+						showToast(response.message || 'Lỗi hệ thống không thể xóa!', 'error');
 					}
 				})
 				.catch(err => {

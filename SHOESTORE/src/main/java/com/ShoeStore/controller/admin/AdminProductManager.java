@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.UUID;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -40,6 +41,9 @@ public class AdminProductManager {
 
     @Autowired
     private BrandRepository brandRepository;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private String capitalize(String s) {
         if (s == null || s.trim().isEmpty()) return s;
@@ -614,7 +618,19 @@ public class AdminProductManager {
 
     @Transactional
     @GetMapping("/products/delete/{id}")
-    public String deleteProduct(@PathVariable Integer id) {
+    public String deleteProduct(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
+        // Kiểm tra bằng JDBC thuần — chặn xóa nếu còn đơn hàng chưa hủy (status <> 4)
+        Integer activeOrderCount = jdbc.queryForObject(
+            "SELECT COUNT(*) FROM order_items oi " +
+            "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+            "JOIN orders o ON oi.order_id = o.id " +
+            "WHERE pv.product_id = ? AND o.status <> 4",
+            Integer.class, id
+        );
+        if (activeOrderCount != null && activeOrderCount > 0) {
+            redirectAttributes.addFlashAttribute("error", "Không thể xóa sản phẩm này vì đang có " + activeOrderCount + " đơn hàng chưa được hủy. Chỉ được xóa khi tất cả đơn hàng liên quan đã bị hủy!");
+            return "redirect:/admin/products";
+        }
 
         productRepository.deleteRelatedCartItems(id);
         productRepository.deleteRelatedOrderItems(id);
@@ -625,6 +641,7 @@ public class AdminProductManager {
 
         productRepository.deleteById(id);
 
+        redirectAttributes.addFlashAttribute("success", "Đã xóa sản phẩm thành công!");
         return "redirect:/admin/products";
     }
 }

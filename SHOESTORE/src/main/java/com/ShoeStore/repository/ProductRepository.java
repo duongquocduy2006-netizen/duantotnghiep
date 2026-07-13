@@ -65,6 +65,13 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
         @Query(value = "DELETE FROM flash_sale_products WHERE product_id = ?1", nativeQuery = true)
         void deleteRelatedFlashSaleProducts(Integer productId);
 
+        // Đếm số order_items thuộc đơn hàng chưa bị hủy (status != 4 — chỉ cho xóa sản phẩm khi đơn đã hủy)
+        @Query(value = "SELECT COUNT(*) FROM order_items oi " +
+                        "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+                        "JOIN orders o ON oi.order_id = o.id " +
+                        "WHERE pv.product_id = ?1 AND o.status <> 4", nativeQuery = true)
+        long countActiveOrderItemsByProductId(Integer productId);
+
         @Query("SELECT DISTINCT p FROM Product p LEFT JOIN p.variants v " +
                         "WHERE (:brand = '' OR LOWER(p.brandName) LIKE LOWER(CONCAT('%', :brand, '%'))) " +
                         "AND (:category = '' OR LOWER(p.category.name) LIKE LOWER(CONCAT('%', :category, '%'))) " +

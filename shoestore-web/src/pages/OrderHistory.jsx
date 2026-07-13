@@ -27,6 +27,10 @@ const OrderHistory = () => {
         orderCode: null,
         productId: null
     });
+    const [cancelModal, setCancelModal] = useState({
+        isOpen: false,
+        orderCode: null
+    });
 
     // Filter state
     const [fromDate, setFromDate] = useState('');
@@ -39,20 +43,25 @@ const OrderHistory = () => {
     const fetchData = async (showLoading = true) => {
         try {
             if (showLoading) setLoading(true);
-            const [profileRes, ordersRes] = await Promise.all([
-                api.get('/api/profile'),
-                api.get('/api/orders'),
-            ]);
+            const profileRes = await api.get('/api/profile');
             if (profileRes.data?.success) {
                 setAccount(profileRes.data.account);
+                
+                try {
+                    const ordersRes = await api.get('/api/orders');
+                    if (ordersRes.data?.success) {
+                        setOrders(ordersRes.data.orders || []);
+                    }
+                } catch (ordersErr) {
+                    console.error("Lỗi lấy danh sách đơn hàng:", ordersErr);
+                    setOrders([]);
+                }
             } else {
                 navigate('/login');
                 return;
             }
-            if (ordersRes.data?.success) {
-                setOrders(ordersRes.data.orders || []);
-            }
-        } catch {
+        } catch (err) {
+            console.error("Lỗi lấy thông tin cá nhân:", err);
             navigate('/login');
         } finally {
             if (showLoading) setLoading(false);
@@ -115,9 +124,16 @@ const OrderHistory = () => {
     };
 
     // ── Actions ──
-    const handleCancel = async (e, orderCode) => {
-        e.preventDefault();
-        if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
+    const triggerCancel = (orderCode) => {
+        setCancelModal({
+            isOpen: true,
+            orderCode
+        });
+    };
+
+    const confirmCancelSubmit = async () => {
+        const { orderCode } = cancelModal;
+        setCancelModal({ isOpen: false, orderCode: null });
         try {
             const res = await api.post('/api/orders/cancel', { orderCode });
             if (res.data?.success) {
@@ -449,6 +465,26 @@ const OrderHistory = () => {
                                                 </div>
                                             </div>
 
+                                            {/* Lý do hủy */}
+                                            {order.status === 4 && order.cancel_reason && (
+                                                <div style={{
+                                                    background: '#fff5f5',
+                                                    border: '1px solid #fecaca',
+                                                    borderRadius: '8px',
+                                                    padding: '10px 14px',
+                                                    marginBottom: '12px',
+                                                    display: 'flex',
+                                                    alignItems: 'flex-start',
+                                                    gap: '8px'
+                                                }}>
+                                                    <i className="fa-solid fa-circle-exclamation" style={{ color: '#dc2626', marginTop: '2px', flexShrink: 0 }}></i>
+                                                    <div>
+                                                        <span style={{ fontSize: '12px', fontWeight: '600', color: '#dc2626', display: 'block', marginBottom: '2px' }}>Lý do hủy</span>
+                                                        <span style={{ fontSize: '13px', color: '#7f1d1d' }}>{order.cancel_reason}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Actions */}
                                             <div className="d-flex justify-content-end gap-2 pt-3" style={{ borderTop: '1px solid #f1f5f9' }}>
                                                 <Link to={`/orders/detail/${order.order_code}`} className="btn-outline-luxury">
@@ -470,7 +506,7 @@ const OrderHistory = () => {
                                                     </>
                                                 )}
                                                 {order.status === 1 && (
-                                                    <button type="button" className="btn-outline-luxury text-danger" onClick={e => handleCancel(e, order.order_code)}>
+                                                    <button type="button" className="btn-outline-luxury text-danger" onClick={e => { e.preventDefault(); triggerCancel(order.order_code); }}>
                                                         <i className="fa-solid fa-xmark me-1"></i> Hủy đơn
                                                     </button>
                                                 )}
@@ -533,6 +569,21 @@ const OrderHistory = () => {
                 </div>
             </div>
 
+            {cancelModal.isOpen && (
+                <div className="epic-modal-overlay">
+                    <div className="epic-modal-box animate__animated animate__zoomIn">
+                        <div className="epic-modal-icon" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+                            <i className="fa-solid fa-circle-xmark"></i>
+                        </div>
+                        <h4 className="epic-modal-title">Hủy đơn hàng</h4>
+                        <p className="epic-modal-message">Bạn có chắc chắn muốn hủy đơn hàng này không?</p>
+                        <div className="epic-modal-actions">
+                            <button className="epic-btn-modal-cancel" onClick={() => setCancelModal({ isOpen: false, orderCode: null })}>Quay lại</button>
+                            <button className="epic-btn-modal-confirm" style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }} onClick={confirmCancelSubmit}>Xác nhận hủy</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {confirmModal.isOpen && (
                 <div className="epic-modal-overlay">
                     <div className="epic-modal-box animate__animated animate__zoomIn">

@@ -572,16 +572,19 @@ public class ProductApiController {
     @Transactional
     public ResponseEntity<?> deleteVariant(@PathVariable Integer variantId) {
         try {
-            // 1. Kiểm tra xem biến thể có được đặt trong hóa đơn nào chưa
-            if (productVariantRepository.countOrderItemsByVariantId(variantId) > 0) {
+            // 1. Kiểm tra xem biến thể có nằm trong đơn hàng đang hoạt động không (Chờ xác nhận, Đang giao, Đã nhận hàng)
+            if (productVariantRepository.countActiveOrderItemsByVariantId(variantId) > 0) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message",
-                        "Không thể xóa biến thể này vì đã có khách hàng đặt mua (dữ liệu hóa đơn)!"));
+                        "Không thể xóa biến thể này vì đang có đơn hàng chưa được hủy. Chỉ được xóa khi tất cả đơn hàng liên quan đã bị hủy!"));
             }
 
-            // 2. Xóa khỏi giỏ hàng trước
+            // 2. Xóa các order_items liên quan trong đơn hàng đã hoàn tất/đã hủy (cho phép)
+            productVariantRepository.deleteRelatedOrderItems(variantId);
+
+            // 3. Xóa khỏi giỏ hàng trước
             productVariantRepository.deleteRelatedCartItems(variantId);
 
-            // 3. Xóa biến thể
+            // 4. Xóa biến thể
             productVariantRepository.deleteById(variantId);
 
             return ResponseEntity.ok(Map.of("success", true, "message", "Xóa biến thể thành công!"));
@@ -703,6 +706,21 @@ public class ProductApiController {
     @Transactional
     public ResponseEntity<?> deleteProduct(@PathVariable Integer id) {
         try {
+            // 1. Kiểm tra bằng JDBC thuần (tránh JPA cache) — chặn xóa nếu còn đơn hàng chưa hủy (status <> 4)
+            Integer activeOrderCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM order_items oi " +
+                "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+                "JOIN orders o ON oi.order_id = o.id " +
+                "WHERE pv.product_id = ? AND o.status <> 4",
+                Integer.class, id
+            );
+            System.out.println("[DEBUG] deleteProduct id=" + id + " -> activeOrderCount=" + activeOrderCount);
+            if (activeOrderCount != null && activeOrderCount > 0) {
+                return ResponseEntity.status(403).body(Map.of("status", "error", "message",
+                        "Không thể xóa sản phẩm này vì đang có " + activeOrderCount + " đơn hàng chưa được hủy. Chỉ được xóa khi tất cả đơn hàng liên quan đã bị hủy!"));
+            }
+
+            // 2. Xóa các dữ liệu liên quan (chỉ xóa khi không có đơn hàng đang hoạt động)
             productRepository.deleteRelatedCartItems(id);
             productRepository.deleteRelatedOrderItems(id);
             productRepository.deleteRelatedFavourites(id);
@@ -714,7 +732,8 @@ public class ProductApiController {
             productRepository.deleteById(id);
             return ResponseEntity.ok(Map.of("status", "success", "message", "Xóa sản phẩm thành công!"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Lỗi xóa sản phẩm: " + e.getMessage()));
         }
     }
 

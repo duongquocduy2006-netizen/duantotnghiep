@@ -51,7 +51,7 @@ public class AuthApiController {
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest,
             BindingResult bindingResult,
             HttpServletRequest request,
-            HttpSession session) {
+            jakarta.servlet.http.HttpServletResponse httpResponse) {
         Map<String, Object> response = new HashMap<>();
 
         // 1. Kiểm tra validation
@@ -75,7 +75,14 @@ public class AuthApiController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
             }
 
-            // 4. Đăng nhập thành công -> Thiết lập SecurityContext
+            // 4. Vô hiệu hóa session cũ (nếu có) và tạo session mới để tránh session fixation
+            HttpSession oldSession = request.getSession(false);
+            if (oldSession != null) {
+                oldSession.invalidate();
+            }
+            HttpSession newSession = request.getSession(true);
+
+            // 5. Thiết lập SecurityContext và lưu vào session mới
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.getAuthorities());
 
@@ -83,15 +90,14 @@ public class AuthApiController {
             securityContext.setAuthentication(authentication);
             SecurityContextHolder.setContext(securityContext);
 
-            // Lưu SecurityContext vào session để duy trì phiên đăng nhập
-            session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
+            newSession.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
 
-            // 5. Lấy toàn bộ thông tin tài khoản và lưu vào session
+            // 6. Lấy toàn bộ thông tin tài khoản và lưu vào session
             String sql = "SELECT id, password, role, full_name, status, email, phone, points, membership_rank_id FROM accounts WHERE email = ?";
             Map<String, Object> account = jdbc.queryForMap(sql, email);
-            session.setAttribute("account", account);
+            newSession.setAttribute("account", account);
 
-            // 6. Xác định trang chuyển hướng dựa trên vai trò (Role)
+            // 7. Xác định trang chuyển hướng dựa trên vai trò (Role)
             String role = (String) account.get("role");
             String redirectUrl = "/";
             if ("ADMIN".equalsIgnoreCase(role)) {
@@ -195,9 +201,23 @@ public class AuthApiController {
 
     // ==================== ĐĂNG XUẤT ====================
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletRequest request, HttpSession session) {
+    public ResponseEntity<?> logout(HttpServletRequest request, jakarta.servlet.http.HttpServletResponse httpResponse) {
+        // Xóa SecurityContext
         SecurityContextHolder.clearContext();
-        session.invalidate();
+
+        // Invalidate session hiện tại
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+
+        // Xóa cookie JSESSIONID trên trình duyệt để tránh cookie cũ gây lỗi
+        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("JSESSIONID", "");
+        cookie.setMaxAge(0);
+        cookie.setPath("/");
+        cookie.setHttpOnly(true);
+        httpResponse.addCookie(cookie);
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "Đăng xuất thành công!");

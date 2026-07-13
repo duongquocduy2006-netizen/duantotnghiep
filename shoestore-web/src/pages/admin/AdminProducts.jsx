@@ -83,12 +83,12 @@ const AdminProducts = () => {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Xóa sản phẩm thành công!" }));
                 setProducts(products.filter(p => p.id !== productId));
             } else {
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.error || "Có lỗi xảy ra khi xóa sản phẩm!" }));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Có lỗi xảy ra khi xóa sản phẩm!" }));
             }
         } catch (err) {
             console.error("Lỗi xóa sản phẩm:", err);
-            const errMsg = err.response && err.response.data && err.response.data.error
-                ? err.response.data.error
+            const errMsg = err.response && err.response.data && err.response.data.message
+                ? err.response.data.message
                 : "Không thể kết nối đến server để xóa sản phẩm.";
             window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
@@ -271,7 +271,7 @@ const AdminProducts = () => {
                                                 <Link to={`/admin/products/edit/${p.id}`} className="btn-icon-action" title="Chỉnh sửa">
                                                     <i className="bi bi-pencil-square"></i>
                                                 </Link>
-                                                <button className="btn-icon-action" style={{ color: 'var(--accent-red)' }} title="Xóa" onClick={() => handleDelete(p.id, p.productName)}>
+                                                <button className="btn-icon-action" style={{ color: 'var(--accent-red)' }} title="Xóa" onClick={() => triggerDeleteConfirm(p.id, p.productName)}>
                                                     <i className="bi bi-trash"></i>
                                                 </button>
                                             </div>
@@ -283,6 +283,122 @@ const AdminProducts = () => {
                     )}
                 </div>
             </div>
+
+            {/* CUSTOM CONFIRM MODAL */}
+            {confirmModal.isOpen && (
+                <div className="admin-confirm-overlay">
+                    <div className="admin-confirm-box animate__animated animate__zoomIn">
+                        <div className="admin-confirm-icon">
+                            <i className="bi bi-exclamation-circle"></i>
+                        </div>
+                        <h4 className="admin-confirm-title">Xác nhận xóa</h4>
+                        <p className="admin-confirm-message">{confirmModal.message}</p>
+                        <div className="admin-confirm-actions">
+                            <button className="admin-btn-confirm-cancel" onClick={cancelDelete}>Hủy bỏ</button>
+                            <button className="admin-btn-confirm-ok" onClick={submitDelete}>Đồng ý</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                /* Admin Confirm Modal (Sleek Premium Theme) */
+                .admin-confirm-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(15, 23, 42, 0.6);
+                    backdrop-filter: blur(8px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                }
+                .admin-confirm-box {
+                    background: #fff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 24px;
+                    padding: 36px 32px;
+                    width: 90%;
+                    max-width: 420px;
+                    text-align: center;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+                    border-bottom: 4px solid #e50914;
+                }
+                .admin-confirm-icon {
+                    width: 72px;
+                    height: 72px;
+                    background: #fef2f2;
+                    color: #e50914;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 32px;
+                    margin: 0 auto 20px;
+                    animation: iconPulse 2s infinite;
+                }
+                .admin-confirm-title {
+                    font-family: 'Inter', sans-serif;
+                    font-weight: 800;
+                    font-size: 20px;
+                    color: #0f172a;
+                    margin-bottom: 12px;
+                }
+                .admin-confirm-message {
+                    font-size: 14px;
+                    color: #475569;
+                    line-height: 1.6;
+                    margin-bottom: 28px;
+                    font-weight: 500;
+                }
+                .admin-confirm-actions {
+                    display: flex;
+                    gap: 12px;
+                    justify-content: center;
+                }
+                .admin-btn-confirm-cancel {
+                    background: #f1f5f9;
+                    color: #475569;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                }
+                .admin-btn-confirm-cancel:hover {
+                    background: #e2e8f0;
+                    color: #0f172a;
+                }
+                .admin-btn-confirm-ok {
+                    background: #e50914;
+                    color: #fff;
+                    border: none;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                    box-shadow: 0 4px 6px -1px rgba(229, 9, 20, 0.2);
+                }
+                .admin-btn-confirm-ok:hover {
+                    background: #b8070f;
+                    box-shadow: 0 10px 15px -3px rgba(229, 9, 20, 0.3);
+                    transform: translateY(-1px);
+                }
+                @keyframes iconPulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.08); }
+                    100% { transform: scale(1); }
+                }
+            `}</style>
         </AdminLayout>
     );
 };

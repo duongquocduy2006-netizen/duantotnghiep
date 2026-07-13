@@ -1,11 +1,11 @@
 package com.ShoeStore.service;
 
 import java.util.List;
-
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import com.ShoeStore.model.OrderDTO;
 
 @Service
@@ -50,6 +50,10 @@ public class OrderService {
     }
 
     public void updateOrderStatus(String orderCode, int newStatus) {
+        updateOrderStatus(orderCode, newStatus, null);
+    }
+
+    public void updateOrderStatus(String orderCode, int newStatus, String cancelReason) {
         // 1. Lấy trạng thái cũ và thông tin đơn hàng trước khi update
         String checkSql = "SELECT status, user_id, final_amount FROM orders WHERE order_code = ?";
         java.util.Map<String, Object> order = jdbc.queryForMap(checkSql, orderCode);
@@ -57,9 +61,13 @@ public class OrderService {
         Long userId = ((Number) order.get("user_id")).longValue();
         double finalAmount = ((Number) order.get("final_amount")).doubleValue();
 
-        // 2. Cập nhật trạng thái mới
-        String sql = "UPDATE orders SET status = ? WHERE order_code = ?";
-        jdbc.update(sql, newStatus, orderCode);
+        // 2. Cập nhật trạng thái mới (kèm lý do hủy nếu có)
+        if (newStatus == 4 && cancelReason != null && !cancelReason.trim().isEmpty()) {
+            jdbc.update("UPDATE orders SET status = ?, cancel_reason = ? WHERE order_code = ?",
+                    newStatus, cancelReason.trim(), orderCode);
+        } else {
+            jdbc.update("UPDATE orders SET status = ? WHERE order_code = ?", newStatus, orderCode);
+        }
 
         // 3. Nếu chuyển sang trạng thái "Thành công" (3) và trước đó chưa thành công
         if (newStatus == 3 && oldStatus != 3) {
@@ -72,16 +80,10 @@ public class OrderService {
             updateUserRank(userId);
         }
 
-        // Nếu chuyển sang trạng thái "Đang giao" (2) và trước đó là "Chờ duyệt" (1)
-        if (newStatus == 2 && oldStatus == 1) {
-            // Trừ tồn kho sản phẩm
-            updateInventory(orderCode);
-        }
-
         // Nếu chuyển sang trạng thái "Đã hủy" (4)
         if (newStatus == 4 && oldStatus != 4) {
-            // Chỉ khôi phục tồn kho nếu trước đó đã bị trừ (tức là trạng thái 2 hoặc 3)
-            if (oldStatus == 2 || oldStatus == 3) {
+            // Khôi phục tồn kho nếu trước đó đã bị trừ (trạng thái Chờ duyệt (1), Đang giao (2), hoặc Thành công (3))
+            if (oldStatus == 1 || oldStatus == 2 || oldStatus == 3) {
                 restoreInventory(orderCode);
             }
         }
@@ -151,7 +153,7 @@ public class OrderService {
     }
 
     public List<java.util.Map<String, Object>> getOrdersByUserId(Long userId) {
-        String sql = "SELECT o.id, o.order_code, o.created_at, o.final_amount, o.status, " +
+        String sql = "SELECT o.id, o.order_code, o.created_at, o.final_amount, o.status, o.cancel_reason, " +
                 "(SELECT TOP 1 p.id " +
                 " FROM order_items oi " +
                 " JOIN product_variants pv ON oi.product_variant_id = pv.id " +
@@ -209,7 +211,7 @@ public class OrderService {
     }
 
     public void cancelOrder(String orderCode, Long userId) {
-        // 1. Kiểm tra đơn hàng thuộc về User and đang ở trạng thái 'Chờ duyệt' (1)
+        // 1. Kiểm tra đơn hàng thuộc về User và đang ở trạng thái 'Chờ duyệt' (1)
         String checkSql = "SELECT status, user_id FROM orders WHERE order_code = ?";
         java.util.Map<String, Object> order = jdbc.queryForMap(checkSql, orderCode);
 
@@ -224,8 +226,34 @@ public class OrderService {
             throw new RuntimeException("Chỉ có thể hủy đơn hàng khi đang ở trạng thái 'Chờ duyệt'.");
         }
 
-        // 2. Chuyển sang trạng thái Đã hủy (4)
-        updateOrderStatus(orderCode, 4);
+        // 2. Chuyển sang trạng thái Đã hủy (4), lý do: khách tự hủy
+        updateOrderStatus(orderCode, 4, "Khách hàng tự hủy đơn");
+    }
+
+    /**
+     * Admin hủy đơn hàng với lý do. Cho phép hủy đơn ở trạng thái 1 (Chờ duyệt), 2 (Đang giao), 5 (Đã nhận hàng).
+     */
+    public void cancelOrderByAdmin(String orderCode, String cancelReason) {
+        String checkSql = "SELECT status FROM orders WHERE order_code = ?";
+        java.util.Map<String, Object> order;
+        try {
+            order = jdbc.queryForMap(checkSql, orderCode);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Không tìm thấy đơn hàng!");
+        }
+
+        int currentStatus = ((Number) order.get("status")).intValue();
+
+        // Admin chỉ được hủy đơn chưa hoàn tất (chưa thành công và chưa bị hủy)
+        if (currentStatus == 3 || currentStatus == 4) {
+            throw new IllegalStateException("Không thể hủy đơn hàng đã hoàn tất hoặc đã hủy.");
+        }
+
+        String reason = (cancelReason != null && !cancelReason.trim().isEmpty())
+                ? cancelReason.trim()
+                : "Admin hủy đơn hàng";
+
+        updateOrderStatus(orderCode, 4, reason);
     }
 
     public java.util.Map<String, Object> getOrderDetail(String orderCode) {
@@ -242,7 +270,7 @@ public class OrderService {
     }
 
     public List<java.util.Map<String, Object>> getOrderItems(String orderCode) {
-        String sql = "SELECT oi.quantity, oi.price, p.product_name, p.id as product_id, s.size_name, col.color_name, " +
+        String sql = "SELECT oi.quantity, oi.price, p.product_name, p.id as product_id, s.size_name, col.color_name, pv.id as product_variant_id, " +
                 "(SELECT TOP 1 pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.id ASC) as image_url "
                 +
                 "FROM order_items oi " +
@@ -253,5 +281,208 @@ public class OrderService {
                 "JOIN colors col ON pv.color_id = col.id " +
                 "WHERE o.order_code = ?";
         return jdbc.queryForList(sql, orderCode);
+    }
+
+    @Transactional
+    public Map<String, Object> deleteOrderItem(String orderCode, Integer variantId) {
+        // 1. Lấy thông tin đơn hàng
+        String orderSql = "SELECT * FROM orders WHERE order_code = ?";
+        Map<String, Object> order;
+        try {
+            order = jdbc.queryForMap(orderSql, orderCode);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Không tìm thấy đơn hàng!");
+        }
+
+        int status = Integer.parseInt(order.get("status").toString());
+        Long orderId = Long.parseLong(order.get("id").toString());
+
+        // 2. Kiểm tra trạng thái đơn hàng (chỉ cho phép xóa khi status = 1: Chờ xác nhận)
+        if (status != 1) {
+            throw new IllegalStateException("Hệ thống KHÔNG CHO PHÉP xóa trực tiếp sản phẩm trên đơn hàng cũ nữa khi đơn hàng không còn ở trạng thái Chờ xác nhận!");
+        }
+
+        // 3. Lấy thông tin mặt hàng cần xóa trong order_items
+        String itemSql = "SELECT * FROM order_items WHERE order_id = ? AND product_variant_id = ?";
+        List<Map<String, Object>> items = jdbc.queryForList(itemSql, orderId, variantId);
+        if (items.isEmpty()) {
+            throw new IllegalArgumentException("Không tìm thấy sản phẩm này trong đơn hàng!");
+        }
+
+        Map<String, Object> itemToDelete = items.get(0);
+        int quantity = Integer.parseInt(itemToDelete.get("quantity").toString());
+
+        // 4. Xóa mặt hàng khỏi order_items
+        jdbc.update("DELETE FROM order_items WHERE order_id = ? AND product_variant_id = ?", orderId, variantId);
+
+        // 5. Cộng lại số lượng tồn kho (Stock) cho biến thể sản phẩm đó
+        jdbc.update("UPDATE product_variants SET quantity = quantity + ? WHERE id = ?", quantity, variantId);
+
+        // 6. Tính toán lại tổng tiền mới của đơn hàng (total_amount)
+        String sumSql = "SELECT ISNULL(SUM(price * quantity), 0) FROM order_items WHERE order_id = ?";
+        Double newTotalAmount = jdbc.queryForObject(sumSql, Double.class, orderId);
+
+        // 7. Tính lại tiền giảm giá (discount) dựa trên voucher (nếu có)
+        double discount = 0.0;
+        Integer voucherId = null;
+        if (order.get("voucher_id") != null) {
+            voucherId = ((Number) order.get("voucher_id")).intValue();
+            try {
+                Map<String, Object> voucherMap = jdbc.queryForMap(
+                        "SELECT id, discount_value, discount_type, max_discount, min_order_value FROM vouchers WHERE id = ?",
+                        voucherId);
+                Double minOrderValue = (Double) voucherMap.get("min_order_value");
+                if (minOrderValue == null || newTotalAmount >= minOrderValue) {
+                    String discountType = (String) voucherMap.get("discount_type");
+                    Double discountValue = ((Number) voucherMap.get("discount_value")).doubleValue();
+                    if ("FIXED".equalsIgnoreCase(discountType)) {
+                        discount = Math.min(discountValue, newTotalAmount);
+                    } else if ("PERCENT".equalsIgnoreCase(discountType)) {
+                        discount = newTotalAmount * (discountValue / 100.0);
+                        Double maxDiscount = voucherMap.get("max_discount") != null ? ((Number) voucherMap.get("max_discount")).doubleValue() : null;
+                        if (maxDiscount != null && maxDiscount > 0) {
+                            discount = Math.min(discount, maxDiscount);
+                        }
+                    }
+                } else {
+                    voucherId = null;
+                }
+            } catch (Exception e) {
+                voucherId = null;
+            }
+        }
+
+        double shippingFee = ((Number) order.get("shipping_fee")).doubleValue();
+        double newFinalAmount = newTotalAmount + shippingFee - discount;
+        if (newFinalAmount < 0) newFinalAmount = 0.0;
+
+        // 8. Cập nhật thông tin đơn hàng trong DB
+        if (newTotalAmount == 0) {
+            jdbc.update("UPDATE orders SET status = 4, total_amount = 0, final_amount = 0, voucher_id = NULL WHERE id = ?", orderId);
+        } else {
+            jdbc.update("UPDATE orders SET total_amount = ?, final_amount = ?, voucher_id = ? WHERE id = ?",
+                    newTotalAmount, newFinalAmount, voucherId, orderId);
+        }
+
+        return Map.of("success", true, "message", "Xóa sản phẩm khỏi đơn hàng thành công!");
+    }
+
+    /**
+     * Xử lý các đơn hàng "Chờ xác nhận" (status=1) khi admin xóa sản phẩm khỏi catalog.
+     * 4 bước: hoàn kho → xóa order items → tính lại tổng tiền → hủy đơn rỗng
+     */
+    @Transactional
+    public void handlePendingOrdersForDeletedProduct(Integer productId) {
+        // 1. Tìm tất cả đơn hàng "Chờ xác nhận" (status=1) có chứa sản phẩm này
+        String findOrdersSql = "SELECT DISTINCT o.id, o.order_code, o.shipping_fee, o.voucher_id " +
+                "FROM orders o " +
+                "JOIN order_items oi ON o.id = oi.order_id " +
+                "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+                "WHERE pv.product_id = ? AND o.status = 1";
+        List<Map<String, Object>> affectedOrders = jdbc.queryForList(findOrdersSql, productId);
+
+        for (Map<String, Object> order : affectedOrders) {
+            Long orderId = Long.parseLong(order.get("id").toString());
+            processOrderAfterItemRemoval(orderId, order, productId, null);
+        }
+    }
+
+    /**
+     * Xử lý các đơn hàng "Chờ xác nhận" (status=1) khi admin xóa biến thể khỏi catalog.
+     */
+    @Transactional
+    public void handlePendingOrdersForDeletedVariant(Integer variantId) {
+        // 1. Tìm tất cả đơn hàng "Chờ xác nhận" (status=1) có chứa biến thể này
+        String findOrdersSql = "SELECT DISTINCT o.id, o.order_code, o.shipping_fee, o.voucher_id " +
+                "FROM orders o " +
+                "JOIN order_items oi ON o.id = oi.order_id " +
+                "WHERE oi.product_variant_id = ? AND o.status = 1";
+        List<Map<String, Object>> affectedOrders = jdbc.queryForList(findOrdersSql, variantId);
+
+        for (Map<String, Object> order : affectedOrders) {
+            Long orderId = Long.parseLong(order.get("id").toString());
+            processOrderAfterItemRemoval(orderId, order, null, variantId);
+        }
+    }
+
+    /**
+     * Xử lý 1 đơn hàng sau khi xóa sản phẩm/biến thể:
+     * Hoàn kho → Xóa items → Tính lại tổng → Hủy nếu rỗng
+     */
+    private void processOrderAfterItemRemoval(Long orderId, Map<String, Object> order, Integer productId, Integer variantId) {
+        // Bước 1: Hoàn trả tồn kho cho các items bị xóa
+        String findItemsSql;
+        if (productId != null) {
+            findItemsSql = "SELECT oi.product_variant_id, oi.quantity FROM order_items oi " +
+                    "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+                    "WHERE oi.order_id = ? AND pv.product_id = ?";
+        } else {
+            findItemsSql = "SELECT oi.product_variant_id, oi.quantity FROM order_items oi " +
+                    "WHERE oi.order_id = ? AND oi.product_variant_id = ?";
+        }
+        Object paramId = productId != null ? productId : variantId;
+        List<Map<String, Object>> itemsToRemove = jdbc.queryForList(findItemsSql, orderId, paramId);
+
+        for (Map<String, Object> item : itemsToRemove) {
+            Integer vid = ((Number) item.get("product_variant_id")).intValue();
+            int qty = ((Number) item.get("quantity")).intValue();
+            // Hoàn trả tồn kho
+            jdbc.update("UPDATE product_variants SET quantity = quantity + ? WHERE id = ?", qty, vid);
+        }
+
+        // Bước 2: Xóa order_items
+        if (productId != null) {
+            jdbc.update("DELETE FROM order_items WHERE order_id = ? AND product_variant_id IN " +
+                    "(SELECT id FROM product_variants WHERE product_id = ?)", orderId, productId);
+        } else {
+            jdbc.update("DELETE FROM order_items WHERE order_id = ? AND product_variant_id = ?", orderId, variantId);
+        }
+
+        // Bước 3: Tính lại tổng tiền
+        String sumSql = "SELECT ISNULL(SUM(price * quantity), 0) FROM order_items WHERE order_id = ?";
+        Double newTotalAmount = jdbc.queryForObject(sumSql, Double.class, orderId);
+
+        // Bước 4: Xử lý đơn hàng rỗng hoặc cập nhật tổng tiền
+        if (newTotalAmount == null || newTotalAmount == 0) {
+            // Đơn hàng rỗng → Tự động hủy
+            jdbc.update("UPDATE orders SET status = 4, total_amount = 0, final_amount = 0, voucher_id = NULL WHERE id = ?", orderId);
+        } else {
+            // Tính lại giảm giá voucher
+            double discount = 0.0;
+            Integer voucherId = order.get("voucher_id") != null ? ((Number) order.get("voucher_id")).intValue() : null;
+
+            if (voucherId != null) {
+                try {
+                    Map<String, Object> voucherMap = jdbc.queryForMap(
+                            "SELECT discount_value, discount_type, max_discount, min_order_value FROM vouchers WHERE id = ?",
+                            voucherId);
+                    Double minOrderValue = voucherMap.get("min_order_value") != null ? ((Number) voucherMap.get("min_order_value")).doubleValue() : null;
+                    if (minOrderValue == null || newTotalAmount >= minOrderValue) {
+                        String discountType = (String) voucherMap.get("discount_type");
+                        Double discountValue = ((Number) voucherMap.get("discount_value")).doubleValue();
+                        if ("FIXED".equalsIgnoreCase(discountType)) {
+                            discount = Math.min(discountValue, newTotalAmount);
+                        } else if ("PERCENT".equalsIgnoreCase(discountType)) {
+                            discount = newTotalAmount * (discountValue / 100.0);
+                            Double maxDiscount = voucherMap.get("max_discount") != null ? ((Number) voucherMap.get("max_discount")).doubleValue() : null;
+                            if (maxDiscount != null && maxDiscount > 0) {
+                                discount = Math.min(discount, maxDiscount);
+                            }
+                        }
+                    } else {
+                        voucherId = null;
+                    }
+                } catch (Exception e) {
+                    voucherId = null;
+                }
+            }
+
+            double shippingFee = ((Number) order.get("shipping_fee")).doubleValue();
+            double newFinalAmount = newTotalAmount + shippingFee - discount;
+            if (newFinalAmount < 0) newFinalAmount = 0.0;
+
+            jdbc.update("UPDATE orders SET total_amount = ?, final_amount = ?, voucher_id = ? WHERE id = ?",
+                    newTotalAmount, newFinalAmount, voucherId, orderId);
+        }
     }
 }

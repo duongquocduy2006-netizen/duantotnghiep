@@ -69,7 +69,6 @@ const AdminLayout = ({ children }) => {
 
         { label: 'QUẢN LÝ NÂNG CAO', type: 'label' },
         { path: '/admin/banners', icon: 'bi-collection-play-fill', label: 'Quản Lý Banners' },
-        { path: '/admin/lookbooks', icon: 'bi-image-fill', label: 'Quản Lý Lookbooks' },
 
         { label: 'HỆ THỐNG & KHUYẾN MÃI', type: 'label' },
         { path: '/admin/flashsales', icon: 'bi-lightning-charge-fill', label: 'Flash Sale' },

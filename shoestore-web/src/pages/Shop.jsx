@@ -18,7 +18,40 @@ const Shop = () => {
     const [brands, setBrands] = useState([]);
     const [loading, setLoading] = useState(true);
     const [wishlistIds, setWishlistIds] = useState([]);
-    const [lookbooks, setLookbooks] = useState([]);
+    const brandContainerRef = useRef(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const checkBrandScroll = () => {
+        const container = brandContainerRef.current;
+        if (container) {
+            setCanScrollLeft(container.scrollLeft > 5);
+            setCanScrollRight(container.scrollLeft + container.clientWidth < container.scrollWidth - 5);
+        }
+    };
+
+    const scrollBrands = (direction) => {
+        const container = brandContainerRef.current;
+        if (container) {
+            const scrollAmount = direction === 'left' ? -container.clientWidth : container.clientWidth;
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    };
+
+    useEffect(() => {
+        const container = brandContainerRef.current;
+        if (container) {
+            container.addEventListener('scroll', checkBrandScroll);
+            window.addEventListener('resize', checkBrandScroll);
+            setTimeout(checkBrandScroll, 500);
+        }
+        return () => {
+            if (container) {
+                container.removeEventListener('scroll', checkBrandScroll);
+            }
+            window.removeEventListener('resize', checkBrandScroll);
+        };
+    }, [brands]);
 
     const [selectedCategory, setSelectedCategory] = useState('');
     const [selectedBrand, setSelectedBrand] = useState(initialBrand);
@@ -92,7 +125,6 @@ const Shop = () => {
     useEffect(() => {
         fetchFilters();
         fetchWishlistIds();
-        fetchLookbooks();
     }, []);
 
     useEffect(() => {
@@ -171,16 +203,6 @@ const Shop = () => {
         };
     }, [loading, products]);
 
-    const fetchLookbooks = async () => {
-        try {
-            const res = await api.get('/api/lookbooks');
-            if (res.data) {
-                setLookbooks(res.data);
-            }
-        } catch (e) {
-            console.error("Lỗi tải lookbook:", e);
-        }
-    };
 
     const fetchFilters = async () => {
         try {
@@ -277,42 +299,65 @@ const Shop = () => {
     const getImageUrl = (url) => {
         if (!url) return 'https://ui-avatars.com/api/?name=SP&background=fff&color=000&bold=true';
         if (url.startsWith('http')) return url;
-        return `http://localhost:8080${url}`;
+        const clean = url.startsWith('/') ? url : '/images/' + url;
+        return `http://localhost:8080${clean}`;
     };
 
     return (
         <Layout>
             <div className="shop-epic-theme">
-                {/* CREATIVE BRUTALIST LOOKBOOK BOARD (CENTERED & 100% INNOVATIVE) */}
-                <div className="shop-editorial-header py-5 text-center">
-                    <div className="container">
+                <div className="shop-editorial-header py-5 text-center bg-white border-bottom border-light-subtle position-relative overflow-hidden">
+                    <div className="god-watermark-bg">BRAND</div>
+                    <div className="container position-relative" style={{ zIndex: 1 }}>
                         <div className="animate__animated animate__fadeInDown">
                             <span className="shop-tag-accent">CỬA HÀNG CHÍNH THỨC</span>
                             <h1 className="shop-main-title font-oswald text-uppercase mt-3 mb-2">
                                 CỬA HÀNG
                             </h1>
-                            <p className="shop-sub-desc mx-auto">
+                            <p className="shop-sub-desc mx-auto mb-5">
                                 Khám phá phong cách thời trang đường phố từ cộng đồng ShoeStore Việt Nam.
                             </p>
                         </div>
                         
-                        <div className="shop-lookbook-board mt-5 animate__animated animate__fadeInUp">
-                            <div className="collage-card card-1">
-                                <img src={getImageUrl(lookbooks[0]?.imageUrl || lookbooks[0]?.image_url || 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=600')} alt="Bộ sưu tập 1" />
-                                <span>{lookbooks[0]?.caption || '#ĐƯỜNG_PHỐ'}</span>
+                        <div className="brand-slider-wrapper mt-4 text-start">
+                            {canScrollLeft && (
+                                <button className="brand-slider-btn prev" onClick={() => scrollBrands('left')}>
+                                    <i className="fa-solid fa-chevron-left" />
+                                </button>
+                            )}
+                            
+                            <div className="brand-grid" ref={brandContainerRef}>
+                                {(brands.length > 0 ? brands : [
+                                    { id: 1, name: 'Nike' },
+                                    { id: 2, name: 'Adidas' },
+                                    { id: 3, name: 'New Balance' },
+                                    { id: 4, name: 'Vans' },
+                                    { id: 5, name: 'Converse' },
+                                ]).map((brand, idx) => {
+                                    const name = brand.name || brand.brand_name || brand.brandName || `Brand ${idx + 1}`;
+                                    const hasImg = brand.imageUrl && !brand.imageUrl.includes('localhost');
+                                    return (
+                                        <div key={brand.id || idx}
+                                             className="brand-grid-item"
+                                             style={{ animationDelay: `${idx * 0.12}s` }}>
+                                            <Link to={`/shop?brand=${encodeURIComponent(name)}`}
+                                                  className={`brand-card-inner text-decoration-none ${hasImg ? 'has-image' : ''}`}>
+                                                {hasImg && (
+                                                    <img src={getImageUrl(brand.imageUrl)} alt={name} className="brand-img" />
+                                                )}
+                                                <span className="brand-card-name">{name.toUpperCase()}</span>
+                                                <span className="brand-card-explore">KHÁM PHÁ <i className="fa-solid fa-arrow-right" /></span>
+                                            </Link>
+                                        </div>
+                                    );
+                                })}
                             </div>
-                            <div className="collage-card card-2">
-                                <img src={getImageUrl(lookbooks[1]?.imageUrl || lookbooks[1]?.image_url || 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600')} alt="Bộ sưu tập 2" />
-                                <span>{lookbooks[1]?.caption || '#CÁ_TÍNH'}</span>
-                            </div>
-                            <div className="collage-card card-3">
-                                <img src={getImageUrl(lookbooks[2]?.imageUrl || lookbooks[2]?.image_url || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600')} alt="Bộ sưu tập 3" />
-                                <span>{lookbooks[2]?.caption || '#THỜI_TRANG'}</span>
-                            </div>
-                            <div className="collage-card card-4">
-                                <img src={getImageUrl(lookbooks[3]?.imageUrl || lookbooks[3]?.image_url || 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600')} alt="Bộ sưu tập 4" />
-                                <span>{lookbooks[3]?.caption || '#NĂNG_ĐỘNG'}</span>
-                            </div>
+
+                            {canScrollRight && (
+                                <button className="brand-slider-btn next" onClick={() => scrollBrands('right')}>
+                                    <i className="fa-solid fa-chevron-right" />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -493,35 +538,7 @@ const Shop = () => {
                                 XEM SẢN PHẨM PHÙ HỢP
                             </button>
                         </div>
-                    </div>
-
-                    {/* LOOKBOOK GALLERY — API driven, same as NewArrivals */}
-                    <div className="py-5 mt-5 border-top border-light-subtle">
-                        <div className="na-section-header text-center mb-5 reveal-item opacity-0">
-                            <span className="na-section-tag">Cảm hứng phong cách</span>
-                            <h2 className="na-section-title">PHONG CÁCH ĐƯỜNG PHỐ</h2>
-                            <p className="na-section-subtitle">Xem cách cộng đồng ShoesStore tự tin thể hiện cá tính cùng những thiết kế yêu thích.</p>
-                        </div>
-
-                        <div className="row g-4 reveal-item opacity-0">
-                            {(lookbooks && lookbooks.length > 0 ? lookbooks : [
-                                { id: 'd1', caption: '#shoesstore_style', imageUrl: 'https://images.unsplash.com/photo-1556906781-9a412961c28c?q=80&w=600' },
-                                { id: 'd2', caption: '#phong_cach', imageUrl: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?q=80&w=600' },
-                                { id: 'd3', caption: '#dung_dan', imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600' },
-                                { id: 'd4', caption: '#thoi_trang', imageUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?q=80&w=600' }
-                            ]).map(lb => (
-                                <div key={lb.id} className="col-lg-3 col-md-6 col-6">
-                                    <div className="na-lookbook-card">
-                                        <img src={getImageUrl(lb.imageUrl)} alt={lb.caption} />
-                                        <div className="na-lookbook-overlay">
-                                            <span>{lb.caption}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                    </div>                    </div>
 
                 {/* EDITORIAL BANNER */}
                 <div className="shop-editorial-section py-5 border-top border-light-subtle bg-black text-white text-center position-relative overflow-hidden mt-5" style={{ minHeight: '300px', display: 'flex', alignItems: 'center' }}>

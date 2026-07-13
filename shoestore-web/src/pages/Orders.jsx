@@ -20,6 +20,10 @@ const Orders = () => {
         orderCode: null,
         productId: null
     });
+    const [cancelModal, setCancelModal] = useState({
+        isOpen: false,
+        orderCode: null
+    });
 
 
     const fetchOrdersData = async () => {
@@ -30,15 +34,20 @@ const Orders = () => {
                 setLoggedIn(true);
                 setAccount(profileResponse.data.account);
 
-                const ordersResponse = await api.get('/api/orders');
-                if (ordersResponse.data && ordersResponse.data.success) {
-                    setOrders(ordersResponse.data.orders || []);
+                try {
+                    const ordersResponse = await api.get('/api/orders');
+                    if (ordersResponse.data && ordersResponse.data.success) {
+                        setOrders(ordersResponse.data.orders || []);
+                    }
+                } catch (ordersErr) {
+                    console.error("Lỗi lấy danh sách đơn hàng:", ordersErr);
+                    setOrders([]);
                 }
             } else {
                 setLoggedIn(false);
             }
         } catch (err) {
-            console.error("Lỗi lấy thông tin đơn hàng:", err);
+            console.error("Lỗi lấy thông tin cá nhân:", err);
             setLoggedIn(false);
         } finally {
             setLoading(false);
@@ -96,9 +105,16 @@ const Orders = () => {
         return { cls: 'badge-luxury', icon: 'fa-circle', text: 'Không rõ' };
     };
 
-    const handleCancel = async (e, orderCode) => {
-        e.preventDefault();
-        if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
+    const triggerCancel = (orderCode) => {
+        setCancelModal({
+            isOpen: true,
+            orderCode
+        });
+    };
+
+    const confirmCancelSubmit = async () => {
+        const { orderCode } = cancelModal;
+        setCancelModal({ isOpen: false, orderCode: null });
         try {
             const response = await api.post('/api/orders/cancel', { orderCode });
             if (response.data && response.data.success) {
@@ -340,6 +356,25 @@ const Orders = () => {
                                                                 <div className="price-tag">{formatCurrency(order.final_amount)}</div>
                                                             </div>
                                                         </div>
+                                                        {/* Lý do hủy */}
+                                                        {order.status === 4 && order.cancel_reason && (
+                                                            <div style={{
+                                                                background: '#fff5f5',
+                                                                border: '1px solid #fecaca',
+                                                                borderRadius: '8px',
+                                                                padding: '10px 14px',
+                                                                marginBottom: '12px',
+                                                                display: 'flex',
+                                                                alignItems: 'flex-start',
+                                                                gap: '8px'
+                                                            }}>
+                                                                <i className="fa-solid fa-circle-exclamation" style={{ color: '#dc2626', marginTop: '2px', flexShrink: 0 }}></i>
+                                                                <div style={{ textAlign: 'left' }}>
+                                                                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#dc2626', display: 'block', marginBottom: '2px' }}>Lý do hủy</span>
+                                                                    <span style={{ fontSize: '13px', color: '#7f1d1d' }}>{order.cancel_reason}</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
 
                                                         {/* Actions */}
                                                         <div className="d-flex justify-content-end gap-2 pt-3" style={{borderTop: '1px solid #f1f5f9'}}>
@@ -365,7 +400,7 @@ const Orders = () => {
                                                                 <button
                                                                     type="button"
                                                                     className="btn-outline-luxury text-danger"
-                                                                    onClick={(e) => handleCancel(e, order.order_code)}
+                                                                    onClick={(e) => { e.preventDefault(); triggerCancel(order.order_code); }}
                                                                 >
                                                                     <i className="fa-solid fa-xmark me-1"></i> Hủy đơn
                                                                 </button>
@@ -422,6 +457,21 @@ const Orders = () => {
                     </div>
                 </div>
             </div>
+            {cancelModal.isOpen && (
+                <div className="epic-modal-overlay">
+                    <div className="epic-modal-box animate__animated animate__zoomIn">
+                        <div className="epic-modal-icon" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+                            <i className="fa-solid fa-circle-xmark"></i>
+                        </div>
+                        <h4 className="epic-modal-title">Hủy đơn hàng</h4>
+                        <p className="epic-modal-message">Bạn có chắc chắn muốn hủy đơn hàng này không?</p>
+                        <div className="epic-modal-actions">
+                            <button className="epic-btn-modal-cancel" onClick={() => setCancelModal({ isOpen: false, orderCode: null })}>Quay lại</button>
+                            <button className="epic-btn-modal-confirm" style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }} onClick={confirmCancelSubmit}>Xác nhận hủy</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {confirmModal.isOpen && (
                 <div className="epic-modal-overlay">
                     <div className="epic-modal-box animate__animated animate__zoomIn">
