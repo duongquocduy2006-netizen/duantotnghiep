@@ -115,9 +115,6 @@ public class ChatGPTService {
 
         String productsContext = getProductsContext();
         
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "meta-llama/llama-3.3-70b-instruct:free");
-
         List<Map<String, String>> messages = new ArrayList<>();
         
         String systemInstructions = "Bạn là trợ lý ảo của cửa hàng giày ShoeStore. "
@@ -126,37 +123,55 @@ public class ChatGPTService {
                 + "Tuyệt đối không trả lời các câu hỏi về chính trị, tôn giáo, hoặc các vấn đề xã hội khác ngoài ShoeStore.\n"
                 + "Dưới đây là danh sách sản phẩm THẬT của shop:\n"
                 + productsContext + "\n"
-                + "QUY TẮC HIỂN THỊ SẢN PHẨM:\n"
+                 + "QUY TẮC HIỂN THỊ SẢN PHẨM:\n"
                 + "1. Chỉ gắn link sản phẩm khi khách hàng yêu cầu gợi ý, hỏi về mẫu mã cụ thể hoặc đang có ý định tìm mua sản phẩm đó.\n"
-                + "2. Khi gắn link sản phẩm, bạn PHẢI sử dụng định dạng Card sau ngay sau lời giới thiệu: [PRODUCT:id|name|price|image]\n"
+                + "2. Khi gắn link sản phẩm, bạn PHẢI sử dụng định dạng Card sau ngay sau lời giới thiệu: [PRODUCT:id|name|price|image] (trong đó price là số nguyên thuần túy không chứa dấu chấm, dấu phẩy hay ký hiệu tiền tệ, ví dụ: 1200000, lấy từ phần nguyên của Giá trong danh sách sản phẩm).\n"
                 + "3. Bạn PHẢI trả lời hoàn toàn bằng tiếng Việt chuẩn. TUYỆT ĐỐI không sử dụng từ ngữ tiếng Pháp, tiếng Anh, không pha trộn ngôn ngữ, không tự dịch hoặc dùng từ kỳ lạ. 100% câu trả lời phải là tiếng Việt tự nhiên, thân thiện, ngắn gọn và lịch sự.";
 
         messages.add(Map.of("role", "system", "content", systemInstructions));
         messages.add(Map.of("role", "user", "content", userMessage));
-        
-        requestBody.put("messages", messages);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Bearer " + apiKey);
         headers.set("HTTP-Referer", "http://localhost:8080");
 
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+        List<String> models = Arrays.asList(
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "deepseek/deepseek-r1:free",
+            "qwen/qwen-2.5-72b-instruct:free",
+            "google/gemini-2.0-flash-exp:free",
+            "openrouter/free"
+        );
 
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(OPENAI_URL, entity, Map.class);
-            if (response.getStatusCode() == HttpStatus.OK) {
-                Map body = response.getBody();
-                List choices = (List) body.get("choices");
-                Map firstChoice = (Map) choices.get(0);
-                Map msg = (Map) firstChoice.get("message");
-                return (String) msg.get("content");
+        for (String model : models) {
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", model);
+            requestBody.put("messages", messages);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            try {
+                System.out.println("Attempting AI response with model: " + model);
+                ResponseEntity<Map> response = restTemplate.postForEntity(OPENAI_URL, entity, Map.class);
+                if (response.getStatusCode() == HttpStatus.OK) {
+                    Map body = response.getBody();
+                    List choices = (List) body.get("choices");
+                    if (choices != null && !choices.isEmpty()) {
+                        Map firstChoice = (Map) choices.get(0);
+                        Map msg = (Map) firstChoice.get("message");
+                        if (msg != null && msg.containsKey("content")) {
+                            System.out.println("Successfully got AI response using model: " + model);
+                            return (String) msg.get("content");
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Failed to get response with model " + model + ": " + e.getMessage());
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Dạ hiện tại hệ thống tư vấn tự động đang bận. Anh/chị vui lòng liên hệ hotline hoặc gửi tin nhắn qua Fanpage để nhân viên hỗ trợ trực tiếp ạ! 😊";
         }
-        return "Dạ shop đã nhận tin nhắn!";
+
+        return "Dạ hiện tại hệ thống tư vấn tự động đang bận. Anh/chị vui lòng liên hệ hotline hoặc gửi tin nhắn qua Fanpage để nhân viên hỗ trợ trực tiếp ạ! 😊";
     }
 
     private String getProductsContext() {
@@ -169,8 +184,19 @@ public class ChatGPTService {
             List<Map<String, Object>> products = jdbcTemplate.queryForList(sql);
             
             return products.stream()
-                .map(p -> String.format("ID: %s, Tên: %s, Giá: %s, Ảnh: %s", 
-                    p.get("id"), p.get("product_name"), p.get("price"), p.get("image")))
+                .map(p -> {
+                    Object priceObj = p.get("price");
+                    long priceVal = 0;
+                    if (priceObj instanceof Number) {
+                        priceVal = ((Number) priceObj).longValue();
+                    } else if (priceObj != null) {
+                        try {
+                            priceVal = new java.math.BigDecimal(priceObj.toString()).longValue();
+                        } catch (Exception e) {}
+                    }
+                    return String.format("ID: %s, Tên: %s, Giá: %d, Ảnh: %s", 
+                        p.get("id"), p.get("product_name"), priceVal, p.get("image"));
+                })
                 .collect(Collectors.joining("\n"));
         } catch (Exception e) {
             return "Shop có nhiều mẫu Sneaker mới về.";

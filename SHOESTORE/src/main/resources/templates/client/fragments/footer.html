@@ -112,12 +112,23 @@
             while ((match = productRegex.exec(data.text)) !== null) {
                 const [fullMatch, pid, name, price, img] = match;
                 finalContent = finalContent.replace(fullMatch, "");
+
+                const parsePrice = (priceStr) => {
+                    if (!priceStr) return 0;
+                    let cleaned = String(priceStr).replace(/\s+/g, '').toLowerCase();
+                    cleaned = cleaned.replace(/đ|vnd|vnđ|đồng|dong/g, '');
+                    cleaned = cleaned.replace(/\.0000$|\.00$|\.0$/, '');
+                    cleaned = cleaned.replace(/[\.,]/g, '');
+                    const num = Number(cleaned);
+                    return isNaN(num) ? 0 : num;
+                };
+
                 productHtml += `
                     <a href="/details?id=${pid}" class="chat-product-card">
                         <img src="${img.startsWith('http') ? img : '/images/' + img}" class="chat-product-card-img" onerror="this.src='https://placehold.co/100x100?text=Giày'">
                         <div class="chat-product-card-info">
                             <div class="chat-product-card-name">${name}</div>
-                            <div class="chat-product-card-price">${new Intl.NumberFormat('vi-VN').format(price)} đ</div>
+                            <div class="chat-product-card-price">${new Intl.NumberFormat('vi-VN').format(parsePrice(price))} đ</div>
                         </div>
                     </a>`;
             }
