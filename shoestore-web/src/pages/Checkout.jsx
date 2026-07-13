@@ -640,6 +640,7 @@ const Checkout = () => {
             note: note.trim(),
             paymentMethod: paymentMethod,
             voucherCode: appliedVoucher ? appliedVoucher.code : '',
+            shippingFee: shippingFee,
             buyNowVariantId: buyNowVariantId ? parseInt(buyNowVariantId) : null,
             buyNowQty: buyNowQty ? parseInt(buyNowQty) : null
         };

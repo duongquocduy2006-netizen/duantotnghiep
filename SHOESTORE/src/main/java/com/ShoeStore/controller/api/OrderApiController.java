@@ -112,6 +112,8 @@ public class OrderApiController {
         String note = (String) payload.get("note");
         String paymentMethod = (String) payload.get("paymentMethod"); // COD hoặc BANK
         String voucherCode = (String) payload.get("voucherCode");
+        Double shippingFee = payload.containsKey("shippingFee") && payload.get("shippingFee") != null ? 
+                ((Number) payload.get("shippingFee")).doubleValue() : null;
 
         if (fullName == null || phone == null || fullAddress == null || paymentMethod == null) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Vui lòng nhập đầy đủ thông tin!"));
@@ -161,6 +163,9 @@ public class OrderApiController {
                     .sum();
 
             double tempShipping = 30000;
+            if (shippingFee != null) {
+                tempShipping = shippingFee;
+            }
             Integer userRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
             if (userRankId != null) {
                 Boolean freeShip = jdbc.queryForObject(
