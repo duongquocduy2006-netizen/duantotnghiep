@@ -51,52 +51,61 @@ public class ProductApiController {
 
     // 1. LẤY DANH SÁCH SẢN PHẨM
     @GetMapping
-    public ResponseEntity<?> getAllProducts() {
-        List<Product> products = productRepository.findAll();
-        List<Map<String, Object>> response = products.stream().map(p -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", p.getId());
-            map.put("productName", p.getProductName() != null ? p.getProductName() : "Chưa có tên");
-            map.put("productCode", p.getProductCode() != null ? p.getProductCode() : "N/A");
-            map.put("brandName", p.getBrandName() != null ? p.getBrandName() : "Chưa rõ");
-            map.put("status", p.getStatus() != null ? p.getStatus() : 1);
-            map.put("categoryName", p.getCategory() != null ? p.getCategory().getName() : "Chưa phân loại");
+    public ResponseEntity<?> getAllProducts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) List<String> brand,
+            @RequestParam(required = false, defaultValue = "false") Boolean inStock) {
+        try {
+            StringBuilder sql = new StringBuilder();
+            sql.append("SELECT p.id, p.product_name, p.product_code, p.brand_name, ")
+                    .append("c.category_name as category_name, ")
+                    .append("(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, ")
+                    .append("(SELECT MIN(price) FROM product_variants WHERE product_id = p.id) as min_price ")
+                    .append("FROM products p ")
+                    .append("LEFT JOIN categories c ON p.category_id = c.id ")
+                    .append("WHERE p.status = 1 AND c.status = 1 ")
+                    .append("AND EXISTS (SELECT 1 FROM brands b WHERE b.brand_name = p.brand_name AND b.status = 1) ");
 
-            // Xác định ảnh
-            String mainImage = "";
-            if (p.getImages() != null && !p.getImages().isEmpty()) {
-                mainImage = "/images/" + p.getImages().iterator().next().getImageUrl();
+            List<Object> params = new java.util.ArrayList<>();
+
+            if (Boolean.TRUE.equals(inStock)) {
+                sql.append("AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.quantity > 0) ");
             } else {
-                mainImage = "https://ui-avatars.com/api/?name=" + map.get("productName").toString().charAt(0)
-                        + "&background=121212&color=00f2ff&bold=true";
-            }
-            map.put("imageUrl", mainImage);
-
-            // Số lượng biến thể & Giá đại diện (giá của biến thể đầu tiên)
-            int variantCount = (p.getVariants() != null) ? p.getVariants().size() : 0;
-            BigDecimal price = null;
-            if (variantCount > 0 && p.getVariants().iterator().next().getPrice() != null) {
-                price = p.getVariants().iterator().next().getPrice();
-            }
-            map.put("variantCount", variantCount);
-            map.put("price", price);
-
-            if (p.getVariants() != null) {
-                List<Map<String, Object>> vList = p.getVariants().stream().map(v -> {
-                    Map<String, Object> vMap = new HashMap<>();
-                    vMap.put("id", v.getId());
-                    vMap.put("sizeName", v.getSize() != null ? v.getSize().getSizeName() : "");
-                    vMap.put("colorName", v.getColor() != null ? v.getColor().getColorName() : "");
-                    vMap.put("price", v.getPrice());
-                    return vMap;
-                }).collect(Collectors.toList());
-                map.put("variants", vList);
+                sql.append("AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id) ");
             }
 
-            return map;
-        }).collect(Collectors.toList());
+            if (search != null && !search.trim().isEmpty()) {
+                String term = "%" + search.trim().toLowerCase().replace("'", "''") + "%";
+                sql.append("AND (LOWER(p.product_name) LIKE ? OR LOWER(p.brand_name) LIKE ? OR LOWER(c.category_name) LIKE ?) ");
+                params.add(term);
+                params.add(term);
+                params.add(term);
+            }
 
-        return ResponseEntity.ok(response);
+            if (brand != null && !brand.isEmpty()) {
+                sql.append("AND p.brand_name IN (");
+                for (int i = 0; i < brand.size(); i++) {
+                    sql.append("?");
+                    params.add(brand.get(i));
+                    if (i < brand.size() - 1) {
+                        sql.append(",");
+                    }
+                }
+                sql.append(") ");
+            }
+
+            sql.append("ORDER BY p.created_at DESC");
+
+            List<Map<String, Object>> products = params.isEmpty()
+                    ? jdbc.queryForList(sql.toString())
+                    : jdbc.queryForList(sql.toString(), params.toArray());
+
+            return ResponseEntity.ok(Map.of("success", true, "products", products));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi lấy sản phẩm: " + e.getMessage()));
+        }
     }
 
     // 1.5. LẤY DANH SÁCH METADATA ĐỂ TẠO SẢN PHẨM

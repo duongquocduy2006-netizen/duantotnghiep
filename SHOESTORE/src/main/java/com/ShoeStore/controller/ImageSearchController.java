@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
 
 @Controller
@@ -38,14 +39,33 @@ public class ImageSearchController {
             model.addAttribute("uploadedImage", "data:" + file.getContentType() + ";base64," + base64Img);
 
             ImageSearchResult aiResult = imageSearchService.analyzeImage(file);
-            String brand = aiResult.getBrand();
-            String category = aiResult.getCategory();
-            String color = aiResult.getColor();
+            String brand = aiResult.getBrand().trim();
+            String category = aiResult.getCategory().trim();
+            String color = aiResult.getColor().trim();
 
             model.addAttribute("aiResult", aiResult);
 
-                    
-            List<Product> products = productRepository.searchSimilarProducts(brand, category, color, Pageable.unpaged());
+            if (brand.isEmpty()) {
+                model.addAttribute("error", "Không thể xác định thương hiệu từ ảnh.");
+                return "image-search";
+            }
+
+            List<Product> products = Collections.emptyList();
+            if (!brand.isEmpty() && !category.isEmpty() && !color.isEmpty()) {
+                products = productRepository.searchByBrandCategoryColor(brand, category, color, Pageable.unpaged());
+            }
+
+            if (products.isEmpty() && !brand.isEmpty() && !category.isEmpty()) {
+                products = productRepository.searchByBrandCategory(brand, category, Pageable.unpaged());
+            }
+
+            if (products.isEmpty() && !brand.isEmpty() && !color.isEmpty()) {
+                products = productRepository.searchByBrandColor(brand, color, Pageable.unpaged());
+            }
+
+            if (products.isEmpty()) {
+                products = productRepository.searchByBrand(brand, Pageable.unpaged());
+            }
 
             // Bắt buộc map dữ liệu collection để tránh lỗi LazyInitializationException
             for (Product p : products) {
@@ -56,8 +76,7 @@ public class ImageSearchController {
             }
 
             if (products.isEmpty()) {
-                model.addAttribute("info",
-                        "Hiện tại cửa hàng chưa có sản phẩm của thương hiệu này.");
+                model.addAttribute("info", "Không tìm thấy sản phẩm phù hợp.");
             } else {
                 model.addAttribute("products", products);
             }

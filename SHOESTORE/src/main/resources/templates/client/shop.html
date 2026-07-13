@@ -375,13 +375,14 @@
                     <h5 class="mb-4" style="font-family: 'Oswald'; letter-spacing: 1px;">BỘ LỌC SẢN PHẨM</h5>
                     <form id="filterForm" th:action="@{/shop}" method="get">
                         <input type="hidden" name="sort" th:value="${currentSort}">
+                        <input type="hidden" name="q" th:value="${keyword}">
                         
                         <!-- Brands -->
                         <div class="mb-4">
                             <label class="text-muted small text-uppercase mb-2 d-block" style="letter-spacing: 1px; font-weight: 600;">Thương hiệu</label>
                             <div th:each="b : ${globalBrands}" class="form-check mb-2">
                                 <input class="form-check-input" type="checkbox" name="brand" th:value="${b}"
-                                    th:checked="${selectedBrands != null && selectedBrands.contains(b)}" onchange="this.form.submit()">
+                                    th:checked="${selectedBrands != null && selectedBrands.contains(b)}">
                                 <label class="form-check-label small" th:text="${b}"></label>
                             </div>
                         </div>
@@ -391,7 +392,7 @@
                             <label class="text-muted small text-uppercase mb-2 d-block" style="letter-spacing: 1px; font-weight: 600;">Danh mục</label>
                             <div th:each="c : ${globalCategories}" class="form-check mb-2">
                                 <input class="form-check-input" type="checkbox" name="category" th:value="${c.id}"
-                                    th:checked="${selectedCategories != null && selectedCategories.contains(c.id)}" onchange="this.form.submit()">
+                                    th:checked="${selectedCategories != null && selectedCategories.contains(c.id)}">
                                 <label class="form-check-label small" th:text="${c.category_name}"></label>
                             </div>
                         </div>
@@ -429,39 +430,8 @@
             </div>
 
             <div class="col-lg-9">
-                <div class="row g-5">
-                    <div th:each="p : ${products}" class="col-lg-4 col-md-6 col-12">
-                        <div class="product-card animate__animated animate__fadeInUp">
-                            <div class="card-img-box">
-                                <img th:src="${p.image_url != null ? p.image_url : (p.IMAGE_URL != null ? p.IMAGE_URL : '/images/default-shoe.png')}"
-                                    onerror="this.src='https://placehold.co/400x500?text=No+Image'" class="card-img">
-                                <a th:href="@{/details(id=${p.id})}" class="img-link"></a>
-                                <div class="card-actions">
-                                    <a th:href="@{/details(id=${p.id})}" class="action-btn"><i class="fa fa-eye"></i></a>
-                                    <button type="button" class="action-btn"
-                                        th:classappend="${globalFavIds != null && globalFavIds.contains(p.id)} ? 'active' : ''"
-                                        th:onclick="'toggleWishlist(' + ${p.id} + ', this)'">
-                                        <i class="fa fa-heart"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-info">
-                                <div class="card-cat" th:text="${p.brand_name ?: p.BRAND_NAME}">Brand</div>
-                                <h5 class="card-title"><a th:href="@{/details(id=${p.id})}" th:text="${p.product_name ?: p.PRODUCT_NAME}">Product Name</a></h5>
-                                <div class="card-price">
-                                    <th:block th:if="${(p.sale_price ?: p.SALE_PRICE) != null}">
-                                        <span class="sale-price" th:text="${#numbers.formatDecimal((p.sale_price ?: p.SALE_PRICE), 0, 'POINT', 0, 'POINT') + '₫'}">0₫</span>
-                                        <span class="text-muted text-decoration-line-through ms-2 small" style="font-size: 13px;"
-                                              th:text="${#numbers.formatDecimal((p.min_price ?: p.MIN_PRICE), 0, 'POINT', 0, 'POINT') + '₫'}">0₫</span>
-                                    </th:block>
-                                    <th:block th:if="${(p.sale_price ?: p.SALE_PRICE) == null}">
-                                        <span class="sale-price" th:text="${(p.min_price ?: p.MIN_PRICE) != null ? #numbers.formatDecimal((p.min_price ?: p.MIN_PRICE), 0, 'POINT', 0, 'POINT') + '₫' : 'Liên hệ'}">0₫</span>
-                                    </th:block>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div class="row g-5" id="productGrid"></div>
+                <div class="text-center py-5" id="productMessage" style="display: none; color: #ccc; font-size: 18px;"></div>
 
                 <!-- Phân trang -->
                 <nav class="mt-5 d-flex justify-content-center" th:if="${totalPages > 1}">
@@ -515,6 +485,138 @@
             });
         });
         updateSlider(); // Chạy lần đầu
+
+        const productGrid = document.getElementById('productGrid');
+        const productMessage = document.getElementById('productMessage');
+        const searchInput = document.querySelector('form.search-wrapper input[name="q"]');
+        const filterForm = document.getElementById('filterForm');
+
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            const search = params.get('search') || params.get('q') || '';
+            const brands = params.getAll('brand');
+            const categories = params.getAll('category');
+            const inStock = params.get('inStock') || 'true';
+            return { search, brands, categories, inStock };
+        }
+
+        function buildApiUrl({ search, brands, categories, inStock }) {
+            const params = new URLSearchParams();
+            if (search) params.append('search', search);
+            brands.forEach(b => params.append('brand', b));
+            categories.forEach(c => params.append('category', c));
+            if (inStock) params.append('inStock', inStock);
+            return '/api/products?' + params.toString();
+        }
+
+        function renderProducts(products) {
+            productGrid.innerHTML = '';
+            if (!products || products.length === 0) {
+                productMessage.style.display = 'block';
+                productMessage.innerText = 'Không tìm thấy sản phẩm phù hợp';
+                return;
+            }
+            productMessage.style.display = 'none';
+
+            const html = products.map(p => {
+                const imageUrl = p.image_url || p.imageUrl || '/images/default-shoe.png';
+                const price = p.min_price != null ? new Intl.NumberFormat('vi-VN').format(p.min_price) + '₫' : 'Liên hệ';
+                return `
+                    <div class="col-lg-4 col-md-6 col-12">
+                        <div class="product-card animate__animated animate__fadeInUp">
+                            <div class="card-img-box">
+                                <img src="${imageUrl}" onerror="this.src='https://placehold.co/400x500?text=No+Image'" class="card-img">
+                                <a href="/details?id=${p.id}" class="img-link"></a>
+                                <div class="card-actions">
+                                    <a href="/details?id=${p.id}" class="action-btn"><i class="fa fa-eye"></i></a>
+                                    <button type="button" class="action-btn" onclick="toggleWishlist(${p.id}, this)">
+                                        <i class="fa fa-heart"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-info">
+                                <div class="card-cat">${p.brand_name || p.brandName || ''}</div>
+                                <h5 class="card-title"><a href="/details?id=${p.id}">${p.product_name || p.productName || 'Sản phẩm'}</a></h5>
+                                <div class="card-price">
+                                    <span class="sale-price">${price}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            productGrid.innerHTML = html;
+        }
+
+        function updateBrandCheckboxesFromSearch(search) {
+            if (!search) return;
+            document.querySelectorAll('input[name="brand"]').forEach(input => {
+                const label = input.nextElementSibling ? input.nextElementSibling.innerText : '';
+                input.checked = label && search.toLowerCase().includes(label.toLowerCase());
+            });
+        }
+
+        async function fetchProducts() {
+            const query = getQueryParams();
+            if (searchInput && !searchInput.value) {
+                searchInput.value = query.search;
+            }
+            updateBrandCheckboxesFromSearch(query.search);
+            const url = buildApiUrl(query);
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.success) {
+                    renderProducts(data.products);
+                } else {
+                    productGrid.innerHTML = '';
+                    productMessage.style.display = 'block';
+                    productMessage.innerText = data.message || 'Không tìm thấy sản phẩm phù hợp';
+                }
+            } catch (err) {
+                productGrid.innerHTML = '';
+                productMessage.style.display = 'block';
+                productMessage.innerText = 'Lỗi tải sản phẩm. Vui lòng thử lại sau.';
+                console.error(err);
+            }
+        }
+
+        function syncUrl(search, brands, categories) {
+            const params = new URLSearchParams();
+            if (search) params.set('search', search);
+            brands.forEach(b => params.append('brand', b));
+            categories.forEach(c => params.append('category', c));
+            params.set('inStock', 'true');
+            const newUrl = window.location.pathname + '?' + params.toString();
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        function handleFilters() {
+            const searchValue = searchInput ? searchInput.value.trim() : '';
+            const brandInputs = Array.from(document.querySelectorAll('input[name="brand"]')).filter(i => i.checked).map(i => i.value);
+            const categoryInputs = Array.from(document.querySelectorAll('input[name="category"]')).filter(i => i.checked).map(i => i.value);
+            syncUrl(searchValue, brandInputs, categoryInputs);
+            fetchProducts();
+        }
+
+        if (filterForm) {
+            filterForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                handleFilters();
+            });
+            document.querySelectorAll('input[name="brand"]').forEach(input => input.addEventListener('change', handleFilters));
+            document.querySelectorAll('input[name="category"]').forEach(input => input.addEventListener('change', handleFilters));
+        }
+
+        const headerSearchForm = document.querySelector('form.search-wrapper');
+        if (headerSearchForm) {
+            headerSearchForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                handleFilters();
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchProducts);
     </script>
 </body>
 </html>
