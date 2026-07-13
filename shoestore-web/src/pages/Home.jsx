@@ -18,6 +18,40 @@ const Home = () => {
     const [timeLeft, setTimeLeft] = useState({ days: '00', hours: '00', minutes: '00', seconds: '00' });
     const [quickAddProductId, setQuickAddProductId] = useState(null);
     const observerRef = useRef(null);
+    const brandContainerRef = useRef(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const checkBrandScroll = () => {
+        const container = brandContainerRef.current;
+        if (container) {
+            setCanScrollLeft(container.scrollLeft > 5);
+            setCanScrollRight(container.scrollLeft + container.clientWidth < container.scrollWidth - 5);
+        }
+    };
+
+    const scrollBrands = (direction) => {
+        const container = brandContainerRef.current;
+        if (container) {
+            const scrollAmount = direction === 'left' ? -container.clientWidth : container.clientWidth;
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    };
+
+    useEffect(() => {
+        const container = brandContainerRef.current;
+        if (container) {
+            container.addEventListener('scroll', checkBrandScroll);
+            window.addEventListener('resize', checkBrandScroll);
+            setTimeout(checkBrandScroll, 500);
+        }
+        return () => {
+            if (container) {
+                container.removeEventListener('scroll', checkBrandScroll);
+            }
+            window.removeEventListener('resize', checkBrandScroll);
+        };
+    }, [brands]);
 
     /* ── DATA FETCHING ── */
     const fetchData = async () => {
@@ -48,9 +82,11 @@ const Home = () => {
             }
 
             if (brandRes.data?.success) {
-                setBrands(brandRes.data.brands || []);
+                const activeBrands = (brandRes.data.brands || []).filter(b => b.active !== false);
+                setBrands(activeBrands);
             } else if (Array.isArray(brandRes.data)) {
-                setBrands(brandRes.data);
+                const activeBrands = brandRes.data.filter(b => b.active !== false);
+                setBrands(activeBrands);
             }
 
             if (bannerRes.data && Array.isArray(bannerRes.data)) {
@@ -486,32 +522,6 @@ const Home = () => {
                             <Link to="/shop" className="god-link-bold text-uppercase">
                                 XEM TẤT CẢ <i className="fa-solid fa-arrow-right ms-2" />
                             </Link>
-                        </div>
-                        <div className="brand-grid">
-                            {(brands.length > 0 ? brands.slice(0, 5) : [
-                                { id: 1, name: 'Nike' },
-                                { id: 2, name: 'Adidas' },
-                                { id: 3, name: 'New Balance' },
-                                { id: 4, name: 'Vans' },
-                                { id: 5, name: 'Converse' },
-                            ]).map((brand, idx) => {
-                                const name = brand.brand_name || brand.brandName || brand.name || `Brand ${idx + 1}`;
-                                const hasImg = brand.imageUrl && !brand.imageUrl.includes('localhost');
-                                return (
-                                    <div key={brand.id || idx}
-                                         className={`brand-grid-item reveal-item god-hidden ${idx === 0 ? 'large' : ''}`}
-                                         style={{ animationDelay: `${idx * 0.12}s` }}>
-                                        <Link to={`/shop?brand=${brand.id}`}
-                                              className={`brand-card-inner text-decoration-none ${hasImg ? 'has-image' : ''}`}>
-                                            {hasImg && (
-                                                <img src={imgUrl(brand.imageUrl)} alt={name} className="brand-img" />
-                                            )}
-                                            <span className="brand-card-name">{name.toUpperCase()}</span>
-                                            <span className="brand-card-explore">KHÁM PHÁ <i className="fa-solid fa-arrow-right" /></span>
-                                        </Link>
-                                    </div>
-                                );
-                            })}
                         </div>
                         <div className="brand-slider-wrapper reveal-item god-hidden">
                             {canScrollLeft && (
