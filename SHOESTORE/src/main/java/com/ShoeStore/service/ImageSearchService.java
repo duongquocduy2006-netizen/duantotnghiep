@@ -14,10 +14,10 @@ import java.util.*;
 @Service
 public class ImageSearchService {
 
-    @Value("${gemini.api.key}")
+    @Value("${gemini.api.key:}")
     private String apiKey;
 
-    @Value("${gemini.api.url}")
+    @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=}")
     private String apiUrl;
 
     public ImageSearchResult analyzeImage(MultipartFile file) throws Exception {
