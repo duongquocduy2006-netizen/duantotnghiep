@@ -463,8 +463,60 @@ const Checkout = () => {
 
 
 
+    const normalizeName = (name) => {
+        if (!name) return '';
+        return name.toLowerCase()
+            .replace(/^(tỉnh|thành phố|quận|huyện|thị xã|phường|xã|thị trấn)\s+/i, '')
+            .trim();
+    };
+
+    const updateStreetDetailWithSelects = (newProvinceId, newDistrictId, newWardCode, currentStreetDetail, currentProvinces, currentDistricts, currentWards) => {
+        const provinceObj = currentProvinces.find(p => String(p.ProvinceID) === String(newProvinceId));
+        const districtObj = currentDistricts.find(d => String(d.DistrictID) === String(newDistrictId));
+        const wardObj = currentWards.find(w => String(w.WardCode) === String(newWardCode));
+
+        const pText = provinceObj ? provinceObj.ProvinceName : '';
+        const dText = districtObj ? districtObj.DistrictName : '';
+        const wText = wardObj ? wardObj.WardName : '';
+
+        const suffixParts = [];
+        if (wText) suffixParts.push(wText);
+        if (dText) suffixParts.push(dText);
+        if (pText) suffixParts.push(pText);
+        const newSuffix = suffixParts.join(', ');
+
+        let prefix = currentStreetDetail || '';
+        const parts = prefix.split(',').map(item => item.trim());
+        while (parts.length > 0) {
+            const lastPart = parts[parts.length - 1].toLowerCase();
+            const isProvince = currentProvinces.some(p => normalizeName(p.ProvinceName) === normalizeName(lastPart));
+            const isDistrict = currentDistricts.some(d => normalizeName(d.DistrictName) === normalizeName(lastPart));
+            const isWard = currentWards.some(w => normalizeName(w.WardName) === normalizeName(lastPart));
+            
+            if (isProvince || isDistrict || isWard || lastPart === 'việt nam' || lastPart === 'vietnam' || /^\d{5,6}$/.test(lastPart)) {
+                parts.pop();
+            } else {
+                break;
+            }
+        }
+        prefix = parts.join(', ').trim();
+
+        if (prefix && newSuffix) {
+            return `${prefix}, ${newSuffix}`;
+        } else if (newSuffix) {
+            return newSuffix;
+        } else {
+            return prefix;
+        }
+    };
+
     const handleProvinceChange = async (e) => {
         const pId = e.target.value;
+        
+        // Update street detail with new province selection, resetting district/ward details
+        const newStreetDetail = updateStreetDetailWithSelects(pId, '', '', streetDetail, provinces, districts, wards);
+        setStreetDetail(newStreetDetail);
+
         setSelectedProvince(pId);
         setSelectedDistrict('');
         setSelectedWard('');
@@ -486,6 +538,11 @@ const Checkout = () => {
 
     const handleDistrictChange = async (e) => {
         const dId = e.target.value;
+
+        // Update street detail with selected province & new district selection, resetting ward details
+        const newStreetDetail = updateStreetDetailWithSelects(selectedProvince, dId, '', streetDetail, provinces, districts, wards);
+        setStreetDetail(newStreetDetail);
+
         setSelectedDistrict(dId);
         setSelectedWard('');
         setWards([]);
@@ -506,6 +563,11 @@ const Checkout = () => {
 
     const handleWardChange = (e) => {
         const wCode = e.target.value;
+
+        // Update street detail with selected province, district, and new ward selection
+        const newStreetDetail = updateStreetDetailWithSelects(selectedProvince, selectedDistrict, wCode, streetDetail, provinces, districts, wards);
+        setStreetDetail(newStreetDetail);
+
         setSelectedWard(wCode);
         if (selectedDistrict && wCode) {
             calculateGHNFee(selectedDistrict, wCode);
@@ -624,10 +686,27 @@ const Checkout = () => {
         const dText = districtObj ? districtObj.DistrictName : '';
         const wText = wardObj ? wardObj.WardName : '';
 
-        let full = streetDetail.trim();
-        if (wText) full += `, ${wText}`;
-        if (dText) full += `, ${dText}`;
-        if (pText) full += `, ${pText}`;
+        // Strip any existing location suffix from streetDetail.trim() to get the clean user prefix, then append select names.
+        let baseStreet = streetDetail.trim();
+        const parts = baseStreet.split(',').map(item => item.trim());
+        while (parts.length > 0) {
+            const lastPart = parts[parts.length - 1].toLowerCase();
+            const isProvince = provinces.some(p => normalizeName(p.ProvinceName) === normalizeName(lastPart));
+            const isDistrict = districts.some(d => normalizeName(d.DistrictName) === normalizeName(lastPart));
+            const isWard = wards.some(w => normalizeName(w.WardName) === normalizeName(lastPart));
+            
+            if (isProvince || isDistrict || isWard || lastPart === 'việt nam' || lastPart === 'vietnam' || /^\d{5,6}$/.test(lastPart)) {
+                parts.pop();
+            } else {
+                break;
+            }
+        }
+        baseStreet = parts.join(', ').trim();
+
+        let full = baseStreet;
+        if (wText) full += (full ? ', ' : '') + wText;
+        if (dText) full += (full ? ', ' : '') + dText;
+        if (pText) full += (full ? ', ' : '') + pText;
 
         const urlParams = new URLSearchParams(window.location.search);
         const buyNowVariantId = urlParams.get('buyNowVariantId');

@@ -504,8 +504,72 @@
                 }
             };
 
+            function normalizeName(name) {
+                if (!name) return '';
+                return name.toLowerCase()
+                    .replace(/^(tỉnh|thành phố|quận|huyện|thị xã|phường|xã|thị trấn)\s+/i, '')
+                    .trim();
+            }
+
+            function updateStreetDetailOnSelect(newProvinceId, newDistrictId, newWardCode) {
+                let pName = '';
+                if (newProvinceId) {
+                    const opt = Array.from(provinceSelect.options).find(o => o.value === newProvinceId);
+                    if (opt) pName = opt.text;
+                }
+                let dName = '';
+                if (newDistrictId) {
+                    const opt = Array.from(districtSelect.options).find(o => o.value === newDistrictId);
+                    if (opt) dName = opt.text;
+                }
+                let wName = '';
+                if (newWardCode) {
+                    const opt = Array.from(wardSelect.options).find(o => o.value === newWardCode);
+                    if (opt) wName = opt.text;
+                }
+
+                const suffixParts = [];
+                if (wName) suffixParts.push(wName);
+                if (dName) suffixParts.push(dName);
+                if (pName) suffixParts.push(pName);
+                const newSuffix = suffixParts.join(', ');
+
+                let prefix = streetDetail.value || '';
+                const parts = prefix.split(',').map(item => item.trim());
+                
+                const provincesList = Array.from(provinceSelect.options).map(o => o.text).filter(Boolean);
+                const districtsList = Array.from(districtSelect.options).map(o => o.text).filter(Boolean);
+                const wardsList = Array.from(wardSelect.options).map(o => o.text).filter(Boolean);
+
+                while (parts.length > 0) {
+                    const lastPart = parts[parts.length - 1].toLowerCase();
+                    const isProvince = provincesList.some(name => normalizeName(name) === normalizeName(lastPart));
+                    const isDistrict = districtsList.some(name => normalizeName(name) === normalizeName(lastPart));
+                    const isWard = wardsList.some(name => normalizeName(name) === normalizeName(lastPart));
+
+                    if (isProvince || isDistrict || isWard || lastPart === 'việt nam' || lastPart === 'vietnam' || /^\d{5,6}$/.test(lastPart)) {
+                        parts.pop();
+                    } else {
+                        break;
+                    }
+                }
+                prefix = parts.join(', ').trim();
+
+                if (prefix && newSuffix) {
+                    streetDetail.value = prefix + ', ' + newSuffix;
+                } else if (newSuffix) {
+                    streetDetail.value = newSuffix;
+                } else {
+                    streetDetail.value = prefix;
+                }
+            }
+
             provinceSelect.onchange = function() {
                  const pId = this.value;
+                 
+                 // Update the street detail input value
+                 updateStreetDetailOnSelect(pId, '', '');
+
                  districtSelect.innerHTML = '<option value="">Chọn Quận/Huyện</option>';
                  wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
                  setDropdownDisabled(districtSelect, true);
@@ -530,6 +594,10 @@
 
              districtSelect.onchange = function() {
                  const dId = this.value;
+                 
+                 // Update the street detail input value
+                 updateStreetDetailOnSelect(provinceSelect.value, dId, '');
+
                  wardSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
                  setDropdownDisabled(wardSelect, true);
                  
@@ -553,6 +621,9 @@
              };
 
              wardSelect.onchange = function() {
+                 // Update the street detail input value
+                 updateStreetDetailOnSelect(provinceSelect.value, districtSelect.value, this.value);
+
                  updateFullAddress();
                  calculateFee();
              };
@@ -820,7 +891,29 @@
                 const wText = wardSelect.options[wardSelect.selectedIndex]?.text || '';
                 const detail = streetDetail.value;
                 
-                let full = detail;
+                // Strip existing suffix from detail to get the base street
+                let baseStreet = detail;
+                const parts = baseStreet.split(',').map(item => item.trim());
+                
+                const provincesList = Array.from(provinceSelect.options).map(o => o.text).filter(Boolean);
+                const districtsList = Array.from(districtSelect.options).map(o => o.text).filter(Boolean);
+                const wardsList = Array.from(wardSelect.options).map(o => o.text).filter(Boolean);
+
+                while (parts.length > 0) {
+                    const lastPart = parts[parts.length - 1].toLowerCase();
+                    const isProvince = provincesList.some(name => normalizeName(name) === normalizeName(lastPart));
+                    const isDistrict = districtsList.some(name => normalizeName(name) === normalizeName(lastPart));
+                    const isWard = wardsList.some(name => normalizeName(name) === normalizeName(lastPart));
+
+                    if (isProvince || isDistrict || isWard || lastPart === 'việt nam' || lastPart === 'vietnam' || /^\d{5,6}$/.test(lastPart)) {
+                        parts.pop();
+                    } else {
+                        break;
+                    }
+                }
+                baseStreet = parts.join(', ').trim();
+
+                let full = baseStreet;
                 if (wText && wText !== 'Chọn Phường/Xã') full += (full ? ', ' : '') + wText;
                 if (dText && dText !== 'Chọn Quận/Huyện') full += (full ? ', ' : '') + dText;
                 if (pText && pText !== 'Chọn Tỉnh/Thành') full += (full ? ', ' : '') + pText;
