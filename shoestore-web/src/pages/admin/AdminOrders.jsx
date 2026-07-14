@@ -1,16 +1,33 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
 
 const AdminOrders = () => {
-    const [orders, setOrders] = useState([]);
+    const [allOrders, setAllOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     // Filters
     const [statusFilter, setStatusFilter] = useState("");
     const [keyword, setKeyword] = useState("");
+
+    // Computed orders filtered by status locally
+    const orders = useMemo(() => {
+        if (statusFilter === "") return allOrders;
+        return allOrders.filter(o => o.status === parseInt(statusFilter));
+    }, [allOrders, statusFilter]);
+
+    // Computed unique statuses present in allOrders (matching current keyword)
+    const availableStatuses = useMemo(() => {
+        const statuses = new Set();
+        allOrders.forEach(order => {
+            if (order.status !== undefined && order.status !== null) {
+                statuses.add(order.status);
+            }
+        });
+        return Array.from(statuses);
+    }, [allOrders]);
 
     // Modal Details state
     const [selectedOrderCode, setSelectedOrderCode] = useState(null);
@@ -27,21 +44,18 @@ const AdminOrders = () => {
         cancelReason: ""
     });
 
-    // Fetch orders with optional filters
-    const fetchOrders = async (searchKeyword = "", statusVal = "") => {
+    // Fetch orders with optional keyword
+    const fetchOrders = async (searchKeyword = "") => {
         try {
             setLoading(true);
             const params = {};
             if (searchKeyword.trim()) {
                 params.keyword = searchKeyword.trim();
             }
-            if (statusVal !== "") {
-                params.status = parseInt(statusVal);
-            }
 
             const response = await api.get("/api/orders/all", { params });
             if (response.data && response.data.success) {
-                setOrders(response.data.orders || []);
+                setAllOrders(response.data.orders || []);
             } else {
                 setError("Có lỗi xảy ra khi tải danh sách đơn hàng.");
             }
@@ -56,11 +70,11 @@ const AdminOrders = () => {
     // Debounced search trigger
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
-            fetchOrders(keyword, statusFilter);
+            fetchOrders(keyword);
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [keyword, statusFilter]);
+    }, [keyword]);
 
     // Handle single order status update (Open custom confirm modal)
     const handleStatusChange = (orderCode, newStatus) => {
@@ -86,7 +100,7 @@ const AdminOrders = () => {
 
             if (response.data && response.data.success) {
                 // Update local status state of the updated order
-                setOrders(prevOrders =>
+                setAllOrders(prevOrders =>
                     prevOrders.map(o => o.orderCode === orderCode ? { ...o, status: newStatus } : o)
                 );
             }
@@ -97,14 +111,14 @@ const AdminOrders = () => {
                 : "Không thể cập nhật trạng thái đơn hàng. Vui lòng kiểm tra lại.";
             alert(errMsg);
             // Re-fetch to sync state with server
-            fetchOrders(keyword, statusFilter);
+            fetchOrders(keyword);
         }
     };
 
     const cancelStatusChange = () => {
         setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "" });
         // Re-fetch to revert the dropdown choice in UI
-        fetchOrders(keyword, statusFilter);
+        fetchOrders(keyword);
     };
 
     // Open detail modal and fetch order info
@@ -144,7 +158,7 @@ const AdminOrders = () => {
                     // Refresh the modal data
                     openOrderDetail(orderCode);
                     // Also refresh the orders list in the background
-                    fetchOrders(keyword, statusFilter);
+                    fetchOrders(keyword);
                 } else {
                     window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || 'Lỗi: Không thể xóa sản phẩm.' }));
                 }
@@ -222,11 +236,11 @@ const AdminOrders = () => {
                     onChange={(e) => setStatusFilter(e.target.value)}
                 >
                     <option value="">Trạng thái: Tất cả</option>
-                    <option value="1">Chờ xác nhận</option>
-                    <option value="2">Đang giao hàng</option>
-                    <option value="5">Đã nhận hàng (Chờ duyệt)</option>
-                    <option value="3">Đã giao thành công</option>
-                    <option value="4">Đã hủy</option>
+                    {(availableStatuses.includes(1) || statusFilter === "1") && <option value="1">Chờ xác nhận</option>}
+                    {(availableStatuses.includes(2) || statusFilter === "2") && <option value="2">Đang giao hàng</option>}
+                    {(availableStatuses.includes(5) || statusFilter === "5") && <option value="5">Đã nhận hàng (Chờ duyệt)</option>}
+                    {(availableStatuses.includes(3) || statusFilter === "3") && <option value="3">Đã giao thành công</option>}
+                    {(availableStatuses.includes(4) || statusFilter === "4") && <option value="4">Đã hủy</option>}
                 </select>
             </div>
 
@@ -293,15 +307,16 @@ const AdminOrders = () => {
                                                     className={`filter-select status-select-badge ${statusInfo.class}`}
                                                     style={{ padding: '5px 30px 5px 10px', fontSize: '12px', margin: 0 }}
                                                     value={order.status}
-                                                    disabled={order.status === 3 || order.status === 4 || order.status === 5}
+                                                    disabled={order.status === 3 || order.status === 4}
                                                     onChange={(e) => handleStatusChange(order.orderCode, parseInt(e.target.value))}
                                                 >
-                                                    <option value="1">Chờ xác nhận</option>
-                                                    <option value="2">Đang giao hàng</option>
-                                                    {order.status !== 4 && <option value="4">Hủy đơn</option>}
-                                                    {order.status === 4 && <option value="4">Đã hủy</option>}
-                                                    {order.status === 3 && <option value="3">Thành công</option>}
+                                                    {order.status === 1 && <option value="1">Chờ xác nhận</option>}
+                                                    {(order.status === 1 || order.status === 2) && <option value="2">Đang giao hàng</option>}
                                                     {order.status === 5 && <option value="5">Đã nhận hàng (Chờ duyệt)</option>}
+                                                    {order.status === 5 && <option value="3">Xác nhận thành công</option>}
+                                                    {order.status === 3 && <option value="3">Thành công</option>}
+                                                    {order.status !== 3 && order.status !== 4 && <option value="4">Hủy đơn</option>}
+                                                    {order.status === 4 && <option value="4">Đã hủy</option>}
                                                 </select>
                                             </div>
                                         </td>

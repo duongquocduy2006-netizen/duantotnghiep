@@ -619,16 +619,16 @@ public class AdminProductManager {
     @Transactional
     @GetMapping("/products/delete/{id}")
     public String deleteProduct(@PathVariable Integer id, RedirectAttributes redirectAttributes) {
-        // Kiểm tra bằng JDBC thuần — chặn xóa nếu còn đơn hàng chưa hủy (status <> 4)
+        // Kiểm tra bằng JDBC thuần — chặn xóa nếu còn đơn hàng đang xử lý (status NOT IN (3, 4))
         Integer activeOrderCount = jdbc.queryForObject(
             "SELECT COUNT(*) FROM order_items oi " +
             "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
             "JOIN orders o ON oi.order_id = o.id " +
-            "WHERE pv.product_id = ? AND o.status <> 4",
+            "WHERE pv.product_id = ? AND o.status NOT IN (3, 4)",
             Integer.class, id
         );
         if (activeOrderCount != null && activeOrderCount > 0) {
-            redirectAttributes.addFlashAttribute("error", "Không thể xóa sản phẩm này vì đang có " + activeOrderCount + " đơn hàng chưa được hủy. Chỉ được xóa khi tất cả đơn hàng liên quan đã bị hủy!");
+            redirectAttributes.addFlashAttribute("error", "Không thể xóa sản phẩm này vì đang có " + activeOrderCount + " đơn hàng đang xử lý. Chỉ được xóa khi tất cả đơn hàng liên quan đã hoàn tất hoặc bị hủy!");
             return "redirect:/admin/products";
         }
 
