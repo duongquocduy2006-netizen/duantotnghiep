@@ -178,37 +178,27 @@ const Header = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            if (res.data && res.data.success || res.status === 200) {
-                // If it fails structurally, the API returns a string message or success false, but wait, if it fails but returns 200 OK:
-                // From ImageSearchRestController: if success==false due to not match, it returns success: false. Wait, no: "success", false but it's ResponseEntity.ok. Let's redirect anyway or show toast.
-
-                if (res.data.success === false) {
+            if (res.data && (res.data.success || res.status === 200)) {
+                if (res.data.success === false && !res.data.aiResult) {
                     window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.message || 'Lỗi nhận diện hình ảnh' }));
-                    // Navigate even when success false to show aiResult?
-                    // Let's only navigate if aiResult exists.
-                    if (res.data.aiResult) {
-                        const imageUrl = URL.createObjectURL(file);
-                        navigate('/image-search', {
-                            state: {
-                                aiResult: res.data.aiResult,
-                                products: res.data.products || [],
-                                imageUrl: imageUrl
-                            }
-                        });
-                    }
                     return;
                 }
 
-                const imageUrl = URL.createObjectURL(file);
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Phân tích thành công!' }));
+                const aiResult = res.data.aiResult || {};
+                const { brand, category } = aiResult;
 
-                navigate('/image-search', {
-                    state: {
-                        aiResult: res.data.aiResult,
-                        products: res.data.products,
-                        imageUrl: imageUrl
-                    }
-                });
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Phân tích thành công! Đang tìm sản phẩm...' }));
+
+                // Ghép brand + category vào search keyword để Shop tự smart match
+                const searchParts = [brand, category].filter(Boolean);
+                const searchKeyword = searchParts.join(' ').trim();
+
+                if (searchKeyword) {
+                    setSearchQuery(searchKeyword);
+                    navigate(`/shop?search=${encodeURIComponent(searchKeyword)}`);
+                } else {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'AI không nhận diện được thông tin giày.' }));
+                }
             } else {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Lỗi nhận diện hình ảnh' }));
             }
