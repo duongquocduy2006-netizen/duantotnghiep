@@ -3,6 +3,14 @@ import AdminLayout from "../../components/AdminLayout";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
 
+const QUICK_CANCEL_REASONS = [
+    "Khách yêu cầu hủy",
+    "Hết hàng",
+    "Sai thông tin nhận hàng",
+    "Không liên lạc được",
+    "Trùng đơn hàng"
+];
+
 const AdminOrders = () => {
     const [allOrders, setAllOrders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -478,6 +486,27 @@ const AdminOrders = () => {
                                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>
                                     Lý do hủy <span style={{color:'#e50914'}}>*</span>
                                 </label>
+
+                                {/* Gợi ý lý do hủy nhanh */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                                    {QUICK_CANCEL_REASONS.map((reason, idx) => {
+                                        const isSelected = confirmModal.cancelReason === reason;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                className={`admin-quick-reason-btn ${isSelected ? 'active' : ''}`}
+                                                onClick={() => setConfirmModal(prev => ({ 
+                                                    ...prev, 
+                                                    cancelReason: isSelected ? "" : reason 
+                                                }))}
+                                            >
+                                                {reason}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
                                 <textarea
                                     value={confirmModal.cancelReason}
                                     onChange={e => setConfirmModal(prev => ({ ...prev, cancelReason: e.target.value }))}
@@ -730,6 +759,30 @@ const AdminOrders = () => {
                 .admin-btn-confirm-ok:hover {
                     background: #b91c1c;
                     box-shadow: 0 8px 12px -1px rgba(229, 9, 20, 0.3);
+                }
+
+                /* Quick Cancel Reason Buttons */
+                .admin-quick-reason-btn {
+                    background: #f3f4f6;
+                    color: #4b5563;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 16px;
+                    padding: 5px 12px;
+                    font-size: 11.5px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    font-family: 'Inter', sans-serif;
+                }
+                .admin-quick-reason-btn:hover {
+                    background: #e5e7eb;
+                    color: #1f2937;
+                    border-color: #d1d5db;
+                }
+                .admin-quick-reason-btn.active {
+                    background: #fee2e2;
+                    color: #e50914;
+                    border-color: #fca5a5;
                 }
             `}</style>
         </AdminLayout>
