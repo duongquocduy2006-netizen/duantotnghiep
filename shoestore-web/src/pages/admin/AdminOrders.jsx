@@ -134,7 +134,7 @@ const AdminOrders = () => {
             case 2: return { label: "Đang giao hàng", class: "status-shipping" };
             case 3: return { label: "Thành công", class: "status-success" };
             case 4: return { label: "Đã hủy", class: "status-cancel" };
-            case 5: return { label: "Đã nhận hàng", class: "status-delivered" };
+            case 5: return { label: "Đã giao hàng", class: "status-delivered" };
             default: return { label: "Không xác định", class: "" };
         }
     };
@@ -194,7 +194,7 @@ const AdminOrders = () => {
                     <option value="">Trạng thái: Tất cả</option>
                     <option value="1">Chờ xác nhận</option>
                     <option value="2">Đang giao hàng</option>
-                    <option value="5">Đã nhận hàng (Chờ duyệt)</option>
+                    <option value="5">Đã giao hàng</option>
                     <option value="3">Đã giao thành công</option>
                     <option value="4">Đã hủy</option>
                 </select>
@@ -268,10 +268,11 @@ const AdminOrders = () => {
                                                 >
                                                     <option value="1">Chờ xác nhận</option>
                                                     <option value="2">Đang giao hàng</option>
+                                                    {order.status === 2 && <option value="5">Đã giao hàng</option>}
                                                     {order.status !== 4 && <option value="4">Hủy đơn</option>}
                                                     {order.status === 4 && <option value="4">Đã hủy</option>}
                                                     {order.status === 3 && <option value="3">Thành công</option>}
-                                                    {order.status === 5 && <option value="5">Đã nhận hàng (Chờ duyệt)</option>}
+                                                    {order.status === 5 && <option value="5">Đã giao hàng</option>}
                                                 </select>
                                             </div>
                                         </td>
