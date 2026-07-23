@@ -163,9 +163,9 @@ const AdminBanners = () => {
     .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
     .search-box { position: relative; flex: 1; min-width: 220px; }
     .search-box i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #9aa0a6; font-size: 14px; pointer-events: none; }
-    .search-input { width: 100%; background: #fff !important; border: 1.5px solid #dadce0; padding: 9px 14px 9px 38px; color: #3c4043 !important; outline: none; height: 40px; font-weight: 400; border-radius: 24px; font-size: 14px; transition: all 0.2s; font-family: 'Inter', sans-serif; }
-    .search-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
-    .search-input::placeholder { color: #9aa0a6; }
+    .search-input { width: 100%; background: #fff !important; border: 1.5px solid #e9d5ff; padding: 9px 14px 9px 38px; color: #374151 !important; outline: none; height: 40px; font-weight: 400; border-radius: 24px; font-size: 14px; transition: all 0.25s ease; font-family: 'Inter', sans-serif; }
+    .search-input:focus { border-color: #8b5cf6; box-shadow: 0 0 0 4px rgba(139,92,246,0.15); }
+    .search-input::placeholder { color: #a78bfa; }
 
     .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-top: 20px; overflow: hidden; border-radius: 14px; }
     table { width: 100%; border-collapse: collapse; min-width: 800px; }

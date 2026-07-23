@@ -273,6 +273,23 @@
                     </div>
                 </div>
 
+                <!-- AI Vision Feature Banner -->
+                <div class="card" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-color: rgba(168, 85, 247, 0.4); margin-bottom: 25px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <h3 style="color: #f3e8ff; margin-bottom: 5px;" class="font-oswald"><i class="bi bi-stars" style="color: #d946ef;"></i> TỰ ĐỘNG ĐIỀN THÔNG TIN BẰNG AI VISION</h3>
+                            <p style="color: #cbd5e1; font-size: 13px; margin: 0;">Tải ảnh đôi giày lên để AI tự động nhận diện tên, thương hiệu, loại sản phẩm và bài viết mô tả.</p>
+                        </div>
+                        <div>
+                            <label class="btn-save" style="background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%); border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                                <i class="bi bi-magic"></i> CHỌN ẢNH ĐỂ AI ĐIỀN FORM
+                                <input type="file" accept="image/*" onchange="triggerAiAutoFill(event)" style="display: none;">
+                            </label>
+                        </div>
+                    </div>
+                    <div id="ai-status-msg" style="display: none; margin-top: 15px; color: #4ade80; font-size: 13px; font-weight: bold;"></div>
+                </div>
+
                 <div class="form-grid">
                     <div class="left-col">
                         <div class="card">
@@ -397,6 +414,70 @@
                 };
                 reader.readAsDataURL(file);
             }
+        }
+
+        function triggerAiAutoFill(event) {
+            var file = event.target.files[0];
+            if (!file) return;
+
+            var statusEl = document.getElementById('ai-status-msg');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.innerText = '✨ AI đang phân tích hình ảnh và tự động điền thông tin...';
+            }
+
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var base64String = e.target.result;
+                fetch('/api/products/ai-extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageBase64: base64String })
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        if (data.productName) {
+                            var pName = document.querySelector("input[name='productName']");
+                            if (pName) pName.value = data.productName;
+                        }
+                        if (data.description) {
+                            var pDesc = document.querySelector("textarea[name='description']");
+                            if (pDesc) pDesc.value = data.description;
+                        }
+                        if (data.brandName) {
+                            var brandSelect = document.querySelector("select[name='brandName']");
+                            if (brandSelect) brandSelect.value = data.brandName;
+                        }
+                        if (data.categoryId) {
+                            var catSelect = document.querySelector("select[name='category.id']");
+                            if (catSelect) catSelect.value = data.categoryId;
+                        }
+
+                        // Preview the image
+                        var output = document.getElementById('preview-img');
+                        if (output) {
+                            var placeholder = document.getElementById('upload-placeholder');
+                            if (placeholder) placeholder.style.display = 'none';
+                            output.src = base64String;
+                            output.style.display = 'block';
+                            var imgField = document.getElementById('imageBase64');
+                            if (imgField) imgField.value = base64String;
+                        }
+
+                        if (statusEl) statusEl.innerText = '✅ AI đã trích xuất thành công: Tên, Thương hiệu (' + (data.brandName || '') + '), Loại sản phẩm & Bài viết mô tả!';
+                    } else {
+                        alert(data.message || 'Lỗi nhận diện AI');
+                        if (statusEl) statusEl.style.display = 'none';
+                    }
+                })
+                .catch(function(err) {
+                    console.error(err);
+                    alert('Lỗi kết nối AI Vision');
+                    if (statusEl) statusEl.style.display = 'none';
+                });
+            };
+            reader.readAsDataURL(file);
         }
     </script>
 </body>

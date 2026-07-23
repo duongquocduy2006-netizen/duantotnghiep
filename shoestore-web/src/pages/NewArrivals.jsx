@@ -191,14 +191,9 @@ const NewArrivals = () => {
                                                 <h2 className="na-spotlight-title">{spotlightProduct.product_name}</h2>
                                                 
                                                 <div className="na-spotlight-rating mb-3">
-                                                    <div className="stars d-inline-flex text-warning me-2">
-                                                        <i className="fa-solid fa-star"></i>
-                                                        <i className="fa-solid fa-star"></i>
-                                                        <i className="fa-solid fa-star"></i>
-                                                        <i className="fa-solid fa-star"></i>
-                                                        <i className="fa-solid fa-star"></i>
-                                                    </div>
-                                                    <span>({getRating(spotlightProduct.id)}/5.0 từ khách hàng)</span>
+                                                    <span className="badge bg-danger text-uppercase px-3 py-2" style={{ letterSpacing: '1px' }}>
+                                                        <i className="fa-solid fa-bolt me-1"></i> MỚI RA MẮT CHÍNH HÃNG
+                                                    </span>
                                                 </div>
 
                                                 <p className="na-spotlight-desc">
@@ -305,9 +300,7 @@ const NewArrivals = () => {
                                                 <div className="na-info">
                                                     <div className="na-brand-row">
                                                         <span className="na-brand">{p.brand_name}</span>
-                                                        <span className="na-rating">
-                                                            <i className="fa-solid fa-star"></i> {getRating(p.id)}
-                                                        </span>
+                                                        <span className="badge bg-secondary" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>NEW</span>
                                                     </div>
                                                     <h5 className="na-name">
                                                         {p.product_name}
