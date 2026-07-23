@@ -1609,41 +1609,6 @@ tr:hover .avatar {
     box-shadow: 0 4px 20px rgba(139, 92, 246, 0.05) !important;
 }
 
-/* SOFT LUXURY PURPLE BUTTONS */
-.btn-cyan-skew,
-.btn-add-pill,
-.btn-add-purple,
-.btn-primary-admin {
-    background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 24px !important;
-    padding: 10px 22px !important;
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 600 !important;
-    font-size: 14px !important;
-    letter-spacing: 0.3px !important;
-    text-transform: none !important;
-    cursor: pointer !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    text-decoration: none !important;
-    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35) !important;
-    transition: all 0.25s ease !important;
-}
-
-.btn-cyan-skew:hover,
-.btn-add-pill:hover,
-.btn-add-purple:hover,
-.btn-primary-admin:hover {
-    background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
-    color: #ffffff !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45) !important;
-}
-
 /* Form labels and subtitles */
 .admin-banner-form-page .form-label,
 .admin-settings-page .form-label,

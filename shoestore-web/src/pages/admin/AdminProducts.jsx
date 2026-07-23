@@ -104,12 +104,13 @@ const AdminProducts = () => {
 
     return (
         <AdminLayout>
-            <div className="admin-page-header" style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="admin-page-header" style={{ marginBottom: '35px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div className="header-left">
-                    <h1 className="cinematic-title" style={{ margin: 0, fontSize: '24px', fontWeight: '800' }}>DANH SÁCH SẢN PHẨM</h1>
+                    <span className="sub-title-neon">⌨ SINGLE PAGE APPLICATION (REST API)</span>
+                    <h1 className="cinematic-title" style={{ margin: 0 }}>DANH SÁCH SẢN PHẨM</h1>
                 </div>
-                <Link to="/admin/products/create" className="btn-cyan-skew">
-                    <i className="bi bi-plus-lg"></i> Thêm Sản Phẩm Mới
+                <Link to="/admin/products/create" className="btn-add-red-solid">
+                    <i className="bi bi-plus-lg" style={{ fontSize: '16px' }}></i> THÊM MỚI
                 </Link>
             </div>
 
@@ -320,10 +321,32 @@ const AdminProducts = () => {
                 .bi-search { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #8b5cf6 !important; font-size: 14px; pointer-events: none; }
                 .filter-select { background: #ffffff !important; color: #374151 !important; border: 1.5px solid #e9d5ff !important; padding: 8px 14px; outline: none; cursor: pointer; height: 42px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.25s ease; }
                 .filter-select:focus { border-color: #8b5cf6 !important; box-shadow: 0 0 0 4px rgba(139,92,246,0.15) !important; }
-
-                .btn-red-skew { 
-                    background: #fff; color: #000; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 0 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
-                    transition: 0.3s; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; height: 45px; min-width: 150px;
+                .btn-add-red-solid {
+                    background: #e50914 !important;
+                    color: #ffffff !important;
+                    border: none !important;
+                    border-radius: 4px !important;
+                    padding: 0 24px !important;
+                    height: 44px !important;
+                    font-family: 'Oswald', 'Inter', sans-serif !important;
+                    font-weight: 800 !important;
+                    font-size: 15px !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.5px !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 8px !important;
+                    text-decoration: none !important;
+                    cursor: pointer !important;
+                    box-shadow: 0 4px 14px rgba(229, 9, 20, 0.35) !important;
+                    transition: all 0.2s ease-in-out !important;
+                }
+                .btn-add-red-solid:hover {
+                    background: #cc0812 !important;
+                    color: #ffffff !important;
+                    transform: translateY(-2px) !important;
+                    box-shadow: 0 6px 18px rgba(229, 9, 20, 0.5) !important;
                 }
                 .admin-confirm-box {
                     background: #fff;
