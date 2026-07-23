@@ -104,13 +104,12 @@ const AdminProducts = () => {
 
     return (
         <AdminLayout>
-            <div className="admin-page-header" style={{ marginBottom: '35px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <div className="admin-page-header" style={{ marginBottom: '28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="header-left">
-                    <span className="sub-title-neon">⌨ SINGLE PAGE APPLICATION (REST API)</span>
-                    <h1 className="cinematic-title" style={{ margin: 0 }}>DANH SÁCH SẢN PHẨM</h1>
+                    <h1 className="cinematic-title" style={{ margin: 0, fontSize: '24px', fontWeight: '800' }}>DANH SÁCH SẢN PHẨM</h1>
                 </div>
                 <Link to="/admin/products/create" className="btn-cyan-skew">
-                    <i className="bi bi-plus-lg"></i> &nbsp;THÊM MỚI
+                    <i className="bi bi-plus-lg"></i> Thêm Sản Phẩm Mới
                 </Link>
             </div>
 
