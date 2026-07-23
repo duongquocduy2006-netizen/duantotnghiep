@@ -20,10 +20,20 @@ public class AdminOrderManager {
             @RequestParam(value = "status", required = false) Integer status,
             Model model) {
 
+        // Lấy danh sách gốc để tìm các trạng thái hiện có
+        java.util.List<com.ShoeStore.model.OrderDTO> unfiltered = orderService.getAllOrders(keyword, null);
+        java.util.Set<Integer> availableStatuses = new java.util.HashSet<>();
+        if (unfiltered != null) {
+            for (com.ShoeStore.model.OrderDTO o : unfiltered) {
+                availableStatuses.add(o.getStatus());
+            }
+        }
+
         // Ném danh sách đơn hàng sang View (Thymeleaf) có filter
         model.addAttribute("orders", orderService.getAllOrders(keyword, status));
         model.addAttribute("keyword", keyword);
         model.addAttribute("statusFilter", status);
+        model.addAttribute("availableStatuses", availableStatuses);
 
         return "admin/orders";
     }

@@ -1,20 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import ReviewModal from '../components/ReviewModal';
 import './Profile.css';
 import './Orders.css';
 
 const ORDERS_PER_PAGE = 3;
 
 const Orders = () => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [loggedIn, setLoggedIn] = useState(false);
     const [account, setAccount] = useState(null);
     const [orders, setOrders] = useState([]);
     const [visibleCount, setVisibleCount] = useState(ORDERS_PER_PAGE);
-    const [reviewOrderCode, setReviewOrderCode] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        step: 1,
+        orderCode: null,
+        productId: null
+    });
+    const [cancelModal, setCancelModal] = useState({
+        isOpen: false,
+        orderCode: null
+    });
+
 
     const fetchOrdersData = async () => {
         try {
@@ -24,15 +34,20 @@ const Orders = () => {
                 setLoggedIn(true);
                 setAccount(profileResponse.data.account);
 
-                const ordersResponse = await api.get('/api/orders');
-                if (ordersResponse.data && ordersResponse.data.success) {
-                    setOrders(ordersResponse.data.orders || []);
+                try {
+                    const ordersResponse = await api.get('/api/orders');
+                    if (ordersResponse.data && ordersResponse.data.success) {
+                        setOrders(ordersResponse.data.orders || []);
+                    }
+                } catch (ordersErr) {
+                    console.error("Lỗi lấy danh sách đơn hàng:", ordersErr);
+                    setOrders([]);
                 }
             } else {
                 setLoggedIn(false);
             }
         } catch (err) {
-            console.error("Lỗi lấy thông tin đơn hàng:", err);
+            console.error("Lỗi lấy thông tin cá nhân:", err);
             setLoggedIn(false);
         } finally {
             setLoading(false);
@@ -90,9 +105,16 @@ const Orders = () => {
         return { cls: 'badge-luxury', icon: 'fa-circle', text: 'Không rõ' };
     };
 
-    const handleCancel = async (e, orderCode) => {
-        e.preventDefault();
-        if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) return;
+    const triggerCancel = (orderCode) => {
+        setCancelModal({
+            isOpen: true,
+            orderCode
+        });
+    };
+
+    const confirmCancelSubmit = async () => {
+        const { orderCode } = cancelModal;
+        setCancelModal({ isOpen: false, orderCode: null });
         try {
             const response = await api.post('/api/orders/cancel', { orderCode });
             if (response.data && response.data.success) {
@@ -108,22 +130,43 @@ const Orders = () => {
         }
     };
 
-    const handleConfirm = async (e, orderCode) => {
-        e.preventDefault();
-        if (!window.confirm('Xác nhận bạn đã nhận được gói hàng này?')) return;
+    const triggerConfirm = (orderCode) => {
+        const oObj = orders.find(o => o.order_code === orderCode);
+        const productId = oObj ? oObj.first_product_id : null;
+        setConfirmModal({
+            isOpen: true,
+            step: 1,
+            orderCode,
+            productId
+        });
+    };
+
+    const handleConfirmSubmit = async () => {
+        const { orderCode, productId } = confirmModal;
         try {
             const response = await api.post('/api/orders/confirm', { orderCode });
             if (response.data && response.data.success) {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xác nhận nhận hàng thành công và cộng điểm tích lũy!' }));
-                fetchOrdersData();
-                setReviewOrderCode(orderCode); // Show review popup
+                if (productId) {
+                    setConfirmModal({
+                        isOpen: true,
+                        step: 2,
+                        orderCode,
+                        productId
+                    });
+                } else {
+                    setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
+                    fetchOrdersData();
+                }
             } else {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể xác nhận đơn hàng: ' + response.data.message }));
+                setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
             }
         } catch (err) {
             console.error("Lỗi xác nhận đơn hàng:", err);
             const errMsg = err.response?.data?.message || 'Lỗi kết nối khi xác nhận đơn hàng.';
             window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
+            setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
         }
     };
 
@@ -313,6 +356,25 @@ const Orders = () => {
                                                                 <div className="price-tag">{formatCurrency(order.final_amount)}</div>
                                                             </div>
                                                         </div>
+                                                        {/* Lý do hủy */}
+                                                        {order.status === 4 && order.cancel_reason && (
+                                                            <div style={{
+                                                                background: '#fff5f5',
+                                                                border: '1px solid #fecaca',
+                                                                borderRadius: '8px',
+                                                                padding: '10px 14px',
+                                                                marginBottom: '12px',
+                                                                display: 'flex',
+                                                                alignItems: 'flex-start',
+                                                                gap: '8px'
+                                                            }}>
+                                                                <i className="fa-solid fa-circle-exclamation" style={{ color: '#dc2626', marginTop: '2px', flexShrink: 0 }}></i>
+                                                                <div style={{ textAlign: 'left' }}>
+                                                                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#dc2626', display: 'block', marginBottom: '2px' }}>Lý do hủy</span>
+                                                                    <span style={{ fontSize: '13px', color: '#7f1d1d' }}>{order.cancel_reason}</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
 
                                                         {/* Actions */}
                                                         <div className="d-flex justify-content-end gap-2 pt-3" style={{borderTop: '1px solid #f1f5f9'}}>
@@ -320,15 +382,25 @@ const Orders = () => {
                                                                 <i className="fa-regular fa-file-lines me-1"></i> Chi tiết
                                                             </Link>
                                                             {order.status === 3 && (
-                                                                <Link to="/shop" className="btn-outline-luxury" style={{background: '#0f172a', color: '#fff', border: '1px solid #0f172a'}}>
-                                                                    Mua lại
-                                                                </Link>
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn-outline-luxury"
+                                                                        style={{background: '#e50914', color: '#fff', border: '1px solid #e50914'}}
+                                                                        onClick={() => navigate(`/details?id=${order.first_product_id}&tab=reviews`)}
+                                                                    >
+                                                                        <i className="fa-regular fa-star me-1"></i> Đánh giá
+                                                                    </button>
+                                                                    <Link to="/shop" className="btn-outline-luxury" style={{background: '#0f172a', color: '#fff', border: '1px solid #0f172a'}}>
+                                                                        Mua lại
+                                                                    </Link>
+                                                                </>
                                                             )}
                                                             {order.status === 1 && (
                                                                 <button
                                                                     type="button"
                                                                     className="btn-outline-luxury text-danger"
-                                                                    onClick={(e) => handleCancel(e, order.order_code)}
+                                                                    onClick={(e) => { e.preventDefault(); triggerCancel(order.order_code); }}
                                                                 >
                                                                     <i className="fa-solid fa-xmark me-1"></i> Hủy đơn
                                                                 </button>
@@ -338,7 +410,7 @@ const Orders = () => {
                                                                     type="button"
                                                                     className="btn-super"
                                                                     style={{padding: '8px 16px', fontSize: '13px'}}
-                                                                    onClick={(e) => handleConfirm(e, order.order_code)}
+                                                                    onClick={(e) => { e.preventDefault(); triggerConfirm(order.order_code); }}
                                                                 >
                                                                     <i className="fa-solid fa-box-open me-1"></i> Đã nhận hàng
                                                                 </button>
@@ -385,14 +457,57 @@ const Orders = () => {
                     </div>
                 </div>
             </div>
-            {reviewOrderCode && (
-                <ReviewModal 
-                    orderCode={reviewOrderCode} 
-                    onClose={() => {
-                        setReviewOrderCode(null);
-                        fetchOrdersData();
-                    }} 
-                />
+            {cancelModal.isOpen && (
+                <div className="epic-modal-overlay">
+                    <div className="epic-modal-box animate__animated animate__zoomIn">
+                        <div className="epic-modal-icon" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+                            <i className="fa-solid fa-circle-xmark"></i>
+                        </div>
+                        <h4 className="epic-modal-title">Hủy đơn hàng</h4>
+                        <p className="epic-modal-message">Bạn có chắc chắn muốn hủy đơn hàng này không?</p>
+                        <div className="epic-modal-actions">
+                            <button className="epic-btn-modal-cancel" onClick={() => setCancelModal({ isOpen: false, orderCode: null })}>Quay lại</button>
+                            <button className="epic-btn-modal-confirm" style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }} onClick={confirmCancelSubmit}>Xác nhận hủy</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {confirmModal.isOpen && (
+                <div className="epic-modal-overlay">
+                    <div className="epic-modal-box animate__animated animate__zoomIn">
+                        {confirmModal.step === 1 ? (
+                            <>
+                                <div className="epic-modal-icon">
+                                    <i className="fa-solid fa-box-open"></i>
+                                </div>
+                                <h4 className="epic-modal-title">Xác nhận nhận hàng</h4>
+                                <p className="epic-modal-message">Xác nhận bạn đã nhận được gói hàng này? Đơn hàng sẽ được chuyển sang trạng thái thành công.</p>
+                                <div className="epic-modal-actions">
+                                    <button className="epic-btn-modal-cancel" onClick={() => setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null })}>Hủy bỏ</button>
+                                    <button className="epic-btn-modal-confirm" onClick={handleConfirmSubmit}>Đồng ý</button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="epic-modal-icon">
+                                    <i className="fa-solid fa-star-half-stroke"></i>
+                                </div>
+                                <h4 className="epic-modal-title">Đánh giá sản phẩm</h4>
+                                <p className="epic-modal-message">Xác nhận nhận hàng thành công! Bạn có muốn đánh giá sản phẩm này ngay để tích luỹ thêm điểm không?</p>
+                                <div className="epic-modal-actions">
+                                    <button className="epic-btn-modal-cancel" onClick={() => {
+                                        setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
+                                        fetchOrdersData();
+                                    }}>Để sau</button>
+                                    <button className="epic-btn-modal-confirm" onClick={() => {
+                                        navigate(`/details?id=${confirmModal.productId}&tab=reviews`);
+                                        setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
+                                    }}>Đánh giá ngay</button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
             )}
         </Layout>
     );

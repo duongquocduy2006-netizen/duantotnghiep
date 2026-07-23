@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 import './Chatbox.css';
 
@@ -40,6 +41,16 @@ const Chatbox = () => {
     };
 
     const renderMessage = (msg) => {
+        const parsePrice = (priceStr) => {
+            if (!priceStr) return 0;
+            let cleaned = String(priceStr).replace(/\s+/g, '').toLowerCase();
+            cleaned = cleaned.replace(/đ|vnd|vnđ|đồng|dong/g, '');
+            cleaned = cleaned.replace(/\.0000$|\.00$|\.0$/, '');
+            cleaned = cleaned.replace(/[\.,]/g, '');
+            const num = Number(cleaned);
+            return isNaN(num) ? 0 : num;
+        };
+
         // Simple logic to parse [PRODUCT:id|name|price|image]
         if (msg.content.includes('[PRODUCT:')) {
             const parts = msg.content.split(/(\[PRODUCT:[^\]]+\])/g);
@@ -52,7 +63,7 @@ const Chatbox = () => {
                             <img src={`http://localhost:8080/uploads/${image}`} alt={name} />
                             <div className="product-info">
                                 <h6>{name}</h6>
-                                <p>{Number(price).toLocaleString('vi-VN')}₫</p>
+                                <p>{parsePrice(price).toLocaleString('vi-VN')}₫</p>
                                 <button onClick={() => window.location.href = `/details?id=${id}`}>Xem chi tiết</button>
                             </div>
                         </div>
@@ -63,6 +74,13 @@ const Chatbox = () => {
         }
         return <span>{msg.content}</span>;
     };
+
+    const location = useLocation();
+    const isHiddenPath = location.pathname.startsWith('/admin') || location.pathname.startsWith('/shipper');
+
+    if (isHiddenPath) {
+        return null;
+    }
 
     return (
         <div className={`chatbox-container ${isOpen ? 'open' : ''}`}>

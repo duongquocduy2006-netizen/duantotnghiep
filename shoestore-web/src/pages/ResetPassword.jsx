@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
-import './ResetPassword.css';
+import './Login.css';
+import 'animate.css';
 
 const ResetPassword = () => {
     const navigate = useNavigate();
@@ -12,25 +13,37 @@ const ResetPassword = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        if (!password || !confirmPassword) {
-            setError('Vui lòng nhập đầy đủ cả hai trường mật khẩu!');
-            return;
+        let newErrors = {};
+        if (!password) {
+            newErrors.password = 'Vui lòng nhập mật khẩu mới!';
+        } else if (password.length < 6) {
+            newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự!';
+        }
+
+        if (!confirmPassword) {
+            newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu!';
         } else if (password !== confirmPassword) {
-            setError('Mật khẩu xác nhận không khớp!');
+            newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp!';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
             return;
         }
 
+        setErrors({});
         setError('');
         setLoading(true);
         try {
             const response = await api.post('/api/auth/reset-password', { email, password, confirmPassword });
             if (response.data.success) {
-                alert('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
+                sessionStorage.setItem('toast_message', 'Đổi mật khẩu thành công! Vui lòng đăng nhập lại.');
                 navigate('/login');
             } else {
                 setError(response.data.message || 'Đặt lại mật khẩu thất bại!');
@@ -48,44 +61,73 @@ const ResetPassword = () => {
     };
 
     return (
-        <div className="auth-page">
+        <div className="login-page">
             <div className="bg-image"></div>
-            <div className="container d-flex justify-content-center">
-                <div className={`login-card animate__animated ${error ? 'animate__headShake' : 'animate__zoomIn'}`}>
-                    <div className="text-center mb-4">
-                        <div className="main-logo-text">RESET<span> PASSWORD</span></div>
-                        <p style={{ color: '#a0a0a0', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }}>Nhập mật khẩu mới của bạn</p>
+            <div className="bg-overlay"></div>
+
+            <Link to="/login" className="back-home animate__animated animate__fadeInDown">
+                <i className="fa-solid fa-arrow-left-long"></i> TRỞ VỀ ĐĂNG NHẬP
+            </Link>
+
+            <div className="container d-flex justify-content-center" style={{ zIndex: 10 }}>
+                <div className="login-card animate__animated animate__fadeInUp">
+
+                    <div className="text-center">
+                        <Link to="/" className="main-logo-login">
+                            <i className="fa-solid fa-shoe-prints main-logo-icon-login"></i>
+                            <div className="main-logo-text-login">Shoe<span>Store</span></div>
+                        </Link>
+                        <p className="brand-subtitle-login">Đặt lại mật khẩu mới</p>
                     </div>
 
-                    {error && <div className="custom-alert alert-error-custom">{error}</div>}
+                    {error && <div className="alert alert-danger p-2 text-center" style={{fontSize: '14px', borderRadius: '12px', marginBottom: '16px'}}>{error}</div>}
 
-                    <form onSubmit={handleSubmit}>
-                        <div className="mb-4">
+                    <form onSubmit={handleSubmit} noValidate>
+                        <div className="mb-3">
                             <label className="form-label">Mật khẩu mới</label>
                             <input 
                                 type="password" 
-                                className="form-control custom-input" 
-                                placeholder="Nhập mật khẩu..." 
+                                className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
+                                style={errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
+                                placeholder="NHẬP MẬT KHẨU MỚI"
                                 value={password}
-                                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    if(errors.password) setErrors({...errors, password: ''});
+                                    setError('');
+                                }}
                                 disabled={loading}
                             />
+                            {errors.password && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.password}</div>}
                         </div>
-                        <div className="mb-4">
+
+                        <div className="mb-3">
                             <label className="form-label">Xác nhận mật khẩu</label>
                             <input 
                                 type="password" 
-                                className="form-control custom-input" 
-                                placeholder="Xác nhận lại..." 
+                                className={`form-control custom-input ${errors.confirmPassword ? 'is-invalid border-danger' : ''}`}
+                                style={errors.confirmPassword ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
+                                placeholder="XÁC NHẬN MẬT KHẨU MỚI"
                                 value={confirmPassword}
-                                onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                                onChange={(e) => {
+                                    setConfirmPassword(e.target.value);
+                                    if(errors.confirmPassword) setErrors({...errors, confirmPassword: ''});
+                                    setError('');
+                                }}
                                 disabled={loading}
                             />
+                            {errors.confirmPassword && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.confirmPassword}</div>}
                         </div>
-                        <button type="submit" className="btn-action" disabled={loading}>
-                            {loading ? 'Đang cập nhật...' : 'Đổi mật khẩu'}
+
+                        <button type="submit" className="btn-login" disabled={loading}>
+                            {loading ? 'ĐANG CẬP NHẬT...' : 'ĐỔI MẬT KHẨU'}
                         </button>
                     </form>
+
+                    <div className="auth-footer">
+                        Đã nhớ mật khẩu? <br />
+                        <Link to="/login">ĐĂNG NHẬP NGAY <i className="fa fa-arrow-right"></i></Link>
+                    </div>
                 </div>
             </div>
         </div>

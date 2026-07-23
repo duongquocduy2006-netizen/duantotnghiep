@@ -36,8 +36,6 @@ import AdminProductDetail from './pages/admin/AdminProductDetail';
 import AdminProductForm from './pages/admin/AdminProductForm';
 import AdminBanners from './pages/admin/AdminBanners';
 import AdminBannerForm from './pages/admin/AdminBannerForm';
-import AdminLookbooks from './pages/admin/AdminLookbooks';
-import AdminLookbookForm from './pages/admin/AdminLookbookForm';
 import AdminRanks from './pages/admin/AdminRanks';
 import AdminRankForm from './pages/admin/AdminRankForm';
 import AdminFlashSales from './pages/admin/AdminFlashSales';
@@ -125,11 +123,6 @@ function App() {
         <Route path="/admin/banners" element={<AdminBanners />} />
         <Route path="/admin/banners/add" element={<AdminBannerForm />} />
         <Route path="/admin/banners/edit/:id" element={<AdminBannerForm />} />
-
-        <Route path="/admin/lookbooks" element={<AdminLookbooks />} />
-        <Route path="/admin/lookbooks/add" element={<AdminLookbookForm />} />
-        <Route path="/admin/lookbooks/edit/:id" element={<AdminLookbookForm />} />
-
         <Route path="/admin/ranks" element={<AdminRanks />} />
         <Route path="/admin/ranks/add" element={<AdminRankForm />} />
         <Route path="/admin/ranks/edit/:id" element={<AdminRankForm />} />

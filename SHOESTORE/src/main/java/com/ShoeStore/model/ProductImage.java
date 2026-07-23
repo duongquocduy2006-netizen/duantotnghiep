@@ -20,5 +20,6 @@ public class ProductImage {
 
     @ManyToOne
     @JoinColumn(name = "product_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Product product;
 }

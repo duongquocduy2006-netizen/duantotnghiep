@@ -12,7 +12,6 @@ const NewArrivals = () => {
     const [wishlistIds, setWishlistIds] = useState([]);
     const [activeBrand, setActiveBrand] = useState('All');
     const [sortBy, setSortBy] = useState('newest');
-    const [lookbooks, setLookbooks] = useState([]);
     const observerRef = useRef(null);
 
     const fetchNewArrivals = async () => {
@@ -44,16 +43,6 @@ const NewArrivals = () => {
         }
     };
 
-    const fetchLookbooks = async () => {
-        try {
-            const res = await api.get('/api/lookbooks');
-            if (res.data) {
-                setLookbooks(res.data);
-            }
-        } catch (e) {
-            console.error("Lỗi tải danh sách lookbook:", e);
-        }
-    };
 
     const toggleWishlist = async (e, productId) => {
         e.preventDefault();
@@ -84,7 +73,6 @@ const NewArrivals = () => {
     useEffect(() => {
         fetchNewArrivals();
         fetchWishlistIds();
-        fetchLookbooks();
     }, []);
 
     useEffect(() => {
@@ -364,34 +352,7 @@ const NewArrivals = () => {
                     </div>
                 )}
 
-                {/* COMMUNITY LOOKBOOK */}
-                {!loading && newProducts.length > 0 && (
-                    <div className="container py-5">
-                        <div className="na-section-header text-center mb-5 reveal-item opacity-0">
-                            <span className="na-section-tag">Cảm hứng phong cách</span>
-                            <h2 className="na-section-title">ON-FEET STYLE</h2>
-                            <p className="na-section-subtitle">Xem cách cộng đồng ShoesStore tự tin thể hiện cá tính cùng các thiết kế mới nhất.</p>
-                        </div>
-                        
-                        <div className="row g-4 reveal-item opacity-0">
-                            {(lookbooks && lookbooks.length > 0 ? lookbooks : [
-                                { id: 'd1', caption: '#shoesstore_jordan', imageUrl: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?q=80&w=600' },
-                                { id: 'd2', caption: '#shoesstore_style', imageUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?q=80&w=600' },
-                                { id: 'd3', caption: '#shoesstore_fit', imageUrl: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?q=80&w=600' },
-                                { id: 'd4', caption: '#shoesstore_active', imageUrl: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?q=80&w=600' }
-                            ]).map(lb => (
-                                <div key={lb.id} className="col-lg-3 col-md-6 col-6">
-                                    <div className="na-lookbook-card">
-                                        <img src={getImageUrl(lb.imageUrl)} alt={lb.caption} />
-                                        <div className="na-lookbook-overlay">
-                                            <span>{lb.caption}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+
 
                 {/* BRAND COMMITMENTS */}
                 {!loading && newProducts.length > 0 && (

@@ -116,7 +116,8 @@ const AdminCustomerDetail = () => {
                                     textTransform: 'uppercase',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '5px'
+                                    gap: '5px',
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
                                 <i className="bi bi-star-fill"></i> {customer.rankName}

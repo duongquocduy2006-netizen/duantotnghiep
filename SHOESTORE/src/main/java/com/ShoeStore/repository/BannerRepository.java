@@ -12,8 +12,10 @@ import org.springframework.data.jpa.repository.Query;
 @Repository
 public interface BannerRepository extends JpaRepository<Banner, Long> {
     
-    @Query("SELECT DISTINCT b FROM Banner b LEFT JOIN FETCH b.images WHERE b.status = true")
-    List<Banner> findByStatusTrue();
+    @Query("SELECT DISTINCT b FROM Banner b LEFT JOIN FETCH b.images WHERE b.status = true " +
+           "AND (b.startDate IS NULL OR b.startDate <= :now) " +
+           "AND (b.endDate IS NULL OR b.endDate >= :now)")
+    List<Banner> findActiveBanners(@org.springframework.data.repository.query.Param("now") java.time.LocalDateTime now);
 
     @Override
     @Query("SELECT DISTINCT b FROM Banner b LEFT JOIN FETCH b.images")

@@ -47,6 +47,9 @@ public class ProductApiController {
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @Autowired
+    private com.ShoeStore.service.FlashSaleService flashSaleService;
+
+    @Autowired
     private com.ShoeStore.service.impl.GeminiVisionService geminiVisionService;
 
     // 0. AI VISION AUTO-EXTRACT PRODUCT DETAILS
@@ -300,6 +303,44 @@ public class ProductApiController {
         }
         // --------------------------
 
+        // --- FLASH SALE CHECK ---
+        Map<String, Object> flashSaleInfo = null;
+        try {
+            java.util.Optional<com.ShoeStore.model.FlashSale> activeFs = flashSaleService.getActiveFlashSale();
+            if (activeFs.isPresent()) {
+                com.ShoeStore.model.FlashSale fs = activeFs.get();
+                List<com.ShoeStore.model.FlashSaleProduct> fspList = flashSaleService.getProductsByFlashSaleId(fs.getId());
+                for (com.ShoeStore.model.FlashSaleProduct fsp : fspList) {
+                    if (fsp.getProduct() != null && fsp.getProduct().getId().equals(id)) {
+                        flashSaleInfo = new HashMap<>();
+                        flashSaleInfo.put("salePrice", fsp.getSalePrice());
+                        flashSaleInfo.put("quantityLimit", fsp.getQuantityLimit());
+                        flashSaleInfo.put("soldQuantity", fsp.getSoldQuantity());
+                        flashSaleInfo.put("campaignName", fs.getName());
+                        flashSaleInfo.put("endDate", fs.getEndDate());
+                        // Calculate original price from first variant
+                        double origPrice = 0;
+                        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+                            var firstVar = product.getVariants().iterator().next();
+                            if (firstVar != null && firstVar.getPrice() != null) {
+                                origPrice = firstVar.getPrice().doubleValue();
+                            }
+                        }
+                        flashSaleInfo.put("originalPrice", origPrice);
+                        if (origPrice > 0 && fsp.getSalePrice() != null) {
+                            int discountPercent = (int) Math.round((1.0 - fsp.getSalePrice().doubleValue() / origPrice) * 100);
+                            flashSaleInfo.put("discountPercent", discountPercent);
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Silently fail - flash sale info is optional
+            e.printStackTrace();
+        }
+        // --------------------------
+
         Map<String, Object> responseMap = new HashMap<>();
         responseMap.put("success", true);
         responseMap.put("product", prodMap);
@@ -313,6 +354,9 @@ public class ProductApiController {
         responseMap.put("reviewCount", stats.get("count"));
         responseMap.put("avgRating", stats.get("avg_rating") != null ? stats.get("avg_rating") : 0.0);
         responseMap.put("hasPurchased", hasPurchased);
+        if (flashSaleInfo != null) {
+            responseMap.put("flashSale", flashSaleInfo);
+        }
 
         return ResponseEntity.ok(responseMap);
     }
@@ -603,16 +647,19 @@ public class ProductApiController {
     @Transactional
     public ResponseEntity<?> deleteVariant(@PathVariable Integer variantId) {
         try {
-            // 1. Kiểm tra xem biến thể có được đặt trong hóa đơn nào chưa
-            if (productVariantRepository.countOrderItemsByVariantId(variantId) > 0) {
+            // 1. Kiểm tra xem biến thể có nằm trong đơn hàng đang xử lý không (Chờ xác nhận, Đang giao, Đã nhận hàng)
+            if (productVariantRepository.countActiveOrderItemsByVariantId(variantId) > 0) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message",
-                        "Không thể xóa biến thể này vì đã có khách hàng đặt mua (dữ liệu hóa đơn)!"));
+                        "Không thể xóa biến thể này vì đang có đơn hàng đang xử lý. Chỉ được xóa khi tất cả đơn hàng liên quan đã hoàn tất hoặc bị hủy!"));
             }
 
-            // 2. Xóa khỏi giỏ hàng trước
+            // 2. Xóa các order_items liên quan trong đơn hàng đã hoàn tất/đã hủy (cho phép)
+            productVariantRepository.deleteRelatedOrderItems(variantId);
+
+            // 3. Xóa khỏi giỏ hàng trước
             productVariantRepository.deleteRelatedCartItems(variantId);
 
-            // 3. Xóa biến thể
+            // 4. Xóa biến thể
             productVariantRepository.deleteById(variantId);
 
             return ResponseEntity.ok(Map.of("success", true, "message", "Xóa biến thể thành công!"));
@@ -734,6 +781,21 @@ public class ProductApiController {
     @Transactional
     public ResponseEntity<?> deleteProduct(@PathVariable Integer id) {
         try {
+            // 1. Kiểm tra bằng JDBC thuần (tránh JPA cache) — chặn xóa nếu còn đơn hàng đang xử lý (status NOT IN (3, 4))
+            Integer activeOrderCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM order_items oi " +
+                "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+                "JOIN orders o ON oi.order_id = o.id " +
+                "WHERE pv.product_id = ? AND o.status NOT IN (3, 4)",
+                Integer.class, id
+            );
+            System.out.println("[DEBUG] deleteProduct id=" + id + " -> activeOrderCount=" + activeOrderCount);
+            if (activeOrderCount != null && activeOrderCount > 0) {
+                return ResponseEntity.status(403).body(Map.of("status", "error", "message",
+                        "Không thể xóa sản phẩm này vì đang có " + activeOrderCount + " đơn hàng đang xử lý. Chỉ được xóa khi tất cả đơn hàng liên quan đã hoàn tất hoặc bị hủy!"));
+            }
+
+            // 2. Xóa các dữ liệu liên quan (chỉ xóa khi không có đơn hàng đang hoạt động)
             productRepository.deleteRelatedCartItems(id);
             productRepository.deleteRelatedOrderItems(id);
             productRepository.deleteRelatedFavourites(id);
@@ -745,7 +807,8 @@ public class ProductApiController {
             productRepository.deleteById(id);
             return ResponseEntity.ok(Map.of("status", "success", "message", "Xóa sản phẩm thành công!"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Lỗi xóa sản phẩm: " + e.getMessage()));
         }
     }
 

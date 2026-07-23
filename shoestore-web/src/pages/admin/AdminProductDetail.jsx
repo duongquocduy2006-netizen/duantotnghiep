@@ -71,7 +71,7 @@ const AdminProductDetail = () => {
             try {
                 const response = await api.delete(`/api/products/variant/${vId}`);
                 if (response.data && response.data.success) {
-                    alert(response.data.message || "Xóa biến thể thành công!");
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Xóa biến thể thành công!" }));
                     // Filter out variant locally
                     setVariants(variants.filter(v => v.id !== vId));
                 }
@@ -80,7 +80,7 @@ const AdminProductDetail = () => {
                 const errMsg = err.response && err.response.data && err.response.data.message
                     ? err.response.data.message
                     : "Không thể xóa biến thể này. Vui lòng kiểm tra lại.";
-                alert(errMsg);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
             }
         }
     };
@@ -129,7 +129,7 @@ const AdminProductDetail = () => {
         try {
             const response = await api.post("/api/products/variant/save", payload);
             if (response.data && response.data.success) {
-                alert(response.data.message || "Lưu biến thể sản phẩm thành công!");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Lưu biến thể sản phẩm thành công!" }));
                 resetVariantForm();
                 // Refresh data to show new / edited variant list and sizes/colors list
                 fetchProductDetails();
@@ -139,7 +139,7 @@ const AdminProductDetail = () => {
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể lưu biến thể sản phẩm. Vui lòng kiểm tra lại.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         }
     };
 
@@ -159,7 +159,7 @@ const AdminProductDetail = () => {
                 }
             } catch (err) {
                 console.error("Lỗi xóa ảnh:", err);
-                alert("Không thể xóa ảnh này.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể xóa ảnh này.' }));
             }
         }
     };
@@ -178,7 +178,7 @@ const AdminProductDetail = () => {
                 }
             } catch (err) {
                 console.error("Lỗi upload ảnh:", err);
-                alert("Không thể tải ảnh lên.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể tải ảnh lên.' }));
             }
         };
         reader.readAsDataURL(file);
@@ -192,7 +192,7 @@ const AdminProductDetail = () => {
             }
         } catch (err) {
             console.error("Lỗi đặt ảnh chính:", err);
-            alert("Không thể đặt ảnh chính.");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể đặt ảnh chính.' }));
         }
     };
 

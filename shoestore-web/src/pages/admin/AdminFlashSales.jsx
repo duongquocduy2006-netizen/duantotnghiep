@@ -176,7 +176,7 @@ const AdminFlashSales = () => {
                     <div className="custom-modal-box">
                         <h4 className="custom-modal-title">XÁC NHẬN XÓA CHIẾN DỊCH</h4>
                         <p className="custom-modal-body">
-                            Xếp có chắc chắn muốn xóa chiến dịch <strong>"{deleteConfirm.name}"</strong> này không?
+                            Bạn có chắc chắn muốn xóa chiến dịch <strong>"{deleteConfirm.name}"</strong> này không?
                             Thao tác này không thể hoàn tác.
                         </p>
                         <div className="custom-modal-actions">

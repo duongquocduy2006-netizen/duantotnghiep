@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import './Login.css';
 import './VerifyOTP.css';
+import 'animate.css';
 
 const VerifyOTP = () => {
     const navigate = useNavigate();
@@ -118,20 +120,44 @@ const VerifyOTP = () => {
     };
 
     return (
-        <div className="auth-page">
+        <div className="login-page">
             <div className="bg-image"></div>
-            <div className="container d-flex justify-content-center">
-                <div className={`login-card animate__animated ${error ? 'animate__headShake' : 'animate__zoomIn'}`}>
+            <div className="bg-overlay"></div>
+
+            <Link to="/forgot-password" className="back-home animate__animated animate__fadeInDown">
+                <i className="fa-solid fa-arrow-left-long"></i> THAY ĐỔI EMAIL
+            </Link>
+
+            <div className="container d-flex justify-content-center" style={{ zIndex: 10 }}>
+                <div className="login-card animate__animated animate__fadeInUp">
+
                     <div className="text-center">
-                        <div className="main-logo-text">XÁC MINH<span> OTP</span></div>
-                        <p style={{ color: '#a0a0a0', fontSize: '14px', marginTop: '15px', marginBottom: '15px', textTransform: 'uppercase' }}>
+                        <Link to="/" className="main-logo-login">
+                            <i className="fa-solid fa-shoe-prints main-logo-icon-login"></i>
+                            <div className="main-logo-text-login">Shoe<span>Store</span></div>
+                        </Link>
+                        <p className="brand-subtitle-login">Xác minh mã OTP</p>
+                        <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '4px' }}>
                             Mã OTP đã được gửi về email:
                         </p>
-                        <p style={{ color: '#fff', fontWeight: '600', fontSize: '18px' }}>{email}</p>
+                        <p className="otp-email-display">{email}</p>
                     </div>
 
-                    {error && <div className="custom-alert alert-error-custom">{error}</div>}
-                    {message && <div className="custom-alert alert-success-custom">{message}</div>}
+                    {error && <div className="alert alert-danger p-2 text-center" style={{fontSize: '14px', borderRadius: '12px', marginBottom: '16px'}}>{error}</div>}
+                    {message && (
+                        <div className="alert alert-success p-2 text-center animate__animated animate__fadeIn" style={{
+                            fontSize: '14px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            backgroundColor: '#d1e7dd',
+                            color: '#0f5132',
+                            fontWeight: '600',
+                            marginBottom: '16px'
+                        }}>
+                            <i className="fa-solid fa-circle-check me-2"></i>
+                            {message}
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit}>
                         <div className="otp-container">
@@ -151,13 +177,13 @@ const VerifyOTP = () => {
                             ))}
                         </div>
 
-                        <button type="submit" className="btn-action" disabled={loading}>
-                            {loading ? 'Đang xác nhận...' : 'Xác nhận mã'}
+                        <button type="submit" className="btn-login" disabled={loading}>
+                            {loading ? 'ĐANG XÁC NHẬN...' : 'XÁC NHẬN MÃ OTP'}
                         </button>
                     </form>
 
-                    <div className="d-flex justify-content-between align-items-center mt-4">
-                        <Link to="/forgot-password" style={{ color: '#a0a0a0', textDecoration: 'none', fontSize: '13px', textTransform: 'uppercase' }}>
+                    <div className="otp-timer-wrapper">
+                        <Link to="/forgot-password">
                             <i className="fa-solid fa-arrow-left"></i> &nbsp;Thay đổi Email
                         </Link>
                         <button 
