@@ -1,3 +1,9 @@
+/* --- ADMIN DESIGN SYSTEM --- */
+:root {
+    --bg-body: #f4f5f7;
+    --bg-card: #ffffff;
+    --accent-red: #cc0000;
+    --accent-cyan: #000000;
     --text-main: #000000;
     --text-muted: #8a8a93;
     --border-glass: rgba(0, 0, 0, 0.05);

@@ -113,11 +113,6 @@ const AdminProducts = () => {
                     <i className="bi bi-plus-lg"></i> &nbsp;THÊM MỚI
                 </Link>
             </div>
-                    </div>
-                    <Link to="/admin/products/create" className="btn-add-pill">
-                        <i className="bi bi-plus-lg"></i> &nbsp;THÊM MỚI
-                    </Link>
-                </div>
 
                 {/* TOOLBAR */}
                 <div className="toolbar-container">
@@ -283,7 +278,6 @@ const AdminProducts = () => {
                         </table>
                     )}
                 </div>
-            </div>
 
             {/* CUSTOM CONFIRM MODAL */}
             {confirmModal.isOpen && (
