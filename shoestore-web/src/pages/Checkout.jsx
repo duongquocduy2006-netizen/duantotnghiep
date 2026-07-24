@@ -183,6 +183,8 @@ const Checkout = () => {
                                 if (matchedWard) {
                                     setSelectedWard(matchedWard.WardCode);
                                     setSelectedDistrict(matchedWard.DistrictID);
+                                    const districtWards = allWards.filter(w => w.DistrictID === matchedWard.DistrictID);
+                                    setWards(districtWards);
                                     // calculate fee
                                     calculateGHNFee(matchedWard.DistrictID, matchedWard.WardCode, cartTotal, accountData.membership_rank_id);
                                 }
@@ -434,6 +436,7 @@ const Checkout = () => {
                                 const districtWards = allWards.filter(w => w.DistrictID === matchedDistrict.DistrictID);
                                 if (districtWards.length > 0) {
                                     setSelectedWard(districtWards[0].WardCode);
+                                    setWards(districtWards);
                                     calculateGHNFee(matchedDistrict.DistrictID, districtWards[0].WardCode);
                                 }
                             }
@@ -442,6 +445,8 @@ const Checkout = () => {
                         if (matchedWard) {
                             setSelectedWard(matchedWard.WardCode);
                             setSelectedDistrict(matchedWard.DistrictID);
+                            const districtWards = allWards.filter(w => w.DistrictID === matchedWard.DistrictID);
+                            setWards(districtWards);
                             calculateGHNFee(matchedWard.DistrictID, matchedWard.WardCode);
                         }
                     }
@@ -458,8 +463,60 @@ const Checkout = () => {
 
 
 
+    const normalizeName = (name) => {
+        if (!name) return '';
+        return name.toLowerCase()
+            .replace(/^(tỉnh|thành phố|quận|huyện|thị xã|phường|xã|thị trấn)\s+/i, '')
+            .trim();
+    };
+
+    const updateStreetDetailWithSelects = (newProvinceId, newDistrictId, newWardCode, currentStreetDetail, currentProvinces, currentDistricts, currentWards) => {
+        const provinceObj = currentProvinces.find(p => String(p.ProvinceID) === String(newProvinceId));
+        const districtObj = currentDistricts.find(d => String(d.DistrictID) === String(newDistrictId));
+        const wardObj = currentWards.find(w => String(w.WardCode) === String(newWardCode));
+
+        const pText = provinceObj ? provinceObj.ProvinceName : '';
+        const dText = districtObj ? districtObj.DistrictName : '';
+        const wText = wardObj ? wardObj.WardName : '';
+
+        const suffixParts = [];
+        if (wText) suffixParts.push(wText);
+        if (dText) suffixParts.push(dText);
+        if (pText) suffixParts.push(pText);
+        const newSuffix = suffixParts.join(', ');
+
+        let prefix = currentStreetDetail || '';
+        const parts = prefix.split(',').map(item => item.trim());
+        while (parts.length > 0) {
+            const lastPart = parts[parts.length - 1].toLowerCase();
+            const isProvince = currentProvinces.some(p => normalizeName(p.ProvinceName) === normalizeName(lastPart));
+            const isDistrict = currentDistricts.some(d => normalizeName(d.DistrictName) === normalizeName(lastPart));
+            const isWard = currentWards.some(w => normalizeName(w.WardName) === normalizeName(lastPart));
+            
+            if (isProvince || isDistrict || isWard || lastPart === 'việt nam' || lastPart === 'vietnam' || /^\d{5,6}$/.test(lastPart)) {
+                parts.pop();
+            } else {
+                break;
+            }
+        }
+        prefix = parts.join(', ').trim();
+
+        if (prefix && newSuffix) {
+            return `${prefix}, ${newSuffix}`;
+        } else if (newSuffix) {
+            return newSuffix;
+        } else {
+            return prefix;
+        }
+    };
+
     const handleProvinceChange = async (e) => {
         const pId = e.target.value;
+        
+        // Update street detail with new province selection, resetting district/ward details
+        const newStreetDetail = updateStreetDetailWithSelects(pId, '', '', streetDetail, provinces, districts, wards);
+        setStreetDetail(newStreetDetail);
+
         setSelectedProvince(pId);
         setSelectedDistrict('');
         setSelectedWard('');
@@ -472,28 +529,6 @@ const Checkout = () => {
                 if (res.data && res.data.code === 200) {
                     const districtsList = res.data.data || [];
                     setDistricts(districtsList);
-
-                    // Fetch wards of all districts concurrently in background
-                    const wardPromises = districtsList.map(async (d) => {
-                        try {
-                            const wRes = await api.get(`/api/ghn/wards?districtId=${d.DistrictID}`);
-                            if (wRes.data && wRes.data.code === 200) {
-                                return (wRes.data.data || []).map(w => ({
-                                    ...w,
-                                    DistrictID: d.DistrictID,
-                                    DistrictName: d.DistrictName
-                                }));
-                            }
-                        } catch (err) {
-                            console.error('Lỗi tải xã từng huyện:', err);
-                        }
-                        return [];
-                    });
-
-                    const wardsNested = await Promise.all(wardPromises);
-                    const allWards = wardsNested.flat();
-                    allWards.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
-                    setWards(allWards);
                 }
             } catch (err) {
                 console.error('Lỗi tải quận huyện:', err);
@@ -501,18 +536,41 @@ const Checkout = () => {
         }
     };
 
+    const handleDistrictChange = async (e) => {
+        const dId = e.target.value;
+
+        // Update street detail with selected province & new district selection, resetting ward details
+        const newStreetDetail = updateStreetDetailWithSelects(selectedProvince, dId, '', streetDetail, provinces, districts, wards);
+        setStreetDetail(newStreetDetail);
+
+        setSelectedDistrict(dId);
+        setSelectedWard('');
+        setWards([]);
+        
+        if (dId) {
+            try {
+                const res = await api.get(`/api/ghn/wards?districtId=${dId}`);
+                if (res.data && res.data.code === 200) {
+                    const wardsList = res.data.data || [];
+                    wardsList.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
+                    setWards(wardsList);
+                }
+            } catch (err) {
+                console.error('Lỗi tải phường xã:', err);
+            }
+        }
+    };
+
     const handleWardChange = (e) => {
         const wCode = e.target.value;
-        setSelectedWard(wCode);
 
-        // Find ward object in combined list to set selectedDistrict automatically
-        const wardObj = wards.find(w => String(w.WardCode) === String(wCode));
-        if (wardObj) {
-            const dId = wardObj.DistrictID;
-            setSelectedDistrict(dId);
-            calculateGHNFee(dId, wCode);
-        } else {
-            setSelectedDistrict('');
+        // Update street detail with selected province, district, and new ward selection
+        const newStreetDetail = updateStreetDetailWithSelects(selectedProvince, selectedDistrict, wCode, streetDetail, provinces, districts, wards);
+        setStreetDetail(newStreetDetail);
+
+        setSelectedWard(wCode);
+        if (selectedDistrict && wCode) {
+            calculateGHNFee(selectedDistrict, wCode);
         }
     };
 
@@ -628,10 +686,27 @@ const Checkout = () => {
         const dText = districtObj ? districtObj.DistrictName : '';
         const wText = wardObj ? wardObj.WardName : '';
 
-        let full = streetDetail.trim();
-        if (wText) full += `, ${wText}`;
-        if (dText) full += `, ${dText}`;
-        if (pText) full += `, ${pText}`;
+        // Strip any existing location suffix from streetDetail.trim() to get the clean user prefix, then append select names.
+        let baseStreet = streetDetail.trim();
+        const parts = baseStreet.split(',').map(item => item.trim());
+        while (parts.length > 0) {
+            const lastPart = parts[parts.length - 1].toLowerCase();
+            const isProvince = provinces.some(p => normalizeName(p.ProvinceName) === normalizeName(lastPart));
+            const isDistrict = districts.some(d => normalizeName(d.DistrictName) === normalizeName(lastPart));
+            const isWard = wards.some(w => normalizeName(w.WardName) === normalizeName(lastPart));
+            
+            if (isProvince || isDistrict || isWard || lastPart === 'việt nam' || lastPart === 'vietnam' || /^\d{5,6}$/.test(lastPart)) {
+                parts.pop();
+            } else {
+                break;
+            }
+        }
+        baseStreet = parts.join(', ').trim();
+
+        let full = baseStreet;
+        if (wText) full += (full ? ', ' : '') + wText;
+        if (dText) full += (full ? ', ' : '') + dText;
+        if (pText) full += (full ? ', ' : '') + pText;
 
         const urlParams = new URLSearchParams(window.location.search);
         const buyNowVariantId = urlParams.get('buyNowVariantId');
@@ -644,6 +719,7 @@ const Checkout = () => {
             note: note.trim(),
             paymentMethod: paymentMethod,
             voucherCode: appliedVoucher ? appliedVoucher.code : '',
+            shippingFee: shippingFee,
             buyNowVariantId: buyNowVariantId ? parseInt(buyNowVariantId) : null,
             buyNowQty: buyNowQty ? parseInt(buyNowQty) : null
         };
@@ -716,7 +792,7 @@ const Checkout = () => {
                                         <input type="email" className="form-control" value={account.email || ''} readOnly />
                                     </div>
                                     
-                                    <div className="col-md-6">
+                                    <div className="col-md-4">
                                         <label className="form-label">Tỉnh / Thành phố</label>
                                         <select className="form-select form-control" value={selectedProvince} onChange={handleProvinceChange} required>
                                             <option value="">Chọn Tỉnh/Thành</option>
@@ -725,12 +801,21 @@ const Checkout = () => {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="col-md-6">
+                                    <div className="col-md-4">
+                                        <label className="form-label">Quận / Huyện</label>
+                                        <select className="form-select form-control" value={selectedDistrict} onChange={handleDistrictChange} disabled={!selectedProvince} required style={{ opacity: !selectedProvince ? 0.5 : 1, filter: !selectedProvince ? 'blur(1px)' : 'none', transition: '0.3s' }}>
+                                            <option value="">Chọn Quận/Huyện</option>
+                                            {districts.map(d => (
+                                                <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="col-md-4">
                                         <label className="form-label">Phường / Xã</label>
-                                        <select className="form-select form-control" value={selectedWard} onChange={handleWardChange} disabled={!selectedProvince} required style={{ opacity: !selectedProvince ? 0.5 : 1, filter: !selectedProvince ? 'blur(1px)' : 'none', transition: '0.3s' }}>
+                                        <select className="form-select form-control" value={selectedWard} onChange={handleWardChange} disabled={!selectedDistrict} required style={{ opacity: !selectedDistrict ? 0.5 : 1, filter: !selectedDistrict ? 'blur(1px)' : 'none', transition: '0.3s' }}>
                                             <option value="">Chọn Phường/Xã</option>
                                             {wards.map(w => (
-                                                <option key={w.WardCode} value={w.WardCode}>{w.WardName} {w.DistrictName ? `(${w.DistrictName})` : ''}</option>
+                                                <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>
                                             ))}
                                         </select>
                                     </div>

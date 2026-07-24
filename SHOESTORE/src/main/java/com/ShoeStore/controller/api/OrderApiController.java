@@ -117,6 +117,8 @@ public class OrderApiController {
         String note = (String) payload.get("note");
         String paymentMethod = (String) payload.get("paymentMethod"); // COD hoặc BANK
         String voucherCode = (String) payload.get("voucherCode");
+        Double shippingFee = payload.containsKey("shippingFee") && payload.get("shippingFee") != null ? 
+                ((Number) payload.get("shippingFee")).doubleValue() : null;
 
         if (fullName == null || phone == null || fullAddress == null || paymentMethod == null) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Vui lòng nhập đầy đủ thông tin!"));
@@ -188,6 +190,9 @@ public class OrderApiController {
                     .sum();
 
             double tempShipping = 30000;
+            if (shippingFee != null) {
+                tempShipping = shippingFee;
+            }
             Integer userRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
             if (userRankId != null) {
                 Boolean freeShip = jdbc.queryForObject(
@@ -269,8 +274,8 @@ public class OrderApiController {
                         orderId, variantId, buyQty, price);
             }
 
-            // Không trừ tồn kho ở đây nữa, sẽ trừ khi chuyển sang trạng thái "Đang giao hàng"
-            
+            // Trừ tồn kho sản phẩm ngay khi đặt hàng
+            orderService.updateInventory(orderCode);
             // Cập nhật Voucher
             if (voucher != null) {
                 jdbc.update("UPDATE vouchers SET quantity = quantity - 1 WHERE id = ?", voucher.getId());
@@ -411,7 +416,8 @@ public class OrderApiController {
                 Integer vId = (Integer) order.get("voucher_id");
                 String actualOrderCode = (String) order.get("order_code");
 
-                // Không cần khôi phục tồn kho vì chưa bị trừ lúc đặt hàng
+                // Khôi phục tồn kho vì đã bị trừ lúc đặt hàng
+                orderService.restoreInventory(actualOrderCode);
 
                 // Khôi phục lại giỏ hàng
                 List<Map<String, Object>> items = jdbc.queryForList("SELECT product_variant_id, quantity FROM order_items WHERE order_id = ?", orderId);
@@ -464,6 +470,7 @@ public class OrderApiController {
     public ResponseEntity<?> updateOrderStatusAdmin(@RequestBody Map<String, Object> payload) {
         String orderCode = (String) payload.get("orderCode");
         Integer status = (Integer) payload.get("status");
+        String cancelReason = (String) payload.get("cancelReason");
 
         if (orderCode == null || status == null) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu orderCode hoặc status!"));
@@ -472,18 +479,49 @@ public class OrderApiController {
         try {
             if (status == 3) {
                 int currentStatus = orderService.getOrderStatus(orderCode);
-                // Admin chỉ có thể duyệt thành công nếu đơn hàng ở trạng thái Chờ duyệt (5)
                 if (currentStatus != 5) {
-                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", 
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message",
                             "Admin chỉ có thể xác nhận 'Thành công' sau khi khách hàng đã nhấn 'Đã nhận hàng' (Trạng thái: Đã nhận hàng)."));
                 }
             }
 
-            orderService.updateOrderStatus(orderCode, status);
+            // Nếu admin hủy đơn thì dùng cancelOrderByAdmin để kiểm tra quyền và lưu lý do
+            if (status == 4) {
+                orderService.cancelOrderByAdmin(orderCode, cancelReason);
+            } else {
+                orderService.updateOrderStatus(orderCode, status);
+            }
+
             return ResponseEntity.ok(Map.of("success", true, "message", "Cập nhật trạng thái đơn hàng thành công!"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Lỗi cập nhật trạng thái đơn hàng: " + e.getMessage()));
+        }
+    }
+
+    // 9. XÓA SẢN PHẨM KHỎI ĐƠN HÀNG (CHỈ CHO PHÉP KHI ĐƠN HÀNG CHỜ XÁC NHẬN)
+    @PostMapping("/delete-item")
+    public ResponseEntity<?> deleteOrderItem(@RequestBody Map<String, Object> payload) {
+        String orderCode = (String) payload.get("orderCode");
+        Object varIdObj = payload.get("variantId");
+
+        if (orderCode == null || varIdObj == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu orderCode hoặc variantId!"));
+        }
+
+        try {
+            Integer variantId = Integer.parseInt(varIdObj.toString());
+            Map<String, Object> result = orderService.deleteOrderItem(orderCode, variantId);
+            return ResponseEntity.ok(result);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi xóa sản phẩm khỏi đơn hàng: " + e.getMessage()));
         }
     }
 }

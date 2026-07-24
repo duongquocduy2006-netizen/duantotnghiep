@@ -1,16 +1,41 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { Link } from "react-router-dom";
 import api from "../../services/api";
 
+const QUICK_CANCEL_REASONS = [
+    "Khách yêu cầu hủy",
+    "Hết hàng",
+    "Sai thông tin nhận hàng",
+    "Không liên lạc được",
+    "Trùng đơn hàng"
+];
+
 const AdminOrders = () => {
-    const [orders, setOrders] = useState([]);
+    const [allOrders, setAllOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     // Filters
     const [statusFilter, setStatusFilter] = useState("");
     const [keyword, setKeyword] = useState("");
+
+    // Computed orders filtered by status locally
+    const orders = useMemo(() => {
+        if (statusFilter === "") return allOrders;
+        return allOrders.filter(o => o.status === parseInt(statusFilter));
+    }, [allOrders, statusFilter]);
+
+    // Computed unique statuses present in allOrders (matching current keyword)
+    const availableStatuses = useMemo(() => {
+        const statuses = new Set();
+        allOrders.forEach(order => {
+            if (order.status !== undefined && order.status !== null) {
+                statuses.add(order.status);
+            }
+        });
+        return Array.from(statuses);
+    }, [allOrders]);
 
     // Modal Details state
     const [selectedOrderCode, setSelectedOrderCode] = useState(null);
@@ -23,24 +48,22 @@ const AdminOrders = () => {
         isOpen: false,
         orderCode: null,
         newStatus: null,
-        message: ""
+        message: "",
+        cancelReason: ""
     });
 
-    // Fetch orders with optional filters
-    const fetchOrders = async (searchKeyword = "", statusVal = "") => {
+    // Fetch orders with optional keyword
+    const fetchOrders = async (searchKeyword = "") => {
         try {
             setLoading(true);
             const params = {};
             if (searchKeyword.trim()) {
                 params.keyword = searchKeyword.trim();
             }
-            if (statusVal !== "") {
-                params.status = parseInt(statusVal);
-            }
 
             const response = await api.get("/api/orders/all", { params });
             if (response.data && response.data.success) {
-                setOrders(response.data.orders || []);
+                setAllOrders(response.data.orders || []);
             } else {
                 setError("Có lỗi xảy ra khi tải danh sách đơn hàng.");
             }
@@ -55,11 +78,11 @@ const AdminOrders = () => {
     // Debounced search trigger
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
-            fetchOrders(keyword, statusFilter);
+            fetchOrders(keyword);
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [keyword, statusFilter]);
+    }, [keyword]);
 
     // Handle single order status update (Open custom confirm modal)
     const handleStatusChange = (orderCode, newStatus) => {
@@ -72,18 +95,20 @@ const AdminOrders = () => {
     };
 
     const submitStatusChange = async () => {
-        const { orderCode, newStatus } = confirmModal;
-        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "" });
+        const { orderCode, newStatus, cancelReason } = confirmModal;
+        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "" });
 
         try {
-            const response = await api.post("/api/orders/update-status", {
-                orderCode,
-                status: newStatus
-            });
+            const payload = { orderCode, status: newStatus };
+            if (newStatus === 4 && cancelReason && cancelReason.trim()) {
+                payload.cancelReason = cancelReason.trim();
+            }
+
+            const response = await api.post("/api/orders/update-status", payload);
 
             if (response.data && response.data.success) {
                 // Update local status state of the updated order
-                setOrders(prevOrders =>
+                setAllOrders(prevOrders =>
                     prevOrders.map(o => o.orderCode === orderCode ? { ...o, status: newStatus } : o)
                 );
             }
@@ -94,14 +119,14 @@ const AdminOrders = () => {
                 : "Không thể cập nhật trạng thái đơn hàng. Vui lòng kiểm tra lại.";
             alert(errMsg);
             // Re-fetch to sync state with server
-            fetchOrders(keyword, statusFilter);
+            fetchOrders(keyword);
         }
     };
 
     const cancelStatusChange = () => {
-        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "" });
+        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "" });
         // Re-fetch to revert the dropdown choice in UI
-        fetchOrders(keyword, statusFilter);
+        fetchOrders(keyword);
     };
 
     // Open detail modal and fetch order info
@@ -125,6 +150,33 @@ const AdminOrders = () => {
             setIsModalOpen(false);
         } finally {
             setModalLoading(false);
+        }
+    };
+
+    const handleDeleteOrderItem = async (orderCode, variantId, productName) => {
+        if (window.confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${productName}" khỏi đơn hàng này?`)) {
+            try {
+                const response = await api.post('/api/orders/delete-item', {
+                    orderCode,
+                    variantId
+                });
+                if (response.data && response.data.success) {
+                    // Show success alert/toast
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Xóa sản phẩm khỏi đơn hàng thành công!' }));
+                    // Refresh the modal data
+                    openOrderDetail(orderCode);
+                    // Also refresh the orders list in the background
+                    fetchOrders(keyword);
+                } else {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || 'Lỗi: Không thể xóa sản phẩm.' }));
+                }
+            } catch (err) {
+                console.error("Lỗi xóa sản phẩm khỏi đơn:", err);
+                const errMsg = err.response && err.response.data && err.response.data.message
+                    ? err.response.data.message
+                    : "Không thể kết nối đến server để xóa sản phẩm.";
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
+            }
         }
     };
 
@@ -192,11 +244,11 @@ const AdminOrders = () => {
                     onChange={(e) => setStatusFilter(e.target.value)}
                 >
                     <option value="">Trạng thái: Tất cả</option>
-                    <option value="1">Chờ xác nhận</option>
-                    <option value="2">Đang giao hàng</option>
-                    <option value="5">Đã giao hàng</option>
-                    <option value="3">Đã giao thành công</option>
-                    <option value="4">Đã hủy</option>
+                    {(availableStatuses.includes(1) || statusFilter === "1") && <option value="1">Chờ xác nhận</option>}
+                    {(availableStatuses.includes(2) || statusFilter === "2") && <option value="2">Đang giao hàng</option>}
+                    {(availableStatuses.includes(5) || statusFilter === "5") && <option value="5">Đã nhận hàng (Chờ duyệt)</option>}
+                    {(availableStatuses.includes(3) || statusFilter === "3") && <option value="3">Đã giao thành công</option>}
+                    {(availableStatuses.includes(4) || statusFilter === "4") && <option value="4">Đã hủy</option>}
                 </select>
             </div>
 
@@ -263,16 +315,16 @@ const AdminOrders = () => {
                                                     className={`filter-select status-select-badge ${statusInfo.class}`}
                                                     style={{ padding: '5px 30px 5px 10px', fontSize: '12px', margin: 0 }}
                                                     value={order.status}
-                                                    disabled={order.status === 3 || order.status === 4 || order.status === 5}
+                                                    disabled={order.status === 3 || order.status === 4}
                                                     onChange={(e) => handleStatusChange(order.orderCode, parseInt(e.target.value))}
                                                 >
-                                                    <option value="1">Chờ xác nhận</option>
-                                                    <option value="2">Đang giao hàng</option>
-                                                    {order.status === 2 && <option value="5">Đã giao hàng</option>}
-                                                    {order.status !== 4 && <option value="4">Hủy đơn</option>}
-                                                    {order.status === 4 && <option value="4">Đã hủy</option>}
+                                                    {order.status === 1 && <option value="1">Chờ xác nhận</option>}
+                                                    {(order.status === 1 || order.status === 2) && <option value="2">Đang giao hàng</option>}
+                                                    {order.status === 5 && <option value="5">Đã nhận hàng (Chờ duyệt)</option>}
+                                                    {order.status === 5 && <option value="3">Xác nhận thành công</option>}
                                                     {order.status === 3 && <option value="3">Thành công</option>}
-                                                    {order.status === 5 && <option value="5">Đã giao hàng</option>}
+                                                    {order.status !== 3 && order.status !== 4 && <option value="4">Hủy đơn</option>}
+                                                    {order.status === 4 && <option value="4">Đã hủy</option>}
                                                 </select>
                                             </div>
                                         </td>
@@ -327,6 +379,9 @@ const AdminOrders = () => {
                                             <h4 className="panel-title font-oswald"><i className="bi bi-clock-history"></i> THÔNG TIN GIAO DỊCH</h4>
                                             <p><b>Thời gian tạo:</b> {formatDate(orderDetail.order.created_at)}</p>
                                             <p><b>Trạng thái đơn:</b> <span className={`badge-status-neon ${getStatusInfo(orderDetail.order.status).class}`}>{getStatusInfo(orderDetail.order.status).label}</span></p>
+                                            {Number(orderDetail.order.status) === 4 && orderDetail.order.cancel_reason && (
+                                                <p style={{ color: '#dc2626', marginTop: '6px' }}><b>Lý do hủy:</b> <span style={{ color: '#fecaca', background: '#dc2626', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>{orderDetail.order.cancel_reason}</span></p>
+                                            )}
                                             {orderDetail.order.external_transaction_id && (
                                                 <p><b>Mã giao dịch PayOS:</b> <span style={{ color: '#aaa', fontSize: '12px' }}>{orderDetail.order.external_transaction_id}</span></p>
                                             )}
@@ -342,6 +397,7 @@ const AdminOrders = () => {
                                                     <th>Giá bán</th>
                                                     <th>Số lượng</th>
                                                     <th style={{ textAlign: 'right' }}>Thành tiền</th>
+                                                    {Number(orderDetail.order.status) === 1 && <th style={{ width: '60px', textAlign: 'center' }}>Thao tác</th>}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -363,6 +419,19 @@ const AdminOrders = () => {
                                                             <td>{formatCurrency(item.price)}</td>
                                                             <td>{item.quantity}</td>
                                                             <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{formatCurrency(item.price * item.quantity)}</td>
+                                                            {Number(orderDetail.order.status) === 1 && (
+                                                                <td style={{ textAlign: 'center' }}>
+                                                                    <button 
+                                                                        type="button"
+                                                                        className="btn btn-sm btn-link text-danger p-0"
+                                                                        onClick={() => handleDeleteOrderItem(orderDetail.order.order_code, item.product_variant_id, item.product_name)}
+                                                                        title="Xóa sản phẩm"
+                                                                        style={{ fontSize: '16px' }}
+                                                                    >
+                                                                        <i className="bi bi-trash"></i>
+                                                                    </button>
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     );
                                                 })}
@@ -403,14 +472,78 @@ const AdminOrders = () => {
             {confirmModal.isOpen && (
                 <div className="admin-confirm-overlay">
                     <div className="admin-confirm-box animate__animated animate__zoomIn">
-                        <div className="admin-confirm-icon">
-                            <i className="bi bi-exclamation-circle"></i>
+                        <div className="admin-confirm-icon" style={confirmModal.newStatus === 4 ? {color:'#e50914'} : {}}>
+                            <i className={confirmModal.newStatus === 4 ? "bi bi-x-circle" : "bi bi-exclamation-circle"}></i>
                         </div>
-                        <h4 className="admin-confirm-title">Xác nhận thay đổi</h4>
+                        <h4 className="admin-confirm-title">
+                            {confirmModal.newStatus === 4 ? "❗ Xác nhận hủy đơn hàng" : "Xác nhận thay đổi"}
+                        </h4>
                         <p className="admin-confirm-message">{confirmModal.message}</p>
+
+                        {/* Textarea lý do hủy - chỉ hiển khi status = 4 (Hủy) */}
+                        {confirmModal.newStatus === 4 && (
+                            <div style={{ marginTop: '12px', textAlign: 'left' }}>
+                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>
+                                    Lý do hủy <span style={{color:'#e50914'}}>*</span>
+                                </label>
+
+                                {/* Gợi ý lý do hủy nhanh */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                                    {QUICK_CANCEL_REASONS.map((reason, idx) => {
+                                        const isSelected = confirmModal.cancelReason === reason;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                className={`admin-quick-reason-btn ${isSelected ? 'active' : ''}`}
+                                                onClick={() => setConfirmModal(prev => ({ 
+                                                    ...prev, 
+                                                    cancelReason: isSelected ? "" : reason 
+                                                }))}
+                                            >
+                                                {reason}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <textarea
+                                    value={confirmModal.cancelReason}
+                                    onChange={e => setConfirmModal(prev => ({ ...prev, cancelReason: e.target.value }))}
+                                    placeholder="Nhập lý do hủy đơn hàng... (ví dụ: khách yêu cầu hủy, hết hàng, địa chỉ không hợp lệ...)"
+                                    rows={3}
+                                    style={{
+                                        width: '100%',
+                                        border: '1.5px solid #e5e7eb',
+                                        borderRadius: '8px',
+                                        padding: '10px 12px',
+                                        fontSize: '13px',
+                                        fontFamily: 'Inter, sans-serif',
+                                        resize: 'vertical',
+                                        outline: 'none',
+                                        boxSizing: 'border-box',
+                                        color: '#1e293b',
+                                        lineHeight: '1.5'
+                                    }}
+                                    onFocus={e => e.target.style.borderColor = '#e50914'}
+                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                                />
+                                <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', marginBottom: 0 }}>
+                                    Lý do sẽ được hiển thị cho khách hàng.
+                                </p>
+                            </div>
+                        )}
+
                         <div className="admin-confirm-actions">
                             <button className="admin-btn-confirm-cancel" onClick={cancelStatusChange}>Hủy bỏ</button>
-                            <button className="admin-btn-confirm-ok" onClick={submitStatusChange}>Đồng ý</button>
+                            <button
+                                className="admin-btn-confirm-ok"
+                                onClick={submitStatusChange}
+                                style={confirmModal.newStatus === 4 ? {background:'#e50914', borderColor:'#e50914'} : {}}
+                                disabled={confirmModal.newStatus === 4 && (!confirmModal.cancelReason || !confirmModal.cancelReason.trim())}
+                            >
+                                {confirmModal.newStatus === 4 ? '⚠️ Xác nhận hủy' : 'Đồng ý'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -626,6 +759,30 @@ const AdminOrders = () => {
                 .admin-btn-confirm-ok:hover {
                     background: #b91c1c;
                     box-shadow: 0 8px 12px -1px rgba(229, 9, 20, 0.3);
+                }
+
+                /* Quick Cancel Reason Buttons */
+                .admin-quick-reason-btn {
+                    background: #f3f4f6;
+                    color: #4b5563;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 16px;
+                    padding: 5px 12px;
+                    font-size: 11.5px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    font-family: 'Inter', sans-serif;
+                }
+                .admin-quick-reason-btn:hover {
+                    background: #e5e7eb;
+                    color: #1f2937;
+                    border-color: #d1d5db;
+                }
+                .admin-quick-reason-btn.active {
+                    background: #fee2e2;
+                    color: #e50914;
+                    border-color: #fca5a5;
                 }
             `}</style>
         </AdminLayout>

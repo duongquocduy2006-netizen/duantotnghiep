@@ -17,6 +17,19 @@ const AdminBanners = () => {
         message: ""
     });
 
+    const getBannerStatus = (banner) => {
+        if (!banner.status) return { text: 'TẠM ẨN', className: 'inactive' };
+        
+        const now = new Date();
+        if (banner.startDate && new Date(banner.startDate) > now) {
+            return { text: 'CHƯA DIỄN RA', className: 'scheduled' };
+        }
+        if (banner.endDate && new Date(banner.endDate) < now) {
+            return { text: 'HẾT HẠN', className: 'expired' };
+        }
+        return { text: 'HOẠT ĐỘNG', className: 'active' };
+    };
+
     const fetchBanners = async () => {
         try {
             const response = await api.get('/api/banners');
@@ -66,9 +79,23 @@ const AdminBanners = () => {
 
     const filteredBanners = (Array.isArray(banners) ? banners : []).filter(b => {
         const matchesSearch = b.name?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' ||
-            (statusFilter === 'active' && b.status) ||
-            (statusFilter === 'inactive' && !b.status);
+        
+        const now = new Date();
+        const isScheduled = b.status && b.startDate && new Date(b.startDate) > now;
+        const isExpired = b.status && b.endDate && new Date(b.endDate) < now;
+        const isRunning = b.status && !isScheduled && !isExpired;
+        
+        let matchesStatus = true;
+        if (statusFilter === 'active') {
+            matchesStatus = isRunning;
+        } else if (statusFilter === 'scheduled') {
+            matchesStatus = isScheduled;
+        } else if (statusFilter === 'expired') {
+            matchesStatus = isExpired;
+        } else if (statusFilter === 'inactive') {
+            matchesStatus = !b.status;
+        }
+        
         return matchesSearch && matchesStatus;
     });
 
@@ -107,6 +134,8 @@ const AdminBanners = () => {
                     >
                         <option value="all">TẤT CẢ TRẠNG THÁI</option>
                         <option value="active">ĐANG HOẠT ĐỘNG</option>
+                        <option value="scheduled">CHƯA DIỄN RA</option>
+                        <option value="expired">ĐÃ HẾT HẠN</option>
                         <option value="inactive">TẠM ẨN</option>
                     </select>
                 </div>
@@ -159,12 +188,17 @@ const AdminBanners = () => {
                                                 Đến: {banner.endDate ? new Date(banner.endDate).toLocaleString('vi-VN') : 'N/A'}
                                             </div>
                                         </td>
-                                        <td>
-                                            <div className={`status-badge-modern ${!banner.status ? 'inactive' : ''}`}>
-                                                <div className="status-dot"></div>
-                                                {banner.status ? 'HOẠT ĐỘNG' : 'TẠM ẨN'}
-                                            </div>
-                                        </td>
+                                         <td>
+                                             {(() => {
+                                                 const statusInfo = getBannerStatus(banner);
+                                                 return (
+                                                     <div className={`status-badge-modern ${statusInfo.className}`}>
+                                                         <div className="status-dot"></div>
+                                                         {statusInfo.text}
+                                                     </div>
+                                                 );
+                                             })()}
+                                         </td>
                                         <td style={{ textAlign: 'right' }}>
                                             <Link to={`/admin/banners/edit/${banner.id}`} className="action-btn-icon" title="Chỉnh sửa">
                                                 <i className="bi bi-pencil-square"></i>

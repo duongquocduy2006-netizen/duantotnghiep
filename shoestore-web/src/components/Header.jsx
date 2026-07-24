@@ -13,7 +13,10 @@ const Header = () => {
         return params.get('search') || '';
     });
     const [isListening, setIsListening] = useState(false);
+    const [isUploadingImg, setIsUploadingImg] = useState(false);
     const [toast, setToast] = useState(null);
+    const [categories, setCategories] = useState([]);
+    const [brands, setBrands] = useState([]);
 
     useEffect(() => {
         const fetchHeaderData = async () => {
@@ -35,6 +38,32 @@ const Header = () => {
                 }
             } catch (err) {
                 setCartCount(0);
+            }
+
+            try {
+                const brandRes = await api.get('/api/brands');
+                if (brandRes.data && brandRes.data.success) {
+                    const activeBrands = (brandRes.data.brands || []).filter(b => b.active !== false);
+                    setBrands(activeBrands);
+                } else if (Array.isArray(brandRes.data)) {
+                    const activeBrands = brandRes.data.filter(b => b.active !== false);
+                    setBrands(activeBrands);
+                }
+            } catch (err) {
+                console.error("Lỗi tải thương hiệu ở header:", err);
+            }
+
+            try {
+                const catRes = await api.get('/api/categories');
+                if (catRes.data && catRes.data.success) {
+                    const activeCategories = (catRes.data.categories || []).filter(c => c.active !== false);
+                    setCategories(activeCategories);
+                } else if (Array.isArray(catRes.data)) {
+                    const activeCategories = catRes.data.filter(c => c.active !== false);
+                    setCategories(activeCategories);
+                }
+            } catch (err) {
+                console.error("Lỗi tải danh mục ở header:", err);
             }
         };
 
@@ -134,6 +163,54 @@ const Header = () => {
         recognition.start();
     };
 
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsUploadingImg(true);
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đang phân tích hình ảnh bằng AI...' }));
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await api.post('/api/ai/image-search', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (res.data && (res.data.success || res.status === 200)) {
+                if (res.data.success === false && !res.data.aiResult) {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.message || 'Lỗi nhận diện hình ảnh' }));
+                    return;
+                }
+
+                const aiResult = res.data.aiResult || {};
+                const { brand, category } = aiResult;
+
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Phân tích thành công! Đang tìm sản phẩm...' }));
+
+                // Ghép brand + category vào search keyword để Shop tự smart match
+                const searchParts = [brand, category].filter(Boolean);
+                const searchKeyword = searchParts.join(' ').trim();
+
+                if (searchKeyword) {
+                    setSearchQuery(searchKeyword);
+                    navigate(`/shop?search=${encodeURIComponent(searchKeyword)}`);
+                } else {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'AI không nhận diện được thông tin giày.' }));
+                }
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Lỗi nhận diện hình ảnh' }));
+            }
+        } catch (err) {
+            console.error(err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Có lỗi xảy ra khi gọi AI nhận diện' }));
+        } finally {
+            setIsUploadingImg(false);
+            e.target.value = null; // reset input file
+        }
+    };
+
     return (
         <>
             <header className="cinematic-header">
@@ -146,22 +223,29 @@ const Header = () => {
                                 </h2>
                             </Link>
                         </div>
-                        
+
 
                         <div className="col-md-5 my-3 my-md-0">
                             <form onSubmit={handleSearch} className="search-wrapper">
                                 <div className="input-group">
-                                    <input type="text" name="q" className="search-input"
-                                        placeholder="Tìm kiếm phong cách, thương hiệu..." 
+                                    <input type="text" name="q" className="form-control search-input"
+                                        placeholder="Tìm kiếm phong cách, thương hiệu..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)} />
+
                                     {searchQuery && (
                                         <button type="button" onClick={handleClearSearch} className="btn search-btn clear-btn" title="Xóa tìm kiếm">
                                             <i className="bi bi-x-lg"></i>
                                         </button>
                                     )}
+
+                                    <input type="file" id="imageSearchInput" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+                                    <button type="button" onClick={() => document.getElementById('imageSearchInput').click()} className="btn search-btn" style={{ color: isUploadingImg ? '#e50914' : '#fff' }} title="Tìm kiếm bằng hình ảnh">
+                                        <i className={`fa ${isUploadingImg ? 'fa-spinner fa-spin' : 'fa-camera'}`}></i>
+                                    </button>
+
                                     <button type="button" onClick={startListening} className={`btn search-btn mic-btn ${isListening ? 'mic-btn-active' : ''}`} title="Tìm kiếm bằng giọng nói">
-                                        <i className={`fa ${isListening ? 'fa-microphone-slash' : 'fa-microphone'}`}></i>
+                                        <i className={`fa ${isListening ? 'fa-microphone-slash' : 'fa-microphone'}`} style={{ animation: isListening ? 'pulse 1.5s infinite' : 'none' }}></i>
                                     </button>
                                     <button className="btn search-btn submit-btn" type="submit"><i className="fa fa-search"></i></button>
                                 </div>
@@ -240,41 +324,53 @@ const Header = () => {
                                         <div className="container">
                                             <div className="mega-content d-flex flex-wrap justify-content-center gap-5 py-3">
                                                 <div className="mega-column">
-                                                    <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Thương Hiệu</h5>
+                                                    <h5 className="text-danger mb-3" style={{ fontSize: '16px', fontWeight: 600, textTransform: 'uppercase' }}>Thương Hiệu</h5>
                                                     <ul className="list-unstyled">
-                                                        <li className="mb-2"><Link to="/shop?brand=Nike">Nike</Link></li>
-                                                        <li className="mb-2"><Link to="/shop?brand=Adidas">Adidas</Link></li>
+                                                        {brands.map(brand => {
+                                                            const bName = brand.name || brand.brand_name || brand.brandName || '';
+                                                            return (
+                                                                <li className="mb-2" key={brand.id}>
+                                                                    <Link to={`/shop?brand=${encodeURIComponent(bName)}`}>{bName}</Link>
+                                                                </li>
+                                                            );
+                                                        })}
                                                     </ul>
                                                 </div>
                                                 <div className="mega-column">
-                                                    <h5 className="text-danger mb-3" style={{fontSize: '16px', fontWeight: 600, textTransform: 'uppercase'}}>Dòng Sản Phẩm</h5>
+                                                    <h5 className="text-danger mb-3" style={{ fontSize: '16px', fontWeight: 600, textTransform: 'uppercase' }}>Dòng Sản Phẩm</h5>
                                                     <ul className="list-unstyled">
-                                                        <li className="mb-2"><Link to="/shop?category=Sneaker">Sneaker</Link></li>
-                                                        <li className="mb-2"><Link to="/shop?category=Running">Running</Link></li>
+                                                        {categories.map(cat => {
+                                                            const cName = cat.name || cat.category_name || cat.categoryName || '';
+                                                            return (
+                                                                <li className="mb-2" key={cat.id}>
+                                                                    <Link to={`/shop?category=${cat.id}`}>{cName}</Link>
+                                                                </li>
+                                                            );
+                                                        })}
                                                     </ul>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </li>
-                            <li className="nav-item">
-                                <Link className="nav-link nav-link-custom" to="/new-arrivals">
-                                    <i className="fa fa-star me-1"></i>HÀNG MỚI
-                                </Link>
-                            </li>
-                            <li className="nav-item">
-                                <Link className="nav-link nav-link-custom" to="/membership">
-                                    <i className="fa fa-fire me-1"></i>HẠNG THÀNH VIÊN
-                                </Link>
-                            </li>
-                            <li className="nav-item">
-                                <Link className="nav-link nav-link-custom" to="/flash-sale">
-                                    <i className="fa fa-fire me-1"></i>SALE SỐC
-                                </Link>
-                            </li>
-                            <li className="nav-item">
-                                <Link className="nav-link nav-link-custom" to="/shop">CỬA HÀNG</Link>
-                            </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link nav-link-custom" to="/new-arrivals">
+                                        <i className="fa fa-star me-1"></i>HÀNG MỚI
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link nav-link-custom" to="/membership">
+                                        <i className="fa fa-fire me-1"></i>HẠNG THÀNH VIÊN
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link nav-link-custom" to="/flash-sale">
+                                        <i className="fa fa-fire me-1"></i>SALE SỐC
+                                    </Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link nav-link-custom" to="/shop">CỬA HÀNG</Link>
+                                </li>
                             </ul>
                         </div>
                     </div>

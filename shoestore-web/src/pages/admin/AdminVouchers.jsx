@@ -26,6 +26,16 @@ const AdminVouchers = () => {
     const [selectedRankIds, setSelectedRankIds] = useState([]);
     const [formStatus, setFormStatus] = useState(1);
 
+    const getCurrentDateTimeString = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
     const fetchVouchers = async () => {
         try {
             setLoading(true);
@@ -378,7 +388,20 @@ const AdminVouchers = () => {
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Ngày bắt đầu</label>
+                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                        <label className="form-label mb-0">Ngày bắt đầu</label>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                            style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                            onClick={() => {
+                                                setFormStartDate(getCurrentDateTimeString());
+                                                if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
+                                            }}
+                                        >
+                                            <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                        </button>
+                                    </div>
                                     <input 
                                         type="datetime-local" 
                                         className="form-input" 
@@ -387,7 +410,20 @@ const AdminVouchers = () => {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Ngày kết thúc</label>
+                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                        <label className="form-label mb-0">Ngày kết thúc</label>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                            style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                            onClick={() => {
+                                                setFormEndDate(getCurrentDateTimeString());
+                                                if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
+                                            }}
+                                        >
+                                            <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                        </button>
+                                    </div>
                                     <input 
                                         type="datetime-local" 
                                         className={`form-input ${formErrors.endDate ? 'input-error' : ''}`}
@@ -401,6 +437,15 @@ const AdminVouchers = () => {
                             <div className="form-group" style={{ marginTop: '10px' }}>
                                 <label className="form-label">Hạng thành viên áp dụng (Để trống = Áp dụng tất cả)</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: '#fff', padding: '15px', border: '1.5px solid #dadce0', borderRadius: '8px' }}>
+                                    <div className="rank-check-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', gridColumn: 'span 2', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            className="rank-cbx" 
+                                            checked={selectedRankIds.length === 0}
+                                            onChange={() => setSelectedRankIds([])}
+                                        />
+                                        <span style={{ color: '#000', fontSize: '13px', fontWeight: '800', fontFamily: 'Oswald' }}>ÁP DỤNG TẤT CẢ HẠNG THÀNH VIÊN</span>
+                                    </div>
                                     {ranks.map(r => {
                                         const isChecked = selectedRankIds.includes(r.id);
                                         return (

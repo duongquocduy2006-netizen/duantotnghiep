@@ -38,10 +38,14 @@ public class CheckoutController {
     @jakarta.annotation.PostConstruct
     public void init() {
         try {
-            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'external_transaction_id') " +
-                         "ALTER TABLE orders ADD external_transaction_id NVARCHAR(255);");
-            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'voucher_id') " +
-                         "ALTER TABLE orders ADD voucher_id INT;");
+            jdbc.execute(
+                    "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'external_transaction_id') "
+                            +
+                            "ALTER TABLE orders ADD external_transaction_id NVARCHAR(255);");
+            jdbc.execute(
+                    "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'voucher_id') "
+                            +
+                            "ALTER TABLE orders ADD voucher_id INT;");
         } catch (Exception e) {
             System.err.println("Error updating orders table schema: " + e.getMessage());
         }
@@ -87,7 +91,8 @@ public class CheckoutController {
                     "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as effective_price " +
                     "FROM product_variants v WHERE v.id = ?";
             Map<String, Object> item = jdbc.queryForMap(quickPriceSql, quickInfo.get("variantId"));
-            return ((Number) item.get("effective_price")).doubleValue() * ((Number) quickInfo.get("quantity")).intValue();
+            return ((Number) item.get("effective_price")).doubleValue()
+                    * ((Number) quickInfo.get("quantity")).intValue();
         } else {
             String cartTotalSql = "SELECT ci.quantity, " +
                     "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
@@ -98,7 +103,8 @@ public class CheckoutController {
                     "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id WHERE ci.user_id = ?";
             List<Map<String, Object>> items = jdbc.queryForList(cartTotalSql, accountId);
             return items.stream()
-                    .mapToDouble(i -> ((Number) i.get("effective_price")).doubleValue() * ((Number) i.get("quantity")).intValue())
+                    .mapToDouble(i -> ((Number) i.get("effective_price")).doubleValue()
+                            * ((Number) i.get("quantity")).intValue())
                     .sum();
         }
     }
@@ -140,7 +146,8 @@ public class CheckoutController {
         }
 
         // --- Fetch Rank and Voucher Logic for Display ---
-        Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
+        Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class,
+                accountId);
         Double totalPrice = (Double) model.asMap().get("totalPrice");
         Double shippingFee = 30000.0;
         if (rankId != null) {
@@ -161,18 +168,19 @@ public class CheckoutController {
             model.addAttribute("appliedVoucherCode", voucher.getCode());
             model.addAttribute("appliedVoucher", voucher);
         }
-        
-        // Bỏ điều kiện min_order_value <= ? để hiện tất cả Voucher đang có, cho khách biết để còn mua thêm
+
+        // Bỏ điều kiện min_order_value <= ? để hiện tất cả Voucher đang có, cho khách
+        // biết để còn mua thêm
         String voucherSql = "SELECT DISTINCT v.code as code, v.discount_value as discount_value, " +
-                            "v.discount_type as discount_type, v.max_discount as max_discount, " +
-                            "v.min_order_value as min_order_value " +
-                            "FROM vouchers v " +
-                            "LEFT JOIN voucher_membership_ranks vmr ON v.id = vmr.voucher_id " +
-                            "WHERE v.status = 1 AND v.quantity > 0 " +
-                            "AND (v.start_date IS NULL OR GETDATE() >= v.start_date) " +
-                            "AND (v.end_date IS NULL OR GETDATE() <= v.end_date) " +
-                            "AND (vmr.rank_id IS NULL OR vmr.rank_id = ?)";
-        
+                "v.discount_type as discount_type, v.max_discount as max_discount, " +
+                "v.min_order_value as min_order_value " +
+                "FROM vouchers v " +
+                "LEFT JOIN voucher_membership_ranks vmr ON v.id = vmr.voucher_id " +
+                "WHERE v.status = 1 AND v.quantity > 0 " +
+                "AND (v.start_date IS NULL OR GETDATE() >= v.start_date) " +
+                "AND (v.end_date IS NULL OR GETDATE() <= v.end_date) " +
+                "AND (vmr.rank_id IS NULL OR vmr.rank_id = ?)";
+
         List<Map<String, Object>> validVouchers = jdbc.queryForList(voucherSql, rankId);
         model.addAttribute("validVouchers", validVouchers);
 
@@ -303,7 +311,8 @@ public class CheckoutController {
         if (shippingFee != null) {
             shipping = shippingFee;
         } else {
-            Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
+            Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class,
+                    accountId);
             if (rankId != null) {
                 Boolean freeShip = jdbc.queryForObject(
                         "SELECT COALESCE(free_shipping, 0) FROM membership_ranks WHERE id = ?", Boolean.class, rankId);
@@ -361,7 +370,10 @@ public class CheckoutController {
                 ps.setDouble(5, finalTotal);
                 ps.setLong(6, addressId);
                 ps.setInt(7, finalPmId);
-                if (finalVoucher != null) ps.setInt(8, finalVoucher.getId()); else ps.setNull(8, java.sql.Types.INTEGER);
+                if (finalVoucher != null)
+                    ps.setInt(8, finalVoucher.getId());
+                else
+                    ps.setNull(8, java.sql.Types.INTEGER);
                 return ps;
             }, keyHolder);
 
@@ -395,11 +407,13 @@ public class CheckoutController {
             }
 
             // --- ONLINE PAYMENT LOGIC (PayOS) ---
-            // Tự động lấy baseUrl để link quay về hoạt động đúng kể cả khi chạy trên IP khác hoặc domain
+            // Tự động lấy baseUrl để link quay về hoạt động đúng kể cả khi chạy trên IP
+            // khác hoặc domain
             String scheme = request.getScheme();
             String serverName = request.getServerName();
             int serverPort = request.getServerPort();
-            String baseUrl = scheme + "://" + serverName + (serverPort == 80 || serverPort == 443 ? "" : ":" + serverPort);
+            String baseUrl = scheme + "://" + serverName
+                    + (serverPort == 80 || serverPort == 443 ? "" : ":" + serverPort);
 
             String returnUrl = baseUrl + "/checkout/success";
             String cancelUrl = baseUrl + "/checkout/payment-cancel?orderCode=" + orderCode;
@@ -428,7 +442,8 @@ public class CheckoutController {
                     CreatePaymentLinkResponse checkoutResponseData = payOS.paymentRequests().create(paymentData);
                     String checkoutUrl = checkoutResponseData.getCheckoutUrl();
 
-                    jdbc.update("UPDATE orders SET external_transaction_id = ? WHERE order_code = ?", String.valueOf(payosOrderCode), orderCode);
+                    jdbc.update("UPDATE orders SET external_transaction_id = ? WHERE order_code = ?",
+                            String.valueOf(payosOrderCode), orderCode);
 
                     return "redirect:" + checkoutUrl;
                 } catch (Exception e) {
@@ -461,18 +476,19 @@ public class CheckoutController {
     public String paymentCancel(@RequestParam("orderCode") String orderCode, RedirectAttributes ra) {
         System.out.println("Processing Payment Cancel for Order Code: " + orderCode);
         try {
-            // 1. Lấy thông tin đơn hàng (Thử tìm theo order_code thủ công hoặc external_transaction_id từ PayOS)
+            // 1. Lấy thông tin đơn hàng (Thử tìm theo order_code thủ công hoặc
+            // external_transaction_id từ PayOS)
             List<Map<String, Object>> orders = jdbc.queryForList(
-                "SELECT id, user_id, voucher_id, order_code FROM orders WHERE order_code = ? OR external_transaction_id = ?", 
-                orderCode, orderCode
-            );
-            
+                    "SELECT id, user_id, voucher_id, order_code FROM orders WHERE order_code = ? OR external_transaction_id = ?",
+                    orderCode, orderCode);
+
             if (orders.isEmpty()) {
                 System.out.println("No order found with code/transaction ID: " + orderCode);
-                ra.addFlashAttribute("error", "Đơn hàng không tồn tại hoặc đã được xử lý trước đó (Mã: " + orderCode + ")");
+                ra.addFlashAttribute("error",
+                        "Đơn hàng không tồn tại hoặc đã được xử lý trước đó (Mã: " + orderCode + ")");
                 return "redirect:/cart";
             }
-            
+
             Map<String, Object> order = orders.get(0);
             Long orderId = ((Number) order.get("id")).longValue();
             Long userId = ((Number) order.get("user_id")).longValue();
@@ -485,11 +501,15 @@ public class CheckoutController {
             orderService.restoreInventory(actualOrderCode);
 
             // 2. Khôi phục giỏ hàng
-            List<Map<String, Object>> items = jdbc.queryForList("SELECT product_variant_id, quantity FROM order_items WHERE order_id = ?", orderId);
+            List<Map<String, Object>> items = jdbc
+                    .queryForList("SELECT product_variant_id, quantity FROM order_items WHERE order_id = ?", orderId);
             for (Map<String, Object> item : items) {
-                int count = jdbc.queryForObject("SELECT COUNT(*) FROM cart_items WHERE user_id = ? AND product_variant_id = ?", Integer.class, userId, item.get("product_variant_id"));
+                int count = jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM cart_items WHERE user_id = ? AND product_variant_id = ?", Integer.class,
+                        userId, item.get("product_variant_id"));
                 if (count > 0) {
-                    jdbc.update("UPDATE cart_items SET quantity = quantity + ? WHERE user_id = ? AND product_variant_id = ?",
+                    jdbc.update(
+                            "UPDATE cart_items SET quantity = quantity + ? WHERE user_id = ? AND product_variant_id = ?",
                             item.get("quantity"), userId, item.get("product_variant_id"));
                 } else {
                     jdbc.update("INSERT INTO cart_items (user_id, product_variant_id, quantity) VALUES (?, ?, ?)",
@@ -501,7 +521,9 @@ public class CheckoutController {
             // 3. Khôi phục Voucher và xóa lượt dùng
             if (vId != null) {
                 jdbc.update("UPDATE vouchers SET quantity = quantity + 1 WHERE id = ?", vId);
-                jdbc.update("DELETE TOP (1) FROM voucher_usages WHERE voucher_id = ? AND user_id = ? ORDER BY used_at DESC", vId, userId);
+                jdbc.update(
+                        "DELETE TOP (1) FROM voucher_usages WHERE voucher_id = ? AND user_id = ? ORDER BY used_at DESC",
+                        vId, userId);
                 System.out.println("Reverted voucher usage for ID: " + vId);
             }
 
@@ -509,14 +531,15 @@ public class CheckoutController {
             // Xóa ở các bảng phụ liên quan nếu có (Hiện tại có order_items)
             jdbc.update("DELETE FROM order_items WHERE order_id = ?", orderId);
             int deleted = jdbc.update("DELETE FROM orders WHERE id = ?", orderId);
-            
+
             if (deleted > 0) {
                 System.out.println("Successfully DELETED order from database.");
             } else {
                 System.out.println("Failed to delete order from database (already gone?)");
             }
 
-            ra.addFlashAttribute("error", "Đặt hàng không thành công. Giao dịch thanh toán PayOS đã bị khách hàng hủy.");
+            ra.addFlashAttribute("error",
+                    "Đặt hàng không thành công. Giao dịch thanh toán PayOS đã bị khách hàng hủy.");
             return "redirect:/checkout";
         } catch (Exception e) {
             System.err.println("CRITICAL ERROR during Payment Cancel: " + e.getMessage());

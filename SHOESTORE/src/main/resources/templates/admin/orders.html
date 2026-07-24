@@ -458,11 +458,11 @@
 
                 <select name="status" class="filter-select" onchange="this.form.submit()">
                     <option value="" th:selected="${statusFilter == null}">Trạng thái: Tất cả</option>
-                    <option value="1" th:selected="${statusFilter == 1}">Chờ xác nhận</option>
-                    <option value="2" th:selected="${statusFilter == 2}">Đang giao hàng</option>
-                    <option value="5" th:selected="${statusFilter == 5}">Đã nhận hàng (Chờ duyệt)</option>
-                    <option value="3" th:selected="${statusFilter == 3}">Đã giao thành công</option>
-                    <option value="4" th:selected="${statusFilter == 4}">Đã hủy</option>
+                    <option th:if="${availableStatuses.contains(1) || statusFilter == 1}" value="1" th:selected="${statusFilter == 1}">Chờ xác nhận</option>
+                    <option th:if="${availableStatuses.contains(2) || statusFilter == 2}" value="2" th:selected="${statusFilter == 2}">Đang giao hàng</option>
+                    <option th:if="${availableStatuses.contains(5) || statusFilter == 5}" value="5" th:selected="${statusFilter == 5}">Đã nhận hàng (Chờ duyệt)</option>
+                    <option th:if="${availableStatuses.contains(3) || statusFilter == 3}" value="3" th:selected="${statusFilter == 3}">Đã giao thành công</option>
+                    <option th:if="${availableStatuses.contains(4) || statusFilter == 4}" value="4" th:selected="${statusFilter == 4}">Đã hủy</option>
                 </select>
 
                 <!-- Ẩn date input đi trước nếu không cần backend logic xử lý -->

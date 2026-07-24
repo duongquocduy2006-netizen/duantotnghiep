@@ -79,7 +79,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/", "/login", "/register", "/forgot-password", "/verify-otp", "/resend-otp",
                                 "/reset-password", "/shop", "/details", "/new-arrivals", "/flash-sale", "/product/**",
-                                "/cart/**", "/api/**", "/api/auth/**", "/assets/**", "/css/**", "/js/**", "/images/**", "/error")
+                                "/cart/**", "/api/**", "/api/auth/**", "/assets/**", "/css/**", "/js/**", "/images/**", "/uploads/**", "/error")
                         .permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/shipper/**").hasRole("SHIPPER")

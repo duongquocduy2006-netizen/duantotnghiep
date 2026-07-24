@@ -23,6 +23,16 @@ const AdminFlashSaleForm = () => {
     const [loading, setLoading] = useState(false);
     const [formErrors, setFormErrors] = useState({});
 
+    const getCurrentDateTimeString = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
     // 1. Fetch available products list for dropdown selection
     const fetchProducts = async () => {
         try {
@@ -271,7 +281,20 @@ const AdminFlashSaleForm = () => {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Ngày bắt đầu *</label>
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                    <label className="form-label mb-0">Ngày bắt đầu *</label>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                        style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                        onClick={() => {
+                                            setForm({...form, startDate: getCurrentDateTimeString()});
+                                            if (formErrors.startDate) setFormErrors(p => ({...p, startDate: ''}));
+                                        }}
+                                    >
+                                        <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                    </button>
+                                </div>
                                 <input 
                                     type="datetime-local" 
                                     className={`form-input-cinematic ${formErrors.startDate ? 'input-error' : ''}`} 
@@ -285,7 +308,20 @@ const AdminFlashSaleForm = () => {
                                 {formErrors.startDate && <span className="field-error">{formErrors.startDate}</span>}
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Ngày kết thúc *</label>
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                    <label className="form-label mb-0">Ngày kết thúc *</label>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                        style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                        onClick={() => {
+                                            setForm({...form, endDate: getCurrentDateTimeString()});
+                                            if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
+                                        }}
+                                    >
+                                        <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                    </button>
+                                </div>
                                 <input 
                                     type="datetime-local" 
                                     className={`form-input-cinematic ${formErrors.endDate ? 'input-error' : ''}`} 

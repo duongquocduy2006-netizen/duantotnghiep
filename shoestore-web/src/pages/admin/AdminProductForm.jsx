@@ -37,6 +37,10 @@ const AdminProductForm = () => {
     const [colors, setColors] = useState([]);
 
     const [images, setImages] = useState([]); // List of { id, url, isPrimary }
+    const [tempImages, setTempImages] = useState([]); // Local temporary images for create mode
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [errors, setErrors] = useState({});
+    const [savedId, setSavedId] = useState(null);
 
     // Fetch form metadata (and edit details if relevant)
     const loadFormData = async () => {
@@ -89,20 +93,28 @@ const AdminProductForm = () => {
     const getImageUrl = (image) => {
         const url = typeof image === 'string' ? image : image?.url;
         if (!url) return 'https://ui-avatars.com/api/?name=SP&background=121212&color=00f2ff&bold=true';
-        if (url.startsWith('http')) return url;
+        if (url.startsWith('data:') || url.startsWith('http')) return url;
         return `http://localhost:8080${url}`;
     };
 
     const handleDeleteImage = async (imageId) => {
         if (window.confirm("Bạn có chắc chắn muốn xóa ảnh này không?")) {
-            try {
-                const response = await api.delete(`/api/products/image/${imageId}`);
-                if (response.data && response.data.success) {
-                    setImages(images.filter(img => img.id !== imageId));
+            if (String(imageId).startsWith('temp-')) {
+                const filtered = tempImages.filter(img => img.id !== imageId);
+                if (tempImages.find(img => img.id === imageId)?.isPrimary && filtered.length > 0) {
+                    filtered[0].isPrimary = true;
                 }
-            } catch (err) {
-                console.error("Lỗi xóa ảnh:", err);
-                alert("Không thể xóa ảnh này.");
+                setTempImages(filtered);
+            } else {
+                try {
+                    const response = await api.delete(`/api/products/image/${imageId}`);
+                    if (response.data && response.data.success) {
+                        setImages(images.filter(img => img.id !== imageId));
+                    }
+                } catch (err) {
+                    console.error("Lỗi xóa ảnh:", err);
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể xóa ảnh này.' }));
+                }
             }
         }
     };
@@ -110,41 +122,88 @@ const AdminProductForm = () => {
     const handleImageUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (!id) {
-            alert("Vui lòng tạo sản phẩm trước khi thêm ảnh vào thư viện.");
-            return;
-        }
 
         const reader = new FileReader();
         reader.onloadend = async () => {
             const base64String = reader.result;
-            try {
-                const response = await api.post(`/api/products/${id}/image`, { imageBase64: base64String });
-                if (response.data && response.data.success) {
-                    loadFormData(); // Refresh
+            if (!id) {
+                const newTempImg = {
+                    id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    url: base64String,
+                    imageBase64: base64String,
+                    isPrimary: tempImages.length === 0
+                };
+                setTempImages([...tempImages, newTempImg]);
+            } else {
+                try {
+                    const response = await api.post(`/api/products/${id}/image`, { imageBase64: base64String });
+                    if (response.data && response.data.success) {
+                        loadFormData(); // Refresh
+                    }
+                } catch (err) {
+                    console.error("Lỗi upload ảnh:", err);
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể tải ảnh lên.' }));
                 }
-            } catch (err) {
-                console.error("Lỗi upload ảnh:", err);
-                alert("Không thể tải ảnh lên.");
             }
         };
         reader.readAsDataURL(file);
     };
 
     const handleSetPrimary = async (imageId) => {
-        try {
-            const response = await api.post(`/api/products/image/${imageId}/set-primary`);
-            if (response.data && response.data.success) {
-                loadFormData(); // Refresh to update badge
+        if (String(imageId).startsWith('temp-')) {
+            const updated = tempImages.map(img => ({
+                ...img,
+                isPrimary: img.id === imageId
+            }));
+            setTempImages(updated);
+        } else {
+            try {
+                const response = await api.post(`/api/products/image/${imageId}/set-primary`);
+                if (response.data && response.data.success) {
+                    loadFormData(); // Refresh to update badge
+                }
+            } catch (err) {
+                console.error("Lỗi đặt ảnh chính:", err);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể đặt ảnh chính.' }));
             }
-        } catch (err) {
-            console.error("Lỗi đặt ảnh chính:", err);
-            alert("Không thể đặt ảnh chính.");
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        const newErrors = {};
+        if (!product.productName || !product.productName.trim()) {
+            newErrors.productName = 'Vui lòng nhập tên sản phẩm.';
+        }
+        if (!product.categoryId) {
+            newErrors.categoryId = 'Vui lòng chọn danh mục cho sản phẩm.';
+        }
+        if (!product.brandName) {
+            newErrors.brandName = 'Vui lòng chọn thương hiệu cho sản phẩm.';
+        }
+        if (!isEdit) {
+            if (!variant.sizeId) {
+                newErrors.sizeId = 'Vui lòng chọn kích cỡ.';
+            }
+            if (!variant.colorId) {
+                newErrors.colorId = 'Vui lòng chọn màu sắc.';
+            }
+            if (!variant.price || parseFloat(variant.price) <= 0) {
+                newErrors.price = 'Giá bán phải lớn hơn 0.';
+            }
+            if (!variant.quantity || parseInt(variant.quantity) <= 0) {
+                newErrors.quantity = 'Số lượng phải lớn hơn 0.';
+            }
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Vui lòng điền đầy đủ các thông tin bắt buộc.' }));
+            return;
+        }
+
+        setErrors({});
         setSaving(true);
 
         const productPayload = {
@@ -175,15 +234,33 @@ const AdminProductForm = () => {
                     await api.post('/api/products/variant/save', variantPayload);
                 }
 
-                alert(isEdit ? 'Cập nhật sản phẩm thành công!' : 'Tạo mới sản phẩm thành công!');
-                navigate(`/admin/products/detail/${savedProductId}`);
+                // 3. Upload temporary images if any (only in create mode)
+                if (!isEdit && tempImages.length > 0) {
+                    for (const tempImg of tempImages) {
+                        await api.post(`/api/products/${savedProductId}/image`, { 
+                            imageBase64: tempImg.imageBase64 
+                        });
+                    }
+                    
+                    // Set primary image
+                    const detailRes = await api.get(`/api/products/${savedProductId}`);
+                    if (detailRes.data && detailRes.data.success && detailRes.data.images && detailRes.data.images.length > 0) {
+                        const primaryIndex = tempImages.findIndex(img => img.isPrimary);
+                        const targetIndex = primaryIndex >= 0 && primaryIndex < detailRes.data.images.length ? primaryIndex : 0;
+                        const primaryImgId = detailRes.data.images[targetIndex].id;
+                        await api.post(`/api/products/image/${primaryImgId}/set-primary`);
+                    }
+                }
+
+                setSavedId(savedProductId);
+                setShowSuccessModal(true);
             }
         } catch (err) {
             console.error("Lỗi lưu sản phẩm:", err);
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể lưu sản phẩm. Vui lòng kiểm tra lại.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
             setSaving(false);
         }
@@ -220,7 +297,7 @@ const AdminProductForm = () => {
     return (
         <AdminLayout>
             <div className="admin-product-form-page">
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} noValidate>
                     <div className="page-header">
                         <div>
                             <span className="sub-title font-oswald">QUẢN LÝ SẢN PHẨM</span>
@@ -253,6 +330,7 @@ const AdminProductForm = () => {
                                         value={product.productName}
                                         onChange={(e) => setProduct({ ...product, productName: e.target.value })}
                                     />
+                                    {errors.productName && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.productName}</div>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Mô tả chi tiết</label>
@@ -282,6 +360,7 @@ const AdminProductForm = () => {
                                                     <option key={s.id} value={s.id}>Size {s.sizeName}</option>
                                                 ))}
                                             </select>
+                                            {errors.sizeId && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.sizeId}</div>}
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Màu sắc (Color) *</label>
@@ -291,6 +370,7 @@ const AdminProductForm = () => {
                                                     <option key={c.id} value={c.id}>{c.colorName}</option>
                                                 ))}
                                             </select>
+                                            {errors.colorId && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.colorId}</div>}
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Giá bán (VNĐ) *</label>
@@ -303,6 +383,7 @@ const AdminProductForm = () => {
                                                 value={variant.price}
                                                 onChange={(e) => setVariant({ ...variant, price: e.target.value })}
                                             />
+                                            {errors.price && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.price}</div>}
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Số lượng tồn *</label>
@@ -316,6 +397,7 @@ const AdminProductForm = () => {
                                                 value={variant.quantity}
                                                 onChange={(e) => setVariant({ ...variant, quantity: e.target.value })}
                                             />
+                                            {errors.quantity && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.quantity}</div>}
                                         </div>
                                     </div>
                                 </div>
@@ -328,11 +410,11 @@ const AdminProductForm = () => {
 
                                 <div className="gallery-section">
                                     <label className="form-label-header">Hình ảnh hiện tại</label>
-                                    {images.length === 0 ? (
+                                    {(id ? images : tempImages).length === 0 ? (
                                         <p style={{ color: '#555', fontSize: '12px', fontStyle: 'italic', marginBottom: '20px' }}>Chưa có hình ảnh nào cho sản phẩm này.</p>
                                     ) : (
                                         <div className="gallery-grid">
-                                            {images.map((img, idx) => (
+                                            {(id ? images : tempImages).map((img, idx) => (
                                                 <div key={img.id || idx} className="gallery-item">
                                                     {img.isPrimary && <span className="badge-primary">ẢNH CHÍNH</span>}
                                                     <img src={getImageUrl(img)} alt="Product" className="img-fluid" />
@@ -372,6 +454,7 @@ const AdminProductForm = () => {
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
+                                    {errors.categoryId && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.categoryId}</div>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Thương hiệu *</label>
@@ -381,6 +464,7 @@ const AdminProductForm = () => {
                                             <option key={b.id} value={b.brandName}>{b.brandName}</option>
                                         ))}
                                     </select>
+                                    {errors.brandName && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.brandName}</div>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Trạng thái</label>
@@ -394,6 +478,30 @@ const AdminProductForm = () => {
                     </div>
                 </form>
             </div>
+
+            {showSuccessModal && (
+                <div className="admin-confirm-overlay">
+                    <div className="admin-confirm-box success animate__animated animate__zoomIn">
+                        <div className="admin-confirm-icon">
+                            <i className="bi bi-check-circle-fill"></i>
+                        </div>
+                        <h4 className="admin-confirm-title">
+                            {isEdit ? 'Cập nhật thành công!' : 'Tạo mới thành công!'}
+                        </h4>
+                        <p className="admin-confirm-message">
+                            {isEdit ? 'Sản phẩm đã được cập nhật thành công vào hệ thống!' : 'Sản phẩm mới đã được tạo thành công!'}
+                        </p>
+                        <div className="admin-confirm-actions">
+                            <button className="admin-btn-confirm-ok" onClick={() => {
+                                setShowSuccessModal(false);
+                                navigate(`/admin/products/detail/${savedId}`);
+                            }}>
+                                ĐỒNG Ý
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 };

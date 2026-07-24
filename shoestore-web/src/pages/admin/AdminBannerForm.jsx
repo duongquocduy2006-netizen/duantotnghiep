@@ -17,7 +17,26 @@ const AdminBannerForm = () => {
     const [endDate, setEndDate] = useState('');
     const [status, setStatus] = useState(true);
     const [images, setImages] = useState([]);
-    const [previewImages, setPreviewImages] = useState([]);
+    const [existingImages, setExistingImages] = useState([]);
+    const [newPreviews, setNewPreviews] = useState([]);
+
+    const getCurrentDateTimeString = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
+    const imgUrl = (url) => {
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+        if (url.startsWith('/uploads/')) return `http://localhost:8080${url}`;
+        if (url.startsWith('uploads/')) return `http://localhost:8080/${url}`;
+        return `http://localhost:8080/uploads/${url}`;
+    };
 
     useEffect(() => {
         if (isEdit) {
@@ -37,7 +56,7 @@ const AdminBannerForm = () => {
             if (data.startDate) setStartDate(data.startDate.substring(0, 16));
             if (data.endDate) setEndDate(data.endDate.substring(0, 16));
             if (data.images) {
-                setPreviewImages(data.images.map(img => `http://localhost:8080/uploads/${img.imageUrl}`));
+                setExistingImages(data.images);
             }
         } catch (error) {
             console.error('Lỗi khi lấy chi tiết banner:', error);
@@ -47,20 +66,31 @@ const AdminBannerForm = () => {
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
         setImages([...images, ...files]);
-        const newPreviews = files.map(file => URL.createObjectURL(file));
-        setPreviewImages([...previewImages, ...newPreviews]);
+        const localPreviews = files.map(file => URL.createObjectURL(file));
+        setNewPreviews([...newPreviews, ...localPreviews]);
     };
 
-    const removeImage = (index) => {
-        const updatedPreviews = [...previewImages];
-        updatedPreviews.splice(index, 1);
-        setPreviewImages(updatedPreviews);
-
+    const removeNewImage = (idx) => {
         const updatedImages = [...images];
-        // Logic to remove from newly added images if applicable
-        if (index >= (previewImages.length - images.length)) {
-            updatedImages.splice(index - (previewImages.length - images.length), 1);
-            setImages(updatedImages);
+        updatedImages.splice(idx, 1);
+        setImages(updatedImages);
+
+        const updatedPreviews = [...newPreviews];
+        URL.revokeObjectURL(updatedPreviews[idx]);
+        updatedPreviews.splice(idx, 1);
+        setNewPreviews(updatedPreviews);
+    };
+
+    const removeExistingImage = async (imgId) => {
+        if (window.confirm("Bạn có chắc chắn muốn xóa ảnh này khỏi database?")) {
+            try {
+                await api.delete(`/api/banners/image/${imgId}`);
+                setExistingImages(existingImages.filter(img => img.id !== imgId));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Đã xóa ảnh khỏi database." }));
+            } catch (error) {
+                console.error("Lỗi khi xóa ảnh:", error);
+                alert("Không thể xóa ảnh. Vui lòng thử lại.");
+            }
         }
     };
 
@@ -156,25 +186,45 @@ const AdminBannerForm = () => {
                                 </div>
 
                                 <div className="row">
-                                    <div className="col-md-6 mb-4">
-                                        <label className="form-label-modern">Ngày bắt đầu</label>
-                                        <input
-                                            type="datetime-local"
-                                            className="form-input-modern"
-                                            value={startDate}
-                                            onChange={(e) => setStartDate(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="col-md-6 mb-4">
-                                        <label className="form-label-modern">Ngày kết thúc</label>
-                                        <input
-                                            type="datetime-local"
-                                            className="form-input-modern"
-                                            value={endDate}
-                                            onChange={(e) => setEndDate(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
+                                     <div className="col-md-6 mb-4">
+                                         <div className="d-flex justify-content-between align-items-center mb-1">
+                                             <label className="form-label-modern mb-0">Ngày bắt đầu</label>
+                                             <button 
+                                                 type="button" 
+                                                 className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                                 style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                                 onClick={() => setStartDate(getCurrentDateTimeString())}
+                                             >
+                                                 <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                             </button>
+                                         </div>
+                                         <input
+                                             type="datetime-local"
+                                             className="form-input-modern"
+                                             value={startDate}
+                                             onChange={(e) => setStartDate(e.target.value)}
+                                         />
+                                     </div>
+                                     <div className="col-md-6 mb-4">
+                                         <div className="d-flex justify-content-between align-items-center mb-1">
+                                             <label className="form-label-modern mb-0">Ngày kết thúc</label>
+                                             <button 
+                                                 type="button" 
+                                                 className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                                 style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                                 onClick={() => setEndDate(getCurrentDateTimeString())}
+                                             >
+                                                 <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                             </button>
+                                         </div>
+                                         <input
+                                             type="datetime-local"
+                                             className="form-input-modern"
+                                             value={endDate}
+                                             onChange={(e) => setEndDate(e.target.value)}
+                                         />
+                                     </div>
+                                 </div>
 
                                 <div className="mb-4">
                                     <label className="form-label-modern">Mô tả thêm</label>
@@ -218,19 +268,33 @@ const AdminBannerForm = () => {
                                     />
                                 </div>
 
-                                {previewImages.length > 0 && (
+                                {(existingImages.length > 0 || newPreviews.length > 0) && (
                                     <div className="mt-4 pt-3 border-top">
-                                        <label className="form-label-modern">Ảnh đã chọn ({previewImages.length})</label>
+                                        <label className="form-label-modern">Ảnh đã chọn ({existingImages.length + newPreviews.length})</label>
                                         <div className="d-flex flex-wrap gap-2">
-                                            {previewImages.map((src, idx) => (
-                                                <div key={idx} style={{ position: 'relative', width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
-                                                    <img src={src} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            {/* Existing images from DB */}
+                                            {existingImages.map((img) => (
+                                                <div key={`existing-${img.id}`} style={{ position: 'relative', width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
+                                                    <img src={imgUrl(img.imageUrl)} alt="Existing Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                     <button
                                                         type="button"
-                                                        onClick={() => removeImage(idx)}
-                                                        style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '10px' }}
+                                                        onClick={() => removeExistingImage(img.id)}
+                                                        style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                     >
-                                                        <i className="bi bi-x"></i>
+                                                        <i className="bi bi-trash text-danger" style={{ fontSize: '11px' }}></i>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {/* New locally selected images */}
+                                            {newPreviews.map((src, idx) => (
+                                                <div key={`new-${idx}`} style={{ position: 'relative', width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
+                                                    <img src={src} alt="New Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeNewImage(idx)}
+                                                        style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    >
+                                                        <i className="bi bi-x text-dark" style={{ fontSize: '12px', fontWeight: 'bold' }}></i>
                                                     </button>
                                                 </div>
                                             ))}

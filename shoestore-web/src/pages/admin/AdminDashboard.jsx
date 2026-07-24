@@ -27,6 +27,27 @@ const AdminDashboard = () => {
 
     const [startDate, setStartDate] = useState(formatDate(firstDay));
     const [endDate, setEndDate] = useState(formatDate(today));
+    const [selectedPreset, setSelectedPreset] = useState('thisMonth');
+
+    const setPreset = (presetType) => {
+        const today = new Date();
+        let start = new Date();
+        let end = today;
+        
+        if (presetType === 'today') {
+            start = today;
+        } else if (presetType === '7days') {
+            start.setDate(today.getDate() - 7);
+        } else if (presetType === '30days') {
+            start.setDate(today.getDate() - 30);
+        } else if (presetType === 'thisMonth') {
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+        }
+        
+        setSelectedPreset(presetType);
+        setStartDate(formatDate(start));
+        setEndDate(formatDate(end));
+    };
 
     const fetchDashboardData = async () => {
         setLoading(true);
@@ -86,7 +107,7 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         fetchDashboardData();
-    }, []);
+    }, [startDate, endDate]);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -95,7 +116,13 @@ const AdminDashboard = () => {
     const getImageUrl = (url) => {
         if (!url) return '';
         if (url.startsWith('http')) return url;
-        return `http://localhost:8080${url}`;
+        if (url.startsWith('/images/') || url.startsWith('/uploads/')) {
+            return `http://localhost:8080${url}`;
+        }
+        if (url.startsWith('images/') || url.startsWith('uploads/')) {
+            return `http://localhost:8080/${url}`;
+        }
+        return `http://localhost:8080/images/${url}`;
     };
 
     if (loading) {
@@ -147,6 +174,8 @@ const AdminDashboard = () => {
                 return '';
         }
     };
+
+    const hasValidStats = monthlyStats && monthlyStats.length > 0 && monthlyStats[0].month !== "Không có";
 
     const chartOptions = {
         chart: {
@@ -295,14 +324,19 @@ const AdminDashboard = () => {
                     <h2 className="page-title">TỔNG QUAN KINH DOANH</h2>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div className="btn-group-presets">
+                        <button type="button" className={`btn-preset ${selectedPreset === 'today' ? 'active' : ''}`} onClick={() => setPreset('today')}>Hôm nay</button>
+                        <button type="button" className={`btn-preset ${selectedPreset === '7days' ? 'active' : ''}`} onClick={() => setPreset('7days')}>7 ngày</button>
+                        <button type="button" className={`btn-preset ${selectedPreset === '30days' ? 'active' : ''}`} onClick={() => setPreset('30days')}>30 ngày</button>
+                        <button type="button" className={`btn-preset ${selectedPreset === 'thisMonth' ? 'active' : ''}`} onClick={() => setPreset('thisMonth')}>Tháng này</button>
+                    </div>
                     <div className="date-range-picker-admin">
                         <span>TỪ:</span>
-                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                        <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }} />
                         <span>ĐẾN:</span>
-                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                        <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }} />
                     </div>
-                    <button className="btn-action btn-primary-glow" onClick={fetchDashboardData}><i className="bi bi-filter"></i> LỌC</button>
-                    <button className="btn-action" onClick={exportToExcel}><i className="bi bi-download"></i></button>
+                    <button className="btn-action" onClick={exportToExcel} title="Xuất Excel báo cáo"><i className="bi bi-download"></i></button>
                 </div>
             </div>
 
@@ -345,10 +379,10 @@ const AdminDashboard = () => {
                     </div>
                     
                     <div style={{ flexGrow: 1, minHeight: '320px' }}>
-                        {monthlyStats && monthlyStats.length > 0 && monthlyStats[0].month !== "Không có" ? (
+                        {hasValidStats ? (
                             <Chart options={chartOptions} series={chartSeries} type="line" height={320} />
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>Không có dữ liệu trong khoảng thời gian này</div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666', minHeight: '320px' }}>Không có dữ liệu trong khoảng thời gian này</div>
                         )}
                     </div>
 
@@ -427,7 +461,15 @@ const AdminDashboard = () => {
                                 <td>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                         <div style={{ width: '40px', height: '40px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-                                            <img src={getImageUrl(product.image) || `https://placehold.co/40x40/000/fff?text=${product.sku}`} alt={product.name} style={{ width:'100%', height:'100%', objectFit: 'cover' }} />
+                                             <img 
+                                                 src={getImageUrl(product.image)} 
+                                                 alt={product.name} 
+                                                 style={{ width:'100%', height:'100%', objectFit: 'cover' }} 
+                                                 onError={(e) => {
+                                                     e.target.onerror = null;
+                                                     e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=f4f5f7&color=000&bold=true`;
+                                                 }}
+                                             />
                                         </div>
                                         <div>
                                             <Link to={`/admin/products/edit/${product.id}`} className="p-name">{product.name}</Link>
