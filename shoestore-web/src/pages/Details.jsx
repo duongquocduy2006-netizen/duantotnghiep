@@ -40,6 +40,7 @@ const Details = () => {
     const [isWishlist, setIsWishlist] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [flashSale, setFlashSale] = useState(null);
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -93,6 +94,9 @@ const Details = () => {
                 setReviewCount(response.data.reviewCount || 0);
                 setAvgRating(response.data.avgRating || 0);
                 setHasPurchased(response.data.hasPurchased || false);
+
+                // Flash Sale data
+                setFlashSale(response.data.flashSale || null);
 
                 fetchRelated(prodData.brandName, prodData.categoryId);
                 fetchVouchers();
@@ -332,6 +336,17 @@ const Details = () => {
         window.scrollTo(0, 0);
         fetchProductDetails();
         
+        const tab = queryParams.get('tab');
+        if (tab) {
+            setActiveTab(tab);
+            if (tab === 'reviews') {
+                setTimeout(() => {
+                    const el = document.getElementById('details-tabs');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }, 400);
+            }
+        }
+        
         const fetchProfile = async () => {
             try {
                 const res = await api.get('/api/profile');
@@ -500,13 +515,52 @@ const Details = () => {
                                         <i className="fa-solid fa-folder"></i> {product.categoryName || 'Giày thể thao'}
                                     </div>
                                     
-                                    <div className="det-price-block">
-                                        <div>
-                                            <div className="det-price-label">Giá bán chính thức</div>
-                                            <div className="det-price-value">{formatCurrency(displayPrice)}</div>
+                                    {flashSale ? (
+                                        <>
+                                            <div className="det-flash-sale-banner">
+                                                <div className="det-flash-sale-icon">
+                                                    <i className="fa-solid fa-bolt"></i>
+                                                </div>
+                                                <div className="det-flash-sale-info">
+                                                    <span className="det-flash-sale-tag">FLASH SALE</span>
+                                                    <span className="det-flash-sale-name">{flashSale.campaignName}</span>
+                                                </div>
+                                                <div className="det-flash-sale-discount-badge">
+                                                    -{flashSale.discountPercent}%
+                                                </div>
+                                            </div>
+                                            <div className="det-price-block det-price-block--sale">
+                                                <div>
+                                                    <div className="det-price-label">Giá Flash Sale</div>
+                                                    <div className="det-price-value det-price-value--sale">{formatCurrency(flashSale.salePrice)}</div>
+                                                    <div className="det-price-original">
+                                                        <span className="det-price-old">{formatCurrency(displayPrice)}</span>
+                                                        <span className="det-price-save">Tiết kiệm {formatCurrency(displayPrice - flashSale.salePrice)}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="det-price-badge det-price-badge--sale">Flash Sale</div>
+                                            </div>
+                                            {flashSale.quantityLimit > 0 && (
+                                                <div className="det-flash-sale-progress">
+                                                    <div className="det-flash-progress-text">
+                                                        <span>{(flashSale.soldQuantity / flashSale.quantityLimit * 100) >= 80 ? <><i className="fa-solid fa-fire text-danger me-1"></i>Sắp hết</> : 'Đang bán'}</span>
+                                                        <span>Đã bán {flashSale.soldQuantity}/{flashSale.quantityLimit}</span>
+                                                    </div>
+                                                    <div className="det-flash-progress-bar">
+                                                        <div className="det-flash-progress-fill" style={{ width: `${Math.min((flashSale.soldQuantity / flashSale.quantityLimit) * 100, 100)}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="det-price-block">
+                                            <div>
+                                                <div className="det-price-label">Giá bán chính thức</div>
+                                                <div className="det-price-value">{formatCurrency(displayPrice)}</div>
+                                            </div>
+                                            <div className="det-price-badge">Chính hãng</div>
                                         </div>
-                                        <div className="det-price-badge">Chính hãng</div>
-                                    </div>
+                                    )}
 
                                     {/* VOUCHERS */}
                                     {vouchers.length > 0 && (
@@ -539,7 +593,7 @@ const Details = () => {
                                             {variants.map(v => (
                                                 <button key={v.id} 
                                                     className={`det-variant-chip ${selectedVariantId === v.id ? 'det-variant-chip--active' : ''} ${v.quantity === 0 ? 'det-variant-chip--disabled' : ''}`}
-                                                    onClick={() => { if(v.quantity > 0) handleVariantClick(v) }}>
+                                                    onClick={() => handleVariantClick(v)}>
                                                     {v.size_name} - {v.color_name}
                                                 </button>
                                             ))}
@@ -557,18 +611,26 @@ const Details = () => {
                                         </div>
                                     )}
                                     <div className="det-actions-row">
-                                        <div className="det-qty-control">
-                                            <button className="det-qty-btn" onClick={handleDecrease}><i className="fa-solid fa-minus"></i></button>
-                                            <input type="text" className="det-qty-val" value={qty} readOnly />
-                                            <button className="det-qty-btn" onClick={handleIncrease}><i className="fa-solid fa-plus"></i></button>
+                                        <div className="det-qty-control" style={{ opacity: currentStock <= 0 ? 0.5 : 1, pointerEvents: currentStock <= 0 ? 'none' : 'auto' }}>
+                                            <button className="det-qty-btn" onClick={handleDecrease} disabled={currentStock <= 0}><i className="fa-solid fa-minus"></i></button>
+                                            <input type="text" className="det-qty-val" value={currentStock <= 0 ? 0 : qty} readOnly />
+                                            <button className="det-qty-btn" onClick={handleIncrease} disabled={currentStock <= 0}><i className="fa-solid fa-plus"></i></button>
                                         </div>
-                                        <button className="det-btn-cart" onClick={handleAddToCart}>
+                                        <button 
+                                            className={`det-btn-cart ${currentStock <= 0 ? 'det-btn-disabled' : ''}`} 
+                                            onClick={handleAddToCart}
+                                            disabled={currentStock <= 0}
+                                        >
                                             <i className="fa-solid fa-cart-plus"></i> THÊM GIỎ HÀNG
                                         </button>
                                     </div>
-
-                                    <button className="det-btn-buy" onClick={handleBuyNow}>
-                                        MUA NGAY
+ 
+                                    <button 
+                                        className={`det-btn-buy ${currentStock <= 0 ? 'det-btn-disabled' : ''}`} 
+                                        onClick={handleBuyNow}
+                                        disabled={currentStock <= 0}
+                                    >
+                                        {currentStock <= 0 ? 'HẾT HÀNG' : 'MUA NGAY'}
                                     </button>
 
                                     <div className="det-guarantee-strip">
@@ -592,7 +654,7 @@ const Details = () => {
                 </div>
 
                 {/* TABS */}
-                <div className="det-tabs-section">
+                <div className="det-tabs-section" id="details-tabs">
                     <div className="container">
                         <div className="det-tabs-header">
                             <button 

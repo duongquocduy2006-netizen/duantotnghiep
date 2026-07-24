@@ -151,7 +151,9 @@ public class OrderService {
     }
 
     public List<java.util.Map<String, Object>> getOrdersByUserId(Long userId) {
-        String sql = "SELECT o.id, o.order_code, o.created_at, o.final_amount, o.status, " +
+        String sql = "SELECT o.id, o.order_code, o.created_at, o.total_amount, o.shipping_fee, o.final_amount, o.status, " +
+                "a.receiving_name, a.phone_number, a.street_detail, pm.method_name, " +
+                "(SELECT v.code FROM vouchers v WHERE v.id = o.voucher_id) as voucher_code, " +
                 "(SELECT TOP 1 p.id " +
                 " FROM order_items oi " +
                 " JOIN product_variants pv ON oi.product_variant_id = pv.id " +
@@ -174,6 +176,8 @@ public class OrderService {
                 "   AND pr.created_at >= o.created_at" +
                 ") as is_reviewed " +
                 "FROM orders o " +
+                "LEFT JOIN addresses a ON o.receiver_address_id = a.id " +
+                "LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id " +
                 "WHERE o.user_id = ? " +
                 "ORDER BY o.created_at DESC";
         return jdbc.queryForList(sql, userId);
@@ -192,8 +196,8 @@ public class OrderService {
             throw new RuntimeException("Bạn không có quyền xác nhận đơn hàng này.");
         }
 
-        if (currentStatus != 2) {
-            throw new RuntimeException("Chỉ có thể xác nhận khi đơn hàng đang ở trạng thái 'Đang giao'.");
+        if (currentStatus != 2 && currentStatus != 5) {
+            throw new RuntimeException("Chỉ có thể xác nhận khi đơn hàng đang ở trạng thái 'Đang giao' hoặc 'Đã giao hàng'.");
         }
 
         // 2. Chuyển sang trạng thái Hoàn tất (3) ngay lập tức

@@ -105,7 +105,7 @@ const AdminRankForm = () => {
 
                 <div className="card-cinematic">
                     <h3 className="card-section-title">Thông Tin Hạng Thành Viên</h3>
-                    <p style={{ fontFamily: 'Outfit', fontSize: '14px', marginBottom: '25px', color: '#666' }}>Thiết lập tên hạng và ngưỡng điểm để đạt được hạng này.</p>
+                    <p style={{ fontFamily: 'Inter', fontSize: '14px', marginBottom: '25px', color: '#666' }}>Thiết lập tên hạng và ngưỡng điểm để đạt được hạng này.</p>
 
                     <form onSubmit={handleSubmit} noValidate>
                         <div className="form-group">
@@ -196,7 +196,7 @@ const AdminRankForm = () => {
                                     cursor: 'pointer'
                                 }}
                             />
-                            <label htmlFor="freeShippingCheckbox" className="form-label" style={{ margin: 0, cursor: 'pointer', fontSize: '14px', fontWeight: '700', fontFamily: 'Outfit' }}>
+                            <label htmlFor="freeShippingCheckbox" className="form-label" style={{ margin: 0, cursor: 'pointer', fontSize: '14px', fontWeight: '700', fontFamily: 'Inter' }}>
                                 <i className="bi bi-truck" style={{ color: '#e50914' }}></i> Miễn phí giao hàng (Free Shipping) cho hạng này
                             </label>
                         </div>
@@ -239,24 +239,24 @@ const AdminRankForm = () => {
                 </div>
                 <style>{`
                     .sub-title-neon { display: block; color: #e50914; font-size: 13px; font-weight: 700; letter-spacing: 2px; margin-bottom: 5px; text-transform: uppercase; }
-                    .cinematic-title { font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 800; color: #111; margin: 0; line-height: 1.2; letter-spacing: -0.5px; }
+                    .cinematic-title { font-family: 'Inter', sans-serif; font-size: 32px; font-weight: 800; color: #111; margin: 0; line-height: 1.2; letter-spacing: -0.5px; }
                     
                     .card-cinematic { background: #fff; border: 1px solid #eaeaea; box-shadow: 0 4px 20px rgba(0,0,0,0.02); padding: 35px; margin-bottom: 30px; border-radius: 16px; }
-                    .card-section-title { font-family: 'Outfit'; color: #111; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+                    .card-section-title { font-family: 'Inter'; color: #111; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
                     
-                    .form-label { display: block; color: #444; font-size: 13px; font-weight: 600; margin-bottom: 8px; font-family: 'Outfit'; }
-                    .form-input-cinematic { width: 100%; background: #fff; border: 1px solid #dcdcdc; border-radius: 8px; padding: 12px; color: #222; outline: none; transition: all 0.3s ease; font-size: 14px; font-weight: 500; font-family: 'Outfit'; }
+                    .form-label { display: block; color: #444; font-size: 13px; font-weight: 600; margin-bottom: 8px; font-family: 'Inter'; }
+                    .form-input-cinematic { width: 100%; background: #fff; border: 1px solid #dcdcdc; border-radius: 8px; padding: 12px; color: #222; outline: none; transition: all 0.3s ease; font-size: 14px; font-weight: 500; font-family: 'Inter'; }
                     .form-input-cinematic:focus { border-color: #e50914; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1); }
 
                     .btn-red-flat { 
-                        background: #e50914; color: #fff; border: none; padding: 12px 24px; font-family: 'Outfit', sans-serif; font-weight: 700; text-transform: uppercase; 
+                        background: #e50914; color: #fff; border: none; padding: 12px 24px; font-family: 'Inter', sans-serif; font-weight: 700; text-transform: uppercase; 
                         transition: all 0.3s ease; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
                         border-radius: 10px; box-shadow: 0 4px 12px rgba(229, 9, 20, 0.2);
                     }
                     .btn-red-flat:hover { background: #b8070f; box-shadow: 0 6px 18px rgba(229, 9, 20, 0.35); transform: translateY(-2px); color: #fff; }
 
                     .btn-outline-flat {
-                        background: transparent; color: #4a5568; border: 1px solid #e2e8f0; padding: 12px 24px; font-family: 'Outfit', sans-serif; font-weight: 700; text-transform: uppercase;
+                        background: transparent; color: #4a5568; border: 1px solid #e2e8f0; padding: 12px 24px; font-family: 'Inter', sans-serif; font-weight: 700; text-transform: uppercase;
                         transition: all 0.2s ease; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
                         border-radius: 10px;
                     }
@@ -272,7 +272,7 @@ const AdminRankForm = () => {
                         font-weight: 600;
                         margin-top: 5px;
                         letter-spacing: 0.3px;
-                        font-family: 'Outfit', sans-serif;
+                        font-family: 'Inter', sans-serif;
                     }
                 `}</style>
             </div>

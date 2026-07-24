@@ -1,26 +1,32 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import './ForgotPassword.css';
+import './Login.css';
+import 'animate.css';
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
+    const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
+        
+        let newErrors = {};
         if (!email) {
-            setError('Vui lòng nhập địa chỉ email!');
-            return;
-        } else if (!emailRegex.test(email)) {
-            setError('Địa chỉ email không hợp lệ!');
+            newErrors.email = 'Vui lòng nhập địa chỉ email!';
+        } else if (!/\S+@\S+\.\S+/.test(email)) {
+            newErrors.email = 'Địa chỉ email không hợp lệ!';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
             return;
         }
 
+        setErrors({});
         setError('');
         setLoading(true);
         try {
@@ -43,39 +49,55 @@ const ForgotPassword = () => {
     };
 
     return (
-        <div className="auth-page">
+        <div className="login-page">
             <div className="bg-image"></div>
+            <div className="bg-overlay"></div>
+
             <Link to="/login" className="back-home animate__animated animate__fadeInDown">
                 <i className="fa-solid fa-arrow-left-long"></i> TRỞ VỀ ĐĂNG NHẬP
             </Link>
 
-            <div className="container d-flex justify-content-center">
-                <div className={`login-card animate__animated ${error ? 'animate__headShake' : 'animate__zoomIn'}`}>
-                    <div className="text-center mb-4">
-                        <div className="main-logo-text">
-                            <i className="fa-solid fa-shoe-prints main-logo-icon"></i>Shoe<span>Store</span>
-                        </div>
-                        <p style={{ color: '#a0a0a0', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px' }}>Khôi phục mật khẩu</p>
+            <div className="container d-flex justify-content-center" style={{ zIndex: 10 }}>
+                <div className="login-card animate__animated animate__fadeInUp">
+
+                    <div className="text-center">
+                        <Link to="/" className="main-logo-login">
+                            <i className="fa-solid fa-shoe-prints main-logo-icon-login"></i>
+                            <div className="main-logo-text-login">Shoe<span>Store</span></div>
+                        </Link>
+                        <p className="brand-subtitle-login">Khôi phục mật khẩu</p>
                     </div>
 
-                    {error && <div className="custom-alert alert-error-custom">{error}</div>}
+                    {error && <div className="alert alert-danger p-2 text-center" style={{fontSize: '14px', borderRadius: '12px', marginBottom: '16px'}}>{error}</div>}
 
-                    <form onSubmit={handleSubmit}>
-                        <div className="mb-4">
-                            <label className="form-label">Nhập email của bạn</label>
+                    <form onSubmit={handleSubmit} noValidate>
+                        <div className="mb-3">
+                            <label className="form-label">Email tài khoản</label>
                             <input 
                                 type="email" 
+                                className={`form-control custom-input ${errors.email ? 'is-invalid border-danger' : ''}`}
+                                style={errors.email ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
+                                placeholder="NHẬP EMAIL CỦA BẠN"
                                 value={email}
-                                onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                                className="form-control custom-input" 
-                                placeholder="email@example.com" 
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    if(errors.email) setErrors({...errors, email: ''});
+                                    setError('');
+                                }}
                                 disabled={loading}
                             />
+                            {errors.email && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.email}</div>}
                         </div>
-                        <button type="submit" className="btn-action" disabled={loading}>
-                            {loading ? 'Đang gửi mã...' : 'Gửi mã xác thực'}
+
+                        <button type="submit" className="btn-login" disabled={loading}>
+                            {loading ? 'ĐANG GỬI MÃ...' : 'GỬI MÃ XÁC THỰC'}
                         </button>
                     </form>
+
+                    <div className="auth-footer">
+                        Đã nhớ mật khẩu? <br />
+                        <Link to="/login">ĐĂNG NHẬP NGAY <i className="fa fa-arrow-right"></i></Link>
+                    </div>
                 </div>
             </div>
         </div>
