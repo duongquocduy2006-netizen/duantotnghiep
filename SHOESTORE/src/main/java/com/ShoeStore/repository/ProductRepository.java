@@ -1,13 +1,14 @@
 package com.ShoeStore.repository;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import com.ShoeStore.model.Product;
-import jakarta.transaction.Transactional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
@@ -15,8 +16,9 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
         @EntityGraph(attributePaths = { "category", "variants", "images" })
         List<Product> findAll();
 
+        @Transactional(readOnly = true)
         @EntityGraph(attributePaths = { "category", "variants", "images" })
-        java.util.Optional<Product> findById(Integer id);
+        Optional<Product> findById(Integer id);
 
         @Query("SELECT COUNT(p) > 0 FROM Product p WHERE p.category.id = ?1")
         boolean existsByCategoryId(Integer categoryId);
@@ -65,35 +67,4 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
         @Query(value = "DELETE FROM flash_sale_products WHERE product_id = ?1", nativeQuery = true)
         void deleteRelatedFlashSaleProducts(Integer productId);
 
-        @EntityGraph(attributePaths = { "category", "variants", "images" })
-        @Query("SELECT DISTINCT p FROM Product p JOIN p.variants v JOIN v.color c " +
-                        "WHERE LOWER(p.brandName) LIKE CONCAT('%', LOWER(:brand), '%') " +
-                        "AND LOWER(p.category.name) LIKE CONCAT('%', LOWER(:category), '%') " +
-                        "AND LOWER(c.colorName) LIKE CONCAT('%', LOWER(:color), '%')")
-        List<Product> searchByBrandCategoryColor(@org.springframework.data.repository.query.Param("brand") String brand,
-                        @org.springframework.data.repository.query.Param("category") String category,
-                        @org.springframework.data.repository.query.Param("color") String color,
-                        org.springframework.data.domain.Pageable pageable);
-
-        @EntityGraph(attributePaths = { "category", "variants", "images" })
-        @Query("SELECT DISTINCT p FROM Product p " +
-                        "WHERE LOWER(p.brandName) LIKE CONCAT('%', LOWER(:brand), '%') " +
-                        "AND LOWER(p.category.name) LIKE CONCAT('%', LOWER(:category), '%')")
-        List<Product> searchByBrandCategory(@org.springframework.data.repository.query.Param("brand") String brand,
-                        @org.springframework.data.repository.query.Param("category") String category,
-                        org.springframework.data.domain.Pageable pageable);
-
-        @EntityGraph(attributePaths = { "category", "variants", "images" })
-        @Query("SELECT DISTINCT p FROM Product p " +
-                        "WHERE LOWER(p.brandName) LIKE CONCAT('%', LOWER(:brand), '%')")
-        List<Product> searchByBrand(@org.springframework.data.repository.query.Param("brand") String brand,
-                        org.springframework.data.domain.Pageable pageable);
-
-        @EntityGraph(attributePaths = { "category", "variants", "images" })
-        @Query("SELECT DISTINCT p FROM Product p JOIN p.variants v JOIN v.color c " +
-                        "WHERE LOWER(p.brandName) LIKE CONCAT('%', LOWER(:brand), '%') " +
-                        "AND LOWER(c.colorName) LIKE CONCAT('%', LOWER(:color), '%')")
-        List<Product> searchByBrandColor(@org.springframework.data.repository.query.Param("brand") String brand,
-                        @org.springframework.data.repository.query.Param("color") String color,
-                        org.springframework.data.domain.Pageable pageable);
 }

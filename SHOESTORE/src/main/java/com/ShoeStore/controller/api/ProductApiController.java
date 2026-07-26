@@ -57,10 +57,15 @@ public class ProductApiController {
             @RequestParam(required = false, defaultValue = "false") Boolean inStock) {
         try {
             StringBuilder sql = new StringBuilder();
-            sql.append("SELECT p.id, p.product_name, p.product_code, p.brand_name, ")
-                    .append("c.category_name as category_name, ")
-                    .append("(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, ")
-                    .append("(SELECT MIN(price) FROM product_variants WHERE product_id = p.id) as min_price ")
+            sql.append("SELECT p.id, ")
+                    .append("p.product_name AS productName, ")
+                    .append("p.product_code AS productCode, ")
+                    .append("p.brand_name AS brandName, ")
+                    .append("p.status AS status, ")
+                    .append("c.category_name AS categoryName, ")
+                    .append("(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) AS imageUrl, ")
+                    .append("(SELECT MIN(price) FROM product_variants WHERE product_id = p.id) AS price, ")
+                    .append("(SELECT COUNT(*) FROM product_variants WHERE product_id = p.id) AS variantCount ")
                     .append("FROM products p ")
                     .append("LEFT JOIN categories c ON p.category_id = c.id ")
                     .append("WHERE p.status = 1 AND c.status = 1 ")

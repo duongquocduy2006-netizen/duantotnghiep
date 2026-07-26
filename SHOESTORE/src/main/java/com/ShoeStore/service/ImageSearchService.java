@@ -1,14 +1,11 @@
 package com.ShoeStore.service;
 
-import com.ShoeStore.model.ImageSearchResult;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import com.ShoeStore.model.EmbeddingDocument;
+import com.ShoeStore.repository.EmbeddingRepository;
+import com.ShoeStore.util.CosineSimilarity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
@@ -16,130 +13,93 @@ import java.util.*;
 @Service
 public class ImageSearchService {
 
-    @Value("${gemini.api.key:}")
-    private String apiKey;
+    @Autowired
+    private GeminiEmbeddingService geminiEmbeddingService;
 
-    @Value("${gemini.api.url:https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=}")
-    private String apiUrl;
+    @Autowired
+    private EmbeddingRepository embeddingRepository;
 
-    public ImageSearchResult analyzeImage(MultipartFile file) throws Exception {
-        String base64Image = Base64.getEncoder().encodeToString(file.getBytes());
-        String mimeType = file.getContentType();
-        if (mimeType == null)
-            mimeType = "image/jpeg";
+    @Autowired
+    private JdbcTemplate jdbc;
 
-        RestTemplate restTemplate = new RestTemplate();
-        Map<String, Object> requestBody = new HashMap<>();
+    public List<Map<String, Object>> searchBySimilarImage(MultipartFile imageFile) throws Exception {
+        byte[] imageBytes = imageFile.getBytes();
+        String mimeType = imageFile.getContentType() != null ? imageFile.getContentType() : "image/jpeg";
+        List<Double> queryVector = geminiEmbeddingService.getEmbedding(imageBytes, mimeType);
 
-        Map<String, Object> textPart = new HashMap<>();
-        String prompt = "Bạn là một AI phân tích hình ảnh giày. Hãy trả về kết quả định dạng JSON thuần "
-                + "chỉ chứa 3 key: 'brand', 'category', 'color'. "
-                + "Quy tắc: "
-                + "1. brand: Tên hãng thương hiệu (Ví dụ: Nike, Adidas, Puma, Balenciaga, Vans, Converse...). "
-                + "2. category: Loại giày hoặc dòng giày (Ví dụ: Sneaker, Running, Basketball, Slip-on...). "
-                + "3. color: Màu sắc chủ đạo bằng Tiếng Việt (Ví dụ: Trắng, Đen, Đỏ, Xanh...). "
-                + "Nếu không nhận diện được giá trị nào đó, hoặc ảnh không phải đôi giày, hãy để value là chuỗi rỗng: \"\". "
-                + "KHÔNG giải thích thêm. KHÔNG dùng markdown.";
-        textPart.put("text", prompt);
+        if (queryVector == null || queryVector.isEmpty()) {
+            System.err.println("[SEARCH] Lỗi: Vector embedding rỗng từ Gemini API.");
+            return Collections.emptyList();
+        }
 
-        Map<String, String> inlineData = new HashMap<>();
-        inlineData.put("mime_type", mimeType);
-        inlineData.put("data", base64Image);
+        List<EmbeddingDocument> allEmbeddings = embeddingRepository.findAll();
+        if (allEmbeddings == null || allEmbeddings.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        Map<String, Object> imagePart = new HashMap<>();
-        imagePart.put("inline_data", inlineData);
-
-        Map<String, Object> partContainer = new HashMap<>();
-        partContainer.put("parts", Arrays.asList(textPart, imagePart));
-
-        requestBody.put("contents", Collections.singletonList(partContainer));
-
-        System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(requestBody));
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
-        String fullUrl = apiUrl + apiKey;
-        System.out.println("=== [GEMINI DEBUG] Calling URL: " + apiUrl + "***HIDDEN*** ===");
-
-        ResponseEntity<String> response = null;
-        int maxRetries = 3;
-        int currentAttempt = 0;
-        long waitTime = 2000; // 2s
-
-        while (true) {
+        List<double[]> scored = new ArrayList<>();
+        for (EmbeddingDocument pe : allEmbeddings) {
             try {
-                response = restTemplate.postForEntity(fullUrl, entity, String.class);
-                break; // Thành công thì thoát vòng lặp
-            } catch (HttpServerErrorException e) {
-                if (e.getStatusCode() == HttpStatus.SERVICE_UNAVAILABLE) {
-                    if (currentAttempt < maxRetries) {
-                        currentAttempt++;
-                        System.err.println("=== [GEMINI ERROR] HTTP 503 Service Unavailable. Retry " + currentAttempt
-                                + " after " + (waitTime / 1000) + "s ===");
-                        try {
-                            Thread.sleep(waitTime);
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            throw new Exception("Thao tác bị gián đoạn", ie);
-                        }
-                        waitTime *= 2; // Tăng thời gian chờ (2s -> 4s -> 8s)
-                    } else {
-                        throw new Exception("EX_503_OVERLOAD");
-                    }
-                } else {
-                    // Lỗi 5xx khác
-                    System.err.println("=== [GEMINI ERROR] HTTP " + e.getStatusCode() + " Server Error ===");
-                    System.err.println("Response body: " + e.getResponseBodyAsString());
-                    throw new Exception(
-                            "Gemini API server error " + e.getStatusCode() + ": " + e.getResponseBodyAsString());
+                List<Double> storedVector = pe.getEmbedding();
+                boolean isEmpty = storedVector == null || storedVector.isEmpty();
+
+                if (isEmpty) {
+                    continue;
                 }
-            } catch (HttpClientErrorException e) {
-                // Lỗi 4xx
-                System.err.println("=== [GEMINI ERROR] HTTP " + e.getStatusCode() + " ===");
-                System.err.println("Response body: " + e.getResponseBodyAsString());
-                // Xử lý riêng lỗi 429 TOO_MANY_REQUESTS (vượt quota Free Tier)
-                if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
-                    throw new Exception("EX_429_QUOTA");
+
+                if (storedVector.size() != queryVector.size()) {
+                    System.err.println("[SEARCH] Lỗi: Kích thước vector không khớp (Query=" + queryVector.size() + ", Stored=" + storedVector.size() + " cho ProductId=" + pe.getProductId() + ")");
+                    continue;
                 }
-                throw new Exception("Gemini API lỗi " + e.getStatusCode() + ": " + e.getResponseBodyAsString());
+
+                double similarity = CosineSimilarity.calculate(queryVector, storedVector);
+                scored.add(new double[] { pe.getProductId(), similarity });
+            } catch (Exception e) {
+                System.err.println("[SEARCH] Bỏ qua embedding ID=" + pe.getId() + ": " + e.getMessage());
             }
         }
 
-        System.out.println("=== [GEMINI DEBUG] Response status: " + response.getStatusCode() + " ===");
+        scored.sort((a, b) -> Double.compare(b[1], a[1]));
 
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode rootNode = mapper.readTree(response.getBody());
-
-        // Kiểm tra xem có lỗi từ Gemini không
-        if (rootNode.has("error")) {
-            String errMsg = rootNode.path("error").path("message").asText("Unknown error");
-            System.err.println("=== [GEMINI ERROR] API error message: " + errMsg + " ===");
-            throw new Exception("Gemini API trả về lỗi: " + errMsg);
+        List<Integer> top5Ids = new ArrayList<>();
+        for (int i = 0; i < Math.min(5, scored.size()); i++) {
+            top5Ids.add((int) scored.get(i)[0]);
         }
 
-        JsonNode candidates = rootNode.path("candidates");
-        if (candidates.isMissingNode() || candidates.isEmpty()) {
-            System.err.println("=== [GEMINI ERROR] Không có candidates trong response ===");
-            System.err.println("Full response: " + response.getBody());
-            throw new Exception("Gemini API không trả về kết quả nhận diện (candidates rỗng).");
+        if (top5Ids.isEmpty()) {
+            return Collections.emptyList();
         }
 
-        String textResult = candidates.get(0)
-                .path("content").path("parts").get(0).path("text").asText();
+        List<Map<String, Object>> results = fetchProductDetails(top5Ids, scored);
+        System.out.println("[SEARCH] Tìm kiếm bằng hình ảnh thành công, tìm thấy " + results.size() + " sản phẩm phù hợp.");
+        return results;
+    }
 
-        System.out.println("=== [GEMINI DEBUG] Raw text result: " + textResult + " ===");
+    private List<Map<String, Object>> fetchProductDetails(List<Integer> ids, List<double[]> scored) {
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql = "SELECT p.id, p.product_name, p.brand_name, " +
+                "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, " +
+                "(SELECT MIN(price) FROM product_variants WHERE product_id = p.id AND quantity > 0) as min_price, " +
+                "(SELECT SUM(quantity) FROM product_variants WHERE product_id = p.id) as total_stock " +
+                "FROM products p " +
+                "WHERE p.id IN (" + placeholders + ") AND p.status = 1";
 
-        textResult = textResult.replaceAll("```json\\n?", "");
-        textResult = textResult.replaceAll("```\\n?", "");
-        textResult = textResult.trim();
+        List<Map<String, Object>> rows = jdbc.queryForList(sql, ids.toArray());
 
-        ImageSearchResult result = mapper.readValue(textResult, ImageSearchResult.class);
-        result.setBrand(result.getBrand() != null ? result.getBrand().trim() : "");
-        result.setCategory(result.getCategory() != null ? result.getCategory().trim() : "");
-        result.setColor(result.getColor() != null ? result.getColor().trim() : "");
-        return result;
+        Map<Integer, Double> scoreMap = new HashMap<>();
+        for (double[] entry : scored) {
+            scoreMap.put((int) entry[0], entry[1]);
+        }
+
+        rows.forEach(row -> {
+            int id = ((Number) row.get("id")).intValue();
+            row.put("similarity", scoreMap.getOrDefault(id, 0.0));
+        });
+
+        rows.sort((a, b) -> Double.compare(
+                (Double) b.get("similarity"),
+                (Double) a.get("similarity")));
+
+        return rows;
     }
 }
-// rebuild
