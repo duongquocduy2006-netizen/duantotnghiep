@@ -33,6 +33,24 @@ public class ProductController {
         int pageSize = 9;
         int offset = page * pageSize;
 
+        if (keyword != null) {
+            keyword = keyword.trim();
+        }
+
+        if ((brands == null || brands.isEmpty()) && keyword != null && !keyword.isEmpty()) {
+            List<String> activeBrands = jdbc.queryForList("SELECT brand_name FROM brands WHERE status = 1", String.class);
+            String keywordLower = keyword.toLowerCase();
+            for (String brandName : activeBrands) {
+                if (brandName != null && !brandName.isBlank()) {
+                    String brandLower = brandName.toLowerCase();
+                    if (keywordLower.contains(brandLower)) {
+                        brands = java.util.Collections.singletonList(brandName);
+                        break;
+                    }
+                }
+            }
+        }
+
         StringBuilder sql = new StringBuilder(
                 "SELECT p.id, p.product_name, p.brand_name, " +
                         "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, "
@@ -50,8 +68,8 @@ public class ProductController {
                         "AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.quantity > 0) ");
 
         // --- FILTER LOGIC ---
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String k = keyword.trim().replace("'", "''");
+        if (keyword != null && !keyword.isEmpty()) {
+            String k = keyword.replace("'", "''");
             sql.append(" AND (p.product_name LIKE N'%").append(k).append("%' ")
                     .append(" OR p.brand_name LIKE N'%").append(k).append("%' ")
                     .append(" OR c.category_name LIKE N'%").append(k).append("%') ");

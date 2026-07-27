@@ -13,10 +13,19 @@ const AdminProducts = () => {
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState("all");
 
+    // Custom Confirm Modal State
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        productId: null,
+        productName: "",
+        message: ""
+    });
+
     const fetchProducts = async () => {
         try {
             const response = await api.get('/api/products');
-            setProducts(response.data || []);
+            const dataList = Array.isArray(response.data) ? response.data : (response.data?.products || []);
+            setProducts(dataList);
         } catch (err) {
             console.error("Lỗi tải danh sách sản phẩm:", err);
             setError("Không thể tải danh sách sản phẩm từ hệ thống.");
@@ -40,30 +49,53 @@ const AdminProducts = () => {
     }, []);
 
     const filteredProducts = products.filter(p => {
-        const matchSearch = !searchTerm || p.productName.toLowerCase().includes(searchTerm.toLowerCase()) || p.productCode.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchCategory = selectedCategory === "all" || p.categoryName === selectedCategory;
+        const name = p.productName || p.product_name || '';
+        const code = p.productCode || p.product_code || '';
+        const catName = p.categoryName || p.category_name || '';
+        const matchSearch = !searchTerm || name.toLowerCase().includes(searchTerm.toLowerCase()) || code.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchCategory = selectedCategory === "all" || catName === selectedCategory;
         const matchStatus = selectedStatus === "all" || (selectedStatus === "1" && p.status === 1) || (selectedStatus === "0" && p.status !== 1);
         return matchSearch && matchCategory && matchStatus;
     });
 
-    const handleDelete = async (id, name) => {
-        if (window.confirm(`Xếp có chắc chắn muốn xóa sản phẩm "${name}" này vĩnh viễn không?`)) {
-            try {
-                const response = await api.delete(`/api/products/${id}`);
-                if (response.data && response.data.status === "success") {
-                    alert(response.data.message || "Xóa sản phẩm thành công!");
-                    // Cập nhật lại danh sách sản phẩm trên giao diện
-                    setProducts(products.filter(p => p.id !== id));
-                } else {
-                    alert(response.data.error || "Có lỗi xảy ra khi xóa sản phẩm!");
-                }
-            } catch (err) {
-                console.error("Lỗi xóa sản phẩm:", err);
-                const errMsg = err.response && err.response.data && err.response.data.error
-                    ? err.response.data.error
-                    : "Không thể kết nối đến server để xóa sản phẩm.";
-                alert(errMsg);
+    const triggerDeleteConfirm = (id, name) => {
+        setConfirmModal({
+            isOpen: true,
+            productId: id,
+            productName: name,
+            message: `Bạn có chắc chắn muốn xóa sản phẩm "${name}" này vĩnh viễn không?`
+        });
+    };
+
+    const cancelDelete = () => {
+        setConfirmModal({
+            isOpen: false,
+            productId: null,
+            productName: "",
+            message: ""
+        });
+    };
+
+    const submitDelete = async () => {
+        const { productId } = confirmModal;
+        if (!productId) return;
+
+        try {
+            const response = await api.delete(`/api/products/${productId}`);
+            if (response.data && response.data.status === "success") {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Xóa sản phẩm thành công!" }));
+                setProducts(products.filter(p => p.id !== productId));
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.error || "Có lỗi xảy ra khi xóa sản phẩm!" }));
             }
+        } catch (err) {
+            console.error("Lỗi xóa sản phẩm:", err);
+            const errMsg = err.response && err.response.data && err.response.data.error
+                ? err.response.data.error
+                : "Không thể kết nối đến server để xóa sản phẩm.";
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
+        } finally {
+            cancelDelete();
         }
     };
 
@@ -115,18 +147,19 @@ const AdminProducts = () => {
 
             <div className="toolbar" style={{
                 background: '#fff',
-                padding: '15px',
-                border: '4px solid #000', boxShadow: '4px 4px 0 #000', borderRadius: '0',
-                marginBottom: '25px',
+                padding: '12px 16px',
+                border: '1px solid #e8eaed', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', borderRadius: '12px',
+                marginBottom: '24px',
                 display: 'flex',
-                gap: '15px',
-                alignItems: 'stretch'
+                gap: '14px',
+                alignItems: 'center',
+                flexWrap: 'wrap'
             }}>
-                <div className="search-box" style={{ flex: 1 }}>
-                    <i className="bi bi-search"></i>
+                <div className="admin-search-box-wrap" style={{ flex: 1 }}>
+                    <i className="bi bi-search admin-search-icon"></i>
                     <input 
                         type="text" 
-                        className="search-input" 
+                        className="admin-search-input" 
                         placeholder="Tìm kiếm sản phẩm theo tên, SKU..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -135,7 +168,7 @@ const AdminProducts = () => {
 
                 <select 
                     className="filter-select" 
-                    style={{ width: '200px', background: '#fff', border: '3px solid #000', fontWeight: 'bold', color: '#555' }}
+                    style={{ width: '200px', background: '#fff', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#555' }}
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
                 >
@@ -147,7 +180,7 @@ const AdminProducts = () => {
 
                 <select 
                     className="filter-select" 
-                    style={{ width: '200px', background: '#fff', border: '3px solid #000', fontWeight: 'bold', color: '#555' }}
+                    style={{ width: '200px', background: '#fff', border: '1px solid #e2e8f0', fontWeight: 'bold', color: '#555' }}
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
                 >
@@ -176,84 +209,113 @@ const AdminProducts = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredProducts.map(p => (
-                                    <tr key={p.id}>
-                                        <td>
-                                            <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <div style={{ width: '50px', height: '50px', background: '#fff', overflow: 'hidden', border: '3px solid #000', flexShrink: 0 }}>
-                                                    <img
-                                                        src={getImageUrl(p.imageUrl)}
-                                                        className="product-img"
-                                                        alt={p.productName}
-                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                        onError={(e) => {
-                                                            e.target.onerror = null;
-                                                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.productName)}&background=fff&color=000&bold=true`;
-                                                        }}
-                                                    />
+                                {filteredProducts.map(p => {
+                                    const productName = p.productName || p.product_name || '(Không tên)';
+                                    const productCode = p.productCode || p.product_code || '';
+                                    const categoryName = p.categoryName || p.category_name || '';
+                                    const brandName = p.brandName || p.brand_name || '';
+                                    const imageUrl = p.imageUrl || p.image_url || '';
+                                    const price = p.price ?? p.min_price;
+                                    const variantCount = p.variantCount ?? p.variant_count ?? 0;
+
+                                    return (
+                                        <tr key={p.id}>
+                                            <td>
+                                                <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <div style={{ width: '50px', height: '50px', background: '#fff', overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: '8px', flexShrink: 0 }}>
+                                                        <img
+                                                            src={getImageUrl(imageUrl)}
+                                                            className="product-img"
+                                                            alt={productName}
+                                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(productName)}&background=fff&color=000&bold=true`;
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div style={{ minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                                                        <span className="product-name" style={{
+                                                            fontWeight: 800,
+                                                            color: '#000',
+                                                            fontSize: '15px',
+                                                            fontFamily: 'Oswald',
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            textTransform: 'uppercase'
+                                                        }} title={productName}>{productName}</span>
+                                                        <span className="product-id" style={{ fontSize: '12px', color: '#555', fontWeight: 600, marginTop: '2px' }}><i className="bi bi-upc-scan"></i> SKU: {productCode}</span>
+                                                    </div>
                                                 </div>
-                                                <div style={{ minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                                    <span className="product-name" style={{
-                                                        fontWeight: 800,
-                                                        color: '#000',
-                                                        fontSize: '15px',
-                                                        fontFamily: 'Oswald',
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        textTransform: 'uppercase'
-                                                    }} title={p.productName}>{p.productName}</span>
-                                                    <span className="product-id" style={{ fontSize: '12px', color: '#555', fontWeight: 600, marginTop: '2px' }}><i className="bi bi-upc-scan"></i> SKU: {p.productCode}</span>
+                                            </td>
+
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#000', fontFamily: 'Oswald', textTransform: 'uppercase', borderBottom: '1px solid #f1f5f9' }}>{categoryName}</span>
+                                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}><i className="bi bi-tag-fill"></i> {brandName}</span>
                                                 </div>
-                                            </div>
-                                        </td>
+                                            </td>
 
-                                        <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                                <span style={{ fontSize: '13px', fontWeight: 800, color: '#000', fontFamily: 'Oswald', textTransform: 'uppercase', borderBottom: '2px solid #000' }}>{p.categoryName}</span>
-                                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}><i className="bi bi-tag-fill"></i> {p.brandName}</span>
-                                            </div>
-                                        </td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                                    <span className="price" style={{ fontWeight: 800, color: '#000', fontFamily: 'Oswald', fontSize: '16px' }}>
+                                                        {price != null ? `${Number(price).toLocaleString()} ₫` : 'N/A'}
+                                                    </span>
+                                                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#000', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '2px 6px' }}>
+                                                        <i className="bi bi-box-seam"></i> {variantCount} BIẾN THỂ
+                                                    </span>
+                                                </div>
+                                            </td>
 
-                                        <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                                <span className="price" style={{ fontWeight: 800, color: '#000', fontFamily: 'Oswald', fontSize: '16px' }}>
-                                                    {p.price != null ? `${p.price.toLocaleString()} ₫` : 'N/A'}
-                                                </span>
-                                                <span style={{ fontSize: '11px', fontWeight: 800, color: '#000', border: '2px solid #000', padding: '2px 6px' }}>
-                                                    <i className="bi bi-box-seam"></i> {p.variantCount} BIẾN THỂ
-                                                </span>
-                                            </div>
-                                        </td>
+                                            <td>
+                                                 <span className={`status-badge ${p.status === 1 ? 'status-active' : 'status-cancel'}`} style={{
+                                                     padding: '6px 12px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', border: '1px solid #e2e8f0',
+                                                     whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                                                 }}>
+                                                     {p.status === 1 ? 'ĐANG BÁN' : 'TẠM ẨN'}
+                                                 </span>
+                                            </td>
 
-                                        <td>
-                                            <span className={`status-badge ${p.status === 1 ? 'status-active' : 'status-cancel'}`} style={{
-                                                padding: '4px 8px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', border: '2px solid #000'
-                                            }}>
-                                                {p.status === 1 ? 'ĐANG BÁN' : 'TẠM ẨN'}
-                                            </span>
-                                        </td>
-
-                                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                                            <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
-                                                <Link to={`/admin/products/detail/${p.id}`} className="action-btn-icon" title="Xem chi tiết">
-                                                    <i className="bi bi-eye"></i>
-                                                </Link>
-                                                <Link to={`/admin/products/edit/${p.id}`} className="action-btn-icon icon-edit" title="Chỉnh sửa">
-                                                    <i className="bi bi-pencil-square"></i>
-                                                </Link>
-                                                <button className="action-btn-icon icon-delete" title="Xóa" onClick={() => handleDelete(p.id, p.productName)}>
-                                                    <i className="bi bi-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                                <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
+                                                    <Link to={`/admin/products/detail/${p.id}`} className="action-btn-icon" title="Xem chi tiết">
+                                                        <i className="bi bi-eye"></i>
+                                                    </Link>
+                                                    <Link to={`/admin/products/edit/${p.id}`} className="action-btn-icon icon-edit" title="Chỉnh sửa">
+                                                        <i className="bi bi-pencil-square"></i>
+                                                    </Link>
+                                                    <button className="action-btn-icon icon-delete" title="Xóa" onClick={() => triggerDeleteConfirm(p.id, productName)}>
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 )}
             </div>
+
+            {/* CUSTOM CONFIRM MODAL */}
+            {confirmModal.isOpen && (
+                <div className="admin-confirm-overlay">
+                    <div className="admin-confirm-box animate__animated animate__zoomIn">
+                        <div className="admin-confirm-icon">
+                            <i className="bi bi-exclamation-circle"></i>
+                        </div>
+                        <h4 className="admin-confirm-title">Xác nhận xóa</h4>
+                        <p className="admin-confirm-message">{confirmModal.message}</p>
+                        <div className="admin-confirm-actions">
+                            <button className="admin-btn-confirm-cancel" onClick={cancelDelete}>Hủy bỏ</button>
+                            <button className="admin-btn-confirm-ok" onClick={submitDelete}>Đồng ý</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
                 .sub-title-neon { display: block; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
@@ -261,41 +323,138 @@ const AdminProducts = () => {
                 
                 .header-right-actions { display: flex; align-items: center; }
                 .btn-cyan-skew { 
-                    background: #fff; color: #000; border: 4px solid #000; box-shadow: 6px 6px 0 #000; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+                    background: #fff; color: #000; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
                     transition: 0.3s; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none;
                 }
-                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 6px 6px 0 var(--accent-red); transform: translateY(-3px); }
+                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
 
-                .toolbar { display: flex; gap: 20px; align-items: stretch; justify-content: space-between; margin-bottom: 30px; background: #fff; padding: 15px 25px; border: 4px solid #000; box-shadow: 4px 4px 0 #000; flex-wrap: wrap; }
-                .search-box { position: relative; flex: 1; min-width: 300px; max-width: none; }
-                .search-input { width: 100%; background: #fff !important; border: 3px solid #000; padding: 12px 15px 12px 45px; color: #000 !important; outline: none; height: 45px; font-weight: bold; }
-                .search-input:focus { border-color: var(--accent-red); box-shadow: 4px 4px 0 var(--accent-red); }
-                .bi-search { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #000; font-weight: bold; }
-                .filter-select { background: #fff !important; color: #000 !important; border: 3px solid #000 !important; padding: 8px 15px; outline: none; cursor: pointer; height: 45px; min-width: 200px; font-weight: bold; font-family: 'Poppins'; }
-                .filter-select:focus { border-color: var(--accent-red) !important; }
+                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; max-width: 100%; box-sizing: border-box; }
+                .admin-search-box-wrap { position: relative; flex: 1; max-width: 100%; min-width: 220px; box-sizing: border-box; background: transparent !important; border: none !important; padding: 0 !important; display: block !important; }
+                .admin-search-input { width: 100%; background: #fff !important; border: 1.5px solid #dadce0; padding: 10px 16px 10px 42px !important; color: #3c4043 !important; outline: none; height: 44px; font-weight: 500; border-radius: 12px !important; font-size: 14px; transition: all 0.2s; font-family: 'Inter', sans-serif; box-sizing: border-box; }
+                .admin-search-input:focus { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1) !important; }
+                .admin-search-input::placeholder { color: #9aa0a6; }
+                .admin-search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888 !important; font-size: 16px; pointer-events: none; z-index: 5; }
+                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.2s; }
+                .filter-select:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
 
                 .btn-red-skew { 
-                    background: #fff; color: #000; border: 3px solid #000; padding: 0 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+                    background: #fff; color: #000; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 0 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
                     transition: 0.3s; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; height: 45px; min-width: 150px;
                 }
-                .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 4px 4px 0 var(--accent-red); transform: translateY(-2px); }
+                .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-2px); }
 
                 /* Compact Brutalist Table */
-                .table-card { background: #fff; border: 4px solid #000; box-shadow: 6px 6px 0 #000; margin-top: 20px; overflow: hidden; }
-                .table-responsive-wrapper { width: 100%; }
-                .compact-table { width: 100%; border-collapse: collapse; }
-                .compact-table th { background: #f4f4f4; color: #000; font-size: 13px; text-transform: uppercase; padding: 15px 20px; text-align: left; font-family: 'Oswald'; border-bottom: 4px solid #000; font-weight: 800; white-space: nowrap; }
-                .compact-table td { padding: 15px 20px; border-bottom: 2px solid #000; font-size: 14px; color: #000; font-weight: 600; vertical-align: middle; }
+                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-top: 20px; border-radius: 14px; overflow-x: auto; width: 100%; box-sizing: border-box; }
+                .compact-table { width: 100%; border-collapse: collapse; min-width: 850px; }
+                .compact-table th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 16px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; white-space: nowrap; }
+                .compact-table td { padding: 14px 16px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; vertical-align: middle; }
                 
-                .status-badge { font-family: 'Oswald'; font-weight: 800; border: 2px solid #000 !important; border-radius: 0 !important; }
+                .status-badge { font-family: 'Oswald'; font-weight: 800; border: 1px solid #e2e8f0 !important; border-radius: 6px !important; }
                 .status-active { background: #4ade80; color: #000; }
                 .status-cancel { background: var(--accent-red); color: #fff; }
 
                 /* Action Icon Buttons */
-                .action-btn-icon { background: #fff; border: 3px solid #000; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; }
-                .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 2px 2px 0 var(--accent-red); background: #000; color: #fff; }
-                .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 2px 2px 0 #000; }
-                .icon-edit:hover { background: #facc15; color: #000; box-shadow: 2px 2px 0 #000; }
+                .action-btn-icon { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; }
+                .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); background: #000; color: #fff; }
+                .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 0 4px 12px rgba(229,9,20,0.2); }
+                .icon-edit:hover { background: #facc15; color: #000; box-shadow: 0 4px 12px rgba(250,204,21,0.2); }
+
+                /* Admin Confirm Modal (Sleek Premium Theme) */
+                .admin-confirm-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(15, 23, 42, 0.6);
+                    backdrop-filter: blur(8px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                }
+                .admin-confirm-box {
+                    background: #fff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 24px;
+                    padding: 36px 32px;
+                    width: 90%;
+                    max-width: 420px;
+                    text-align: center;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+                    border-bottom: 4px solid #e50914;
+                }
+                .admin-confirm-icon {
+                    width: 72px;
+                    height: 72px;
+                    background: #fef2f2;
+                    color: #e50914;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 32px;
+                    margin: 0 auto 20px;
+                    animation: iconPulse 2s infinite;
+                }
+                .admin-confirm-title {
+                    font-family: 'Inter', sans-serif;
+                    font-weight: 800;
+                    font-size: 20px;
+                    color: #0f172a;
+                    margin-bottom: 12px;
+                }
+                .admin-confirm-message {
+                    font-size: 14px;
+                    color: #475569;
+                    line-height: 1.6;
+                    margin-bottom: 28px;
+                    font-weight: 500;
+                }
+                .admin-confirm-actions {
+                    display: flex;
+                    gap: 12px;
+                    justify-content: center;
+                }
+                .admin-btn-confirm-cancel {
+                    background: #f1f5f9;
+                    color: #475569;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                }
+                .admin-btn-confirm-cancel:hover {
+                    background: #e2e8f0;
+                    color: #0f172a;
+                }
+                .admin-btn-confirm-ok {
+                    background: #e50914;
+                    color: #fff;
+                    border: none;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                    box-shadow: 0 4px 6px -1px rgba(229, 9, 20, 0.2);
+                }
+                .admin-btn-confirm-ok:hover {
+                    background: #b8070f;
+                    box-shadow: 0 10px 15px -3px rgba(229, 9, 20, 0.3);
+                    transform: translateY(-1px);
+                }
+                @keyframes iconPulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.08); }
+                    100% { transform: scale(1); }
+                }
             `}</style>
         </AdminLayout >
     );

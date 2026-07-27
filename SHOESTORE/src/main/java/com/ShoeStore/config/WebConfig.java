@@ -49,7 +49,14 @@ public class WebConfig implements WebMvcConfigurer {
         org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
+        config.setAllowedOrigins(java.util.List.of(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174",
+                "http://localhost:5175",
+                "http://127.0.0.1:5175"
+        ));
         config.setAllowedHeaders(java.util.List.of("*"));
         config.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         source.registerCorsConfiguration("/**", config);

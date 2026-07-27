@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import 'animate.css';
 import './Cart.css';
+import './Membership.css';
 
 const Cart = () => {
     const navigate = useNavigate();
     const [cartItems, setCartItems] = useState([]);
     const [totalPrice, setTotalPrice] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [cartError, setCartError] = useState('');
+    const [cartSuccess, setCartSuccess] = useState('');
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -20,6 +24,16 @@ const Cart = () => {
         return `http://localhost:8080${url}`;
     };
 
+    const showError = (msg) => {
+        setCartError(msg);
+        setTimeout(() => setCartError(''), 4000);
+    };
+
+    const showSuccess = (msg) => {
+        setCartSuccess(msg);
+        setTimeout(() => setCartSuccess(''), 3000);
+    };
+
     const loadCart = async () => {
         try {
             const response = await api.get('/api/cart');
@@ -27,14 +41,14 @@ const Cart = () => {
                 setCartItems(response.data.cartItems || []);
                 setTotalPrice(response.data.totalPrice || 0);
             } else {
-                alert(response.data.message || 'Lỗi tải giỏ hàng!');
+                showError(response.data.message || 'Lỗi tải giỏ hàng!');
             }
         } catch (err) {
             console.error('Lỗi load giỏ hàng:', err);
             if (err.response && err.response.status === 401) {
                 navigate('/login');
             } else {
-                alert('Không thể tải giỏ hàng. Vui lòng kiểm tra kết nối backend!');
+                showError('Không thể tải giỏ hàng. Vui lòng kiểm tra kết nối backend!');
             }
         } finally {
             setLoading(false);
@@ -42,12 +56,13 @@ const Cart = () => {
     };
 
     useEffect(() => {
+        window.scrollTo(0, 0);
         loadCart();
     }, []);
 
     const updateQty = async (itemId, newQty, stock) => {
         if (newQty > stock) {
-            alert('Sản phẩm này chỉ còn ' + stock + ' cái trong kho!');
+            showError('Sản phẩm này chỉ còn ' + stock + ' cái trong kho!');
             return;
         }
         if (newQty < 1) {
@@ -62,11 +77,15 @@ const Cart = () => {
             if (response.data && response.data.success) {
                 loadCart();
             } else {
-                alert(response.data.message || 'Lỗi cập nhật số lượng!');
+                showError(response.data.message || 'Lỗi cập nhật số lượng!');
             }
         } catch (err) {
             console.error('Lỗi update qty:', err);
-            alert('Lỗi kết nối máy chủ!');
+            if (err.response && err.response.data && err.response.data.message) {
+                showError(err.response.data.message);
+            } else {
+                showError('Lỗi kết nối máy chủ!');
+            }
         }
     };
 
@@ -79,12 +98,13 @@ const Cart = () => {
             });
             if (response.data && response.data.success) {
                 loadCart();
+                showSuccess('Đã xóa sản phẩm!');
             } else {
-                alert(response.data.message || 'Lỗi xóa sản phẩm!');
+                showError(response.data.message || 'Lỗi xóa sản phẩm!');
             }
         } catch (err) {
             console.error('Lỗi xóa sản phẩm:', err);
-            alert('Lỗi kết nối máy chủ!');
+            showError('Lỗi kết nối máy chủ!');
         }
     };
 
@@ -95,11 +115,11 @@ const Cart = () => {
     if (loading) {
         return (
             <Layout>
-                <div className="container py-5 text-center" style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#fff' }}>
-                    <div className="spinner-border text-danger mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
-                        <span className="visually-hidden">Loading...</span>
+                <div className="shop-epic-theme position-relative" style={{minHeight: '100vh', paddingBottom: '100px'}}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
+                        <div className="spinner-border text-danger" role="status" style={{ width: '4rem', height: '4rem', borderWidth: '5px' }}></div>
+                        <p className="mt-3 font-oswald fw-bold text-uppercase letter-spacing-1 text-white">ĐANG TẢI GIỎ HÀNG...</p>
                     </div>
-                    <p className="text-muted font-oswald letter-spacing-1">ĐANG TẢI GIỎ HÀNG...</p>
                 </div>
             </Layout>
         );
@@ -107,14 +127,21 @@ const Cart = () => {
 
     return (
         <Layout>
-            <div className="cart-page-wrapper position-relative">
-                <div className="god-watermark-bg" style={{ fontSize: '15vw', top: '10%' }}>CART</div>
+            <div className="shop-epic-theme position-relative" style={{minHeight: '100vh', paddingBottom: '100px'}}>
+                <div className="epic-member-header">
+                    <div className="container text-center">
+                        <span className="epic-tag animate__animated animate__fadeInDown d-inline-block">GIỎ HÀNG</span>
+                        <h1 className="epic-header-title mt-3 animate__animated animate__fadeInUp">GIỎ HÀNG CỦA BẠN</h1>
+                        <p className="font-oswald text-light mx-auto mt-4 letter-spacing-1 fw-bold text-uppercase fs-5" style={{ maxWidth: '600px', opacity: 0.8 }}>
+                            Kiểm tra lại các sản phẩm đã chọn và tiến hành thanh toán một cách nhanh chóng.
+                        </p>
+                    </div>
+                </div>
                 
                 <div className="container cart-container py-5 position-relative z-1">
-                    <div className="d-flex justify-content-between align-items-end mb-5 reveal-item opacity-0 flex-wrap gap-3">
+                    <div className="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3 animate__animated animate__fadeIn">
                         <div>
-                            <h2 className="god-section-title text-uppercase m-0">GIỎ HÀNG CỦA BẠN</h2>
-                            <div className="god-section-line" style={{ background: '#e50914' }}></div>
+                            <h3 className="font-oswald text-uppercase m-0 fw-bold">CHI TIẾT GIỎ HÀNG</h3>
                         </div>
                         <span className="font-oswald text-uppercase" style={{ fontSize: '16px', color: '#555', letterSpacing: '1px' }}>
                             ({cartItems.length} SẢN PHẨM)
@@ -123,37 +150,47 @@ const Cart = () => {
 
                     <div className="row g-5">
                         <div className="col-lg-8 animate__animated animate__fadeInUp">
+                            {cartError && (
+                                <div className="mb-4 bg-danger-subtle text-danger p-3 rounded-3 border border-danger-subtle d-flex align-items-center font-oswald fw-bold" style={{ fontSize: '14px', letterSpacing: '0.5px' }}>
+                                    <i className="fa-solid fa-triangle-exclamation me-2 fs-5"></i> {cartError}
+                                </div>
+                            )}
+                            {cartSuccess && (
+                                <div className="mb-4 bg-success-subtle text-success p-3 rounded-3 border border-success-subtle d-flex align-items-center font-oswald fw-bold" style={{ fontSize: '14px', letterSpacing: '0.5px' }}>
+                                    <i className="fa-solid fa-circle-check me-2 fs-5"></i> {cartSuccess}
+                                </div>
+                            )}
 
                             {cartItems.length > 0 && (
-                                <div className="mb-5 shipping-banner border border-dark border-4 p-3 bg-white" style={{ boxShadow: '6px 6px 0 #000' }}>
+                                <div className="mb-4 bg-white p-3 rounded-3 border border-light-subtle d-flex flex-column" style={{ boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
                                     {totalPrice < 500000 ? (
-                                        <div className="free-ship-text font-oswald letter-spacing-1 text-dark">
+                                        <div className="free-ship-text font-oswald letter-spacing-1 text-dark mb-2">
                                             <i className="fa fa-truck-fast me-2 text-danger"></i> MUA THÊM <b className="text-danger">{formatCurrency(500000 - totalPrice)}</b> ĐỂ ĐƯỢC FREESHIP
                                         </div>
                                     ) : (
-                                        <div className="free-ship-text font-oswald letter-spacing-1 text-dark">
+                                        <div className="free-ship-text font-oswald letter-spacing-1 text-dark mb-2">
                                             <i className="fa fa-truck-fast me-2 text-success"></i> BẠN ĐÃ ĐỦ ĐIỀU KIỆN <b className="text-success">MIỄN PHÍ VẬN CHUYỂN!</b>
                                         </div>
                                     )}
-                                    <div className="free-ship-bar mt-2 border border-dark border-2" style={{ background: '#eee', height: '10px' }}>
-                                        <div className="free-ship-progress" style={{ width: `${progressWidth}%`, background: '#e50914', height: '100%', transition: 'width 0.5s ease' }}></div>
+                                    <div className="progress rounded-pill" style={{ height: '8px', backgroundColor: '#f0f0f0' }}>
+                                        <div className="progress-bar bg-danger rounded-pill" role="progressbar" style={{ width: `${progressWidth}%`, transition: 'width 0.5s ease' }}></div>
                                     </div>
                                 </div>
                             )}
 
                             <div className="cart-items-list">
                                 {cartItems.map((item, idx) => (
-                                    <div key={item.id} className="god-cart-item reveal-item opacity-0" style={{ animationDelay: `${idx * 0.1}s` }}>
+                                    <div key={item.id} className="cart-item-flat animate__animated animate__fadeInUp" style={{ animationDelay: `${idx * 0.05}s` }}>
                                         <div className="item-img-wrapper">
-                                            <img src={getImageUrl(item.image_url)} alt={item.product_name} className="item-img god-grayscale-hover" />
+                                            <img src={getImageUrl(item.image_url)} alt={item.product_name} className="item-img" />
                                         </div>
 
                                         <div className="item-details flex-grow-1 px-4">
-                                            <div className="item-name font-oswald text-uppercase fs-4 fw-bold mb-2">
-                                                <Link to={`/details?id=${item.product_id}`} className="text-dark text-decoration-none god-hover-red">{item.product_name}</Link>
+                                            <div className="item-name font-oswald text-uppercase fs-5 fw-bold mb-1">
+                                                <Link to={`/details?id=${item.product_id}`} className="text-dark text-decoration-none item-hover-red">{item.product_name}</Link>
                                             </div>
-                                            <div className="item-meta text-uppercase text-secondary font-oswald letter-spacing-1 fw-bold" style={{ fontSize: '14px' }}>
-                                                SIZE: <span className="text-dark">{item.size_name}</span> &nbsp;|&nbsp; COLOR: <span className="text-dark">{item.color_name}</span>
+                                            <div className="item-meta text-uppercase text-secondary font-oswald letter-spacing-1" style={{ fontSize: '14px' }}>
+                                                SIZE: <span className="text-dark fw-bold">{item.size_name}</span> &nbsp;|&nbsp; COLOR: <span className="text-dark fw-bold">{item.color_name}</span>
                                             </div>
                                             
                                             {/* Mobile price visible only on small screens */}
@@ -163,18 +200,18 @@ const Cart = () => {
                                         </div>
 
                                         <div className="item-actions d-flex align-items-center gap-4">
-                                            <div className="qty-control-god d-flex align-items-center">
-                                                <button className="qty-btn-god" onClick={() => updateQty(item.id, item.quantity - 1, item.stock)}>-</button>
-                                                <input type="text" className="qty-input-god text-center bg-transparent border-0 font-oswald fw-bold fs-5" value={item.quantity} readOnly style={{ width: '40px' }} />
-                                                <button className="qty-btn-god" onClick={() => updateQty(item.id, item.quantity + 1, item.stock)}>+</button>
+                                            <div className="qty-control-flat d-flex align-items-center">
+                                                <button className="qty-btn-flat" onClick={() => updateQty(item.id, item.quantity - 1, item.stock)}>-</button>
+                                                <input type="text" className="qty-input-flat text-center bg-transparent border-0 font-oswald fw-bold fs-5" value={item.quantity} readOnly />
+                                                <button className="qty-btn-flat" onClick={() => updateQty(item.id, item.quantity + 1, item.stock)}>+</button>
                                             </div>
 
                                             <div className="item-price d-none d-md-block font-oswald text-danger fs-4 fw-bold" style={{ minWidth: '130px', textAlign: 'right' }}>
                                                 {formatCurrency(item.price * item.quantity)}
                                             </div>
 
-                                            <button className="btn-remove-god" title="Xóa" onClick={() => removeItem(item.id)}>
-                                                <i className="fa-solid fa-xmark fs-3"></i>
+                                            <button className="btn-remove-flat" title="Xóa khỏi giỏ hàng" onClick={() => removeItem(item.id)}>
+                                                <i className="fa-solid fa-trash-can"></i>
                                             </button>
                                         </div>
                                     </div>
@@ -182,62 +219,67 @@ const Cart = () => {
                             </div>
 
                             {cartItems.length === 0 && (
-                                <div className="text-center py-5 border border-dark border-4 bg-white" style={{ boxShadow: '10px 10px 0 #000' }}>
-                                    <h1 className="font-oswald text-muted opacity-25" style={{ fontSize: '80px' }}>EMPTY</h1>
-                                    <p className="fw-bold font-oswald letter-spacing-1 text-uppercase mt-3 text-dark fs-4">Giỏ hàng của bạn đang trống.</p>
-                                    <Link to="/shop" className="btn-god-tier mt-4 d-inline-block"><span>TIẾP TỤC MUA SẮM</span></Link>
+                                <div className="text-center py-5 bg-white rounded-3 border border-light-subtle" style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+                                    <i className="fa-solid fa-cart-arrow-down fa-4x text-muted mb-4 opacity-50"></i>
+                                    <h3 className="font-oswald fw-bold text-uppercase text-dark mb-3">GIỎ HÀNG TRỐNG</h3>
+                                    <p className="fw-bold text-muted font-oswald letter-spacing-1 fs-5 mb-4">Bạn chưa thêm sản phẩm nào vào giỏ hàng.</p>
+                                    <Link to="/shop" className="btn btn-dark font-oswald text-uppercase px-4 py-2 rounded-0 fw-bold border-2">
+                                        TIẾP TỤC MUA SẮM
+                                    </Link>
                                 </div>
                             )}
 
                             {cartItems.length > 0 && (
-                                <Link to="/shop" className="text-decoration-none mt-4 d-inline-block font-oswald fw-bold text-uppercase text-dark god-hover-red letter-spacing-1 border border-dark border-3 bg-white px-4 py-2" style={{boxShadow: '4px 4px 0 #000'}}>
-                                    <i className="fa fa-arrow-left me-2"></i> TIẾP TỤC MUA SẮM
-                                </Link>
+                                <div className="mt-4">
+                                    <Link to="/shop" className="btn btn-outline-dark font-oswald fw-bold text-uppercase letter-spacing-1 px-4 py-2 rounded-3 border-2">
+                                        <i className="fa fa-arrow-left me-2"></i> TIẾP TỤC MUA SẮM
+                                    </Link>
+                                </div>
                             )}
                         </div>
 
                         <div className="col-lg-4 animate__animated animate__fadeInRight animate__delay-1s">
-                            <div className="god-summary-card p-4 sticky-top">
-                                <h3 className="font-oswald fw-bold text-uppercase text-dark mb-4 pb-3 border-bottom border-dark border-3">TÓM TẮT ĐƠN HÀNG</h3>
+                            <div className="cart-summary-flat p-4 sticky-top" style={{ top: '20px' }}>
+                                <h4 className="font-oswald fw-bold text-uppercase text-dark mb-4 pb-3 border-bottom border-light-subtle">TÓM TẮT ĐƠN HÀNG</h4>
 
-                                <div className="summary-row font-oswald fw-bold text-uppercase mb-3 d-flex justify-content-between text-muted fs-5">
+                                <div className="summary-row font-oswald text-uppercase mb-3 d-flex justify-content-between text-muted fs-6">
                                     <span>Tạm tính</span>
-                                    <span className="text-dark">{formatCurrency(totalPrice)}</span>
+                                    <span className="text-dark fw-bold">{formatCurrency(totalPrice)}</span>
                                 </div>
-                                <div className="summary-row font-oswald fw-bold text-uppercase mb-3 d-flex justify-content-between text-muted fs-5">
+                                <div className="summary-row font-oswald text-uppercase mb-3 d-flex justify-content-between text-muted fs-6">
                                     <span>Giảm giá</span>
-                                    <span className="text-success">-0₫</span>
+                                    <span className="text-success fw-bold">-0₫</span>
                                 </div>
-                                <div className="summary-row font-oswald fw-bold text-uppercase mb-4 d-flex justify-content-between text-muted fs-5">
+                                <div className="summary-row font-oswald text-uppercase mb-4 d-flex justify-content-between text-muted fs-6">
                                     <span>Phí vận chuyển</span>
-                                    <span className="text-dark">{totalPrice >= 500000 || cartItems.length === 0 ? '0₫' : '30.000₫'}</span>
+                                    <span className="text-dark fw-bold">{totalPrice >= 500000 || cartItems.length === 0 ? '0₫' : '30.000₫'}</span>
                                 </div>
 
                                 <div className="promo-input-group d-flex gap-2 mb-4">
-                                    <input type="text" className="form-control font-oswald fw-bold letter-spacing-1 rounded-0" placeholder="MÃ GIẢM GIÁ" />
-                                    <button className="god-btn">ÁP DỤNG</button>
+                                    <input type="text" className="form-control font-oswald letter-spacing-1 rounded-2" placeholder="MÃ GIẢM GIÁ" />
+                                    <button className="promo-btn-flat">ÁP DỤNG</button>
                                 </div>
 
-                                <div className="summary-total border-top border-dark border-3 pt-3 mt-4 d-flex justify-content-between align-items-center">
-                                    <span className="font-oswald fw-bold text-uppercase fs-4 text-dark">TỔNG CỘNG</span>
+                                <div className="summary-total border-top border-light-subtle pt-3 mt-4 d-flex justify-content-between align-items-center">
+                                    <span className="font-oswald fw-bold text-uppercase fs-5 text-dark">TỔNG CỘNG</span>
                                     <span className="font-oswald fw-bold fs-2" style={{ color: '#e50914' }}>{formatCurrency(finalTotal)}</span>
                                 </div>
 
                                 <button 
-                                    className="god-checkout-btn w-100 mt-4 d-flex justify-content-between align-items-center" 
+                                    className="checkout-btn-flat w-100 mt-4 d-flex justify-content-center align-items-center gap-2" 
                                     onClick={() => navigate('/checkout')} 
                                     disabled={cartItems.length === 0}
                                 >
                                     <span>THANH TOÁN NGAY</span>
-                                    <i className="fa-solid fa-arrow-right"></i>
+                                    <i className="fa-solid fa-arrow-right fs-6"></i>
                                 </button>
 
-                                <div className="mt-4 text-center border-top border-dark border-2 pt-3">
-                                    <p className="font-oswald text-dark fw-bold text-uppercase mb-2" style={{ fontSize: '14px', letterSpacing: '1px' }}>CHẤP NHẬN THANH TOÁN</p>
-                                    <div className="d-flex justify-content-center gap-3 fs-3 text-dark">
-                                        <i className="fa-brands fa-cc-visa god-hover-red transition-300"></i>
-                                        <i className="fa-brands fa-cc-mastercard god-hover-red transition-300"></i>
-                                        <i className="fa-brands fa-cc-paypal god-hover-red transition-300"></i>
+                                <div className="mt-4 text-center border-top border-light-subtle pt-3">
+                                    <p className="font-oswald text-muted fw-bold text-uppercase mb-2" style={{ fontSize: '13px', letterSpacing: '1px' }}>CHẤP NHẬN THANH TOÁN</p>
+                                    <div className="d-flex justify-content-center gap-3 fs-3 text-secondary opacity-75">
+                                        <i className="fa-brands fa-cc-visa item-hover-red"></i>
+                                        <i className="fa-brands fa-cc-mastercard item-hover-red"></i>
+                                        <i className="fa-brands fa-cc-paypal item-hover-red"></i>
                                     </div>
                                 </div>
                             </div>

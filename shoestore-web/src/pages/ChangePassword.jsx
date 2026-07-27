@@ -62,6 +62,13 @@ const ChangePassword = () => {
         setStrength(str);
     };
 
+    const getStrengthLabel = () => {
+        if (strength < 30) return { text: 'Yếu', color: '#ef4444' };
+        if (strength < 60) return { text: 'Trung bình', color: '#f59e0b' };
+        if (strength < 90) return { text: 'Mạnh', color: '#10b981' };
+        return { text: 'Rất mạnh', color: '#0ea5e9' };
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (newPass !== confirmPass) {
@@ -95,19 +102,26 @@ const ChangePassword = () => {
         }
     };
 
-    const getStrengthColor = () => {
-        if (strength < 40) return '#000';
-        if (strength < 80) return '#f59e0b';
-        return '#e50914';
+    const getRankClass = (rankName) => {
+        if (!rankName) return 'rank-bronze';
+        const name = rankName.toLowerCase();
+        if (name.includes('kim cương') || name.includes('diamond')) return 'rank-diamond';
+        if (name.includes('vàng') || name.includes('gold')) return 'rank-gold';
+        if (name.includes('bạc') || name.includes('silver')) return 'rank-silver';
+        return 'rank-bronze';
+    };
+
+    const formatPoints = (points) => {
+        return new Intl.NumberFormat('vi-VN').format(points || 0);
     };
 
     if (loading) {
         return (
             <Layout>
-                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
+                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh'}}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
-                        <div className="spinner-border text-danger" role="status" style={{ width: '4rem', height: '4rem', borderWidth: '5px' }}></div>
-                        <p className="mt-3 font-oswald fw-bold text-uppercase letter-spacing-1">ĐANG TẢI DỮ LIỆU...</p>
+                        <div className="spinner-border text-danger" role="status" style={{ width: '3rem', height: '3rem', borderWidth: '3px' }}></div>
+                        <p className="mt-3 fw-semibold text-muted" style={{fontSize: '14px', letterSpacing: '1px', textTransform: 'uppercase'}}>Đang tải...</p>
                     </div>
                 </div>
             </Layout>
@@ -117,14 +131,16 @@ const ChangePassword = () => {
     if (!loggedIn || !account) {
         return (
             <Layout>
-                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
+                <div className="home-god-tier position-relative" style={{minHeight: '100vh', background: '#f8fafc', paddingBottom: '100px'}}>
                     <div className="container py-5" style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div className="text-center py-5 px-4 bg-white profile-login-box" style={{maxWidth: '550px', width: '100%'}}>
-                            <i className="fa-solid fa-shield-halved fa-4x text-danger mb-4 opacity-75"></i>
-                            <h3 className="fw-bold text-uppercase text-dark mb-3" style={{fontSize: '32px'}}>BẢO MẬT TÀI KHOẢN</h3>
-                            <p className="fw-semibold text-muted letter-spacing-1 fs-5 my-4">Đăng nhập để cập nhật mật khẩu, quản lý thông tin bảo mật và bảo vệ ví điểm thành viên VIP của bạn!</p>
-                            <Link to="/login" className="btn-modern-primary mt-2 d-inline-block">
-                                <span>ĐĂNG NHẬP NGAY</span>
+                        <div className="text-center py-5 px-4 profile-login-box" style={{maxWidth: '480px', width: '100%'}}>
+                            <div style={{width: '72px', height: '72px', borderRadius: '16px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px'}}>
+                                <i className="fa-solid fa-shield-halved" style={{fontSize: '28px', color: '#64748b'}}></i>
+                            </div>
+                            <h3 className="fw-bold text-uppercase text-dark mb-2" style={{fontSize: '22px', letterSpacing: '0.5px'}}>Bảo Mật Tài Khoản</h3>
+                            <p className="text-muted mb-4" style={{fontSize: '14px', lineHeight: '1.7'}}>Đăng nhập để cập nhật mật khẩu và quản lý thông tin bảo mật tài khoản của bạn.</p>
+                            <Link to="/login" className="btn-modern-primary d-inline-block">
+                                Đăng nhập ngay
                             </Link>
                         </div>
                     </div>
@@ -133,127 +149,186 @@ const ChangePassword = () => {
         );
     }
 
+    const strengthInfo = getStrengthLabel();
+
     return (
         <Layout>
-            <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
-                {/* FILM GRAIN TEXTURE */}
-                <div className="god-film-grain" style={{opacity: 0.01}}></div>
+            <div className="home-god-tier position-relative" style={{minHeight: '100vh', background: '#f8fafc', paddingBottom: '80px'}}>
 
-                {/* EPIC HERO */}
-                <div className="profile-page-header py-5 position-relative overflow-hidden mb-5">
-                    <div className="god-watermark-bg text-dark opacity-5" style={{fontSize: '15vw', top: '10%'}}>SECURITY</div>
-                    
-                    <div className="container text-center position-relative z-1 py-4">
-                        <span className="bg-danger text-white px-3 py-1 fw-bold fs-6 text-uppercase animate__animated animate__fadeInDown d-inline-block rounded-pill">BẢO MẬT</span>
-                        <h1 className="fw-extrabold mt-3 mb-0 text-uppercase animate__animated animate__fadeInUp text-dark" style={{fontSize: '3.5rem', letterSpacing: '1px'}}>ĐỔI MẬT KHẨU</h1>
+                {/* PAGE HEADER */}
+                <div className="profile-page-header py-4">
+                    <div className="container">
+                        <div className="d-flex align-items-center gap-2" style={{fontSize: '13px', color: '#64748b'}}>
+                            <Link to="/" style={{color: '#64748b', textDecoration: 'none'}}>Trang chủ</Link>
+                            <i className="fa-solid fa-chevron-right" style={{fontSize: '10px'}}></i>
+                            <span style={{color: '#0f172a', fontWeight: 600}}>Đổi mật khẩu</span>
+                        </div>
+                        <h1 className="fw-bold mt-2 mb-0" style={{fontSize: '22px', color: '#0f172a', letterSpacing: '0.3px'}}>Tài Khoản Của Bạn</h1>
                     </div>
                 </div>
 
-                <div className="container pb-5 position-relative z-1">
-                    <div className="row g-5">
+                <div className="container py-4">
+                    <div className="row g-4">
 
-                        <div className="col-lg-4 animate__animated animate__fadeInLeft">
+                        {/* SIDEBAR */}
+                        <div className="col-lg-3">
                             <div className="epic-profile-panel">
                                 <div className="profile-cover"></div>
-                                <div className="user-block">
+                                <div className="user-block px-3">
                                     <div className="avatar-box">
-                                        <img src={`https://ui-avatars.com/api/?name=${account.full_name}&background=000&color=fff`} className="user-avatar" alt="Avatar" />
+                                        <img
+                                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(account.full_name)}&background=1e293b&color=fff&bold=true&size=200`}
+                                            className="user-avatar"
+                                            alt="Avatar"
+                                        />
                                         <i className="fa fa-crown vip-crown"></i>
                                     </div>
-                                    <h3 className="mt-3 fw-bold text-uppercase" style={{ fontSize: '24px' }}>{account.full_name}</h3>
-                                    <div className="d-flex flex-column align-items-center gap-1 mt-2">
-                                        <span className="badge bg-danger rounded-pill px-3 py-2 fs-6 text-uppercase">{account.rank_name || 'Đồng'}</span>
+                                    <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
+                                    <div className="mb-2">
+                                        <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>
+                                            {account.rank_name || 'Đồng'}
+                                        </span>
+                                    </div>
+                                    <div className="points-flat-box mb-3">
+                                        <span className="points-label">Điểm</span>
+                                        <span className="points-val">{formatPoints(account.points)} PTS</span>
                                     </div>
                                 </div>
-
-                                <div className="pb-4 pt-2">
+                                <div className="pb-3">
+                                    <div style={{height: '1px', background: '#f1f5f9', margin: '0 16px 8px'}}></div>
                                     <Link to="/profile" className="menu-link">
-                                        <i className="fa-regular fa-id-badge"></i> THÔNG TIN CÁ NHÂN
+                                        <i className="fa-regular fa-id-badge"></i> Thông tin cá nhân
                                     </Link>
                                     <Link to="/orders" className="menu-link">
-                                        <i className="fa-solid fa-bag-shopping"></i> LỊCH SỬ ĐƠN HÀNG
+                                        <i className="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng
                                     </Link>
                                     <Link to="/change-password" className="menu-link active">
-                                        <i className="fa-solid fa-shield-halved"></i> ĐỔI MẬT KHẨU
+                                        <i className="fa-solid fa-shield-halved"></i> Đổi mật khẩu
                                     </Link>
-                                    <div className="my-3 mx-4 border-top border-light border-1"></div>
+                                    <div style={{height: '1px', background: '#f1f5f9', margin: '8px 16px'}}></div>
                                     <a href="/login" className="menu-link text-danger" onClick={() => api.post('/logout')}>
-                                        <i className="fa-solid fa-power-off"></i> ĐĂNG XUẤT
+                                        <i className="fa-solid fa-power-off"></i> Đăng xuất
                                     </a>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="col-lg-8 animate__animated animate__fadeInRight">
+                        {/* MAIN CONTENT */}
+                        <div className="col-lg-9">
                             <div className="epic-profile-panel p-4 p-lg-5">
                                 <div className="content-header pb-3 mb-4">
-                                    <h4>ĐỔI MẬT KHẨU</h4>
-                                    <p className="text-muted fw-bold letter-spacing-1 text-uppercase m-0">Để bảo mật, vui lòng không chia sẻ mật khẩu cho bất kỳ ai.</p>
+                                    <div className="d-flex align-items-center gap-2 mb-1">
+                                        <div style={{width: '4px', height: '20px', background: '#e50914', borderRadius: '2px'}}></div>
+                                        <h4 className="mb-0">Đổi mật khẩu</h4>
+                                    </div>
+                                    <p className="mb-0 ms-3">Để bảo mật, vui lòng không chia sẻ mật khẩu cho bất kỳ ai</p>
                                 </div>
 
-                                <div className="row mt-4">
-                                    <div className="col-md-10 mx-auto">
-                                        <div className="security-tip">
-                                            <i className="fa-regular fa-lightbulb me-2 text-danger"></i>
-                                            Mật khẩu mạnh nên chứa ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
+                                <div className="row">
+                                    <div className="col-md-9 col-lg-8">
+
+                                        {/* Security Tip */}
+                                        <div className="security-tip mb-4">
+                                            <i className="fa-regular fa-lightbulb me-2"></i>
+                                            Mật khẩu mạnh nên có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
                                         </div>
 
                                         <form onSubmit={handleSubmit}>
+                                            {/* Mật khẩu hiện tại */}
                                             <div className="float-input-group">
-                                                <input 
-                                                    type={showOldPass ? "text" : "password"} 
-                                                    className="float-input" 
-                                                    id="oldPass" 
-                                                    placeholder=" " 
+                                                <input
+                                                    type={showOldPass ? "text" : "password"}
+                                                    className="float-input"
+                                                    id="oldPass"
+                                                    placeholder=" "
                                                     value={oldPass}
                                                     onChange={e => setOldPass(e.target.value)}
-                                                    required 
+                                                    required
                                                 />
-                                                <label htmlFor="oldPass" className="float-label">MẬT KHẨU HIỆN TẠI</label>
-                                                <i className={`fa-regular ${showOldPass ? 'fa-eye-slash' : 'fa-eye'} toggle-password`} onClick={() => setShowOldPass(!showOldPass)}></i>
+                                                <label htmlFor="oldPass" className="float-label">Mật khẩu hiện tại</label>
+                                                <i
+                                                    className={`fa-regular ${showOldPass ? 'fa-eye-slash' : 'fa-eye'} toggle-password`}
+                                                    onClick={() => setShowOldPass(!showOldPass)}
+                                                ></i>
                                             </div>
 
+                                            {/* Mật khẩu mới */}
                                             <div className="float-input-group">
-                                                <input 
-                                                    type={showNewPass ? "text" : "password"} 
-                                                    className="float-input" 
-                                                    id="newPass" 
-                                                    placeholder=" " 
+                                                <input
+                                                    type={showNewPass ? "text" : "password"}
+                                                    className="float-input"
+                                                    id="newPass"
+                                                    placeholder=" "
                                                     value={newPass}
                                                     onChange={handleNewPassChange}
-                                                    required 
+                                                    required
                                                 />
-                                                <label htmlFor="newPass" className="float-label">MẬT KHẨU MỚI</label>
-                                                <i className={`fa-regular ${showNewPass ? 'fa-eye-slash' : 'fa-eye'} toggle-password`} onClick={() => setShowNewPass(!showNewPass)}></i>
+                                                <label htmlFor="newPass" className="float-label">Mật khẩu mới</label>
+                                                <i
+                                                    className={`fa-regular ${showNewPass ? 'fa-eye-slash' : 'fa-eye'} toggle-password`}
+                                                    onClick={() => setShowNewPass(!showNewPass)}
+                                                ></i>
                                             </div>
 
-                                            <div className="password-strength" style={{ display: newPass.length > 0 ? 'block' : 'none' }}>
-                                                <div className="strength-bar" style={{ width: `${strength}%`, background: getStrengthColor() }}></div>
-                                            </div>
+                                            {/* Strength bar */}
+                                            {newPass.length > 0 && (
+                                                <div className="mb-3 mt-1">
+                                                    <div className="password-strength">
+                                                        <div
+                                                            className="strength-bar"
+                                                            style={{ width: `${strength}%`, background: strengthInfo.color }}
+                                                        ></div>
+                                                    </div>
+                                                    <div className="d-flex justify-content-between align-items-center mt-1">
+                                                        <span style={{fontSize: '12px', color: '#94a3b8'}}>Độ mạnh mật khẩu</span>
+                                                        <span style={{fontSize: '12px', fontWeight: 600, color: strengthInfo.color}}>{strengthInfo.text}</span>
+                                                    </div>
+                                                </div>
+                                            )}
 
+                                            {/* Xác nhận mật khẩu mới */}
                                             <div className="float-input-group">
-                                                <input 
-                                                    type={showConfirmPass ? "text" : "password"} 
-                                                    className="float-input" 
-                                                    id="confirmPass" 
-                                                    placeholder=" " 
+                                                <input
+                                                    type={showConfirmPass ? "text" : "password"}
+                                                    className="float-input"
+                                                    id="confirmPass"
+                                                    placeholder=" "
                                                     value={confirmPass}
                                                     onChange={e => setConfirmPass(e.target.value)}
-                                                    required 
+                                                    required
                                                 />
-                                                <label htmlFor="confirmPass" className="float-label">XÁC NHẬN MẬT KHẨU MỚI</label>
-                                                <i className={`fa-regular ${showConfirmPass ? 'fa-eye-slash' : 'fa-eye'} toggle-password`} onClick={() => setShowConfirmPass(!showConfirmPass)}></i>
+                                                <label htmlFor="confirmPass" className="float-label">Xác nhận mật khẩu mới</label>
+                                                <i
+                                                    className={`fa-regular ${showConfirmPass ? 'fa-eye-slash' : 'fa-eye'} toggle-password`}
+                                                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                                                ></i>
                                             </div>
 
-                                            <div className="mt-5 text-end pt-4 content-footer">
+                                            {/* Match indicator */}
+                                            {confirmPass.length > 0 && (
+                                                <div className="mb-3 d-flex align-items-center gap-2" style={{fontSize: '13px'}}>
+                                                    {newPass === confirmPass ? (
+                                                        <>
+                                                            <i className="fa-solid fa-circle-check" style={{color: '#10b981'}}></i>
+                                                            <span style={{color: '#10b981', fontWeight: 600}}>Mật khẩu khớp</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <i className="fa-solid fa-circle-xmark" style={{color: '#ef4444'}}></i>
+                                                            <span style={{color: '#ef4444', fontWeight: 600}}>Mật khẩu chưa khớp</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            <div className="mt-4 pt-4 content-footer">
                                                 <button type="submit" className="btn-super w-100">
-                                                    CẬP NHẬT MẬT KHẨU <i className="fa fa-arrow-right ms-2"></i>
+                                                    <i className="fa fa-lock me-2"></i> Cập nhật mật khẩu
                                                 </button>
                                             </div>
                                         </form>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
 

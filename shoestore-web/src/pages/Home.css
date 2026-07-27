@@ -7,7 +7,7 @@
 .home-god-tier {
     background-color: #ffffff;
     color: #0a0a0a;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 .font-oswald { font-family: 'Oswald', sans-serif; }
 .letter-spacing-1 { letter-spacing: 1px; }
@@ -503,6 +503,7 @@
     border-radius: 0;
     overflow: hidden;
     background: #f8f8f8;
+    padding: 0 !important;
 }
 .flat-product-card.dark .flat-card-img-box {
     background: #1e1e1e;
@@ -511,7 +512,9 @@
 /* Product image hover zoom */
 .product-card-img {
     transition: transform 0.55s cubic-bezier(0.19, 1, 0.22, 1) !important;
-    object-fit: contain;
+    object-fit: cover !important;
+    width: 100% !important;
+    height: 100% !important;
 }
 .flat-product-card:hover .product-card-img {
     transform: scale(1.12) rotate(-1.5deg) !important;
@@ -537,7 +540,7 @@
     text-transform: uppercase;
 }
 .flat-name {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', sans-serif;
     line-height: 1.4;
     font-weight: 700;
 }

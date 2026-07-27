@@ -117,20 +117,43 @@ public class OrderApiController {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Vui lòng nhập đầy đủ thông tin!"));
         }
 
-        try {
-            // Lấy danh sách sản phẩm từ giỏ hàng thực tế
-            String cartSql = "SELECT ci.product_variant_id as variant_id, ci.quantity, " +
-                    "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                    "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                    "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                    "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price " +
-                    "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " +
-                    "WHERE ci.user_id = ?";
-            List<Map<String, Object>> items = jdbc.queryForList(cartSql, accountId);
+        Integer buyNowVariantId = payload.containsKey("buyNowVariantId") && payload.get("buyNowVariantId") != null ? 
+                ((Number) payload.get("buyNowVariantId")).intValue() : null;
+        Integer buyNowQty = payload.containsKey("buyNowQty") && payload.get("buyNowQty") != null ? 
+                ((Number) payload.get("buyNowQty")).intValue() : null;
 
-            if (items.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Giỏ hàng của bạn đang trống!"));
+        try {
+            List<Map<String, Object>> items;
+            boolean isBuyNow = (buyNowVariantId != null && buyNowQty != null);
+
+            if (isBuyNow) {
+                // Lấy sản phẩm trực tiếp (Mua ngay)
+                String buyNowSql = "SELECT v.id as variant_id, ? as quantity, " +
+                        "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
+                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                        "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
+                        "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                        "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price " +
+                        "FROM product_variants v WHERE v.id = ?";
+                items = jdbc.queryForList(buyNowSql, buyNowQty, buyNowVariantId);
+                if (items.isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Sản phẩm không tồn tại!"));
+                }
+            } else {
+                // Lấy danh sách sản phẩm từ giỏ hàng thực tế
+                String cartSql = "SELECT ci.product_variant_id as variant_id, ci.quantity, " +
+                        "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
+                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                        "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
+                        "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                        "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price " +
+                        "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " +
+                        "WHERE ci.user_id = ?";
+                items = jdbc.queryForList(cartSql, accountId);
+
+                if (items.isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Giỏ hàng của bạn đang trống!"));
+                }
             }
 
             double total = items.stream()
@@ -219,9 +242,8 @@ public class OrderApiController {
                         orderId, variantId, buyQty, price);
             }
 
-            // Trừ tồn kho sản phẩm ngay khi đặt hàng
-            orderService.updateInventory(orderCode);
-
+            // Không trừ tồn kho ở đây nữa, sẽ trừ khi chuyển sang trạng thái "Đang giao hàng"
+            
             // Cập nhật Voucher
             if (voucher != null) {
                 jdbc.update("UPDATE vouchers SET quantity = quantity - 1 WHERE id = ?", voucher.getId());
@@ -229,9 +251,10 @@ public class OrderApiController {
                         voucher.getId(), accountId);
             }
 
-            // Xóa giỏ hàng
-            jdbc.update("DELETE FROM cart_items WHERE user_id = ?", accountId);
-
+            // Xóa giỏ hàng nếu không phải mua ngay
+            if (!isBuyNow) {
+                jdbc.update("DELETE FROM cart_items WHERE user_id = ?", accountId);
+            }
             // Xử lý thanh toán online qua BANK (PayOS)
             if ("BANK".equalsIgnoreCase(paymentMethod)) {
                 try {
@@ -361,8 +384,7 @@ public class OrderApiController {
                 Integer vId = (Integer) order.get("voucher_id");
                 String actualOrderCode = (String) order.get("order_code");
 
-                // Khôi phục tồn kho sản phẩm trước khi xóa đơn hàng nháp
-                orderService.restoreInventory(actualOrderCode);
+                // Không cần khôi phục tồn kho vì chưa bị trừ lúc đặt hàng
 
                 // Khôi phục lại giỏ hàng
                 List<Map<String, Object>> items = jdbc.queryForList("SELECT product_variant_id, quantity FROM order_items WHERE order_id = ?", orderId);

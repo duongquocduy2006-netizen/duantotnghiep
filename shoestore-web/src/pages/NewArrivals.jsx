@@ -164,11 +164,12 @@ const NewArrivals = () => {
     return (
         <Layout>
             <div className="na-page">
-                {/* MODERN HEADER */}
-                <div className="na-header">
-                    <div className="na-header-content container">
-                        <span className="na-tagline">Vừa ra mắt</span>
-                        <h1 className="na-title">Hàng mới <span>về</span></h1>
+                {/* FRESH HOLOGRAPHIC HEADER */}
+                <div className="na-fresh-header">
+                    <div className="na-animated-bg"></div>
+                    <div className="na-glass-container container text-center position-relative z-1">
+                        <span className="na-glass-tag animate__animated animate__fadeInDown">VỪA RA MẮT</span>
+                        <h1 className="na-fresh-title mt-3 animate__animated animate__fadeInUp">HÀNG MỚI <span>VỀ</span></h1>
                     </div>
                 </div>
 

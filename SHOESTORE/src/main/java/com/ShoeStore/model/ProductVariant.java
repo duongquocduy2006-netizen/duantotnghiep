@@ -29,6 +29,7 @@ public class ProductVariant {
     @JoinColumn(name = "product_id")
     @EqualsAndHashCode.Exclude // CHẶN Ở ĐÂY
     @ToString.Exclude
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Product product;
 
     // Thêm 2 cái này để lấy được tên Size và tên Màu
@@ -43,6 +44,5 @@ public class ProductVariant {
     private BigDecimal price;
     private Integer quantity;
     private Integer status;
-    
 
 }

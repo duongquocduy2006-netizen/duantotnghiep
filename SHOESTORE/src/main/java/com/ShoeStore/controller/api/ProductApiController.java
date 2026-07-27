@@ -46,54 +46,71 @@ public class ProductApiController {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
+    @Autowired
+    private com.ShoeStore.service.FlashSaleService flashSaleService;
+
     // 1. LẤY DANH SÁCH SẢN PHẨM
     @GetMapping
-    public ResponseEntity<?> getAllProducts() {
-        List<Product> products = productRepository.findAll();
-        List<Map<String, Object>> response = products.stream().map(p -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", p.getId());
-            map.put("productName", p.getProductName() != null ? p.getProductName() : "Chưa có tên");
-            map.put("productCode", p.getProductCode() != null ? p.getProductCode() : "N/A");
-            map.put("brandName", p.getBrandName() != null ? p.getBrandName() : "Chưa rõ");
-            map.put("status", p.getStatus() != null ? p.getStatus() : 1);
-            map.put("categoryName", p.getCategory() != null ? p.getCategory().getName() : "Chưa phân loại");
+    public ResponseEntity<?> getAllProducts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) List<String> brand,
+            @RequestParam(required = false, defaultValue = "false") Boolean inStock) {
+        try {
+            StringBuilder sql = new StringBuilder();
+            sql.append("SELECT p.id, ")
+                    .append("p.product_name AS productName, ")
+                    .append("p.product_code AS productCode, ")
+                    .append("p.brand_name AS brandName, ")
+                    .append("p.status AS status, ")
+                    .append("c.category_name AS categoryName, ")
+                    .append("(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) AS imageUrl, ")
+                    .append("(SELECT MIN(price) FROM product_variants WHERE product_id = p.id) AS price, ")
+                    .append("(SELECT COUNT(*) FROM product_variants WHERE product_id = p.id) AS variantCount ")
+                    .append("FROM products p ")
+                    .append("LEFT JOIN categories c ON p.category_id = c.id ")
+                    .append("WHERE p.status = 1 AND c.status = 1 ")
+                    .append("AND EXISTS (SELECT 1 FROM brands b WHERE b.brand_name = p.brand_name AND b.status = 1) ");
 
-            // Xác định ảnh
-            String mainImage = "";
-            if (p.getImages() != null && !p.getImages().isEmpty()) {
-                mainImage = "/images/" + p.getImages().iterator().next().getImageUrl();
+            List<Object> params = new java.util.ArrayList<>();
+
+            if (Boolean.TRUE.equals(inStock)) {
+                sql.append("AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.quantity > 0) ");
             } else {
-                mainImage = "https://ui-avatars.com/api/?name=" + map.get("productName").toString().charAt(0)
-                        + "&background=121212&color=00f2ff&bold=true";
-            }
-            map.put("imageUrl", mainImage);
-
-            // Số lượng biến thể & Giá đại diện (giá của biến thể đầu tiên)
-            int variantCount = (p.getVariants() != null) ? p.getVariants().size() : 0;
-            BigDecimal price = null;
-            if (variantCount > 0 && p.getVariants().iterator().next().getPrice() != null) {
-                price = p.getVariants().iterator().next().getPrice();
-            }
-            map.put("variantCount", variantCount);
-            map.put("price", price);
-
-            if (p.getVariants() != null) {
-                List<Map<String, Object>> vList = p.getVariants().stream().map(v -> {
-                    Map<String, Object> vMap = new HashMap<>();
-                    vMap.put("id", v.getId());
-                    vMap.put("sizeName", v.getSize() != null ? v.getSize().getSizeName() : "");
-                    vMap.put("colorName", v.getColor() != null ? v.getColor().getColorName() : "");
-                    vMap.put("price", v.getPrice());
-                    return vMap;
-                }).collect(Collectors.toList());
-                map.put("variants", vList);
+                sql.append("AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id) ");
             }
 
-            return map;
-        }).collect(Collectors.toList());
+            if (search != null && !search.trim().isEmpty()) {
+                String term = "%" + search.trim().toLowerCase().replace("'", "''") + "%";
+                sql.append("AND (LOWER(p.product_name) LIKE ? OR LOWER(p.brand_name) LIKE ? OR LOWER(c.category_name) LIKE ?) ");
+                params.add(term);
+                params.add(term);
+                params.add(term);
+            }
 
-        return ResponseEntity.ok(response);
+            if (brand != null && !brand.isEmpty()) {
+                sql.append("AND p.brand_name IN (");
+                for (int i = 0; i < brand.size(); i++) {
+                    sql.append("?");
+                    params.add(brand.get(i));
+                    if (i < brand.size() - 1) {
+                        sql.append(",");
+                    }
+                }
+                sql.append(") ");
+            }
+
+            sql.append("ORDER BY p.created_at DESC");
+
+            List<Map<String, Object>> products = params.isEmpty()
+                    ? jdbc.queryForList(sql.toString())
+                    : jdbc.queryForList(sql.toString(), params.toArray());
+
+            return ResponseEntity.ok(Map.of("success", true, "products", products));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi lấy sản phẩm: " + e.getMessage()));
+        }
     }
 
     // 1.5. LẤY DANH SÁCH METADATA ĐỂ TẠO SẢN PHẨM
@@ -142,7 +159,7 @@ public class ProductApiController {
 
     // 2. LẤY CHI TIẾT SẢN PHẨM DÀNH CHO ADMIN
     @GetMapping("/{id}")
-    public ResponseEntity<?> getProductDetail(@PathVariable Integer id) {
+    public ResponseEntity<?> getProductDetail(@PathVariable Integer id, jakarta.servlet.http.HttpSession session) {
         java.util.Optional<Product> productOpt = productRepository.findById(id);
         if (productOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -213,15 +230,124 @@ public class ProductApiController {
             return cMap;
         }).collect(Collectors.toList());
 
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "product", prodMap,
-                "variants", variantsList,
-                "images", imagesList,
-                "categories", categories,
-                "brands", brands,
-                "sizes", sizes,
-                "colors", colors));
+        // --- FETCH REVIEWS DATA ---
+        @SuppressWarnings("unchecked")
+        Map<String, Object> account = (Map<String, Object>) session.getAttribute("account");
+        
+        String sqlAllReviews;
+        List<Map<String, Object>> allEntries;
+        
+        if (account != null) {
+            Integer currentUserId = (Integer) account.get("id");
+            sqlAllReviews = "SELECT r.*, a.full_name as user_name, a.role, r.like_count, " +
+                    "(SELECT COUNT(*) FROM product_review_likes prl WHERE prl.review_id = r.id AND prl.user_id = ?) as user_liked " +
+                    "FROM product_reviews r " +
+                    "JOIN accounts a ON r.user_id = a.id " +
+                    "WHERE r.product_id = ? " +
+                    "ORDER BY r.created_at ASC";
+            allEntries = jdbc.queryForList(sqlAllReviews, currentUserId, id);
+        } else {
+            sqlAllReviews = "SELECT r.*, a.full_name as user_name, a.role, r.like_count, 0 as user_liked " +
+                    "FROM product_reviews r " +
+                    "JOIN accounts a ON r.user_id = a.id " +
+                    "WHERE r.product_id = ? " +
+                    "ORDER BY r.created_at ASC";
+            allEntries = jdbc.queryForList(sqlAllReviews, id);
+        }
+
+        List<Map<String, Object>> parents = new java.util.ArrayList<>();
+        Map<Integer, Map<String, Object>> parentMap = new java.util.HashMap<>();
+
+        for (Map<String, Object> entry : allEntries) {
+            Integer entryId = (Integer) entry.get("id");
+            if (entry.get("parent_id") == null) {
+                entry.put("replies", new java.util.ArrayList<Map<String, Object>>());
+                parents.add(entry);
+                parentMap.put(entryId, entry);
+            }
+        }
+        for (Map<String, Object> entry : allEntries) {
+            Integer parentId = (Integer) entry.get("parent_id");
+            if (parentId != null) {
+                Map<String, Object> parent = parentMap.get(parentId);
+                if (parent != null) {
+                    ((java.util.List<Map<String, Object>>) parent.get("replies")).add(entry);
+                }
+            }
+        }
+        parents.sort((a, b) -> ((java.util.Date) b.get("created_at")).compareTo((java.util.Date) a.get("created_at")));
+
+        String sqlRatingStats = "SELECT COUNT(*) as count, AVG(CAST(rating AS FLOAT)) as avg_rating " +
+                "FROM product_reviews WHERE product_id = ? AND parent_id IS NULL";
+        Map<String, Object> stats = jdbc.queryForMap(sqlRatingStats, id);
+        
+        boolean hasPurchased = false;
+        if (account != null) {
+            String sqlCheckPurchase = "SELECT COUNT(*) FROM orders o " +
+                    "JOIN order_items oi ON o.id = oi.order_id " +
+                    "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+                    "WHERE o.user_id = ? AND pv.product_id = ? AND o.status = 3";
+            Integer count = jdbc.queryForObject(sqlCheckPurchase, Integer.class, account.get("id"), id);
+            hasPurchased = (count != null && count > 0);
+        }
+        // --------------------------
+
+        // --- FLASH SALE CHECK ---
+        Map<String, Object> flashSaleInfo = null;
+        try {
+            java.util.Optional<com.ShoeStore.model.FlashSale> activeFs = flashSaleService.getActiveFlashSale();
+            if (activeFs.isPresent()) {
+                com.ShoeStore.model.FlashSale fs = activeFs.get();
+                List<com.ShoeStore.model.FlashSaleProduct> fspList = flashSaleService.getProductsByFlashSaleId(fs.getId());
+                for (com.ShoeStore.model.FlashSaleProduct fsp : fspList) {
+                    if (fsp.getProduct() != null && fsp.getProduct().getId().equals(id)) {
+                        flashSaleInfo = new HashMap<>();
+                        flashSaleInfo.put("salePrice", fsp.getSalePrice());
+                        flashSaleInfo.put("quantityLimit", fsp.getQuantityLimit());
+                        flashSaleInfo.put("soldQuantity", fsp.getSoldQuantity());
+                        flashSaleInfo.put("campaignName", fs.getName());
+                        flashSaleInfo.put("endDate", fs.getEndDate());
+                        // Calculate original price from first variant
+                        double origPrice = 0;
+                        if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+                            var firstVar = product.getVariants().iterator().next();
+                            if (firstVar != null && firstVar.getPrice() != null) {
+                                origPrice = firstVar.getPrice().doubleValue();
+                            }
+                        }
+                        flashSaleInfo.put("originalPrice", origPrice);
+                        if (origPrice > 0 && fsp.getSalePrice() != null) {
+                            int discountPercent = (int) Math.round((1.0 - fsp.getSalePrice().doubleValue() / origPrice) * 100);
+                            flashSaleInfo.put("discountPercent", discountPercent);
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Silently fail - flash sale info is optional
+            e.printStackTrace();
+        }
+        // --------------------------
+
+        Map<String, Object> responseMap = new HashMap<>();
+        responseMap.put("success", true);
+        responseMap.put("product", prodMap);
+        responseMap.put("variants", variantsList);
+        responseMap.put("images", imagesList);
+        responseMap.put("categories", categories);
+        responseMap.put("brands", brands);
+        responseMap.put("sizes", sizes);
+        responseMap.put("colors", colors);
+        responseMap.put("reviews", parents);
+        responseMap.put("reviewCount", stats.get("count"));
+        responseMap.put("avgRating", stats.get("avg_rating") != null ? stats.get("avg_rating") : 0.0);
+        responseMap.put("hasPurchased", hasPurchased);
+        if (flashSaleInfo != null) {
+            responseMap.put("flashSale", flashSaleInfo);
+        }
+
+        return ResponseEntity.ok(responseMap);
     }
 
     // 3. LƯU HOẶC CẬP NHẬT SẢN PHẨM
@@ -667,10 +793,16 @@ public class ProductApiController {
             List<Object> params = new java.util.ArrayList<>();
 
             String searchTerm = keyword != null ? keyword : q;
-            // Lọc theo từ khóa
+            // Lọc theo từ khóa (Tên sản phẩm, thương hiệu hoặc danh mục) - Smart Search
             if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                sql.append("AND p.product_name LIKE ? ");
-                params.add("%" + searchTerm.trim() + "%");
+                String[] words = searchTerm.trim().split("\\s+");
+                for (String word : words) {
+                    String term = "%" + word + "%";
+                    sql.append("AND (p.product_name LIKE ? OR p.brand_name LIKE ? OR c.category_name LIKE ?) ");
+                    params.add(term);
+                    params.add(term);
+                    params.add(term);
+                }
             }
 
             // Lọc theo Thương hiệu (IN)

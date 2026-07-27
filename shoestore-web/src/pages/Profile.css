@@ -1,15 +1,15 @@
 /* --- MODERN FLAT PROFILE CSS --- */
 
 .profile-page-active {
-    background-color: #f9fafb;
-    color: #111827;
+    background-color: #f8fafc;
+    color: #0f172a;
 }
 
 /* --- EPIC CARD (MODERN FLAT) --- */
 .epic-profile-panel {
     background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     box-shadow: none;
     position: relative;
     z-index: 1;
@@ -19,21 +19,21 @@
 /* --- LOGIN BOX (MODERN FLAT) --- */
 .profile-login-box {
     background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     padding: 40px 30px;
     box-shadow: none;
 }
 
 /* --- SIDEBAR DESIGN --- */
 .profile-cover {
-    height: 120px;
-    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    height: 100px;
+    background: #1e293b;
     border-bottom: none;
 }
 
 .user-block {
-    margin-top: -60px;
+    margin-top: -50px;
     text-align: center;
     position: relative;
     z-index: 2;
@@ -46,25 +46,25 @@
 }
 
 .user-avatar {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+    border-radius: 16px;
     object-fit: cover;
     border: 4px solid #fff;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
+    box-shadow: none;
+    transition: all 0.2s ease;
     background: #fff;
 }
 
 .user-avatar:hover {
-    transform: scale(1.04);
+    transform: scale(1.02);
 }
 
 .vip-crown {
     position: absolute;
-    top: -5px;
-    right: 5px;
-    font-size: 24px;
+    top: -8px;
+    right: -8px;
+    font-size: 20px;
     color: #ffd700;
     text-shadow: none;
 }
@@ -72,41 +72,42 @@
 .menu-link {
     display: flex;
     align-items: center;
-    padding: 14px 24px;
-    color: #4b5563;
+    padding: 12px 20px;
+    color: #475569;
     font-family: inherit;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
     text-transform: uppercase;
     text-decoration: none;
-    transition: all 0.2s ease;
-    border-left: 4px solid transparent;
-    margin-bottom: 4px;
+    transition: all 0.15s ease;
+    border-radius: 8px;
+    margin: 4px 16px;
+    border-left: none;
 }
 
 .menu-link i {
-    width: 30px;
-    font-size: 16px;
-    color: #6b7280;
-    transition: all 0.2s ease;
+    width: 24px;
+    font-size: 15px;
+    color: #64748b;
+    transition: all 0.15s ease;
 }
 
 .menu-link:hover {
-    background: #f9fafb;
-    color: #111827;
-    border-left-color: #e50914;
+    background: #f1f5f9;
+    color: #0f172a;
+    border-left: none;
     transform: none;
     box-shadow: none;
 }
 
 .menu-link:hover i {
-    color: #e50914;
+    color: #0f172a;
 }
 
 .menu-link.active {
     background: #fef2f2;
     color: #e50914;
-    border-left: 4px solid #e50914;
+    border-left: none;
     box-shadow: none;
 }
 
@@ -125,7 +126,7 @@
 .menu-link.text-danger:hover {
     background: #fef2f2;
     color: #b91c1c;
-    border-left-color: #ef4444;
+    border-left: none;
 }
 
 .menu-link.text-danger:hover i {
@@ -134,14 +135,14 @@
 
 /* --- FORM MODERN FLAT --- */
 .content-header {
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .content-header h4 {
     font-family: inherit;
     font-weight: 700;
-    font-size: 22px;
-    color: #111827;
+    font-size: 20px;
+    color: #0f172a;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 6px;
@@ -149,7 +150,7 @@
 
 .content-header p {
     font-size: 12px;
-    color: #6b7280;
+    color: #64748b;
 }
 
 /* Floating Label Input - Modern Flat Style */
@@ -160,64 +161,64 @@
 
 .float-input {
     width: 100%;
-    padding: 24px 16px 8px 16px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
+    padding: 22px 14px 6px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
     background: #fff;
     font-family: inherit;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
-    transition: all 0.2s ease;
-    color: #111827;
+    transition: all 0.15s ease;
+    color: #0f172a;
 }
 
 .float-input:focus {
     outline: none;
-    border-color: #e50914;
+    border-color: #0f172a;
     box-shadow: none;
     transform: none;
 }
 
 .float-label {
     position: absolute;
-    left: 16px;
-    top: 16px;
-    color: #9ca3af;
+    left: 14px;
+    top: 14px;
+    color: #94a3b8;
     pointer-events: none;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     font-family: inherit;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
 }
 
 .float-input:not(:placeholder-shown)+label,
 .float-input:focus+label {
-    top: 6px;
-    left: 16px;
-    font-size: 10px;
+    top: 4px;
+    left: 14px;
+    font-size: 9px;
     color: #e50914;
 }
 
 .float-input[readonly] {
-    background: #f9fafb;
-    color: #6b7280;
-    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
 }
 
 /* Save Button Modern Flat */
 .btn-super {
     background: #e50914;
     color: #fff;
-    padding: 12px 32px;
-    border-radius: 8px;
+    padding: 12px 28px;
+    border-radius: 6px;
     font-family: inherit;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border: none;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     box-shadow: none;
     cursor: pointer;
 }
@@ -225,7 +226,7 @@
 .btn-super:hover {
     transform: none;
     box-shadow: none;
-    background: #b8070f;
+    background: #b91c1c;
     color: #fff;
 }
 
@@ -233,31 +234,185 @@
 .btn-modern-primary {
     background: #e50914;
     color: #fff !important;
-    padding: 12px 32px;
-    border-radius: 8px;
+    padding: 12px 28px;
+    border-radius: 6px;
     font-family: inherit;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     text-decoration: none;
     border: none;
     display: inline-block;
 }
 
 .btn-modern-primary:hover {
-    background: #b8070f;
+    background: #b91c1c;
     color: #fff !important;
 }
 
 /* Page Header */
 .profile-page-header {
-    background: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 /* Content Footer */
 .content-footer {
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid #f1f5f9;
+}
+
+/* Member Points Flat Badge */
+.points-flat-box {
+    display: inline-flex;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.points-flat-box .points-label {
+    color: #64748b;
+    margin-right: 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.points-flat-box .points-val {
+    color: #e50914;
+    font-weight: 700;
+}
+
+/* Rank Custom Badges */
+.rank-badge-flat {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 30px;
+    display: inline-block;
+}
+
+.rank-bronze {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
+}
+
+.rank-silver {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.rank-gold {
+    background: #fef9c3;
+    color: #a16207;
+    border: 1px solid #fef08a;
+}
+
+.rank-diamond {
+    background: #fae8ff;
+    color: #a21caf;
+    border: 1px solid #f5d0fe;
+}
+
+/* --- EPIC CUSTOM MODAL (GLASSMORPHISM) --- */
+.epic-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
+.epic-modal-box {
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px;
+    width: 90%;
+    max-width: 450px;
+    text-align: center;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e2e8f0;
+    border-bottom: 4px solid #e50914;
+}
+.epic-modal-icon {
+    width: 72px;
+    height: 72px;
+    background: #fef2f2;
+    color: #e50914;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin: 0 auto 20px;
+    animation: iconPulse 2s infinite;
+}
+.epic-modal-title {
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 20px;
+    color: #0f172a;
+    margin-bottom: 12px;
+}
+.epic-modal-message {
+    font-size: 15px;
+    color: #475569;
+    line-height: 1.6;
+    margin-bottom: 28px;
+    font-weight: 500;
+}
+.epic-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+.epic-btn-modal-cancel {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex: 1;
+}
+.epic-btn-modal-cancel:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+.epic-btn-modal-confirm {
+    background: #e50914;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex: 1;
+    box-shadow: 0 4px 6px -1px rgba(229, 9, 20, 0.2);
+}
+.epic-btn-modal-confirm:hover {
+    background: #b91c1c;
+}
+@keyframes iconPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
 }

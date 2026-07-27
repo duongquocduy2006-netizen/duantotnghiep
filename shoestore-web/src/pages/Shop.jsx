@@ -10,8 +10,7 @@ const Shop = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
-    const initialCategory = queryParams.get('category') ? parseInt(queryParams.get('category')) : null;
-    const initialBrand = queryParams.get('brand') ? parseInt(queryParams.get('brand')) : null;
+    const initialBrand = queryParams.get('brand') || '';
     const initialSearch = queryParams.get('search') || '';
 
     const [products, setProducts] = useState([]);
@@ -21,25 +20,87 @@ const Shop = () => {
     const [wishlistIds, setWishlistIds] = useState([]);
     const [lookbooks, setLookbooks] = useState([]);
 
-    const [selectedCategory, setSelectedCategory] = useState(initialCategory || '');
-    const [selectedBrand, setSelectedBrand] = useState(initialBrand || '');
-    const [priceRange, setPriceRange] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [selectedBrand, setSelectedBrand] = useState(initialBrand);
+    const [maxPrice, setMaxPrice] = useState(5000000);
     const [sortOption, setSortOption] = useState('');
     const [searchQuery, setSearchQuery] = useState(initialSearch);
     const [quickAddProductId, setQuickAddProductId] = useState(null);
-    
+    const [imageSearchProducts, setImageSearchProducts] = useState(null);
+    const [imageSearchUrl, setImageSearchUrl] = useState(null);
+
     const observerRef = useRef(null);
 
     useEffect(() => {
-        window.scrollTo(0, 0);
+        const queryParams = new URLSearchParams(window.location.search);
+        const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
+        if (!hasFilter && !location.state?.imageSearchProducts) {
+            window.scrollTo(0, 0);
+        }
     }, []);
+
+    // Receive image search results from Header navigation
+    useEffect(() => {
+        if (location.state?.imageSearchProducts) {
+            setImageSearchProducts(location.state.imageSearchProducts);
+            setImageSearchUrl(location.state.imageSearchUrl || null);
+            // Scroll to products section
+            setTimeout(() => {
+                const section = document.getElementById('shop-products-section');
+                if (section) section.scrollIntoView({ behavior: 'smooth' });
+            }, 200);
+            // Clear the state so browser back/forward doesn't re-trigger
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+
+        const searchParam = queryParams.get('search') || '';
+        if (searchParam !== searchQuery) setSearchQuery(searchParam);
+
+        const brandParam = queryParams.get('brand') || '';
+        if (brandParam !== selectedBrand) setSelectedBrand(brandParam);
+
+        const catParam = queryParams.get('category') || '';
+        if (catParam !== '') {
+            const parsedId = parseInt(catParam);
+            if (!isNaN(parsedId)) {
+                if (parsedId !== selectedCategory) setSelectedCategory(parsedId);
+            } else if (categories.length > 0) {
+                const matchedCat = categories.find(c => {
+                    const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
+                    const param = catParam.toLowerCase();
+                    if (name.includes(param) || param.includes(name)) return true;
+                    if (param === 'running' && name.includes('chạy bộ')) return true;
+                    if (param === 'sneaker' && name.includes('sneaker')) return true;
+                    return false;
+                });
+                if (matchedCat && matchedCat.id !== selectedCategory) setSelectedCategory(matchedCat.id);
+            }
+        }
+
+        const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
+        if (hasFilter) {
+            const scrollTarget = () => {
+                const section = document.getElementById('shop-products-section');
+                if (section) section.scrollIntoView({ behavior: 'smooth' });
+            };
+            scrollTarget();
+            setTimeout(scrollTarget, 100);
+        }
+    }, [location.search, categories]);
 
     useEffect(() => {
         fetchFilters();
         fetchWishlistIds();
-        fetchProducts();
         fetchLookbooks();
-    }, [selectedCategory, selectedBrand, priceRange, sortOption]);
+    }, []);
+
+    useEffect(() => {
+        fetchProducts();
+    }, [selectedCategory, selectedBrand, maxPrice, sortOption]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -47,6 +108,48 @@ const Shop = () => {
         }, 500);
         return () => clearTimeout(handler);
     }, [searchQuery]);
+
+    // Auto scroll when products loaded after search
+    useEffect(() => {
+        if (!loading && products.length > 0 && searchQuery) {
+            setTimeout(() => {
+                const section = document.getElementById('shop-products-section');
+                if (section) section.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+    }, [loading, products, searchQuery]);
+
+    useEffect(() => {
+        if (!searchQuery) return;
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return;
+        const words = query.split(/\s+/);
+        if (categories.length > 0) {
+            const matchedCat = categories.find(c => {
+                const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
+                for (let word of words) {
+                    if (name === word || name.includes(word) || word.includes(name)) return true;
+                    if (word === 'running' && name.includes('chạy bộ')) return true;
+                }
+                if (query.includes('chạy bộ') && name.includes('chạy bộ')) return true;
+                return false;
+            });
+            if (matchedCat && matchedCat.id !== selectedCategory) setSelectedCategory(matchedCat.id);
+        }
+        if (brands.length > 0) {
+            const matchedBrand = brands.find(b => {
+                const name = (b.name || b.brand_name || b.brandName || '').toLowerCase();
+                for (let word of words) {
+                    if (name === word || name.includes(word) || word.includes(name)) return true;
+                }
+                return false;
+            });
+            if (matchedBrand) {
+                const bName = matchedBrand.name || matchedBrand.brand_name || matchedBrand.brandName;
+                if (bName !== selectedBrand) setSelectedBrand(bName);
+            }
+        }
+    }, [searchQuery, categories, brands]);
 
     useEffect(() => {
         observerRef.current = new IntersectionObserver((entries) => {
@@ -89,8 +192,13 @@ const Shop = () => {
             if (catRes.data && catRes.data.success) setCategories(catRes.data.categories || []);
             else if (Array.isArray(catRes.data)) setCategories(catRes.data);
 
-            if (brandRes.data && brandRes.data.success) setBrands(brandRes.data.brands || []);
-            else if (Array.isArray(brandRes.data)) setBrands(brandRes.data);
+            if (brandRes.data && brandRes.data.success) {
+                const activeBrands = (brandRes.data.brands || []).filter(b => b.active !== false);
+                setBrands(activeBrands);
+            } else if (Array.isArray(brandRes.data)) {
+                const activeBrands = brandRes.data.filter(b => b.active !== false);
+                setBrands(activeBrands);
+            }
         } catch (error) {
             console.error("Lỗi tải bộ lọc:", error);
         }
@@ -134,27 +242,34 @@ const Shop = () => {
     const fetchProducts = async () => {
         try {
             setLoading(true);
-            let url = '/api/products/search?';
-            if (searchQuery) url += `keyword=${encodeURIComponent(searchQuery)}&`;
-            if (selectedCategory) url += `category=${selectedCategory}&`;
-            if (selectedBrand) url += `brand=${selectedBrand}&`;
-            if (sortOption) url += `sort=${sortOption}&`;
+            // Backend (/api/products/search) luôn lọc pv.quantity > 0 nên không cần truyền inStock
+            let url = '/api/products/search';
+            if (searchQuery) url += `?keyword=${encodeURIComponent(searchQuery)}`;
+            if (selectedCategory) url += `${url.includes('?') ? '&' : '?'}category=${selectedCategory}`;
+            if (selectedBrand) url += `${url.includes('?') ? '&' : '?'}brand=${encodeURIComponent(selectedBrand)}`;
+            if (sortOption) url += `${url.includes('?') ? '&' : '?'}sort=${sortOption}`;
+
+            console.log('🔍 API Call:', url);
 
             const response = await api.get(url);
             let data = [];
             if (response.data && response.data.success) data = response.data.products || [];
-            
-            if (priceRange) {
-                const [min, max] = priceRange.split('-').map(Number);
+
+            console.log(`📦 API trả về: ${data.length} sản phẩm`);
+
+            // Lọc theo giá (frontend vì backend không có param maxPrice riêng trong /search)
+            if (maxPrice < 5000000) {
                 data = data.filter(p => {
                     const price = p.min_price || 0;
-                    if (max) return price >= min && price <= max;
-                    return price >= min;
+                    return price <= maxPrice;
                 });
             }
+
+            console.log(`✅ Sau lọc giá: ${data.length} sản phẩm`);
             setProducts(data);
         } catch (error) {
-            console.error("Lỗi tải sản phẩm:", error);
+            console.error("❌ Lỗi tải sản phẩm:", error);
+            setProducts([]);
         } finally {
             setLoading(false);
         }
@@ -165,40 +280,70 @@ const Shop = () => {
     };
 
     const getImageUrl = (url) => {
-        if (!url) return 'https://ui-avatars.com/api/?name=SP&background=fff&color=000&bold=true';
+        if (!url) return null; // Không sử dụng mock image
         if (url.startsWith('http')) return url;
         return `http://localhost:8080${url}`;
     };
 
+    const clearImageSearch = () => {
+        setImageSearchProducts(null);
+        setImageSearchUrl(null);
+    };
+
+    // Determine what products to display: image search results take priority
+    const displayProducts = imageSearchProducts || products;
+
     return (
         <Layout>
             <div className="shop-epic-theme">
-                <div className="epic-page-header py-5 bg-black text-white">
-                    <div className="container text-center">
-                        <span className="bg-danger px-2 py-1 font-oswald fw-bold fs-5 text-uppercase">CỬA HÀNG</span>
-                        <h1 className="font-oswald display-3 fw-bold mt-2 mb-0">BỘ SƯU TẬP GIÀY</h1>
+                {/* CREATIVE BRUTALIST LOOKBOOK BOARD (CENTERED & 100% INNOVATIVE) */}
+                <div className="shop-editorial-header py-5 text-center">
+                    <div className="container">
+                        <div className="animate__animated animate__fadeInDown">
+                            <span className="shop-tag-accent">CỬA HÀNG CHÍNH THỨC</span>
+                            <h1 className="shop-main-title font-oswald text-uppercase mt-3 mb-2">
+                                CỬA HÀNG
+                            </h1>
+                            <p className="shop-sub-desc mx-auto">
+                                Khám phá phong cách thời trang đường phố từ cộng đồng ShoeStore Việt Nam.
+                            </p>
+                        </div>
+
+                        <div className="shop-lookbook-board mt-5 animate__animated animate__fadeInUp">
+                            <div className="collage-card card-1">
+                                <img src={getImageUrl(lookbooks[0]?.imageUrl || lookbooks[0]?.image_url || 'https://images.unsplash.com/photo-1556906781-9a412961c28c?w=600')} alt="Bộ sưu tập 1" />
+                                <span>{lookbooks[0]?.caption || '#ĐƯỜNG_PHỐ'}</span>
+                            </div>
+                            <div className="collage-card card-2">
+                                <img src={getImageUrl(lookbooks[1]?.imageUrl || lookbooks[1]?.image_url || 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600')} alt="Bộ sưu tập 2" />
+                                <span>{lookbooks[1]?.caption || '#CÁ_TÍNH'}</span>
+                            </div>
+                            <div className="collage-card card-3">
+                                <img src={getImageUrl(lookbooks[2]?.imageUrl || lookbooks[2]?.image_url || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600')} alt="Bộ sưu tập 3" />
+                                <span>{lookbooks[2]?.caption || '#THỜI_TRANG'}</span>
+                            </div>
+                            <div className="collage-card card-4">
+                                <img src={getImageUrl(lookbooks[3]?.imageUrl || lookbooks[3]?.image_url || 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600')} alt="Bộ sưu tập 4" />
+                                <span>{lookbooks[3]?.caption || '#NĂNG_ĐỘNG'}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div className="container py-5">
+                <div id="shop-products-section" className="container py-5">
                     <div className="row g-5">
                         {/* FILTER SIDEBAR */}
                         <div className="col-lg-3">
                             <div className="epic-filter-sidebar bg-white border border-light-subtle p-4 rounded-3">
                                 <h4 className="font-oswald fw-bold text-uppercase mb-4 pb-2 border-bottom border-light-subtle">BỘ LỌC TÌM KIẾM</h4>
 
-                                <div className="mb-4">
-                                    <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">TÌM KIẾM</h6>
-                                    <input type="text" className="epic-input w-100" placeholder="Nhập tên sản phẩm..."
-                                        value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                                </div>
 
                                 <div className="mb-4">
                                     <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">DANH MỤC</h6>
                                     <div className="d-flex flex-column gap-2">
                                         <div className="form-check epic-radio">
                                             <input className="form-check-input" type="radio" name="category" id="catAll"
-                                                checked={selectedCategory === ''} onChange={() => setSelectedCategory('')} />
+                                                checked={selectedCategory === ''} onChange={() => { clearImageSearch(); setSelectedCategory(''); }} />
                                             <label className="form-check-label fw-bold" htmlFor="catAll">Tất cả</label>
                                         </div>
                                         {categories.map(cat => (
@@ -216,33 +361,52 @@ const Shop = () => {
                                     <div className="d-flex flex-column gap-2">
                                         <div className="form-check epic-radio">
                                             <input className="form-check-input" type="radio" name="brand" id="brandAll"
-                                                checked={selectedBrand === ''} onChange={() => setSelectedBrand('')} />
+                                                checked={selectedBrand === '' && !imageSearchProducts} onChange={() => { clearImageSearch(); setSelectedBrand(''); }} />
                                             <label className="form-check-label fw-bold" htmlFor="brandAll">Tất cả</label>
                                         </div>
-                                        {brands.map(brand => (
-                                            <div className="form-check epic-radio" key={brand.id}>
-                                                <input className="form-check-input" type="radio" name="brand" id={`brand${brand.id}`}
-                                                    checked={selectedBrand === brand.id} onChange={() => setSelectedBrand(brand.id)} />
-                                                <label className="form-check-label fw-bold" htmlFor={`brand${brand.id}`}>{brand.name || brand.brand_name || brand.brandName}</label>
-                                            </div>
-                                        ))}
+
+                                        {brands.map(brand => {
+                                            const bName = brand.name || brand.brand_name || brand.brandName || '';
+                                            const isChecked = selectedBrand === bName;
+                                            return (
+                                                <div className="form-check epic-radio" key={brand.id}>
+                                                    <input className="form-check-input" type="radio" name="brand" id={`brand${brand.id}`}
+                                                        checked={isChecked} onChange={() => { clearImageSearch(); setSelectedBrand(bName); }} />
+                                                    <label className="form-check-label fw-bold" htmlFor={`brand${brand.id}`}>{bName}</label>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
                                 <div className="mb-4">
-                                    <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">MỨC GIÁ</h6>
-                                    <select className="epic-select w-100" value={priceRange} onChange={(e) => setPriceRange(e.target.value)}>
-                                        <option value="">Tất cả các mức giá</option>
-                                        <option value="0-1000000">Dưới 1,000,000đ</option>
-                                        <option value="1000000-2000000">1,000,000đ - 2,000,000đ</option>
-                                        <option value="2000000-3000000">2,000,000đ - 3,000,000đ</option>
-                                        <option value="3000000-">Trên 3,000,000đ</option>
-                                    </select>
+                                    <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">MỨC GIÁ TỐI ĐA</h6>
+                                    <div className="epic-slider-wrapper">
+                                        <div className="epic-slider-label fw-bold mb-2 text-dark" style={{ fontSize: '14px' }}>
+                                            {maxPrice === 5000000 ? "Tất cả các mức giá" : `Dưới ${formatCurrency(maxPrice)}`}
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="500000"
+                                            max="5000000"
+                                            step="100000"
+                                            value={maxPrice}
+                                            onChange={(e) => setMaxPrice(Number(e.target.value))}
+                                            className="epic-range-input w-100"
+                                        />
+                                        <div className="d-flex justify-content-between mt-1 text-muted" style={{ fontSize: '11px', fontWeight: '600' }}>
+                                            <span>500.000đ</span>
+                                            <span>5.000.000đ+</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
                                     <button className="btn-brutal-outline w-100 mt-2" onClick={() => {
-                                        setSelectedCategory(''); setSelectedBrand(''); setPriceRange(''); setSortOption(''); setSearchQuery('');
+                                        // Xóa toàn bộ AI state và filter, fetch lại từ đầu
+                                        clearImageSearch();
+                                        setSelectedCategory(''); setSelectedBrand(''); setMaxPrice(5000000); setSortOption(''); setSearchQuery('');
+                                        navigate('/shop');
                                     }}>XÓA BỘ LỌC</button>
                                 </div>
                             </div>
@@ -252,12 +416,40 @@ const Shop = () => {
                         <div className="col-lg-9 position-relative">
                             {/* Decorative Watermark background */}
                             <div className="position-absolute w-100 h-100 top-0 left-0 overflow-hidden d-none d-lg-block" style={{ pointerEvents: 'none', zIndex: 0, opacity: 0.015 }}>
-                                <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '10%', top: '5%', letterSpacing: '4px' }}>GIÀY THỂ THAO</div>
+                                <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '10%', top: '5%', letterSpacing: '4px' }}>SẢN PHẨM</div>
                                 <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', right: '5%', top: '40%', letterSpacing: '4px' }}>PHONG CÁCH</div>
-                                <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '15%', top: '75%', letterSpacing: '4px' }}>BỘ SƯU TẬP</div>
+                                <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '15%', top: '75%', letterSpacing: '4px' }}>CỬA HÀNG</div>
                             </div>
+
+
+                            {/* Image Search Results Banner */}
+                            {imageSearchProducts && (
+                                <div className="mb-4 p-4 image-search-banner">
+                                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                        <div className="d-flex align-items-center gap-3">
+                                            {imageSearchUrl && (
+                                                <img src={imageSearchUrl} alt="Ảnh tìm kiếm" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 12, border: '2px solid #ff6600' }} />
+                                            )}
+                                            <div>
+                                                <div className="text-dark fw-bold font-oswald mb-1" style={{ fontSize: 18, letterSpacing: '0.5px' }}>
+                                                    Kết quả tìm kiếm bằng hình ảnh
+                                                </div>
+                                                <small style={{ color: '#555555', fontSize: 14 }}>
+                                                    Đã tìm thấy <span className="fw-bold" style={{ color: '#ff6600' }}>{imageSearchProducts.length}</span> sản phẩm phù hợp
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <button className="btn btn-sm btn-image-search-reset font-oswald fw-bold" style={{ letterSpacing: 1 }} onClick={clearImageSearch}>
+                                            <i className="fa fa-times me-1" />Quay lại danh sách sản phẩm
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="d-flex justify-content-between align-items-center border-bottom border-light-subtle pb-3 mb-4 flex-wrap gap-3">
-                                <span className="font-oswald fw-bold fs-5 text-uppercase">TÌM THẤY <span className="text-danger">{products.length}</span> SẢN PHẨM</span>
+                                <span className="font-oswald fw-bold fs-5 text-uppercase">
+                                    TÌM THẤY <span className="text-danger">{displayProducts.length}</span> SẢN PHẨM
+                                </span>
                                 <div className="d-flex align-items-center gap-2">
                                     <span className="font-oswald fw-bold text-uppercase">SẮP XẾP:</span>
                                     <select className="epic-select py-1" style={{ width: 'auto' }} value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
@@ -273,17 +465,23 @@ const Shop = () => {
                                 <div className="text-center py-5">
                                     <div className="spinner-border text-danger" role="status" style={{ width: '4rem', height: '4rem', borderWidth: '5px' }}></div>
                                 </div>
-                            ) : products.length > 0 ? (
+                            ) : displayProducts.length > 0 ? (
                                 <div className="row g-4">
-                                    {products.map((p, idx) => (
+                                    {displayProducts.map((p, idx) => (
                                         <div key={p.id} className="col-lg-4 col-md-6 col-12 reveal-item opacity-0 mb-4" style={{ animationDelay: `${(idx % 12) * 0.05}s` }}>
                                             <div className="flat-product-card h-100 bg-white d-flex flex-column position-relative">
                                                 <Link to={`/details?id=${p.id}`} className="stretched-link" style={{ zIndex: 1 }} />
 
                                                 {/* Image */}
                                                 <div className="flat-card-img-box position-relative overflow-hidden d-flex align-items-center justify-content-center"
-                                                     style={{ aspectRatio: '1', padding: 16, background: '#f8f8f8' }}>
-                                                    <img src={getImageUrl(p.image_url)} alt={p.product_name} className="product-card-img w-100 h-100" style={{ objectFit: 'contain' }} />
+                                                    style={{ aspectRatio: '1', padding: 16, background: '#f8f8f8' }}>
+                                                    {getImageUrl(p.image_url) ? (
+                                                        <img src={getImageUrl(p.image_url)} alt={p.product_name} className="product-card-img w-100 h-100" style={{ objectFit: 'contain' }} />
+                                                    ) : (
+                                                        <div className="text-center text-muted">
+                                                            <i className="fa-solid fa-image fa-3x opacity-50"></i>
+                                                        </div>
+                                                    )}
                                                     <div className="position-absolute" style={{ top: 10, right: 10, zIndex: 10 }}>
                                                         <button className="wishlist-btn btn" onClick={(e) => toggleWishlist(e, p.id)}>
                                                             <i className={`${wishlistIds.includes(p.id) ? 'fa-solid text-danger' : 'fa-regular text-secondary'} fa-heart`} style={{ fontSize: 16 }} />
@@ -304,13 +502,13 @@ const Shop = () => {
                                                     </div>
                                                     <div className="d-flex gap-2 mt-auto" style={{ position: 'relative', zIndex: 10 }}>
                                                         <button onClick={(e) => { e.preventDefault(); setQuickAddProductId(p.id); }}
-                                                                className="btn flat-btn-cart d-flex align-items-center justify-content-center"
-                                                                style={{ width: 46, height: 44, flexShrink: 0 }}>
+                                                            className="btn flat-btn-cart d-flex align-items-center justify-content-center"
+                                                            style={{ width: 46, height: 44, flexShrink: 0 }}>
                                                             <i className="fa-solid fa-cart-plus" style={{ fontSize: 16 }} />
                                                         </button>
                                                         <button onClick={(e) => { e.preventDefault(); navigate(`/details?id=${p.id}`); }}
-                                                                className="btn flat-btn-buy flex-grow-1"
-                                                                style={{ height: 44, fontSize: 14, letterSpacing: 1 }}>
+                                                            className="btn flat-btn-buy flex-grow-1"
+                                                            style={{ height: 44, fontSize: 14, letterSpacing: 1 }}>
                                                             MUA NGAY
                                                         </button>
                                                     </div>
@@ -333,7 +531,7 @@ const Shop = () => {
                     <div className="row g-4 mt-5 pt-5 border-top border-light-subtle align-items-center">
                         <div className="col-md-6 animate__animated animate__fadeInLeft">
                             <div className="campaign-img-box overflow-hidden rounded-3 border border-light-subtle" style={{ aspectRatio: '16/9', background: '#f5f5f5' }}>
-                                <img src="https://images.unsplash.com/photo-1512374382149-433853003064?w=800&auto=format&fit=crop" alt="Chiến dịch" className="w-100 h-100 object-fit-cover" style={{ transition: 'transform 0.5s ease' }} />
+                                <img src="/campaign_banner.png" alt="Chiến dịch" className="w-100 h-100 object-fit-cover" style={{ transition: 'transform 0.5s ease' }} />
                             </div>
                         </div>
                         <div className="col-md-6 p-4 animate__animated animate__fadeInRight">

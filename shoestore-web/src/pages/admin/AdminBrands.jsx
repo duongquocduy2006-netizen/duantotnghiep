@@ -19,6 +19,14 @@ const AdminBrands = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("all");
 
+    // Custom Confirm Modal State
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        brandId: null,
+        brandName: "",
+        message: ""
+    });
+
     const fetchBrands = async () => {
         try {
             const response = await api.get('/api/brands');
@@ -88,12 +96,12 @@ const AdminBrands = () => {
                 // Update
                 const response = await api.put(`/api/brands/${editingBrand.id}`, payload);
                 setBrands(brands.map(b => b.id === editingBrand.id ? response.data : b));
-                alert("Cập nhật thương hiệu thành công!");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Cập nhật thương hiệu thành công!" }));
             } else {
                 // Create
                 const response = await api.post('/api/brands', payload);
                 setBrands([...brands, response.data]);
-                alert("Tạo thương hiệu thành công!");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Tạo thương hiệu thành công!" }));
             }
             closeModal();
         } catch (err) {
@@ -101,23 +109,44 @@ const AdminBrands = () => {
             const errMsg = err.response && err.response.data && err.response.data.error
                 ? err.response.data.error
                 : "Không thể lưu thông tin thương hiệu. Vui lòng kiểm tra lại.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         }
     };
 
-    const handleDelete = async (id, name) => {
-        if (window.confirm(`Bạn có chắc chắn muốn xóa thương hiệu "${name}" này không?`)) {
-            try {
-                await api.delete(`/api/brands/${id}`);
-                alert("Xóa thương hiệu thành công!");
-                setBrands(brands.filter(b => b.id !== id));
-            } catch (err) {
-                console.error("Lỗi xóa thương hiệu:", err);
-                const errMsg = err.response && err.response.data && err.response.data.error
-                    ? err.response.data.error
-                    : "Không thể xóa thương hiệu này. Có thể thương hiệu vẫn còn sản phẩm.";
-                alert(errMsg);
-            }
+    const triggerDeleteConfirm = (id, name) => {
+        setConfirmModal({
+            isOpen: true,
+            brandId: id,
+            brandName: name,
+            message: `Bạn có chắc chắn muốn xóa thương hiệu "${name}" này không?`
+        });
+    };
+
+    const cancelDelete = () => {
+        setConfirmModal({
+            isOpen: false,
+            brandId: null,
+            brandName: "",
+            message: ""
+        });
+    };
+
+    const submitDelete = async () => {
+        const { brandId } = confirmModal;
+        if (!brandId) return;
+
+        try {
+            await api.delete(`/api/brands/${brandId}`);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Xóa thương hiệu thành công!" }));
+            setBrands(brands.filter(b => b.id !== brandId));
+        } catch (err) {
+            console.error("Lỗi xóa thương hiệu:", err);
+            const errMsg = err.response && err.response.data && err.response.data.error
+                ? err.response.data.error
+                : "Không thể xóa thương hiệu này. Có thể thương hiệu vẫn còn sản phẩm.";
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
+        } finally {
+            cancelDelete();
         }
     };
 
@@ -169,18 +198,19 @@ const AdminBrands = () => {
 
             <div className="toolbar" style={{
                 background: '#fff',
-                padding: '15px',
-                border: '4px solid #000', boxShadow: '4px 4px 0 #000', borderRadius: '0',
-                marginBottom: '25px',
+                padding: '12px 16px',
+                border: '1px solid #e8eaed', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', borderRadius: '12px',
+                marginBottom: '24px',
                 display: 'flex',
-                gap: '15px',
-                alignItems: 'stretch'
+                gap: '14px',
+                alignItems: 'center',
+                flexWrap: 'wrap'
             }}>
-                <div className="search-box" style={{ flex: 1 }}>
-                    <i className="bi bi-search"></i>
+                <div className="admin-search-box-wrap" style={{ flex: 1 }}>
+                    <i className="bi bi-search admin-search-icon"></i>
                     <input 
                         type="text" 
-                        className="search-input" 
+                        className="admin-search-input" 
                         placeholder="Tìm kiếm thương hiệu..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -189,7 +219,7 @@ const AdminBrands = () => {
 
                 <select 
                     className="filter-select" 
-                    style={{ width: '200px', background: '#fff', border: '3px solid #000', color: '#555', fontWeight: 'bold' }}
+                    style={{ width: '200px', background: '#fff', border: '1px solid #e2e8f0', color: '#555', fontWeight: 'bold' }}
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
                 >
@@ -220,7 +250,7 @@ const AdminBrands = () => {
                             {filteredBrands.map((brand) => (
                                 <tr key={brand.id}>
                                     <td>
-                                        <div style={{ width: '60px', height: '60px', background: '#fff', borderRadius: '4px', overflow: 'hidden', border: '3px solid #000' }}>
+                                        <div style={{ width: '60px', height: '60px', background: '#fff', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
                                             <img src={getImageUrl(brand.imageUrl)} alt={brand.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                         </div>
                                     </td>
@@ -250,7 +280,7 @@ const AdminBrands = () => {
                                         <button
                                             className="action-btn-icon icon-delete"
                                             
-                                            onClick={() => handleDelete(brand.id, brand.name)}
+                                            onClick={() => triggerDeleteConfirm(brand.id, brand.name)}
                                             title="Xóa"
                                         >
                                             <i className="bi bi-trash"></i>
@@ -276,7 +306,7 @@ const AdminBrands = () => {
                                 <label className="form-label">Ảnh đại diện thương hiệu</label>
                                 <div style={{ 
                                     width: '120px', height: '120px', background: '#fff', 
-                                    border: '3px dashed #000', borderRadius: '50%', margin: '0 auto',
+                                    border: '2px dashed #e2e8f0', borderRadius: '50%', margin: '0 auto',
                                     position: 'relative', overflow: 'hidden', cursor: 'pointer'
                                 }}>
                                     {formImagePreview ? (
@@ -321,6 +351,23 @@ const AdminBrands = () => {
                 </div>
             )}
 
+            {/* CUSTOM CONFIRM MODAL */}
+            {confirmModal.isOpen && (
+                <div className="admin-confirm-overlay">
+                    <div className="admin-confirm-box animate__animated animate__zoomIn">
+                        <div className="admin-confirm-icon">
+                            <i className="bi bi-exclamation-circle"></i>
+                        </div>
+                        <h4 className="admin-confirm-title">Xác nhận xóa</h4>
+                        <p className="admin-confirm-message">{confirmModal.message}</p>
+                        <div className="admin-confirm-actions">
+                            <button className="admin-btn-confirm-cancel" onClick={cancelDelete}>Hủy bỏ</button>
+                            <button className="admin-btn-confirm-ok" onClick={submitDelete}>Đồng ý</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
                 .admin-page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; }
                 .sub-title-neon { display: block; color: #000; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
@@ -328,47 +375,143 @@ const AdminBrands = () => {
                 
                 .header-right-actions { display: flex; align-items: center; }
                 .btn-cyan-skew { 
-                    background: #fff; color: #000; border: 4px solid #000; box-shadow: 6px 6px 0 #000; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+                    background: #fff; color: #000; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
                     transition: 0.3s; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; text-decoration: none; justify-content: center;
                 }
-                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 6px 6px 0 var(--accent-red); transform: translateY(-3px); }
+                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
 
-                .toolbar { display: flex; gap: 20px; align-items: stretch; justify-content: space-between; margin-bottom: 30px; background: #fff; padding: 15px 25px; border: 4px solid #000; box-shadow: 4px 4px 0 #000; flex-wrap: wrap; }
-                .search-box { position: relative; flex: 1; min-width: 300px; max-width: none; }
-                .search-input { width: 100%; background: #fff !important; border: 3px solid #000; padding: 12px 15px 12px 45px; color: #000 !important; outline: none; height: 45px; font-weight: bold; }
-                .search-input:focus { border-color: var(--accent-red); box-shadow: 4px 4px 0 var(--accent-red); }
-                .bi-search { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #000; font-weight: bold; }
-                .filter-select { background: #fff !important; color: #000 !important; border: 3px solid #000 !important; padding: 8px 15px; outline: none; cursor: pointer; height: 45px; min-width: 200px; font-weight: bold; font-family: 'Poppins'; }
-                .filter-select:focus { border-color: var(--accent-red) !important; }
+                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #fff; padding: 12px 16px; border: 1px solid #e8eaed; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex-wrap: wrap; max-width: 100%; box-sizing: border-box; }
+                .admin-search-box-wrap { position: relative; flex: 1; max-width: 100%; min-width: 220px; box-sizing: border-box; background: transparent !important; border: none !important; padding: 0 !important; display: block !important; }
+                .admin-search-input { width: 100%; background: #fff !important; border: 1.5px solid #dadce0; padding: 10px 16px 10px 42px !important; color: #3c4043 !important; outline: none; height: 44px; font-weight: 500; border-radius: 12px !important; font-size: 14px; transition: all 0.2s; font-family: 'Inter', sans-serif; box-sizing: border-box; }
+                .admin-search-input:focus { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1) !important; }
+                .admin-search-input::placeholder { color: #9aa0a6; }
+                .admin-search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #888 !important; font-size: 16px; pointer-events: none; z-index: 5; }
+                .filter-select { background: #fff !important; color: #3c4043 !important; border: 1.5px solid #dadce0 !important; padding: 8px 14px; outline: none; cursor: pointer; height: 40px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.2s; }
+                .filter-select:focus { border-color: #1a73e8 !important; box-shadow: 0 0 0 3px rgba(26,115,232,0.1) !important; }
 
                 .btn-red-skew { 
-                    background: #fff; color: #000; border: 3px solid #000; padding: 0 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+                    background: #fff; color: #000; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 0 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
                     transition: 0.3s; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; height: 45px; min-width: 150px;
                 }
-                .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 4px 4px 0 var(--accent-red); transform: translateY(-2px); }
+                .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-2px); }
 
                 /* Compact Brutalist Table */
-                .table-card { background: #fff; border: 4px solid #000; box-shadow: 6px 6px 0 #000; margin-top: 20px; overflow-x: auto; }
-                table { width: 100%; border-collapse: collapse; min-width: 700px; }
-                th { background: #f4f4f4; color: #000; font-size: 13px; text-transform: uppercase; padding: 15px 20px; text-align: left; font-family: 'Oswald'; border-bottom: 4px solid #000; font-weight: 800; white-space: nowrap; }
-                td { padding: 15px 20px; border-bottom: 2px solid #000; font-size: 14px; color: #000; font-weight: 600; vertical-align: middle; }
+                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-top: 20px; border-radius: 14px; overflow-x: auto; width: 100%; box-sizing: border-box; }
+                table { width: 100%; border-collapse: collapse; min-width: 800px; }
+                th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 16px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; white-space: nowrap; }
+                td { padding: 14px 16px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; vertical-align: middle; }
                 
                 /* Action Icon Buttons */
-                .action-btn-icon { background: #fff; border: 3px solid #000; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; margin-left: 5px; }
-                .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 2px 2px 0 var(--accent-red); background: #000; color: #fff; }
-                .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 2px 2px 0 #000; }
-                .icon-edit:hover { background: #facc15; color: #000; box-shadow: 2px 2px 0 #000; }
+                .action-btn-icon { width: 34px; height: 34px; border: 1px solid #e2e8f0; color: #64748b; border-radius: 8px; background: #f8fafc; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; cursor: pointer; text-decoration: none; font-size: 14px; }
+                .action-btn-icon:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: #1e293b; color: #fff; }
+                .icon-delete:hover { background: #e50914; color: #fff; border-color: #e50914; }
+                .icon-edit:hover { background: #f59e0b; color: #fff; border-color: #f59e0b; }
 
                 /* Modal Brutalist */
                 .modal-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(5px); z-index: 2000; display: flex; align-items: center; justify-content: center; }
-                .modal-box { background: #fff; width: 500px; padding: 40px; border: 4px solid #000; box-shadow: 16px 16px 0 var(--accent-red); animation: slideUp 0.3s ease-out; }
-                .modal-title { font-family: 'Oswald'; font-size: 28px; color: #000; margin-bottom: 30px; letter-spacing: 1px; font-weight: 800; border-bottom: 4px solid #000; padding-bottom: 10px; }
-                .form-group { margin-bottom: 25px; }
-                .form-label { display: block; color: #000; font-size: 13px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; font-family: 'Oswald'; }
-                .form-input { width: 100%; background: #fff; border: 3px solid #000; color: #000; padding: 12px; outline: none; transition: 0.3s; font-weight: bold; box-shadow: 4px 4px 0 #000; }
-                .form-input:focus { border-color: var(--accent-red); box-shadow: 4px 4px 0 var(--accent-red); }
+                .modal-box { background: #fff; width: 500px; padding: 40px; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: slideUp 0.3s ease-out; }
+                .modal-title { font-family: 'Oswald'; font-size: 22px; color: #1e293b; margin-bottom: 24px; letter-spacing: 0.5px; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; }
+                .form-input { width: 100%; background: #f8fafc; border: 1.5px solid #e2e8f0; color: #1e293b; padding: 12px 14px; outline: none; transition: 0.2s; font-weight: 500; box-shadow: none; border-radius: 8px; font-size: 14px; }
+                .form-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); background: #fff; }
 
                 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+                /* Admin Confirm Modal (Sleek Premium Theme) */
+                .admin-confirm-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    background: rgba(15, 23, 42, 0.6);
+                    backdrop-filter: blur(8px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 9999;
+                }
+                .admin-confirm-box {
+                    background: #fff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 24px;
+                    padding: 36px 32px;
+                    width: 90%;
+                    max-width: 420px;
+                    text-align: center;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+                    border-bottom: 4px solid #e50914;
+                }
+                .admin-confirm-icon {
+                    width: 72px;
+                    height: 72px;
+                    background: #fef2f2;
+                    color: #e50914;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 32px;
+                    margin: 0 auto 20px;
+                    animation: iconPulse 2s infinite;
+                }
+                .admin-confirm-title {
+                    font-family: 'Inter', sans-serif;
+                    font-weight: 800;
+                    font-size: 20px;
+                    color: #0f172a;
+                    margin-bottom: 12px;
+                }
+                .admin-confirm-message {
+                    font-size: 14px;
+                    color: #475569;
+                    line-height: 1.6;
+                    margin-bottom: 28px;
+                    font-weight: 500;
+                }
+                .admin-confirm-actions {
+                    display: flex;
+                    gap: 12px;
+                    justify-content: center;
+                }
+                .admin-btn-confirm-cancel {
+                    background: #f1f5f9;
+                    color: #475569;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                }
+                .admin-btn-confirm-cancel:hover {
+                    background: #e2e8f0;
+                    color: #0f172a;
+                }
+                .admin-btn-confirm-ok {
+                    background: #e50914;
+                    color: #fff;
+                    border: none;
+                    border-radius: 12px;
+                    padding: 12px 24px;
+                    font-weight: 700;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex: 1;
+                    box-shadow: 0 4px 6px -1px rgba(229, 9, 20, 0.2);
+                }
+                .admin-btn-confirm-ok:hover {
+                    background: #b8070f;
+                    box-shadow: 0 10px 15px -3px rgba(229, 9, 20, 0.3);
+                    transform: translateY(-1px);
+                }
+                @keyframes iconPulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.08); }
+                    100% { transform: scale(1); }
+                }
             `}</style>
         </AdminLayout>
     );

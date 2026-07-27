@@ -1,25 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import 'animate.css';
 import './Profile.css';
+import './Orders.css';
 import './OrderDetail.css';
 
 const OrderDetail = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [order, setOrder] = useState(null);
     const [items, setItems] = useState([]);
+    const [account, setAccount] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        step: 1,
+        orderCode: null,
+        productId: null
+    });
 
-    const fetchOrderDetail = async () => {
+    const fetchOrderDetail = async (showLoading = true) => {
         try {
-            setLoading(true);
-            const response = await api.get(`/api/orders/${id}`);
-            if (response.data && response.data.success) {
-                setOrder(response.data.order);
-                setItems(response.data.items || []);
+            if (showLoading) setLoading(true);
+            const [profileRes, orderRes] = await Promise.all([
+                api.get('/api/profile'),
+                api.get(`/api/orders/${id}`)
+            ]);
+
+            if (profileRes.data && profileRes.data.success) {
+                setAccount(profileRes.data.account);
+            }
+
+            if (orderRes.data && orderRes.data.success) {
+                setOrder(orderRes.data.order);
+                setItems(orderRes.data.items || []);
             } else {
                 setError("Không tìm thấy thông tin đơn hàng.");
             }
@@ -27,7 +44,7 @@ const OrderDetail = () => {
             console.error("Lỗi lấy chi tiết đơn hàng:", err);
             setError("Lỗi kết nối máy chủ khi tải chi tiết đơn hàng.");
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -36,6 +53,13 @@ const OrderDetail = () => {
             fetchOrderDetail();
         }
     }, [id]);
+
+    useEffect(() => {
+        document.body.classList.add('profile-page-active');
+        return () => {
+            document.body.classList.remove('profile-page-active');
+        };
+    }, []);
 
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
@@ -47,27 +71,63 @@ const OrderDetail = () => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
     };
 
+    const formatPoints = (points) => {
+        return new Intl.NumberFormat('vi-VN').format(points || 0);
+    };
+
     const getImageUrl = (url) => {
-        if (!url) return 'https://ui-avatars.com/api/?name=SP&background=121212&color=00f2ff&bold=true';
+        if (!url) return 'https://ui-avatars.com/api/?name=SP&background=f1f5f9&color=94a3b8&bold=true';
         if (url.startsWith('http')) return url;
         const prefix = url.startsWith('/') ? '' : '/images/';
         return `http://localhost:8080${prefix}${url}`;
     };
 
-    const handleConfirm = async (e) => {
-        e.preventDefault();
-        if (!window.confirm('Xác nhận bạn đã nhận được gói hàng này?')) return;
+    const getRankClass = (rankName) => {
+        if (!rankName) return 'rank-bronze';
+        const name = rankName.toLowerCase();
+        if (name.includes('kim cương') || name.includes('diamond')) return 'rank-diamond';
+        if (name.includes('vàng') || name.includes('gold')) return 'rank-gold';
+        if (name.includes('bạc') || name.includes('silver')) return 'rank-silver';
+        return 'rank-bronze';
+    };
+
+    const triggerConfirm = (e) => {
+        if (e) e.preventDefault();
+        const productId = items && items.length > 0 ? items[0].product_id : null;
+        setConfirmModal({
+            isOpen: true,
+            step: 1,
+            orderCode: id,
+            productId
+        });
+    };
+
+    const handleConfirmSubmit = async () => {
+        const { orderCode, productId } = confirmModal;
         try {
-            const response = await api.post('/api/orders/confirm', { orderCode: id });
+            const response = await api.post('/api/orders/confirm', { orderCode });
             if (response.data && response.data.success) {
-                alert('Đã xác nhận nhận hàng thành công và cộng điểm tích lũy thành viên VIP!');
-                fetchOrderDetail();
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xác nhận nhận hàng thành công và cộng điểm tích lũy thành viên VIP!' }));
+                if (productId) {
+                    setConfirmModal({
+                        isOpen: true,
+                        step: 2,
+                        orderCode,
+                        productId
+                    });
+                } else {
+                    setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
+                    fetchOrderDetail(false);
+                }
             } else {
-                alert('Không thể xác nhận đơn hàng: ' + response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể xác nhận đơn hàng: ' + response.data.message }));
+                setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
             }
         } catch (err) {
             console.error("Lỗi xác nhận:", err);
-            alert('Lỗi kết nối khi xác nhận đơn hàng.');
+            const errMsg = err.response?.data?.message || 'Lỗi kết nối khi xác nhận đơn hàng.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
+            setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
         }
     };
 
@@ -77,38 +137,39 @@ const OrderDetail = () => {
         try {
             const response = await api.post('/api/orders/cancel', { orderCode: id });
             if (response.data && response.data.success) {
-                alert('Đã hủy đơn hàng thành công!');
-                fetchOrderDetail();
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã hủy đơn hàng thành công!' }));
+                fetchOrderDetail(false);
             } else {
-                alert('Không thể hủy đơn hàng: ' + response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể hủy đơn hàng: ' + response.data.message }));
             }
         } catch (err) {
             console.error("Lỗi hủy đơn hàng:", err);
-            alert('Lỗi kết nối khi hủy đơn hàng.');
+            const errMsg = err.response?.data?.message || 'Lỗi kết nối khi hủy đơn hàng.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
         }
     };
 
     if (loading) {
         return (
             <Layout>
-                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
+                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh'}}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
-                        <div className="spinner-border text-danger" role="status" style={{ width: '4rem', height: '4rem', borderWidth: '5px' }}></div>
-                        <p className="mt-3 font-oswald fw-bold text-uppercase letter-spacing-1 text-dark">ĐANG TẢI DỮ LIỆU...</p>
+                        <div className="spinner-border text-danger" role="status" style={{ width: '3rem', height: '3rem', borderWidth: '3px' }}></div>
+                        <p className="mt-3 fw-semibold text-muted" style={{fontSize: '14px', letterSpacing: '1px', textTransform: 'uppercase'}}>Đang tải chi tiết đơn hàng...</p>
                     </div>
                 </div>
             </Layout>
         );
     }
 
-    if (error || !order) {
+    if (error || !order || !account) {
         return (
             <Layout>
-                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh', paddingBottom: '100px'}}>
-                    <div className="container py-5 text-center" style={{ minHeight: '70vh', color: '#000' }}>
-                        <i className="fa fa-exclamation-triangle fa-4x text-danger mb-4"></i>
-                        <h3 className="font-oswald fw-bold text-dark">{error || "Không tìm thấy đơn hàng!"}</h3>
-                        <Link to="/orders" className="btn-god-tier mt-4 d-inline-block"><span>Quay lại danh sách</span></Link>
+                <div className="home-god-tier position-relative bg-white" style={{minHeight: '100vh'}}>
+                    <div className="container py-5 text-center" style={{ minHeight: '70vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                        <i className="fa-solid fa-triangle-exclamation fa-4x text-danger mb-4"></i>
+                        <h4 className="fw-bold text-dark">{error || "Không tìm thấy đơn hàng hoặc phiên đăng nhập hết hạn!"}</h4>
+                        <Link to="/orders" className="btn-modern-primary mt-4" style={{textDecoration: 'none'}}>Quay lại danh sách</Link>
                     </div>
                 </div>
             </Layout>
@@ -118,168 +179,303 @@ const OrderDetail = () => {
     const isCod = order.method_name && (order.method_name.toLowerCase().includes('cod') || order.method_name.toLowerCase().includes('tiền mặt') || order.method_name.toLowerCase().includes('nhận hàng'));
     const isPaid = isCod ? (order.status === 3) : (order.status !== 4);
 
+    const getStatusInfo = (status) => {
+        switch(status) {
+            case 1: return { class: 'wait', icon: 'fa-clock', text: 'Chờ duyệt' };
+            case 2: return { class: 'shipping', icon: 'fa-truck-fast', text: 'Đang giao' };
+            case 5: return { class: 'shipping', icon: 'fa-box-open', text: 'Chờ hoàn tất' };
+            case 3: return { class: 'done', icon: 'fa-circle-check', text: 'Thành công' };
+            case 4: return { class: 'cancel', icon: 'fa-circle-xmark', text: 'Đã hủy' };
+            default: return { class: '', icon: 'fa-circle', text: 'Không rõ' };
+        }
+    };
+    const statusInfo = getStatusInfo(order.status);
+
+    let progressWidth = '0%';
+    if (order.status >= 2 && order.status !== 4) progressWidth = '25%';
+    if (order.status >= 5 && order.status !== 4) progressWidth = '50%';
+    if (order.status === 3) progressWidth = '75%';
+
     return (
         <Layout>
-            <div className="home-god-tier order-detail-wrapper bg-white" style={{paddingTop: '60px'}}>
-                {/* FILM GRAIN TEXTURE */}
-                <div className="god-film-grain" style={{opacity: 0.05}}></div>
-
-                {/* EPIC HERO - Added mt-4 pt-4 to clear the fixed navbar */}
-                <div className="epic-page-header py-5 mt-4 bg-white position-relative overflow-hidden border-bottom border-dark border-3 mb-5">
-                    <div className="god-watermark-bg text-dark opacity-10" style={{fontSize: '15vw', top: '10%'}}>ORDER #{order.order_code}</div>
-                    
-                    <div className="container text-center position-relative z-1 py-5">
-                        <span className="bg-danger text-white px-4 py-1 font-oswald fw-bold fs-5 text-uppercase animate__animated animate__fadeInDown d-inline-block border border-dark border-2" style={{boxShadow: '4px 4px 0 #000'}}>CHI TIẾT</span>
-                        <h1 className="font-oswald fw-bold mt-3 mb-0 text-uppercase animate__animated animate__fadeInUp text-dark" style={{fontSize: '5rem', letterSpacing: '4px', textShadow: '4px 4px 0 #e50914'}}>ĐƠN HÀNG CỦA BẠN</h1>
+            <div className="home-god-tier position-relative" style={{minHeight: '100vh', background: '#f8fafc', paddingBottom: '80px'}}>
+                
+                {/* PAGE HEADER */}
+                <div className="profile-page-header py-4">
+                    <div className="container">
+                        <div className="d-flex align-items-center gap-2" style={{fontSize: '13px', color: '#64748b'}}>
+                            <Link to="/" style={{color: '#64748b', textDecoration: 'none'}}>Trang chủ</Link>
+                            <i className="fa-solid fa-chevron-right" style={{fontSize: '10px'}}></i>
+                            <Link to="/orders" style={{color: '#64748b', textDecoration: 'none'}}>Lịch sử đơn hàng</Link>
+                            <i className="fa-solid fa-chevron-right" style={{fontSize: '10px'}}></i>
+                            <span style={{color: '#0f172a', fontWeight: 600}}>Chi tiết đơn hàng #{id}</span>
+                        </div>
+                        <h1 className="fw-bold mt-2 mb-0" style={{fontSize: '22px', color: '#0f172a', letterSpacing: '0.3px'}}>Tài Khoản Của Bạn</h1>
                     </div>
                 </div>
 
-                <div className="container position-relative z-1">
-                    <div className="row justify-content-center">
-                        <div className="col-lg-10">
-                            <div className="mb-5 position-relative z-3 animate__animated animate__fadeInLeft">
-                                <Link to="/orders" className="btn-luxury-back bg-white border border-dark border-3" style={{boxShadow: '4px 4px 0 #000', padding: '10px 20px', borderRadius: '0'}}>
-                                    <i className="fa-solid fa-arrow-left-long"></i> QUAY LẠI LỊCH SỬ
-                                </Link>
-                            </div>
+                <div className="container py-4">
+                    <div className="row g-4">
 
-                            <div className="order-detail-card bg-white border border-dark border-4 animate__animated animate__fadeInUp" style={{boxShadow: '12px 12px 0 #e50914', borderRadius: '0', padding: '40px', marginTop: '0'}}>
-                                
-                                <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 border-bottom border-dark border-3 pb-4">
-                                    <div>
-                                        <h2 className="title-luxury text-dark font-oswald fw-bold m-0" style={{fontSize: '32px'}}>MÃ ĐƠN: #{order.order_code}</h2>
-                                        <p className="mb-0 font-oswald fw-bold text-muted text-uppercase" style={{fontSize: '16px'}}>Ngày đặt: <span>{formatDate(order.created_at)}</span></p>
+                        {/* SIDEBAR */}
+                        <div className="col-lg-3">
+                            <div className="epic-profile-panel">
+                                <div className="profile-cover"></div>
+                                <div className="user-block px-3">
+                                    <div className="avatar-box">
+                                        <img
+                                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(account.full_name)}&background=1e293b&color=fff&bold=true&size=200`}
+                                            className="user-avatar"
+                                            alt="Avatar"
+                                        />
+                                        <i className="fa fa-crown vip-crown"></i>
                                     </div>
-                                    <div className="text-end">
-                                        {order.status === 1 && <span className="badge bg-warning text-dark border border-dark border-2 px-4 py-2 font-oswald fw-bold fs-6 text-uppercase" style={{boxShadow: '3px 3px 0 #000', borderRadius: '0'}}>CHỜ DUYỆT</span>}
-                                        {order.status === 2 && <span className="badge bg-white text-dark border border-dark border-2 px-4 py-2 font-oswald fw-bold fs-6 text-uppercase" style={{boxShadow: '3px 3px 0 #e50914', borderRadius: '0'}}>ĐANG GIAO</span>}
-                                        {order.status === 5 && <span className="badge bg-white text-dark border border-dark border-2 px-4 py-2 font-oswald fw-bold fs-6 text-uppercase" style={{boxShadow: '3px 3px 0 #e50914', borderRadius: '0'}}>CHỜ HOÀN TẤT</span>}
-                                        {order.status === 3 && <span className="badge bg-success text-white border border-dark border-2 px-4 py-2 font-oswald fw-bold fs-6 text-uppercase" style={{boxShadow: '3px 3px 0 #000', borderRadius: '0'}}>THÀNH CÔNG</span>}
-                                        {order.status === 4 && <span className="badge bg-dark text-white border border-dark border-2 px-4 py-2 font-oswald fw-bold fs-6 text-uppercase" style={{boxShadow: '3px 3px 0 #e50914', borderRadius: '0'}}>ĐÃ HỦY</span>}
+                                    <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
+                                    <div className="mb-2">
+                                        <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>
+                                            {account.rank_name || 'Đồng'}
+                                        </span>
+                                    </div>
+                                    <div className="points-flat-box mb-3">
+                                        <span className="points-label">Điểm</span>
+                                        <span className="points-val">{formatPoints(account.points)} PTS</span>
                                     </div>
                                 </div>
+                                <div className="pb-3">
+                                    <div style={{height: '1px', background: '#f1f5f9', margin: '0 16px 8px'}}></div>
+                                    <Link to="/profile" className="menu-link">
+                                        <i className="fa-regular fa-id-badge"></i> Thông tin cá nhân
+                                    </Link>
+                                    <Link to="/orders" className="menu-link active">
+                                        <i className="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng
+                                    </Link>
+                                    <Link to="/change-password" className="menu-link">
+                                        <i className="fa-solid fa-shield-halved"></i> Đổi mật khẩu
+                                    </Link>
+                                    <div style={{height: '1px', background: '#f1f5f9', margin: '8px 16px'}}></div>
+                                    <a href="/login" className="menu-link text-danger" onClick={() => api.post('/logout')}>
+                                        <i className="fa-solid fa-power-off"></i> Đăng xuất
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
 
-                                {/* Status Timeline */}
-                                {order.status !== 4 && (
-                                    <div className="timeline-container position-relative my-5 px-3">
-                                        <div className="position-absolute top-50 start-0 end-0 bg-dark" style={{height: '4px', zIndex: '1', transform: 'translateY(-50%)'}}></div>
-                                        <div className="d-flex justify-content-between position-relative z-2">
-                                            <div className="text-center">
-                                                <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-dark border-4 ${order.status >= 1 ? 'bg-dark text-white' : 'bg-white text-dark'}`} style={{width: '44px', height: '44px', boxShadow: '4px 4px 0 #e50914', fontSize: '18px'}}>
-                                                    <i className="fa-solid fa-clipboard-check"></i>
-                                                </div>
-                                                <div className={`font-oswald fw-bold text-uppercase ${order.status >= 1 ? 'text-dark' : 'text-muted'}`} style={{fontSize: '14px', letterSpacing: '1px'}}>Đặt hàng</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-dark border-4 ${order.status >= 2 ? 'bg-dark text-white' : 'bg-white text-dark'}`} style={{width: '44px', height: '44px', boxShadow: order.status >= 2 ? '4px 4px 0 #e50914' : '4px 4px 0 #000', fontSize: '18px'}}>
-                                                    <i className="fa-solid fa-truck-fast"></i>
-                                                </div>
-                                                <div className={`font-oswald fw-bold text-uppercase ${order.status >= 2 ? 'text-dark' : 'text-muted'}`} style={{fontSize: '14px', letterSpacing: '1px'}}>Đang giao</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-dark border-4 ${order.status >= 5 ? 'bg-dark text-white' : 'bg-white text-dark'}`} style={{width: '44px', height: '44px', boxShadow: order.status >= 5 ? '4px 4px 0 #e50914' : '4px 4px 0 #000', fontSize: '18px'}}>
-                                                    <i className="fa-solid fa-box-open"></i>
-                                                </div>
-                                                <div className={`font-oswald fw-bold text-uppercase ${order.status >= 5 ? 'text-dark' : 'text-muted'}`} style={{fontSize: '14px', letterSpacing: '1px'}}>Nhận hàng</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className={`rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 border border-dark border-4 ${order.status === 3 ? 'bg-dark text-white' : 'bg-white text-dark'}`} style={{width: '44px', height: '44px', boxShadow: order.status === 3 ? '4px 4px 0 #e50914' : '4px 4px 0 #000', fontSize: '18px'}}>
-                                                    <i className="fa-solid fa-check-double"></i>
-                                                </div>
-                                                <div className={`font-oswald fw-bold text-uppercase ${order.status === 3 ? 'text-dark' : 'text-muted'}`} style={{fontSize: '14px', letterSpacing: '1px'}}>Hoàn tất</div>
-                                            </div>
+                        {/* MAIN CONTENT */}
+                        <div className="col-lg-9">
+                            <div className="epic-profile-panel p-4 p-lg-5">
+                                
+                                {/* Content Header */}
+                                <div className="content-header pb-3 mb-4 d-flex justify-content-between align-items-center" style={{borderBottom: '1px solid #f1f5f9'}}>
+                                    <div>
+                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                            <div style={{width: '4px', height: '20px', background: '#e50914', borderRadius: '2px'}}></div>
+                                            <h4 className="mb-0 fw-bold" style={{fontSize: '18px', color: '#0f172a'}}>Chi tiết đơn hàng</h4>
+                                        </div>
+                                        <p className="mb-0 ms-3 text-muted" style={{fontSize: '13px'}}>Thông tin chi tiết và trạng thái của đơn hàng #{order.order_code}</p>
+                                    </div>
+                                    <Link to="/orders" className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" style={{borderRadius: '6px', fontWeight: 600, fontSize: '13px', padding: '6px 12px'}}>
+                                        <i className="fa-solid fa-arrow-left"></i> Quay lại
+                                    </Link>
+                                </div>
+
+                                <div className="od-main-card-flat">
+                                    
+                                    {/* Header Row */}
+                                    <div className="od-header-row mb-4">
+                                        <div>
+                                            <h2 className="od-order-id mb-1" style={{fontSize: '20px', color: '#0f172a', fontWeight: '700'}}>Đơn hàng #{order.order_code}</h2>
+                                            <p className="od-order-date text-muted mb-0" style={{fontSize: '13px'}}>Ngày đặt: {formatDate(order.created_at)}</p>
+                                        </div>
+                                        <div>
+                                            <span className={`od-status-badge ${statusInfo.class}`}>
+                                                <i className={`fa-solid ${statusInfo.icon}`}></i> {statusInfo.text}
+                                            </span>
                                         </div>
                                     </div>
-                                )}
 
-                                <div className="row g-4 mb-5">
-                                    <div className="col-md-6">
-                                        <div className="info-card bg-white border border-dark border-3 p-4 h-100" style={{boxShadow: '6px 6px 0 #000'}}>
-                                            <h6 className="font-oswald fw-bold text-dark text-uppercase fs-5 border-bottom border-dark border-3 pb-2 mb-3"><i className="fa-solid fa-location-dot me-2 text-danger"></i>THÔNG TIN NHẬN HÀNG</h6>
-                                            <div className="info-content text-dark fw-bold">
-                                                <p className="font-oswald fw-bold text-uppercase fs-5 mb-2 text-dark">{order.receiving_name}</p>
-                                                <p className="text-dark"><i className="fa-solid fa-phone me-2 text-danger"></i>{order.phone_number}</p>
-                                                <p className="text-dark"><i className="fa-solid fa-map-pin me-2 text-danger"></i>{order.street_detail}</p>
+                                    {/* Status Timeline */}
+                                    {order.status !== 4 && (
+                                        <div className="od-timeline mb-5">
+                                            <div className="od-timeline-progress" style={{ width: progressWidth }}></div>
+                                            <div className={`od-step ${order.status >= 1 ? 'completed' : ''}`}>
+                                                <div className="od-step-icon"><i className="fa-solid fa-clipboard-check"></i></div>
+                                                <div className="od-step-label">Đặt hàng</div>
+                                            </div>
+                                            <div className={`od-step ${order.status >= 2 ? 'completed' : ''}`}>
+                                                <div className="od-step-icon"><i className="fa-solid fa-truck-fast"></i></div>
+                                                <div className="od-step-label">Đang giao</div>
+                                            </div>
+                                            <div className={`od-step ${order.status >= 5 ? 'completed' : ''}`}>
+                                                <div className="od-step-icon"><i className="fa-solid fa-box-open"></i></div>
+                                                <div className="od-step-label">Đã nhận</div>
+                                            </div>
+                                            <div className={`od-step ${order.status === 3 ? 'completed' : ''}`}>
+                                                <div className="od-step-icon"><i className="fa-solid fa-check-double"></i></div>
+                                                <div className="od-step-label">Hoàn tất</div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="info-card bg-white border border-dark border-3 p-4 h-100" style={{boxShadow: '6px 6px 0 #000'}}>
-                                            <h6 className="font-oswald fw-bold text-dark text-uppercase fs-5 border-bottom border-dark border-3 pb-2 mb-3"><i className="fa-solid fa-credit-card me-2 text-danger"></i>THANH TOÁN</h6>
-                                            <div className="info-content text-dark fw-bold">
-                                                <p className="font-oswald fw-bold text-uppercase fs-5 mb-2 text-dark">{order.method_name}</p>
-                                                <div className="mt-3">
+                                    )}
+
+                                    {/* Info Grids */}
+                                    <div className="od-info-grid mb-5">
+                                        <div className="od-info-card">
+                                            <h3 className="od-info-title"><i className="fa-solid fa-location-dot"></i> Thông tin nhận hàng</h3>
+                                            <div className="od-info-content">
+                                                <p className="mb-2"><strong>{order.receiving_name}</strong></p>
+                                                <p className="mb-2 text-muted"><i className="fa-solid fa-phone me-1"></i> {order.phone_number}</p>
+                                                <p className="mb-0 text-muted"><i className="fa-solid fa-map-pin me-1"></i> {order.street_detail}</p>
+                                            </div>
+                                        </div>
+                                        <div className="od-info-card">
+                                            <h3 className="od-info-title"><i className="fa-solid fa-credit-card"></i> Phương thức thanh toán</h3>
+                                            <div className="od-info-content">
+                                                <p className="mb-3"><strong>{order.method_name}</strong></p>
+                                                <div>
                                                     {isPaid ? (
-                                                        <span className="badge bg-success border border-dark border-2 px-3 py-2 font-oswald text-uppercase text-white" style={{boxShadow: '2px 2px 0 #000', borderRadius: '0'}}><i className="fa-solid fa-circle-check me-1"></i> ĐÃ THANH TOÁN</span>
+                                                        <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill" style={{fontSize: '12px', fontWeight: '600'}}>
+                                                            <i className="fa-solid fa-circle-check me-1"></i> Đã thanh toán
+                                                        </span>
                                                     ) : (
-                                                        <span className="badge bg-warning text-dark border border-dark border-2 px-3 py-2 font-oswald text-uppercase" style={{boxShadow: '2px 2px 0 #000', borderRadius: '0'}}><i className="fa-solid fa-clock me-1"></i> CHƯA THANH TOÁN</span>
+                                                        <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2 rounded-pill" style={{color: '#d97706', fontSize: '12px', fontWeight: '600'}}>
+                                                            <i className="fa-solid fa-clock me-1"></i> Chưa thanh toán
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <h6 className="font-oswald fw-bold mb-3 fs-4 text-uppercase text-dark"><i className="fa-solid fa-box me-2 text-danger"></i> SẢN PHẨM ĐƠN HÀNG</h6>
-                                <div className="product-list bg-white border border-dark border-3" style={{boxShadow: '6px 6px 0 #000'}}>
-                                    {items.map((item, index) => (
-                                        <div key={index} className="product-item d-flex align-items-center gap-3 p-3 border-bottom border-dark border-3 bg-white">
-                                            <img src={getImageUrl(item.image_url)} className="product-img bg-white border border-dark border-3" style={{width: '80px', height: '80px', objectFit: 'cover', boxShadow: '4px 4px 0 #000'}} alt={item.product_name} />
-                                            <div className="product-details flex-grow-1">
-                                                <h6 className="font-oswald fw-bold text-dark text-uppercase fs-5 m-0 mb-1">{item.product_name}</h6>
-                                                <div className="mb-2">
-                                                    <span className="variant-tag bg-white text-dark font-oswald fw-bold text-uppercase border border-dark border-2 px-2 py-1 me-2" style={{boxShadow: '2px 2px 0 #000', fontSize: '12px'}}>Màu: {item.color_name}</span>
-                                                    <span className="variant-tag bg-white text-dark font-oswald fw-bold text-uppercase border border-dark border-2 px-2 py-1" style={{boxShadow: '2px 2px 0 #000', fontSize: '12px'}}>Size: {item.size_name}</span>
+                                    {/* Product List */}
+                                    <h3 className="od-section-title mb-3" style={{fontSize: '15px', fontWeight: '700', color: '#0f172a', letterSpacing: '0.5px'}}>Sản phẩm đơn hàng ({items.length})</h3>
+                                    <div className="mb-4">
+                                        {items.map((item, index) => (
+                                            <div key={index} className="od-product-item">
+                                                <img src={getImageUrl(item.image_url)} alt={item.product_name} className="od-product-img" />
+                                                <div className="od-product-info">
+                                                    <h4 className="od-product-name">{item.product_name}</h4>
+                                                    <div className="od-product-meta">
+                                                        <span>Màu: {item.color_name}</span>
+                                                        <span>Size: {item.size_name}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="text-muted font-oswald fw-bold">SỐ LƯỢNG: <span className="text-dark fs-5">{item.quantity}</span></div>
+                                                <div className="od-product-price-qty">
+                                                    <div className="od-price">{formatCurrency(item.price)}</div>
+                                                    <div className="od-qty">x{item.quantity}</div>
+                                                </div>
                                             </div>
-                                            <div className="text-end">
-                                                <div className="font-oswald fw-bold text-danger" style={{fontSize: '22px'}}>{formatCurrency(item.price)}</div>
+                                        ))}
+                                    </div>
+
+                                    {/* Summary */}
+                                    <div className="row justify-content-end mb-4">
+                                        <div className="col-md-6 col-lg-5">
+                                            <div className="od-summary-box p-3" style={{background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0'}}>
+                                                <div className="od-summary-row d-flex justify-content-between mb-2" style={{fontSize: '14px'}}>
+                                                    <span className="text-muted">Tạm tính</span>
+                                                    <span className="fw-semibold text-dark">{formatCurrency(order.total_amount)}</span>
+                                                </div>
+                                                <div className="od-summary-row d-flex justify-content-between mb-2" style={{fontSize: '14px'}}>
+                                                    <span className="text-muted">Phí vận chuyển</span>
+                                                    <span className="fw-semibold text-dark">
+                                                        {order.shipping_fee > 0 ? formatCurrency(order.shipping_fee) : 'MIỄN PHÍ'}
+                                                    </span>
+                                                </div>
+                                                {order.total_amount + order.shipping_fee - order.final_amount > 0 && (
+                                                    <div className="od-summary-row d-flex justify-content-between mb-2" style={{fontSize: '14px', color: '#16a34a'}}>
+                                                        <span style={{color: '#16a34a'}}>Giảm giá</span>
+                                                        <span className="fw-bold" style={{color: '#16a34a'}}>
+                                                            -{formatCurrency(order.total_amount + order.shipping_fee - order.final_amount)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="od-summary-row d-flex justify-content-between align-items-center mt-3 pt-2" style={{borderTop: '1px dashed #e2e8f0'}}>
+                                                    <span className="fw-bold text-dark" style={{fontSize: '15px'}}>Tổng thanh toán</span>
+                                                    <span className="val fw-bold text-danger" style={{fontSize: '18px'}}>{formatCurrency(order.final_amount)}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
 
-                                <div className="row justify-content-end mt-4">
-                                    <div className="col-md-6 col-lg-5">
-                                        <div className="price-summary bg-white border border-dark border-3 p-4" style={{boxShadow: '6px 6px 0 #000'}}>
-                                            <div className="summary-row d-flex justify-content-between mb-3 font-oswald fw-bold text-dark fs-6 text-uppercase">
-                                                <span>TẠM TÍNH:</span>
-                                                <span>{formatCurrency(order.total_amount)}</span>
-                                            </div>
-                                            <div className="summary-row d-flex justify-content-between mb-3 font-oswald fw-bold text-dark fs-6 text-uppercase">
-                                                <span>PHÍ GIAO HÀNG:</span>
-                                                <span>{formatCurrency(order.shipping_fee)}</span>
-                                            </div>
-                                            <div className="summary-row total d-flex justify-content-between pt-3 mt-3 border-top border-dark border-3 font-oswald fw-bold text-danger fs-4 text-uppercase">
-                                                <span>TỔNG CỘNG:</span>
-                                                <span className="total-val" style={{textShadow: '1px 1px 0 #000'}}>{formatCurrency(order.final_amount)}</span>
-                                            </div>
+                                    {/* Actions */}
+                                    {(order.status === 1 || order.status === 2 || order.status === 3) && (
+                                        <div className="od-actions d-flex justify-content-end gap-2 pt-3" style={{borderTop: '1px solid #f1f5f9'}}>
+                                            {order.status === 1 && (
+                                                <button onClick={handleCancel} className="btn-outline-luxury text-danger" style={{border: '1px solid #dc3545', background: 'transparent', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'}}>
+                                                    <i className="fa-solid fa-xmark"></i> Hủy đơn hàng
+                                                </button>
+                                            )}
+                                            {order.status === 2 && (
+                                                <button onClick={triggerConfirm} className="btn-super" style={{padding: '10px 20px', fontSize: '13px', borderRadius: '8px'}}>
+                                                    <i className="fa-solid fa-box-open"></i> Đã nhận được hàng
+                                                </button>
+                                            )}
+                                            {order.status === 3 && (
+                                                <>
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (items && items.length > 0) {
+                                                                navigate(`/details?id=${items[0].product_id}&tab=reviews`);
+                                                            } else {
+                                                                navigate('/shop');
+                                                            }
+                                                        }} 
+                                                        className="btn-outline-luxury"
+                                                        style={{background: '#e50914', color: '#fff', border: '1px solid #e50914', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'}}
+                                                    >
+                                                        <i className="fa-regular fa-star me-1"></i> Đánh giá đơn hàng
+                                                    </button>
+                                                    <Link to="/shop" className="btn-outline-luxury text-decoration-none d-inline-flex align-items-center justify-content-center" style={{background: '#0f172a', color: '#fff', border: '1px solid #0f172a', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'}}>
+                                                        Mua lại
+                                                    </Link>
+                                                </>
+                                            )}
                                         </div>
-                                    </div>
+                                    )}
+
                                 </div>
-
-                                {order.status === 2 && (
-                                    <div className="mt-5 text-center">
-                                        <button onClick={handleConfirm} className="action-btn-red bg-danger text-white border border-dark border-3 font-oswald fw-bold text-uppercase px-5 py-3" style={{fontSize: '18px', boxShadow: '6px 6px 0 #000'}}>
-                                            <i className="fa-solid fa-box-open me-2"></i> TÔI ĐÃ NHẬN ĐƯỢC HÀNG
-                                        </button>
-                                    </div>
-                                )}
-
-                                {order.status === 1 && (
-                                    <div className="mt-5 text-center">
-                                        <button onClick={handleCancel} className="action-btn-outline bg-white text-dark border border-dark border-3 font-oswald fw-bold text-uppercase px-5 py-3" style={{fontSize: '16px', boxShadow: '6px 6px 0 #000'}}>
-                                            <i className="fa-solid fa-xmark me-2 text-danger"></i> HỦY ĐƠN HÀNG
-                                        </button>
-                                    </div>
-                                )}
-
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>
+            {confirmModal.isOpen && (
+                <div className="epic-modal-overlay">
+                    <div className="epic-modal-box animate__animated animate__zoomIn">
+                        {confirmModal.step === 1 ? (
+                            <>
+                                <div className="epic-modal-icon">
+                                    <i className="fa-solid fa-box-open"></i>
+                                </div>
+                                <h4 className="epic-modal-title">Xác nhận nhận hàng</h4>
+                                <p className="epic-modal-message">Xác nhận bạn đã nhận được gói hàng này? Đơn hàng sẽ được chuyển sang trạng thái thành công.</p>
+                                <div className="epic-modal-actions">
+                                    <button className="epic-btn-modal-cancel" onClick={() => setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null })}>Hủy bỏ</button>
+                                    <button className="epic-btn-modal-confirm" onClick={handleConfirmSubmit}>Đồng ý</button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="epic-modal-icon">
+                                    <i className="fa-solid fa-star-half-stroke"></i>
+                                </div>
+                                <h4 className="epic-modal-title">Đánh giá sản phẩm</h4>
+                                <p className="epic-modal-message">Xác nhận nhận hàng thành công! Bạn có muốn đánh giá sản phẩm này ngay để tích luỹ thêm điểm không?</p>
+                                <div className="epic-modal-actions">
+                                    <button className="epic-btn-modal-cancel" onClick={() => {
+                                        setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
+                                        fetchOrderDetail(false);
+                                    }}>Để sau</button>
+                                    <button className="epic-btn-modal-confirm" onClick={() => {
+                                        navigate(`/details?id=${confirmModal.productId}&tab=reviews`);
+                                        setConfirmModal({ isOpen: false, step: 1, orderCode: null, productId: null });
+                                    }}>Đánh giá ngay</button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 };
