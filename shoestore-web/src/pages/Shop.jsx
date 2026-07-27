@@ -59,16 +59,33 @@ const Shop = () => {
     const [sortOption, setSortOption] = useState('');
     const [searchQuery, setSearchQuery] = useState(initialSearch);
     const [quickAddProductId, setQuickAddProductId] = useState(null);
+    const [imageSearchProducts, setImageSearchProducts] = useState(null);
+    const [imageSearchUrl, setImageSearchUrl] = useState(null);
     
     const observerRef = useRef(null);
 
     useEffect(() => {
         const queryParams = new URLSearchParams(window.location.search);
         const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
-        if (!hasFilter) {
+        if (!hasFilter && !location.state?.imageSearchProducts) {
             window.scrollTo(0, 0);
         }
     }, []);
+
+    // Receive image search results from Header navigation
+    useEffect(() => {
+        if (location.state?.imageSearchProducts) {
+            setImageSearchProducts(location.state.imageSearchProducts);
+            setImageSearchUrl(location.state.imageSearchUrl || null);
+            // Scroll to products section
+            setTimeout(() => {
+                const section = document.getElementById('shop-products-section');
+                if (section) section.scrollIntoView({ behavior: 'smooth' });
+            }, 200);
+            // Clear the state so browser back/forward doesn't re-trigger
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state]);
 
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
@@ -303,6 +320,14 @@ const Shop = () => {
         return `http://localhost:8080${clean}`;
     };
 
+    const clearImageSearch = () => {
+        setImageSearchProducts(null);
+        setImageSearchUrl(null);
+    };
+
+    // Determine what products to display: image search results take priority
+    const displayProducts = imageSearchProducts || products;
+
     return (
         <Layout>
             <div className="shop-epic-theme">
@@ -375,13 +400,13 @@ const Shop = () => {
                                     <div className="d-flex flex-column gap-2">
                                         <div className="form-check epic-radio">
                                             <input className="form-check-input" type="radio" name="category" id="catAll"
-                                                checked={selectedCategory === ''} onChange={() => setSelectedCategory('')} />
+                                                checked={selectedCategory === ''} onChange={() => { clearImageSearch(); setSelectedCategory(''); }} />
                                             <label className="form-check-label fw-bold" htmlFor="catAll">Tất cả</label>
                                         </div>
                                         {categories.map(cat => (
                                             <div className="form-check epic-radio" key={cat.id}>
                                                 <input className="form-check-input" type="radio" name="category" id={`cat${cat.id}`}
-                                                    checked={selectedCategory === cat.id} onChange={() => setSelectedCategory(cat.id)} />
+                                                    checked={selectedCategory === cat.id} onChange={() => { clearImageSearch(); setSelectedCategory(cat.id); }} />
                                                 <label className="form-check-label fw-bold" htmlFor={`cat${cat.id}`}>{cat.name || cat.category_name || cat.categoryName}</label>
                                             </div>
                                         ))}
@@ -393,15 +418,16 @@ const Shop = () => {
                                     <div className="d-flex flex-column gap-2">
                                         <div className="form-check epic-radio">
                                             <input className="form-check-input" type="radio" name="brand" id="brandAll"
-                                                checked={selectedBrand === ''} onChange={() => setSelectedBrand('')} />
+                                                checked={selectedBrand === '' && !imageSearchProducts} onChange={() => { clearImageSearch(); setSelectedBrand(''); }} />
                                             <label className="form-check-label fw-bold" htmlFor="brandAll">Tất cả</label>
                                         </div>
                                         {brands.map(brand => {
                                             const bName = brand.name || brand.brand_name || brand.brandName || '';
+                                            const isChecked = selectedBrand === bName;
                                             return (
                                                 <div className="form-check epic-radio" key={brand.id}>
                                                     <input className="form-check-input" type="radio" name="brand" id={`brand${brand.id}`}
-                                                        checked={selectedBrand === bName} onChange={() => setSelectedBrand(bName)} />
+                                                        checked={isChecked} onChange={() => { clearImageSearch(); setSelectedBrand(bName); }} />
                                                     <label className="form-check-label fw-bold" htmlFor={`brand${brand.id}`}>{bName}</label>
                                                 </div>
                                             );
@@ -433,6 +459,7 @@ const Shop = () => {
 
                                 <div>
                                     <button className="btn-brutal-outline w-100 mt-2" onClick={() => {
+                                        clearImageSearch();
                                         navigate('/shop');
                                         setSelectedCategory(''); setSelectedBrand(''); setMaxPrice(5000000); setSortOption(''); setSearchQuery('');
                                     }}>XÓA BỘ LỌC</button>
@@ -448,8 +475,34 @@ const Shop = () => {
                                 <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', right: '5%', top: '40%', letterSpacing: '4px' }}>PHONG CÁCH</div>
                                 <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '15%', top: '75%', letterSpacing: '4px' }}>CỬA HÀNG</div>
                             </div>
+
+                            {/* Image Search Results Banner */}
+                            {imageSearchProducts && (
+                                <div className="mb-4 p-4 image-search-banner">
+                                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                        <div className="d-flex align-items-center gap-3">
+                                            {imageSearchUrl && (
+                                                <img src={imageSearchUrl} alt="Ảnh tìm kiếm" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 12, border: '2px solid #ff6600' }} />
+                                            )}
+                                            <div>
+                                                <h6 className="font-oswald fw-bold text-uppercase mb-1" style={{ color: '#111' }}>
+                                                    <i className="fa-solid fa-camera me-2" style={{ color: '#ff6600' }}></i>
+                                                    KẾT QUẢ TÌM KIẾM BẰNG HÌNH ẢNH
+                                                </h6>
+                                                <small style={{ color: '#555555', fontSize: 14 }}>
+                                                    Đã tìm thấy <span className="fw-bold" style={{ color: '#ff6600' }}>{imageSearchProducts.length}</span> sản phẩm phù hợp
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <button className="btn btn-sm btn-image-search-reset font-oswald fw-bold" style={{ letterSpacing: 1 }} onClick={clearImageSearch}>
+                                            <i className="fa fa-times me-1" />Quay lại danh sách sản phẩm
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="d-flex justify-content-between align-items-center border-bottom border-light-subtle pb-3 mb-4 flex-wrap gap-3">
-                                <span className="font-oswald fw-bold fs-5 text-uppercase">TÌM THẤY <span className="text-danger">{products.length}</span> SẢN PHẨM</span>
+                                <span className="font-oswald fw-bold fs-5 text-uppercase">TÌM THẤY <span className="text-danger">{displayProducts.length}</span> SẢN PHẨM</span>
                                 <div className="d-flex align-items-center gap-2">
                                     <span className="font-oswald fw-bold text-uppercase">SẮP XẾP:</span>
                                     <select className="epic-select py-1" style={{ width: 'auto' }} value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
@@ -465,9 +518,9 @@ const Shop = () => {
                                 <div className="text-center py-5">
                                     <div className="spinner-border text-danger" role="status" style={{ width: '4rem', height: '4rem', borderWidth: '5px' }}></div>
                                 </div>
-                            ) : products.length > 0 ? (
+                            ) : displayProducts.length > 0 ? (
                                 <div className="row g-4">
-                                    {products.map((p, idx) => (
+                                    {displayProducts.map((p, idx) => (
                                         <div key={p.id} className="col-lg-4 col-md-6 col-12 reveal-item opacity-0 mb-4" style={{ animationDelay: `${(idx % 12) * 0.05}s` }}>
                                             <div className="flat-product-card h-100 bg-white d-flex flex-column position-relative">
                                                 <Link to={`/details?id=${p.id}`} className="stretched-link" style={{ zIndex: 1 }} />
@@ -475,7 +528,13 @@ const Shop = () => {
                                                 {/* Image */}
                                                 <div className="flat-card-img-box position-relative overflow-hidden d-flex align-items-center justify-content-center"
                                                      style={{ aspectRatio: '1', padding: 16, background: '#f8f8f8' }}>
-                                                    <img src={getImageUrl(p.image_url)} alt={p.product_name} className="product-card-img w-100 h-100" style={{ objectFit: 'contain' }} />
+                                                    {getImageUrl(p.image_url) ? (
+                                                        <img src={getImageUrl(p.image_url)} alt={p.product_name} className="product-card-img w-100 h-100" style={{ objectFit: 'contain' }} />
+                                                    ) : (
+                                                        <div className="text-center text-muted">
+                                                            <i className="fa-solid fa-image fa-3x opacity-50"></i>
+                                                        </div>
+                                                    )}
                                                     <div className="position-absolute" style={{ top: 10, right: 10, zIndex: 10 }}>
                                                         <button className="wishlist-btn btn" onClick={(e) => toggleWishlist(e, p.id)}>
                                                             <i className={`${wishlistIds.includes(p.id) ? 'fa-solid text-danger' : 'fa-regular text-secondary'} fa-heart`} style={{ fontSize: 16 }} />
