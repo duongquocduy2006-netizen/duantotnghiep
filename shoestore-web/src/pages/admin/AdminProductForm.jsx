@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
@@ -32,6 +32,178 @@ const translateColorToVietnamese = (name) => {
         .replace(/Xanh l\?/gi, "Xanh lá")
         .replace(/V\?ng/gi, "Vàng")
         .replace(/H\?ng/gi, "Hồng");
+};
+
+// ─── Validation ──────────────────────────────────────────────────────────────
+// Giày trẻ em (từ ~16) đến người lớn cỡ lớn (đến 50)
+const SIZE_MIN = 16;
+const SIZE_MAX = 50;
+
+const validateSize = (val) => {
+    const trimmed = val.trim();
+    if (!trimmed) return "Vui lòng nhập size.";
+    if (!/^\d+(\.\d+)?$/.test(trimmed))
+        return "Size phải là số nguyên (VD: 38, 39…). Không được nhập chữ.";
+    const num = parseFloat(trimmed);
+    if (num < SIZE_MIN || num > SIZE_MAX)
+        return `Size hợp lệ từ ${SIZE_MIN} (trẻ em nhỏ) đến ${SIZE_MAX} (người lớn cỡ lớn).`;
+    return null;
+};
+
+const validateColor = (val) => {
+    const trimmed = val.trim();
+    if (!trimmed) return "Vui lòng nhập tên màu.";
+    if (/\d/.test(trimmed)) return "Tên màu không được chứa số.";
+    if (/^[!@#$%^&*()_+=\[\]{};':"\\|,.<>\/?]+$/.test(trimmed))
+        return "Tên màu không hợp lệ.";
+    if (trimmed.length < 2) return "Tên màu quá ngắn (tối thiểu 2 ký tự).";
+    if (trimmed.length > 30) return "Tên màu không được quá 30 ký tự.";
+    return null;
+};
+
+// ─── TagInput Component ──────────────────────────────────────────────────────
+const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, presets = [], validate, hint }) => {
+    const [inputVal, setInputVal] = useState("");
+    const [editingIdx, setEditingIdx] = useState(null);
+    const [editVal, setEditVal] = useState("");
+    const [error, setError] = useState("");
+    const inputRef = useRef(null);
+
+    const handleAdd = (val = inputVal.trim()) => {
+        if (!val) return;
+        if (validate) {
+            const err = validate(val);
+            if (err) { setError(err); return; }
+        }
+        const dup = tags.some(t => t.toLowerCase() === val.toLowerCase());
+        if (dup) { setError(`"${val}" đã tồn tại trong danh sách!`); return; }
+        onAdd(val);
+        setInputVal("");
+        setError("");
+        inputRef.current?.focus();
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === "Enter") { e.preventDefault(); handleAdd(); }
+    };
+
+    const startEdit = (idx) => {
+        setEditingIdx(idx);
+        setEditVal(tags[idx]);
+        setError("");
+    };
+
+    const commitEdit = (idx) => {
+        const val = editVal.trim();
+        if (!val) { cancelEdit(); return; }
+        if (validate) {
+            const err = validate(val);
+            if (err) { setError(err); return; }
+        }
+        const dup = tags.some((t, i) => i !== idx && t.toLowerCase() === val.toLowerCase());
+        if (dup) { setError(`"${val}" đã tồn tại!`); return; }
+        onEdit(idx, val);
+        setEditingIdx(null);
+        setEditVal("");
+        setError("");
+    };
+
+    const cancelEdit = () => {
+        setEditingIdx(null);
+        setEditVal("");
+        setError("");
+    };
+
+    return (
+        <div className="tag-input-section">
+            <label className="tag-input-label">
+                {icon && <i className={`bi ${icon}`}></i>} {label}
+            </label>
+
+            {/* Hint text */}
+            {hint && <p className="tag-hint">{hint}</p>}
+
+            {/* Preset quick-add chips */}
+            {presets.length > 0 && (
+                <div className="preset-chips">
+                    {presets.map((p) => {
+                        const selected = tags.some(t => t.toLowerCase() === p.toLowerCase());
+                        return (
+                            <button
+                                key={p}
+                                type="button"
+                                className={`preset-chip ${selected ? "selected" : ""}`}
+                                onClick={() => !selected && handleAdd(p)}
+                                title={selected ? "Đã thêm" : `Thêm "${p}"`}
+                            >
+                                {selected ? <i className="bi bi-check2"></i> : <i className="bi bi-plus"></i>}
+                                {p}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Input bar */}
+            <div className={`tag-input-bar ${error ? "has-error" : ""}`}>
+                <input
+                    ref={inputRef}
+                    type="text"
+                    className="tag-input-field"
+                    placeholder={placeholder}
+                    value={inputVal}
+                    onChange={e => { setInputVal(e.target.value); setError(""); }}
+                    onKeyDown={handleKeyDown}
+                />
+                <button type="button" className="tag-add-btn" onClick={() => handleAdd()}>
+                    <i className="bi bi-plus-lg"></i> Thêm
+                </button>
+            </div>
+
+            {/* Validation error */}
+            {error && (
+                <div className="tag-error">
+                    <i className="bi bi-exclamation-triangle-fill"></i> {error}
+                </div>
+            )}
+
+            {/* Selected tags */}
+            {tags.length > 0 && (
+                <div className="tag-list">
+                    {tags.map((tag, idx) => (
+                        <div key={idx} className="tag-item">
+                            {editingIdx === idx ? (
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    className="tag-edit-input"
+                                    value={editVal}
+                                    onChange={e => setEditVal(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === "Enter") { e.preventDefault(); commitEdit(idx); }
+                                        if (e.key === "Escape") cancelEdit();
+                                    }}
+                                    onBlur={() => commitEdit(idx)}
+                                />
+                            ) : (
+                                <span className="tag-text" onClick={() => startEdit(idx)} title="Nhấp để sửa">
+                                    {tag}
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                className="tag-remove-btn"
+                                onClick={() => onRemove(idx)}
+                                title="Xóa"
+                            >
+                                <i className="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 };
 
 const AdminProductForm = () => {
@@ -78,59 +250,20 @@ const AdminProductForm = () => {
     const [aiImageBase64, setAiImageBase64] = useState('');
     const [aiImagesBase64List, setAiImagesBase64List] = useState([]);
 
-    // Multi-select sizes & colors state
-    const [selectedSizeIds, setSelectedSizeIds] = useState([]);
-    const [selectedColorIds, setSelectedColorIds] = useState([]);
+    // Tag-input: selected size/color names
+    const [selectedSizes, setSelectedSizes] = useState([]);
+    const [selectedColors, setSelectedColors] = useState([]);
 
     const handleResetAiForm = () => {
         if (window.confirm("Bạn có chắc chắn muốn HỦY & XÓA TOÀN BỘ dữ liệu do AI điền tự động để làm mới không?")) {
-            setProduct({
-                productName: '',
-                description: '',
-                status: 1,
-                brandName: '',
-                categoryId: ''
-            });
-            setVariant({
-                sizeId: '',
-                colorId: '',
-                price: '',
-                quantity: ''
-            });
-            setSelectedSizeIds([]);
-            setSelectedColorIds([]);
+            setProduct({ productName: '', description: '', status: 1, brandName: '', categoryId: '' });
+            setVariant({ sizeId: '', colorId: '', price: '', quantity: '' });
+            setSelectedSizes([]);
+            setSelectedColors([]);
             setAiImageBase64('');
             setAiImagesBase64List([]);
             setImages([]);
             setAiSuccessMsg('');
-        }
-    };
-
-    const handleSizeToggle = (sizeId) => {
-        setSelectedSizeIds(prev => 
-            prev.includes(sizeId) ? prev.filter(id => id !== sizeId) : [...prev, sizeId]
-        );
-    };
-
-    const toggleSelectAllSizes = () => {
-        if (sizes.length > 0 && selectedSizeIds.length === sizes.length) {
-            setSelectedSizeIds([]);
-        } else {
-            setSelectedSizeIds(sizes.map(s => String(s.id)));
-        }
-    };
-
-    const handleColorToggle = (colorId) => {
-        setSelectedColorIds(prev => 
-            prev.includes(colorId) ? prev.filter(id => id !== colorId) : [...prev, colorId]
-        );
-    };
-
-    const toggleSelectAllColors = () => {
-        if (colors.length > 0 && selectedColorIds.length === colors.length) {
-            setSelectedColorIds([]);
-        } else {
-            setSelectedColorIds(colors.map(c => String(c.id)));
         }
     };
 
@@ -201,13 +334,14 @@ const AdminProductForm = () => {
                 if (!isEdit) {
                     // Auto-select ALL sizes on AI auto-fill
                     if (sizes.length > 0) {
-                        setSelectedSizeIds(sizes.map(s => String(s.id)));
+                        setSelectedSizes(sizes.map(s => s.sizeName));
                     }
-                    // Auto-select color in selectedColorIds
-                    if (data.colorId) {
-                        setSelectedColorIds([String(data.colorId)]);
+                    // Auto-select color
+                    if (data.colorName) {
+                        const vn = translateColorToVietnamese(data.colorName);
+                        setSelectedColors([vn]);
                     } else if (colors.length > 0) {
-                        setSelectedColorIds([String(colors[0].id)]);
+                        setSelectedColors([translateColorToVietnamese(colors[0].colorName)]);
                     }
 
                     setVariant(prev => ({
@@ -409,18 +543,10 @@ const AdminProductForm = () => {
             newErrors.brandName = 'Vui lòng chọn thương hiệu cho sản phẩm.';
         }
         if (!isEdit) {
-            if (!variant.sizeId) {
-                newErrors.sizeId = 'Vui lòng chọn kích cỡ.';
-            }
-            if (!variant.colorId) {
-                newErrors.colorId = 'Vui lòng chọn màu sắc.';
-            }
-            if (!variant.price || parseFloat(variant.price) <= 0) {
-                newErrors.price = 'Giá bán phải lớn hơn 0.';
-            }
-            if (!variant.quantity || parseInt(variant.quantity) <= 0) {
-                newErrors.quantity = 'Số lượng phải lớn hơn 0.';
-            }
+            if (selectedSizes.length === 0) newErrors.sizeId = 'Vui lòng thêm ít nhất 1 kích cỡ.';
+            if (selectedColors.length === 0) newErrors.colorId = 'Vui lòng thêm ít nhất 1 màu sắc.';
+            if (!variant.price || parseFloat(variant.price) <= 0) newErrors.price = 'Giá bán phải lớn hơn 0.';
+            if (!variant.quantity || parseInt(variant.quantity) <= 0) newErrors.quantity = 'Số lượng phải lớn hơn 0.';
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -431,6 +557,10 @@ const AdminProductForm = () => {
 
         setErrors({});
         setSaving(true);
+
+        // Helper: find size/color ID from name
+        const getSizeId = (name) => { const s = sizes.find(s => s.sizeName.trim().toLowerCase() === name.trim().toLowerCase()); return s ? s.id : null; };
+        const getColorId = (name) => { const c = colors.find(c => translateColorToVietnamese(c.colorName).toLowerCase() === name.trim().toLowerCase()); return c ? c.id : null; };
 
         const allBase64Images = images
             .map(img => typeof img === 'string' ? img : img?.url)
@@ -453,25 +583,26 @@ const AdminProductForm = () => {
             if (prodResponse.data && prodResponse.data.success) {
                 const savedProductId = prodResponse.data.productId;
 
-                // 2. If CREATE mode, seed variants for ALL selected sizes x ALL selected colors
-                const targetSizeIds = selectedSizeIds.length > 0 ? selectedSizeIds : (variant.sizeId ? [variant.sizeId] : (sizes.length > 0 ? [String(sizes[0].id)] : []));
-                const targetColorIds = selectedColorIds.length > 0 ? selectedColorIds : (variant.colorId ? [variant.colorId] : (colors.length > 0 ? [String(colors[0].id)] : []));
-
-                if (!isEdit && targetSizeIds.length > 0 && targetColorIds.length > 0 && variant.price && variant.quantity) {
-                    for (const sId of targetSizeIds) {
-                        for (const cId of targetColorIds) {
+                // 2. CREATE mode: seed variants for ALL selected sizes × colors
+                if (!isEdit && selectedSizes.length > 0 && selectedColors.length > 0 && variant.price && variant.quantity) {
+                    for (const sz of selectedSizes) {
+                        for (const cl of selectedColors) {
+                            const sizeId = getSizeId(sz);
+                            const colorId = getColorId(cl);
                             const variantPayload = {
                                 productId: savedProductId,
                                 variantId: null,
-                                sizeId: parseInt(sId),
-                                colorId: parseInt(cId),
+                                sizeId,
+                                colorId,
+                                newSizeName: sizeId ? '' : sz,
+                                newColorName: colorId ? '' : cl,
                                 price: parseFloat(variant.price),
                                 quantity: parseInt(variant.quantity)
                             };
                             try {
                                 await api.post('/api/products/variant/save', variantPayload);
                             } catch (vErr) {
-                                console.error("Lỗi lưu biến thể cho size " + sId + ", color " + cId, vErr);
+                                console.error('Lỗi lưu biến thể', sz, cl, vErr);
                             }
                         }
                     }
@@ -529,7 +660,7 @@ const AdminProductForm = () => {
                     <i className="bi bi-exclamation-triangle" style={{ fontSize: '48px' }}></i>
                     <h3 style={{ marginTop: '20px', fontFamily: 'Oswald' }}>LỖI TẢI THÔNG TIN</h3>
                     <p style={{ color: '#aaa', marginTop: '10px' }}>{error}</p>
-                    <button className="btn-cancel" onClick={loadFormData} style={{ marginTop: '20px' }}>
+                    <button type="button" className="btn-cancel" onClick={loadFormData} style={{ marginTop: '20px' }}>
                         THỬ LẠI
                     </button>
                 </div>
@@ -637,79 +768,46 @@ const AdminProductForm = () => {
                             {!isEdit && (
                                 <div className="card-custom">
                                     <h3 className="card-custom-title font-oswald"><i className="bi bi-box-seam"></i> CẤU HÌNH BIẾN THỂ BAN ĐẦU</h3>
-                                    <div style={{ marginBottom: '15px' }}>
-                                        <label className="form-label" style={{ color: 'var(--accent-cyan)' }}>* Chọn các Size và Màu sắc để tự động tạo toàn bộ biến thể ban đầu cho sản phẩm.</label>
-                                    </div>
-                                    {/* Multi-select Size Chips with Select All button */}
-                                    <div className="form-group mb-4">
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                            <label className="form-label mb-0">KÍCH CỠ (SIZE) * ({selectedSizeIds.length} ĐÃ CHỌN)</label>
-                                            <button
-                                                type="button"
-                                                className="btn-select-all-sizes"
-                                                onClick={toggleSelectAllSizes}
-                                            >
-                                                <i className={`bi ${sizes.length > 0 && selectedSizeIds.length === sizes.length ? 'bi-check-square-fill' : 'bi-square'}`}></i> CHỌN TẤT CẢ ({sizes.length} SIZES)
-                                            </button>
-                                        </div>
-                                        <div className="sizes-checkbox-grid">
-                                            {sizes.map(s => {
-                                                const isChecked = selectedSizeIds.includes(String(s.id));
-                                                return (
-                                                    <label key={s.id} className={`size-chip-label ${isChecked ? 'active' : ''}`}>
-                                                        <input
-                                                            type="checkbox"
-                                                            hidden
-                                                            checked={isChecked}
-                                                            onChange={() => handleSizeToggle(String(s.id))}
-                                                        />
-                                                        <span>Size {s.sizeName}</span>
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
+                                    <p className="form-label" style={{ marginBottom: '18px', color: '#64748b', fontSize: '13px' }}>
+                                        Thêm Size và Màu sắc bên dưới — hệ thống sẽ tự động tạo toàn bộ biến thể (size × màu) cho sản phẩm.
+                                    </p>
 
-                                    {/* Multi-select Color Chips with Select All button */}
-                                    <div className="form-group mb-4" style={{ marginTop: '20px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                            <label className="form-label mb-0">MÀU SẮC * ({selectedColorIds.length} ĐÃ CHỌN)</label>
-                                            <button
-                                                type="button"
-                                                className="btn-select-all-sizes"
-                                                onClick={toggleSelectAllColors}
-                                            >
-                                                <i className={`bi ${colors.length > 0 && selectedColorIds.length === colors.length ? 'bi-check-square-fill' : 'bi-square'}`}></i> CHỌN TẤT CẢ ({colors.length} MÀU)
-                                            </button>
-                                        </div>
-                                        <div className="sizes-checkbox-grid">
-                                            {colors.map(c => {
-                                                const isChecked = selectedColorIds.includes(String(c.id));
-                                                const cName = translateColorToVietnamese(c.colorName);
-                                                return (
-                                                    <label key={c.id} className={`size-chip-label ${isChecked ? 'active' : ''}`}>
-                                                        <input
-                                                            type="checkbox"
-                                                            hidden
-                                                            checked={isChecked}
-                                                            onChange={() => handleColorToggle(String(c.id))}
-                                                        />
-                                                        <span>{cName}</span>
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
+                                    {/* SIZE TAG INPUT */}
+                                    <TagInput
+                                        label={`KÍCH CỠ (SIZE) * — ${selectedSizes.length} đã chọn`}
+                                        tags={selectedSizes}
+                                        onAdd={v => setSelectedSizes(p => [...p, v])}
+                                        onRemove={i => setSelectedSizes(p => p.filter((_, idx) => idx !== i))}
+                                        onEdit={(i, v) => setSelectedSizes(p => p.map((s, idx) => idx === i ? v : s))}
+                                        placeholder="Hoặc nhập size thủ công rồi Enter…"
+                                        icon="bi-rulers"
+                                        presets={['18','20','22','24','26','28','30','32','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48']}
+                                        validate={validateSize}
+                                        hint={`Hợp lệ từ ${SIZE_MIN} (trẻ em) đến ${SIZE_MAX} (người lớn). Chỉ nhập số.`}
+                                    />
+                                    {errors.sizeId && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.sizeId}</div>}
+
+                                    {/* COLOR TAG INPUT */}
+                                    <TagInput
+                                        label={`MÀU SẮC * — ${selectedColors.length} đã chọn`}
+                                        tags={selectedColors}
+                                        onAdd={v => setSelectedColors(p => [...p, v])}
+                                        onRemove={i => setSelectedColors(p => p.filter((_, idx) => idx !== i))}
+                                        onEdit={(i, v) => setSelectedColors(p => p.map((c, idx) => idx === i ? v : c))}
+                                        placeholder="Hoặc nhập tên màu thủ công rồi Enter…"
+                                        icon="bi-palette"
+                                        presets={['Đen','Trắng','Đỏ','Xanh dương','Xanh lá','Vàng','Hồng','Xám','Nâu','Cam','Tím','Kem','Be']}
+                                        validate={validateColor}
+                                        hint="Chỉ nhập tên màu bằng chữ, không nhập số."
+                                    />
+                                    {errors.colorId && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.colorId}</div>}
 
                                     <div className="variant-row" style={{ marginTop: '20px' }}>
                                         <div className="form-group">
                                             <label className="form-label">Giá bán (VNĐ) *</label>
                                             <input
-                                                type="number"
-                                                min="5000"
-                                                className="form-control"
-                                                placeholder="VD: 1500000"
-                                                required
+                                                type="number" min="5000" className="form-control"
+                                                placeholder="VD: 1500000" required
                                                 value={variant.price}
                                                 onChange={(e) => setVariant({ ...variant, price: e.target.value })}
                                             />
@@ -718,12 +816,8 @@ const AdminProductForm = () => {
                                         <div className="form-group">
                                             <label className="form-label">Số lượng nhập kho (Mỗi màu & size) *</label>
                                             <input
-                                                type="number"
-                                                min="1"
-                                                max="1000"
-                                                className="form-control"
-                                                placeholder="VD: 100"
-                                                required
+                                                type="number" min="1" max="10000" className="form-control"
+                                                placeholder="VD: 100" required
                                                 value={variant.quantity}
                                                 onChange={(e) => setVariant({ ...variant, quantity: e.target.value })}
                                             />
@@ -822,11 +916,11 @@ const AdminProductForm = () => {
                             {isEdit ? 'Sản phẩm đã được cập nhật thành công vào hệ thống!' : 'Sản phẩm mới đã được tạo thành công!'}
                         </p>
                         <div className="admin-confirm-actions">
-                            <button className="admin-btn-confirm-ok" onClick={() => {
+                            <button type="button" className="admin-btn-confirm-ok" onClick={() => {
                                 setShowSuccessModal(false);
-                                navigate(`/admin/products/detail/${savedId}`);
+                                navigate('/admin/products');
                             }}>
-                                ĐỒNG Ý
+                                VỀ DANH SÁCH SẢN PHẨM
                             </button>
                         </div>
                     </div>

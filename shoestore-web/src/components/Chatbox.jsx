@@ -51,26 +51,42 @@ const Chatbox = () => {
             return isNaN(num) ? 0 : num;
         };
 
-        // Simple logic to parse [PRODUCT:id|name|price|image]
-        if (msg.content.includes('[PRODUCT:')) {
+        const getImageUrl = (url) => {
+            if (!url || url === 'null' || url === 'undefined' || url.trim() === '') {
+                return 'https://ui-avatars.com/api/?name=SP&background=121212&color=00f2ff&bold=true';
+            }
+            if (url.startsWith('http') || url.startsWith('data:')) return url;
+            const clean = url.startsWith('/') ? url : '/' + url;
+            return `http://localhost:8080${clean}`;
+        };
+
+        if (msg.content && msg.content.includes('[PRODUCT:')) {
             const parts = msg.content.split(/(\[PRODUCT:[^\]]+\])/g);
-            return parts.map((part, i) => {
-                if (part.startsWith('[PRODUCT:')) {
-                    const data = part.replace('[PRODUCT:', '').replace(']', '').split('|');
-                    const [id, name, price, image] = data;
-                    return (
-                        <div key={i} className="ai-product-card">
-                            <img src={`http://localhost:8080/uploads/${image}`} alt={name} />
-                            <div className="product-info">
-                                <h6>{name}</h6>
-                                <p>{parsePrice(price).toLocaleString('vi-VN')}₫</p>
-                                <button onClick={() => window.location.href = `/details?id=${id}`}>Xem chi tiết</button>
-                            </div>
-                        </div>
-                    );
-                }
-                return <span key={i}>{part}</span>;
-            });
+            return (
+                <div className="ai-content-wrapper">
+                    {parts.map((part, i) => {
+                        if (part.startsWith('[PRODUCT:')) {
+                            const data = part.replace('[PRODUCT:', '').replace(']', '').split('|');
+                            const [id, name, price, image] = data;
+                            return (
+                                <div key={i} className="ai-product-card">
+                                    <div className="ai-card-img-wrapper">
+                                        <img src={getImageUrl(image)} alt={name} />
+                                    </div>
+                                    <div className="product-info">
+                                        <h6 title={name}>{name}</h6>
+                                        <p className="product-price">{parsePrice(price).toLocaleString('vi-VN')} ₫</p>
+                                        <button type="button" className="btn-view-detail" onClick={() => window.location.href = `/details?id=${id}`}>
+                                            <i className="bi bi-eye-fill"></i> Xem chi tiết
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        }
+                        return part.trim() ? <div key={i} className="ai-text-part">{part}</div> : null;
+                    })}
+                </div>
+            );
         }
         return <span>{msg.content}</span>;
     };

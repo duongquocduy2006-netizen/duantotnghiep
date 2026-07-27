@@ -25,6 +25,9 @@ public class GeminiVisionService {
     @Value("${gemini.api.key:}")
     private String geminiApiKey;
 
+    @Value("${gemini.api.url:}")
+    private String geminiApiUrl;
+
     @Autowired
     private RestTemplate restTemplate;
 
@@ -312,16 +315,18 @@ public class GeminiVisionService {
     private String callOpenRouterApi(String apiKey, String formattedDataUrl, String existingCatNames) {
         String[] candidateModels = {
             "google/gemini-2.5-flash",
-            "google/gemini-2.5-flash:free",
-            "google/gemini-flash-1.5:free",
-            "openai/gpt-4o-mini"
+            "google/gemini-2.0-flash-001",
+            "google/gemini-2.5-pro",
+            "meta-llama/llama-4-scout:free",
+            "openai/gpt-4o-mini",
+            "mistralai/mistral-small-latest"
         };
 
         for (String modelName : candidateModels) {
             try {
                 Map<String, Object> requestBody = new HashMap<>();
                 requestBody.put("model", modelName);
-                requestBody.put("max_tokens", 1500);
+                requestBody.put("max_tokens", 180);
 
                 List<Map<String, Object>> messages = new ArrayList<>();
                 Map<String, Object> userMessage = new HashMap<>();
@@ -335,11 +340,11 @@ public class GeminiVisionService {
                         + "Hãy quan sát kỹ bức ảnh đôi giày này và phân tích các chi tiết (kiểu dáng, hãng sản xuất, màu sắc chủ đạo, danh mục).\n"
                         + "Sau đó, trả về kết quả định dạng JSON chuẩn DUY NHẤT với các trường chính xác như sau:\n"
                         + "{\n"
-                        + "  \"productName\": \"Tên đầy đủ sản phẩm (ví dụ: Nike Air Jordan 1 Low White Navy Gum)\",\n"
-                        + "  \"brandName\": \"Thương hiệu ngắn gọn (ví dụ: Nike, Adidas, Jordan, Puma, Vans, Converse, New Balance)\",\n"
-                        + "  \"categoryName\": \"Loại sản phẩm (LƯU Ý: Với giày thời trang Jordan, Air Force, Dunk, Yeezy, Vans, Converse... PHẢI CHỌN 'Giày Sneaker' hoặc 'Giày Cổ Thấp'. KHÔNG ĐƯỢC chọn 'Giày Chạy Bộ'). Ưu tiên chọn từ danh sách shop: [" + existingCatNames + "]\",\n"
-                        + "  \"colorName\": \"Màu sắc chủ đạo bằng Tiếng Việt (ví dụ: Trắng, Đen, Xanh, Đỏ, Hồng, Xám)\",\n"
-                        + "  \"description\": \"Bài viết giới thiệu hấp dẫn 3-4 câu mô tả kiểu dáng, phối màu, chất liệu da/vải và phong cách của đôi giày này.\"\n"
+                        + "  \"productName\": \"Tên đầy đủ sản phẩm (ví dụ: Nike Air Jordan 1 Low White Navy)\",\n"
+                        + "  \"brandName\": \"Thương hiệu ngắn gọn (ví dụ: Nike, Adidas, Jordan, Puma, Vans, Converse)\",\n"
+                        + "  \"categoryName\": \"Loại sản phẩm. Ưu tiên chọn từ danh sách shop: [" + existingCatNames + "]\",\n"
+                        + "  \"colorName\": \"Màu sắc chủ đạo bằng Tiếng Việt (ví dụ: Trắng, Đen, Xanh, Đỏ)\",\n"
+                        + "  \"description\": \"Mô tả ngắn 2 câu về kiểu dáng và chất liệu đôi giày này.\"\n"
                         + "}\n"
                         + "LƯU Ý QUAN TRỌNG: Chỉ trả về JSON thuần túy, tuyệt đối không bao bọc bởi ```json hoặc bất kỳ ký tự nào khác.");
                 contentList.add(textPrompt);
@@ -388,7 +393,18 @@ public class GeminiVisionService {
     }
 
     private String callGeminiDirectApi(String apiKey, String rawBase64, String mimeType, String existingCatNames) {
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+        // Danh sách model Google Gemini mới nhất (2025-2026) - ưu tiên model ổn định
+        List<String> googleModels = Arrays.asList(
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-2.5-pro",
+            "gemini-2.0-flash-lite"
+        );
+
+        List<String> candidateUrls = new ArrayList<>();
+        for (String m : googleModels) {
+            candidateUrls.add("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent?key=" + apiKey);
+        }
 
         Map<String, Object> requestBody = new HashMap<>();
         List<Map<String, Object>> contents = new ArrayList<>();
@@ -400,11 +416,11 @@ public class GeminiVisionService {
                 + "Hãy quan sát kỹ bức ảnh đôi giày này và phân tích các chi tiết (kiểu dáng, hãng sản xuất, màu sắc chủ đạo, danh mục).\n"
                 + "Sau đó, trả về kết quả định dạng JSON chuẩn DUY NHẤT với các trường chính xác như sau:\n"
                 + "{\n"
-                + "  \"productName\": \"Tên đầy đủ sản phẩm (ví dụ: Nike Air Jordan 1 Low White Navy Gum)\",\n"
-                + "  \"brandName\": \"Thương hiệu ngắn gọn (ví dụ: Nike, Adidas, Jordan, Puma, Vans, Converse, New Balance)\",\n"
-                + "  \"categoryName\": \"Loại sản phẩm (LƯU Ý: Với giày thời trang Jordan, Air Force, Dunk, Yeezy, Vans, Converse... PHẢI CHỌN 'Giày Sneaker' hoặc 'Giày Cổ Thấp'. KHÔNG ĐƯỢC chọn 'Giày Chạy Bộ'). Ưu tiên chọn từ danh sách shop: [" + existingCatNames + "]\",\n"
-                + "  \"colorName\": \"Màu sắc chủ đạo bằng Tiếng Việt (ví dụ: Trắng, Đen, Xanh, Đỏ, Hồng, Xám)\",\n"
-                + "  \"description\": \"Bài viết giới thiệu hấp dẫn 3-4 câu mô tả kiểu dáng, phối màu, chất liệu da/vải và phong cách của đôi giày này.\"\n"
+                + "  \"productName\": \"Tên đầy đủ sản phẩm (ví dụ: Nike Air Jordan 1 Low White Navy)\",\n"
+                + "  \"brandName\": \"Thương hiệu ngắn gọn (ví dụ: Nike, Adidas, Jordan, Puma, Vans, Converse)\",\n"
+                + "  \"categoryName\": \"Loại sản phẩm. Ưu tiên chọn từ danh sách shop: [" + existingCatNames + "]\",\n"
+                + "  \"colorName\": \"Màu sắc chủ đạo bằng Tiếng Việt (ví dụ: Trắng, Đen, Xanh, Đỏ)\",\n"
+                + "  \"description\": \"Mô tả ngắn 2 câu về kiểu dáng và chất liệu đôi giày này.\"\n"
                 + "}\n"
                 + "LƯU Ý QUAN TRỌNG: Chỉ trả về JSON thuần túy, tuyệt đối không bao bọc bởi ```json hoặc bất kỳ ký tự nào khác.");
         parts.add(textPart);
@@ -422,19 +438,35 @@ public class GeminiVisionService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
 
-        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-            Map body = response.getBody();
-            List candidates = (List) body.get("candidates");
-            if (candidates != null && !candidates.isEmpty()) {
-                Map firstCand = (Map) candidates.get(0);
-                Map candContent = (Map) firstCand.get("content");
-                List candParts = (List) candContent.get("parts");
-                Map firstPart = (Map) candParts.get(0);
-                return (String) firstPart.get("text");
+        for (String targetUrl : candidateUrls) {
+            try {
+                ResponseEntity<Map> response = restTemplate.postForEntity(targetUrl, entity, Map.class);
+                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                    Map body = response.getBody();
+                    List candidates = (List) body.get("candidates");
+                    if (candidates != null && !candidates.isEmpty()) {
+                        Map firstCand = (Map) candidates.get(0);
+                        Map candContent = (Map) firstCand.get("content");
+                        List candParts = (List) candContent.get("parts");
+                        Map firstPart = (Map) candParts.get(0);
+                        String text = (String) firstPart.get("text");
+                        if (text != null && !text.trim().isEmpty()) {
+                            return text;
+                        }
+                    }
+                }
+            } catch (HttpStatusCodeException e) {
+                System.err.println("Gemini Direct API call failed for URL [" + targetUrl + "]: " + e.getMessage());
+                // Nếu lỗi 429 (Rate Limit), chờ 10 giây rồi thử model tiếp theo
+                if (e.getStatusCode().value() == 429) {
+                    System.out.println("Rate limit hit, waiting 10s before trying next model...");
+                    try { Thread.sleep(10000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                }
+                // Nếu 404 = model không tồn tại, bỏ qua thử model tiếp
+            } catch (Exception e) {
+                System.err.println("Gemini Direct API call failed for URL [" + targetUrl + "]: " + e.getMessage());
             }
         }
         return null;

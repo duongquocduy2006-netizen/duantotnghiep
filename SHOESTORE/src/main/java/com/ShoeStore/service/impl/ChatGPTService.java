@@ -25,108 +25,175 @@ public class ChatGPTService {
 
     private boolean containsWholeWord(String source, String keyword) {
         if (source == null || keyword == null) return false;
-        // Clean punctuation and double spaces, wrap with spaces
         String cleanSource = " " + source.replaceAll("[\\p{Punct}]", " ").replaceAll("\\s+", " ") + " ";
         String target = " " + keyword.trim() + " ";
         return cleanSource.toLowerCase().contains(target.toLowerCase());
     }
 
-    private String checkStaticResponse(String userMessage) {
-        if (userMessage == null) return null;
-        String msg = userMessage.trim().toLowerCase();
+    /**
+     * Tìm kiếm sản phẩm phù hợp từ CSDL SQL Server dựa trên từ khóa hoặc hãng sản xuất.
+     */
+    public List<Map<String, Object>> searchProducts(String userMsg) {
+        if (userMsg == null) return Collections.emptyList();
+        String msg = userMsg.trim().toLowerCase();
 
-        // 1. Chào hỏi (Greetings)
-        List<String> greetings = Arrays.asList(
-            "hello", "hi", "chào", "chao", "alo", "hey", "chào shop", "chao shop", 
-            "shop ơi", "shop oi", "ad ơi", "ad oi", "hello shop", "hi shop"
+        // Danh sách các thương hiệu phổ biến
+        List<String> knownBrands = Arrays.asList(
+            "nike", "adidas", "jordan", "puma", "converse", "vans", "new balance", "reebok", "mlb", "crocs"
         );
-        for (String greet : greetings) {
-            if (msg.equals(greet) || msg.startsWith(greet + " ") || msg.endsWith(" " + greet)) {
-                return "Dạ chào bạn! Cửa hàng giày ShoeStore rất vui được hỗ trợ bạn. Bạn cần tìm mẫu giày gì hoặc có thắc mắc nào cần shop giải đáp không ạ?";
+
+        String targetBrand = null;
+        for (String b : knownBrands) {
+            if (msg.contains(b)) {
+                targetBrand = b;
+                break;
             }
         }
 
-        // 2. Kiểm tra nếu tin nhắn quá ngắn
-        if (msg.length() < 3) {
-            return "Dạ bạn cần shop hỗ trợ thông tin gì không ạ? Hãy nhập câu hỏi cụ thể để shop tư vấn nhé!";
+        String sql;
+        List<Map<String, Object>> list;
+
+        try {
+            if (targetBrand != null) {
+                // Ưu tiên 1: Tìm theo thương hiệu được nhắc đến
+                sql = "SELECT TOP 5 p.id, p.product_name, b.brand_name, " +
+                      "COALESCE((SELECT MIN(price) FROM product_variants WHERE product_id = p.id), 0) as price, " +
+                      "COALESCE((SELECT TOP 1 image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC), '') as image " +
+                      "FROM products p " +
+                      "LEFT JOIN brands b ON p.brand_id = b.id " +
+                      "WHERE p.status = 1 AND (LOWER(b.brand_name) LIKE ? OR LOWER(p.product_name) LIKE ?) " +
+                      "ORDER BY p.id DESC";
+                String pattern = "%" + targetBrand + "%";
+                list = jdbcTemplate.queryForList(sql, pattern, pattern);
+            } else {
+                // Loại bỏ các từ thừa phổ biến để lấy từ khóa thực sự
+                String cleanQuery = msg.replaceAll("(?i)cho\\s+xem|xem\\s+mẫu|mẫu|giày|dép|sản\\s+phẩm|có|không|tư\\s+vấn|tìm|cần|shop|ơi|gợi\\s+ý|những|nào|đẹp|hot|bán\\s+chạy|mới", "").trim();
+
+                if (!cleanQuery.isEmpty() && cleanQuery.length() >= 2) {
+                    sql = "SELECT TOP 5 p.id, p.product_name, b.brand_name, " +
+                          "COALESCE((SELECT MIN(price) FROM product_variants WHERE product_id = p.id), 0) as price, " +
+                          "COALESCE((SELECT TOP 1 image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC), '') as image " +
+                          "FROM products p " +
+                          "LEFT JOIN brands b ON p.brand_id = b.id " +
+                          "WHERE p.status = 1 AND (LOWER(p.product_name) LIKE ? OR LOWER(p.description) LIKE ? OR LOWER(b.brand_name) LIKE ?) " +
+                          "ORDER BY p.id DESC";
+                    String pattern = "%" + cleanQuery + "%";
+                    list = jdbcTemplate.queryForList(sql, pattern, pattern, pattern);
+                } else {
+                    // Fallback: 5 sản phẩm mới nhất / bán chạy nhất
+                    sql = "SELECT TOP 5 p.id, p.product_name, b.brand_name, " +
+                          "COALESCE((SELECT MIN(price) FROM product_variants WHERE product_id = p.id), 0) as price, " +
+                          "COALESCE((SELECT TOP 1 image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC), '') as image " +
+                          "FROM products p " +
+                          "LEFT JOIN brands b ON p.brand_id = b.id " +
+                          "WHERE p.status = 1 " +
+                          "ORDER BY p.id DESC";
+                    list = jdbcTemplate.queryForList(sql);
+                }
+            }
+            return list;
+        } catch (Exception e) {
+            System.err.println("Lỗi truy vấn CSDL sản phẩm cho Chatbot: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Định dạng danh sách sản phẩm thành thẻ Product Card format: [PRODUCT:id|name|price|image]
+     */
+    private String buildProductCardsString(List<Map<String, Object>> products) {
+        if (products == null || products.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (Map<String, Object> p : products) {
+            Object priceObj = p.get("price");
+            long priceVal = 0;
+            if (priceObj instanceof Number) {
+                priceVal = ((Number) priceObj).longValue();
+            } else if (priceObj != null) {
+                try {
+                    priceVal = new java.math.BigDecimal(priceObj.toString()).longValue();
+                } catch (Exception e) {}
+            }
+            String img = p.get("image") != null ? p.get("image").toString() : "";
+            sb.append(String.format("\n[PRODUCT:%s|%s|%d|%s]",
+                p.get("id"), p.get("product_name"), priceVal, img));
+        }
+        return sb.toString();
+    }
+
+    public String getAIResponse(String userMessage) {
+        if (userMessage == null || userMessage.trim().isEmpty()) {
+            return "Dạ bạn cần shop hỗ trợ thông tin gì không ạ? Hãy nhập câu hỏi để em tư vấn cho bạn nhé!";
         }
 
-        // Danh sách từ khóa CHẮC CHẮN KHÔNG liên quan (thực phẩm, đồ ăn, chủ đề ngoài lề...)
+        String msg = userMessage.trim().toLowerCase();
+
+        // 1. Kiểm tra câu hỏi ngoài lề (không liên quan giày dép/cửa hàng)
         List<String> unrelatedKeywords = Arrays.asList(
             "bánh mì", "banh mi", "cơm", "com", "phở", "pho", "bún", "bun", "chè", "che",
             "trà sữa", "tra sua", "coffee", "cà phê", "ca phe", "bia", "rượu", "ruou",
             "gà", "ga", "vịt", "vit", "heo", "bò", "bo", "cá", "ca", "tôm", "tom",
             "pizza", "burger", "hamburger", "sushi", "mì", "mi", "nước", "nuoc",
             "xe máy", "xe may", "ô tô", "o to", "xe hơi", "xe hoi", "laptop", "điện thoại ip",
-            "bitcoin", "tiền ảo", "tien ao", "chứng khoán", "chung khoan",
-            "chính trị", "chinh tri", "bầu cử", "bau cu", "tôn giáo", "ton giao",
-            "game", "phim", "movie", "nhạc", "nhac", "tiktok", "facebook"
+            "bitcoin", "tiền ảo", "chứng khoán", "chính trị", "bầu cử", "tôn giáo", "game", "phim", "nhạc", "tiktok"
         );
-
-        boolean isUnrelated = unrelatedKeywords.stream().anyMatch(keyword -> containsWholeWord(msg, keyword));
-
-        // Danh sách từ khóa liên quan TRỰC TIẾP đến sản phẩm giày dép
         List<String> shoeKeywords = Arrays.asList(
-            "giày", "giay", "sneaker", "boot", "sục", "suc", "dep", "dép", "sandal", 
-            "quai chéo", "quai cheo", "thể thao", "the thao", "sản phẩm", "san pham",
-            "mẫu", "mau", "nike", "adidas", "jordan", "puma", "converse", "vans",
-            "giỏ hàng", "gio hang", "đơn hàng", "don hang"
+            "giày", "giay", "sneaker", "boot", "sục", "dép", "sandal", "thể thao", "nike", "adidas", "jordan", "puma", "converse", "vans"
         );
-
-        boolean hasShoeKeyword = shoeKeywords.stream().anyMatch(keyword -> containsWholeWord(msg, keyword));
-
-        // Nếu có từ không liên quan VÀ KHÔNG có từ liên quan đến giày → chặn ngay
+        boolean isUnrelated = unrelatedKeywords.stream().anyMatch(k -> containsWholeWord(msg, k));
+        boolean hasShoeKeyword = shoeKeywords.stream().anyMatch(k -> containsWholeWord(msg, k));
         if (isUnrelated && !hasShoeKeyword) {
-            return "Dạ hiện tại cửa hàng ShoeStore chỉ hỗ trợ tư vấn các câu hỏi liên quan đến sản phẩm giày, chính sách mua bán, giao hàng, đổi trả và thông tin liên hệ của shop thôi ạ. Bạn vui lòng đặt câu hỏi liên quan để em hỗ trợ nhé!";
+            return "Dạ hiện tại cửa hàng ShoeStore chỉ hỗ trợ tư vấn các thông tin liên quan đến sản phẩm giày dép, chính sách mua bán, giao hàng và hỗ trợ của shop thôi ạ. Bạn vui lòng đặt câu hỏi liên quan để em tư vấn nhé!";
         }
 
-        // Danh sách từ khóa liên quan đến cửa hàng giày, sản phẩm, dịch vụ
-        List<String> relatedKeywords = Arrays.asList(
-            "giày", "giay", "sneaker", "boot", "sục", "dep", "dép", "sandal", "quai chéo", "thể thao", 
-            "size", "kích cỡ", "kich co", "cỡ", "co", "số", "so", "bảng size", "bang size", 
-            "giá", "gia", "bao nhiêu", "bao nhieu", "nhiêu", "nhieu", "tiền", "tien", "đ", "k", "vnđ", "vnd", "đồng", "dong",
-            "mua", "bán", "ban", "đặt", "dat", "order", "hàng", "hang", "sản phẩm", "san pham", "mẫu", "mau", "màu", "color",
-            "ship", "giao", "vận chuyển", "van chuyen", "phí", "phi", "nhận", "nhan", "cod", "thanh toán", "thanh toan", "chuyển khoản", "chuyen khoan", "ck",
-            "địa chỉ", "dia chi", "địa điểm", "dia diem", "ở đâu", "o dau", "cửa hàng", "cua hang", "shop", "store",
-            "voucher", "giảm giá", "giam gia", "khuyến mãi", "khuyen mai", "ưu đãi", "uu dai", "code", "mã", "ma",
-            "chính sách", "chinh sach", "đổi trả", "doi tra", "bảo hành", "bao hanh",
-            "sđt", "điện thoại", "dien thoai", "hotline", "liên hệ", "lien he", "tư vấn", "tu van", "hỗ trợ", "ho tro",
-            "giỏ hàng", "gio hang", "đơn hàng", "don hang", "hủy", "huy", "trạng thái", "trang thai",
-            "còn", "con", "hết", "het", "chất liệu", "chat lieu", "da", "vải", "vai", "đế", "de", "cao su",
-            "nike", "adidas", "jordan", "puma", "converse", "vans"
+        // 2. Chào hỏi đơn thuần
+        List<String> greetings = Arrays.asList("hello", "hi", "chào", "chao", "alo", "hey", "chào shop", "shop ơi", "ad ơi");
+        boolean isSimpleGreeting = greetings.stream().anyMatch(g -> msg.equals(g) || msg.equals(g + " shop"));
+
+        // 3. Nhận diện các câu hỏi xem mẫu / xem sản phẩm / xem thương hiệu
+        List<String> sampleRequests = Arrays.asList(
+            "cho xem mẫu", "xem mẫu", "cho xem", "các mẫu", "có mẫu", "mẫu nào", "gợi ý", "tư vấn mẫu",
+            "mẫu mới", "mẫu hot", "bán chạy", "xem giày", "cho xem sản phẩm", "co mau nao"
         );
+        boolean isSampleRequest = sampleRequests.stream().anyMatch(sr -> msg.contains(sr));
 
-        // Sử dụng Lambda Stream để kiểm tra xem tin nhắn có chứa bất kỳ từ khóa liên quan nào hay không (so khớp nguyên từ)
-        boolean isRelated = relatedKeywords.stream().anyMatch(keyword -> containsWholeWord(msg, keyword))
-                || msg.matches(".*\\d+\\s*(k|đ|vnd|vnđ|đồng|size|cỡ).*");
+        // Kiểm tra xem người dùng có nhắc đến hãng nào không
+        List<String> knownBrands = Arrays.asList("nike", "adidas", "jordan", "puma", "converse", "vans", "new balance", "reebok", "mlb", "crocs");
+        String matchedBrand = knownBrands.stream().filter(msg::contains).findFirst().orElse(null);
 
-        if (!isRelated) {
-            return "Dạ hiện tại cửa hàng ShoeStore chỉ hỗ trợ tư vấn các câu hỏi liên quan đến sản phẩm giày, chính sách mua bán, giao hàng, đổi trả và thông tin liên hệ của shop thôi ạ. Bạn vui lòng đặt câu hỏi liên quan để em hỗ trợ nhé!";
+        // Tìm sản phẩm trong CSDL
+        List<Map<String, Object>> matchedProducts = searchProducts(userMessage);
+
+        // 4. XỬ LÝ TRỰC TIẾP CHO YÊU CẦU XEM MẪU / TÌM SẢN PHẨM / HÃNG
+        if (isSampleRequest || matchedBrand != null || (!isSimpleGreeting && !matchedProducts.isEmpty() && (msg.contains("giày") || msg.contains("mẫu") || msg.contains("có")))) {
+            if (!matchedProducts.isEmpty()) {
+                String cards = buildProductCardsString(matchedProducts);
+                if (matchedBrand != null) {
+                    String brandCap = matchedBrand.substring(0, 1).toUpperCase() + matchedBrand.substring(1);
+                    return "Dạ chào bạn! Đây là 5 mẫu sản phẩm nổi bật của thương hiệu " + brandCap + " tại ShoeStore ạ. Bạn bấm vào sản phẩm để xem chi tiết nhé:" + cards;
+                } else if (isSampleRequest) {
+                    return "Dạ chào bạn! Đây là các mẫu sản phẩm hot đang bán chạy nhất tại ShoeStore ạ. Bạn bấm vào sản phẩm để xem chi tiết nhé:" + cards;
+                } else {
+                    return "Dạ đây là các mẫu sản phẩm phù hợp tại ShoeStore mà bạn đang tìm ạ. Bạn bấm vào sản phẩm để xem chi tiết nhé:" + cards;
+                }
+            }
         }
 
-        return null; // Tiếp tục gửi lên AI
-    }
-
-    public String getAIResponse(String userMessage) {
-        String staticReply = checkStaticResponse(userMessage);
-        if (staticReply != null) {
-            return staticReply;
+        // Chào hỏi đơn thuần (nếu không yêu cầu mẫu)
+        if (isSimpleGreeting) {
+            return "Dạ chào bạn! Cửa hàng giày ShoeStore rất vui được hỗ trợ bạn. Bạn cần tìm mẫu giày của thương hiệu nào (Nike, Adidas, Jordan...) hay cần tư vấn về sản phẩm gì ạ?";
         }
 
+        // 5. Nếu là câu hỏi chung (chính sách, địa chỉ, tư vấn...), gọi AI LLM để trả lời văn bản
         String productsContext = getProductsContext();
-        
         List<Map<String, String>> messages = new ArrayList<>();
-        
-        String systemInstructions = "Bạn là trợ lý ảo của cửa hàng giày ShoeStore. "
-                + "Bạn chỉ được phép trả lời các câu hỏi liên quan đến sản phẩm, chính sách, địa chỉ hoặc dịch vụ của ShoeStore. "
-                + "Nếu khách hàng hỏi về các chủ đề khác không liên quan đến shop, hãy từ chối lịch sự. "
-                + "Tuyệt đối không trả lời các câu hỏi về chính trị, tôn giáo, hoặc các vấn đề xã hội khác ngoài ShoeStore.\n"
-                + "Dưới đây là danh sách sản phẩm THẬT của shop:\n"
+
+        String systemInstructions = "Bạn là trợ lý ảo thân thiện của cửa hàng giày ShoeStore.\n"
+                + "Trả lời hoàn toàn bằng Tiếng Việt tự nhiên, lịch sự, ngắn gọn (2-3 câu).\n"
+                + "TUYỆT ĐỐI KHÔNG hỏi người dùng mã ID hay bảo người dùng nhập ID sản phẩm.\n"
+                + "Dưới đây là danh sách sản phẩm cửa hàng đang có:\n"
                 + productsContext + "\n"
-                 + "QUY TẮC HIỂN THỊ SẢN PHẨM:\n"
-                + "1. Chỉ gắn link sản phẩm khi khách hàng yêu cầu gợi ý, hỏi về mẫu mã cụ thể hoặc đang có ý định tìm mua sản phẩm đó.\n"
-                + "2. Khi gắn link sản phẩm, bạn PHẢI sử dụng định dạng Card sau ngay sau lời giới thiệu: [PRODUCT:id|name|price|image] (trong đó price là số nguyên thuần túy không chứa dấu chấm, dấu phẩy hay ký hiệu tiền tệ, ví dụ: 1200000, lấy từ phần nguyên của Giá trong danh sách sản phẩm).\n"
-                + "3. Bạn PHẢI trả lời hoàn toàn bằng tiếng Việt chuẩn. TUYỆT ĐỐI không sử dụng từ ngữ tiếng Pháp, tiếng Anh, không pha trộn ngôn ngữ, không tự dịch hoặc dùng từ kỳ lạ. 100% câu trả lời phải là tiếng Việt tự nhiên, thân thiện, ngắn gọn và lịch sự.";
+                + "Khi nhắc tới bất kỳ sản phẩm nào trong danh sách trên, hãy tự động kèm theo định dạng Card: [PRODUCT:id|name|price|image].";
 
         messages.add(Map.of("role", "system", "content", systemInstructions));
         messages.add(Map.of("role", "user", "content", userMessage));
@@ -150,39 +217,45 @@ public class ChatGPTService {
             requestBody.put("messages", messages);
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
             try {
-                System.out.println("Attempting AI response with model: " + model);
                 ResponseEntity<Map> response = restTemplate.postForEntity(OPENAI_URL, entity, Map.class);
-                if (response.getStatusCode() == HttpStatus.OK) {
-                    Map body = response.getBody();
-                    List choices = (List) body.get("choices");
+                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                    List choices = (List) response.getBody().get("choices");
                     if (choices != null && !choices.isEmpty()) {
                         Map firstChoice = (Map) choices.get(0);
-                        Map msg = (Map) firstChoice.get("message");
-                        if (msg != null && msg.containsKey("content")) {
-                            System.out.println("Successfully got AI response using model: " + model);
-                            return (String) msg.get("content");
+                        Map msgObj = (Map) firstChoice.get("message");
+                        if (msgObj != null && msgObj.containsKey("content")) {
+                            String aiReply = (String) msgObj.get("content");
+                            // Nếu AI reply chưa có card mà ta có matchedProducts, tự động đính kèm card bên dưới
+                            if (!aiReply.contains("[PRODUCT:") && !matchedProducts.isEmpty()) {
+                                aiReply += "\n\nMột số mẫu bạn có thể tham khảo:" + buildProductCardsString(matchedProducts);
+                            }
+                            return aiReply;
                         }
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Failed to get response with model " + model + ": " + e.getMessage());
+                System.err.println("Lỗi gọi AI model " + model + ": " + e.getMessage());
             }
         }
 
-        return "Dạ hiện tại hệ thống tư vấn tự động đang bận. Anh/chị vui lòng liên hệ hotline hoặc gửi tin nhắn qua Fanpage để nhân viên hỗ trợ trực tiếp ạ! 😊";
+        // Fallback nếu AI LLM offline: Trả về kết quả tìm kiếm sản phẩm thực tế từ DB
+        if (!matchedProducts.isEmpty()) {
+            return "Dạ shop xin gợi ý cho bạn các mẫu sản phẩm hot đang có tại ShoeStore ạ:" + buildProductCardsString(matchedProducts);
+        }
+
+        return "Dạ hiện tại cửa hàng ShoeStore có rất nhiều mẫu Sneaker mới về! Bạn có thể xem toàn bộ danh mục sản phẩm tại trang Cửa hàng hoặc liên hệ hotline shop để được hỗ trợ nhanh nhất nhé! 😊";
     }
 
     private String getProductsContext() {
         try {
             String sql = "SELECT TOP 10 p.id, p.product_name, " +
                          "(SELECT MIN(price) FROM product_variants WHERE product_id = p.id) as price, " +
-                         "(SELECT TOP 1 image_url FROM product_images WHERE product_id = p.id) as image " +
-                         "FROM products p WHERE p.status = 1";
-            
+                         "(SELECT TOP 1 image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image " +
+                         "FROM products p WHERE p.status = 1 ORDER BY p.id DESC";
+
             List<Map<String, Object>> products = jdbcTemplate.queryForList(sql);
-            
+
             return products.stream()
                 .map(p -> {
                     Object priceObj = p.get("price");
@@ -194,12 +267,12 @@ public class ChatGPTService {
                             priceVal = new java.math.BigDecimal(priceObj.toString()).longValue();
                         } catch (Exception e) {}
                     }
-                    return String.format("ID: %s, Tên: %s, Giá: %d, Ảnh: %s", 
-                        p.get("id"), p.get("product_name"), priceVal, p.get("image"));
+                    return String.format("ID: %s, Tên: %s, Giá: %d, Card: [PRODUCT:%s|%s|%d|%s]", 
+                        p.get("id"), p.get("product_name"), priceVal, p.get("id"), p.get("product_name"), priceVal, p.get("image"));
                 })
                 .collect(Collectors.joining("\n"));
         } catch (Exception e) {
-            return "Shop có nhiều mẫu Sneaker mới về.";
+            return "Danh sách sản phẩm ShoeStore.";
         }
     }
 }
