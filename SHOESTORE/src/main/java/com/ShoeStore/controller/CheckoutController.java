@@ -39,6 +39,10 @@ public class CheckoutController {
     public void init() {
         try {
             jdbc.execute(
+                    "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'cancel_reason') "
+                            +
+                            "ALTER TABLE orders ADD cancel_reason NVARCHAR(500) NULL;");
+            jdbc.execute(
                     "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'external_transaction_id') "
                             +
                             "ALTER TABLE orders ADD external_transaction_id NVARCHAR(255);");
@@ -329,7 +333,16 @@ public class CheckoutController {
         double discount = 0;
         Voucher voucher = (Voucher) session.getAttribute("appliedVoucher");
         if (voucher != null) {
-            discount = voucherService.calculateDiscount(voucher, total);
+            Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
+            Optional<Voucher> validOpt = voucherService.validateVoucher(voucher.getCode(), rankId, total, accountId);
+            if (validOpt.isPresent()) {
+                voucher = validOpt.get();
+                discount = voucherService.calculateDiscount(voucher, total);
+            } else {
+                session.removeAttribute("appliedVoucher");
+                ra.addFlashAttribute("error", "Mã giảm giá '" + voucher.getCode() + "' không còn hiệu lực, chưa đủ điều kiện hoặc đã hết lượt sử dụng!");
+                return "redirect:/checkout";
+            }
         }
 
         double finalTotal = total + shipping - discount;

@@ -96,7 +96,7 @@ export default function FavoritesScreen({ navigation }) {
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.favItem}
-                onPress={() => navigation.navigate('Detail', { productId: item.id })}
+                onPress={() => navigation.navigate('Detail', { productId: item.id, product: item })}
               >
                 <Image source={{ uri: formatImageUrl(item.imageUrl) }} style={styles.favItemImage} />
                 <View style={styles.favItemDetails}>

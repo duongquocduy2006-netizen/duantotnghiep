@@ -10,7 +10,9 @@ import {
   Modal,
   TextInput,
   FlatList,
-  Platform
+  Platform,
+  ActivityIndicator,
+  RefreshControl
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
@@ -31,12 +33,6 @@ const mapStatusIntToString = (statusInt) => {
 };
 
 const { width, height } = Dimensions.get('window');
-
-const MOCK_VOUCHERS = [
-  { code: 'NEW10', desc: 'Giảm 10% cho đơn hàng đầu tiên', minSpend: '0 đ', expiry: '31/12/2026' },
-  { code: 'FREESHIP', desc: 'Miễn phí vận chuyển toàn quốc', minSpend: '0 đ', expiry: '31/12/2026' },
-  { code: 'SHOE200', desc: 'Giảm ngay 200.000 đ cho đơn hàng từ 4.000.000 đ', minSpend: '4.000.000 đ', expiry: '30/09/2026' }
-];
 
 export default function ProfileScreen({ navigation }) {
   const isFocused = useIsFocused();
@@ -60,6 +56,7 @@ export default function ProfileScreen({ navigation }) {
 
   // Orders State
   const [orders, setOrders] = useState([]);
+  const [refreshingOrders, setRefreshingOrders] = useState(false);
 
   // Cancel Order Modal states
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
@@ -71,6 +68,11 @@ export default function ProfileScreen({ navigation }) {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
+  // Vouchers State (Fetches directly from database)
+  const [vouchers, setVouchers] = useState([]);
+  const [vouchersLoading, setVouchersLoading] = useState(false);
+  const [voucherFilter, setVoucherFilter] = useState('ALL'); // 'ALL' | 'DISCOUNT' | 'SHIPPING'
+
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const showToast = (msg) => {
@@ -78,8 +80,64 @@ export default function ProfileScreen({ navigation }) {
     setToastVisible(true);
   };
 
+  const fetchVouchers = async () => {
+    setVouchersLoading(true);
+    try {
+      let requestUrl = `${API_BASE_URL}/api/vouchers`;
+      const storedUser = await AsyncStorage.getItem('userAccount');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        if (user && user.id) {
+          requestUrl += `?accountId=${user.id}`;
+        }
+      }
+
+      const response = await fetch(requestUrl, {
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await response.json();
+      if (response.ok && data.success && Array.isArray(data.vouchers)) {
+        const mapped = data.vouchers.map((v, idx) => {
+          const rawType = (v.discount_type || v.discountType || 'FIXED').toUpperCase();
+          const isPercent = rawType === 'PERCENT';
+          const isShipping = rawType === 'SHIPPING';
+          const val = v.discount_value != null ? Number(v.discount_value) : (v.discountValue != null ? Number(v.discountValue) : 0);
+          const maxDiscount = v.max_discount != null ? Number(v.max_discount) : (v.maxDiscount != null ? Number(v.maxDiscount) : null);
+          const minOrderValue = v.min_order_value != null ? Number(v.min_order_value) : (v.minOrderValue != null ? Number(v.minOrderValue) : null);
+          const endDate = v.end_date || v.endDate;
+
+          return {
+            id: v.id || idx + 1,
+            code: v.code || `VOUCHER${idx + 1}`,
+            title: v.code === 'WELCOME50K' ? 'Voucher Chào Mừng' : (isPercent ? `Ưu Đãi Giảm ${val}%` : (isShipping ? 'Miễn Phí Giao Hàng' : `Giảm ${formatVND(val)}`)),
+            desc: (isPercent 
+              ? `Giảm ${val}%${maxDiscount ? ` (Tối đa ${formatVND(maxDiscount)})` : ''}${minOrderValue ? ` cho đơn từ ${formatVND(minOrderValue)}` : ''}` 
+              : (isShipping ? 'Miễn phí giao hàng toàn quốc' : `Giảm ngay ${formatVND(val)}${minOrderValue ? ` cho đơn từ ${formatVND(minOrderValue)}` : ''}`))
+              + (v.rank_name ? ` • Yêu cầu: Hạng ${v.rank_name}` : ''),
+            type: rawType,
+            value: val,
+            minSpend: minOrderValue ? formatVND(minOrderValue) : '0 đ',
+            minPoints: v.min_points != null ? Number(v.min_points) : (v.minPoints != null ? Number(v.minPoints) : 0),
+            expiry: endDate ? new Date(endDate).toLocaleDateString('vi-VN') : 'Vô thời hạn',
+            brand: 'SHOE STORE',
+            color: isPercent ? '#00B4DB' : (isShipping ? '#FFB703' : '#E51E25')
+          };
+        });
+        setVouchers(mapped.filter(v => userPoints >= (v.minPoints || 0)));
+      } else {
+        setVouchers([]);
+      }
+    } catch (e) {
+      console.log("Error fetching database vouchers:", e.message);
+      setVouchers([]);
+    } finally {
+      setVouchersLoading(false);
+    }
+  };
+
   const loadUserData = async () => {
     try {
+      fetchVouchers();
       const storedUser = await AsyncStorage.getItem('userAccount');
       if (storedUser) {
         const user = JSON.parse(storedUser);
@@ -101,6 +159,7 @@ export default function ProfileScreen({ navigation }) {
           if (response.status === 401) {
             // Session expired
             await AsyncStorage.removeItem('userAccount');
+            await AsyncStorage.removeItem('userOrders');
             setIsLoggedIn(false);
             setOrders([]);
             return;
@@ -110,27 +169,37 @@ export default function ProfileScreen({ navigation }) {
           if (response.ok && data.success) {
             const mappedOrders = data.orders.map(o => ({
               id: o.order_code,
-              date: new Date(o.created_at).toLocaleString('vi-VN', {
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-              }),
+              date: (() => {
+                try {
+                  if (!o.created_at) return '';
+                  const dateStr = typeof o.created_at === 'string' ? o.created_at.replace(' ', 'T') : o.created_at;
+                  const d = new Date(dateStr);
+                  if (isNaN(d.getTime())) return String(o.created_at);
+                  return d.toLocaleString('vi-VN', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                  });
+                } catch (err) {
+                  return String(o.created_at || '');
+                }
+              })(),
               status: mapStatusIntToString(o.status),
               items: (o.items || []).map(item => ({
-                productName: item.product_name,
+                productName: item.product_name || 'Sản phẩm',
                 brandName: item.brand_name || 'Sneaker',
-                price: item.price,
-                quantity: item.quantity,
-                size: item.size_name,
-                color: item.color_name,
-                imageUrl: item.image_url
+                price: Number(item.price) || 0,
+                quantity: Number(item.quantity) || 1,
+                size: item.size_name || 'Default',
+                color: item.color_name || 'Default',
+                imageUrl: item.image_url || ''
               })),
-              totalAmount: o.final_amount,
-              recipientName: o.receiving_name,
-              recipientPhone: o.phone_number,
-              shippingAddress: o.street_detail,
+              totalAmount: Number(o.final_amount) || 0,
+              recipientName: o.receiving_name || '',
+              recipientPhone: o.phone_number || '',
+              shippingAddress: o.street_detail || '',
               paymentMethod: o.method_name === 'BANK' ? 'Chuyển khoản NH' : (o.method_name || 'Thanh toán COD'),
-              discount: (o.total_amount + o.shipping_fee) - o.final_amount,
-              voucherCode: o.voucher_code
+              discount: ((Number(o.total_amount) || 0) + (Number(o.shipping_fee) || 0)) - (Number(o.final_amount) || 0),
+              voucherCode: o.voucher_code || ''
             }));
             setOrders(mappedOrders);
             await AsyncStorage.setItem('userOrders', JSON.stringify(mappedOrders));
@@ -156,6 +225,77 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  const refreshOrders = async () => {
+    setRefreshingOrders(true);
+    try {
+      const storedUser = await AsyncStorage.getItem('userAccount');
+      if (!storedUser) {
+        setOrders([]);
+        setRefreshingOrders(false);
+        return;
+      }
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (response.status === 401) {
+        await AsyncStorage.removeItem('userAccount');
+        await AsyncStorage.removeItem('userOrders');
+        setIsLoggedIn(false);
+        setOrders([]);
+        showToast("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại.");
+        setRefreshingOrders(false);
+        return;
+      }
+      const data = await response.json();
+      if (response.ok && data.success) {
+        const mappedOrders = data.orders.map(o => ({
+          id: o.order_code,
+          date: (() => {
+            try {
+              if (!o.created_at) return '';
+              const dateStr = typeof o.created_at === 'string' ? o.created_at.replace(' ', 'T') : o.created_at;
+              const d = new Date(dateStr);
+              if (isNaN(d.getTime())) return String(o.created_at);
+              return d.toLocaleString('vi-VN', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+              });
+            } catch (err) {
+              return String(o.created_at || '');
+            }
+          })(),
+          status: mapStatusIntToString(o.status),
+          items: (o.items || []).map(item => ({
+            productName: item.product_name || 'Sản phẩm',
+            brandName: item.brand_name || 'Sneaker',
+            price: Number(item.price) || 0,
+            quantity: Number(item.quantity) || 1,
+            size: item.size_name || 'Default',
+            color: item.color_name || 'Default',
+            imageUrl: item.image_url || ''
+          })),
+          totalAmount: Number(o.final_amount) || 0,
+          recipientName: o.receiving_name || '',
+          recipientPhone: o.phone_number || '',
+          shippingAddress: o.street_detail || '',
+          paymentMethod: o.method_name === 'BANK' ? 'Chuyển khoản NH' : (o.method_name || 'Thanh toán COD'),
+          discount: ((Number(o.total_amount) || 0) + (Number(o.shipping_fee) || 0)) - (Number(o.final_amount) || 0),
+          voucherCode: o.voucher_code || ''
+        }));
+        setOrders(mappedOrders);
+        await AsyncStorage.setItem('userOrders', JSON.stringify(mappedOrders));
+        showToast("Đã cập nhật danh sách đơn hàng mới nhất!");
+      } else {
+        showToast(data.message || "Không thể đồng bộ từ máy chủ, đang dùng dữ liệu lưu tạm.");
+      }
+    } catch (e) {
+      console.log("Error refreshing orders:", e);
+      showToast("Lỗi kết nối máy chủ, đang hiển thị dữ liệu lưu tạm.");
+    } finally {
+      setRefreshingOrders(false);
+    }
+  };
+
   useEffect(() => {
     if (isFocused) {
       loadUserData();
@@ -174,6 +314,7 @@ export default function ProfileScreen({ navigation }) {
           style: "destructive",
           onPress: async () => {
             await AsyncStorage.removeItem('userAccount');
+            await AsyncStorage.removeItem('userOrders');
             navigation.reset({
               index: 0,
               routes: [{ name: 'Login' }],
@@ -335,9 +476,9 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const getMemberRankName = (points) => {
-    if (points >= 1000) return 'Hạng Kim Cương (Diamond)';
-    if (points >= 500) return 'Hạng Vàng (Gold)';
-    if (points >= 100) return 'Hạng Bạc (Silver)';
+    if (points >= 10000) return 'Hạng Kim Cương (Diamond)';
+    if (points >= 2000) return 'Hạng Vàng (Gold)';
+    if (points >= 500) return 'Hạng Bạc (Silver)';
     return 'Hạng Đồng (Bronze)';
   };
 
@@ -558,20 +699,40 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons name="arrow-back" size={24} color="#000000" />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Đơn Hàng Của Tôi</Text>
-              <View style={{ width: 44 }} />
+              <TouchableOpacity
+                onPress={refreshOrders}
+                style={[styles.modalCloseBtn, { backgroundColor: '#EFEFEF' }]}
+              >
+                {refreshingOrders ? (
+                  <ActivityIndicator size="small" color="#E51E25" />
+                ) : (
+                  <Ionicons name="refresh" size={20} color="#E51E25" />
+                )}
+              </TouchableOpacity>
             </View>
 
             {orders.length === 0 ? (
-              <View style={styles.emptyContainer}>
+              <ScrollView
+                contentContainerStyle={[styles.emptyContainer, { flexGrow: 1, justifyContent: 'center' }]}
+                refreshControl={
+                  <RefreshControl refreshing={refreshingOrders} onRefresh={refreshOrders} colors={['#E51E25']} />
+                }
+              >
                 <Ionicons name="cart-outline" size={70} color="#C0C0C0" />
                 <Text style={styles.emptyTitle}>Chưa có đơn hàng nào!</Text>
                 <Text style={styles.emptySubtitle}>Khi bạn mua sắm và tiến hành thanh toán, đơn hàng sẽ được lưu tại đây.</Text>
-              </View>
+                <TouchableOpacity style={styles.retryButton} onPress={refreshOrders}>
+                  <Text style={styles.retryText}>Tải lại danh sách</Text>
+                </TouchableOpacity>
+              </ScrollView>
             ) : (
               <FlatList
                 data={orders}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={{ padding: 20 }}
+                refreshControl={
+                  <RefreshControl refreshing={refreshingOrders} onRefresh={refreshOrders} colors={['#E51E25']} />
+                }
                 renderItem={({ item }) => (
                   <View style={styles.orderCard}>
                     {/* Order Top Info */}
@@ -649,7 +810,7 @@ export default function ProfileScreen({ navigation }) {
                           onPress={() => handleConfirmReceived(item)}
                           activeOpacity={0.7}
                         >
-                          <Text style={styles.orderConfirmBtnText}>Đã nhận hàng</Text>
+                          <Text style={styles.orderConfirmBtnText}>Đã nhận được hàng</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -860,9 +1021,29 @@ export default function ProfileScreen({ navigation }) {
                   </View>
                 </View>
 
+                {/* Actions inside Detail Modal */}
+                {selectedOrder.status === 'Đang xử lý' && (
+                  <TouchableOpacity 
+                    style={[styles.orderCancelBtn, { marginTop: 20, height: 48, justifyContent: 'center', alignItems: 'center', marginLeft: 0 }]} 
+                    onPress={() => { setDetailModalVisible(false); handleOpenCancelModal(selectedOrder); }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.orderCancelBtnText, { fontSize: 13 }]}>HỦY ĐƠN HÀNG NÀY</Text>
+                  </TouchableOpacity>
+                )}
+                {selectedOrder.status === 'Đã giao hàng' && (
+                  <TouchableOpacity 
+                    style={[styles.orderConfirmBtn, { marginTop: 20, height: 48, justifyContent: 'center', alignItems: 'center', marginLeft: 0 }]} 
+                    onPress={() => { setDetailModalVisible(false); handleConfirmReceived(selectedOrder); }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.orderConfirmBtnText, { fontSize: 13 }]}>ĐÃ NHẬN ĐƯỢC HÀNG</Text>
+                  </TouchableOpacity>
+                )}
+
                 {/* Close Button */}
                 <TouchableOpacity 
-                  style={styles.detailCloseBtn} 
+                  style={[styles.detailCloseBtn, { marginTop: 12 }]} 
                   onPress={() => setDetailModalVisible(false)}
                   activeOpacity={0.8}
                 >
@@ -888,37 +1069,123 @@ export default function ProfileScreen({ navigation }) {
               <TouchableOpacity onPress={() => setVouchersModalVisible(false)} style={styles.modalCloseBtn}>
                 <Ionicons name="arrow-back" size={24} color="#000000" />
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Vouchers Ưu Đãi</Text>
-              <View style={{ width: 44 }} />
+              <Text style={styles.modalTitle}>Kho Vouchers Ưu Đãi</Text>
+              <TouchableOpacity onPress={fetchVouchers} style={styles.modalCloseBtn}>
+                <Ionicons name="refresh" size={20} color="#E51E25" />
+              </TouchableOpacity>
             </View>
 
-            <FlatList
-              data={MOCK_VOUCHERS}
-              keyExtractor={(item) => item.code}
-              contentContainerStyle={{ padding: 20 }}
-              renderItem={({ item }) => (
-                <View style={styles.voucherCard}>
-                  <View style={styles.voucherLeft}>
-                    <View style={styles.voucherIconCircle}>
-                      <MaterialCommunityIcons name="ticket-percent-outline" size={24} color="#E51E25" />
+            {/* Banner Header Section (Web Synced) */}
+            <View style={styles.voucherBannerContainer}>
+              <View style={styles.voucherBannerContent}>
+                <Text style={styles.voucherBannerTitle}>
+                  KHO <Text style={{ color: '#E51E25' }}>VOUCHERS</Text> ĐỘC QUYỀN
+                </Text>
+                <Text style={styles.voucherBannerSubtitle}>
+                  Săn ngay mã giảm giá để nhận ưu đãi cực hời từ ShoeStore
+                </Text>
+              </View>
+
+              {/* Filter Tabs */}
+              <View style={styles.voucherFilterRow}>
+                <TouchableOpacity
+                  style={[styles.voucherFilterTab, voucherFilter === 'ALL' && styles.voucherFilterTabActive]}
+                  onPress={() => setVoucherFilter('ALL')}
+                >
+                  <Text style={[styles.voucherFilterTabText, voucherFilter === 'ALL' && styles.voucherFilterTabTextActive]}>
+                    Tất cả ({vouchers.length})
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.voucherFilterTab, voucherFilter === 'DISCOUNT' && styles.voucherFilterTabActive]}
+                  onPress={() => setVoucherFilter('DISCOUNT')}
+                >
+                  <Text style={[styles.voucherFilterTabText, voucherFilter === 'DISCOUNT' && styles.voucherFilterTabTextActive]}>
+                    Mã giảm giá
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.voucherFilterTab, voucherFilter === 'SHIPPING' && styles.voucherFilterTabActive]}
+                  onPress={() => setVoucherFilter('SHIPPING')}
+                >
+                  <Text style={[styles.voucherFilterTabText, voucherFilter === 'SHIPPING' && styles.voucherFilterTabTextActive]}>
+                    Freeship 🚚
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Vouchers List */}
+            {vouchersLoading ? (
+              <View style={styles.emptyContainer}>
+                <ActivityIndicator size="large" color="#E51E25" />
+                <Text style={{ marginTop: 12, color: '#808080', fontSize: 13 }}>Đang tải danh sách voucher...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={vouchers.filter(v => {
+                  if (userPoints < (v.minPoints || 0)) return false;
+                  if (voucherFilter === 'DISCOUNT') return v.type !== 'SHIPPING';
+                  if (voucherFilter === 'SHIPPING') return v.type === 'SHIPPING';
+                  return true;
+                })}
+                keyExtractor={(item, index) => item.code + index}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="ticket-outline" size={60} color="#C0C0C0" />
+                    <Text style={styles.emptyTitle}>Chưa có voucher nào trong danh mục này</Text>
+                  </View>
+                }
+                renderItem={({ item }) => {
+                  const cardColor = item.color || (item.type === 'PERCENT' ? '#00B4DB' : (item.type === 'SHIPPING' ? '#FFB703' : '#E51E25'));
+                  return (
+                    <View style={[styles.voucherCineCard, { borderColor: `${cardColor}40` }]}>
+                      {/* Left Coupon Notch / Value */}
+                      <View style={[styles.voucherCineLeft, { backgroundColor: `${cardColor}15`, borderLeftColor: cardColor }]}>
+                        <Text style={[styles.voucherCineVal, { color: cardColor }]}>
+                          {item.type === 'PERCENT' 
+                            ? `${item.value}%` 
+                            : (item.type === 'SHIPPING' ? 'FREE' : `${item.value >= 1000 ? `${item.value / 1000}K` : item.value}`)}
+                        </Text>
+                        <Text style={styles.voucherCineLbl}>
+                          {item.type === 'SHIPPING' ? 'SHIP' : 'OFF'}
+                        </Text>
+                      </View>
+
+                      {/* Right Details */}
+                      <View style={styles.voucherCineRight}>
+                        <Text style={[styles.voucherCineBrand, { color: cardColor }]}>
+                          {item.brand || 'SHOE STORE'}
+                        </Text>
+                        <Text style={styles.voucherCineTitle}>{item.title}</Text>
+                        <Text style={styles.voucherCineDesc}>{item.desc}</Text>
+                        
+                        <View style={styles.voucherCineFooter}>
+                          <Text style={styles.voucherCineExp}>HSD: {item.expiry}</Text>
+                          <View style={styles.voucherCineCodeBox}>
+                            <View style={styles.voucherCodeDashed}>
+                              <Text style={styles.voucherCodeString}>{item.code}</Text>
+                            </View>
+                            <TouchableOpacity 
+                              style={[styles.voucherCopyBtn, { backgroundColor: cardColor }]} 
+                              onPress={() => {
+                                showToast(`Đã sao chép mã ${item.code}! Sử dụng khi thanh toán.`);
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={styles.voucherCopyBtnText}>SAO CHÉP</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
                     </View>
-                  </View>
-                  <View style={styles.voucherRight}>
-                    <Text style={styles.voucherCodeText}>{item.code}</Text>
-                    <Text style={styles.voucherDescText}>{item.desc}</Text>
-                    <Text style={styles.voucherExpiryText}>Hạn dùng: {item.expiry}</Text>
-                    <TouchableOpacity 
-                      style={styles.copyBtn} 
-                      onPress={() => {
-                        showToast(`Đã sao chép mã ưu đãi ${item.code}!`);
-                      }}
-                    >
-                      <Text style={styles.copyBtnText}>SAO CHÉP MÃ</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            />
+                  );
+                }}
+              />
+            )}
             <Toast message={toastMessage} visible={toastVisible} onDismiss={() => setToastVisible(false)} />
           </SafeAreaView>
         </SafeAreaProvider>
@@ -1274,6 +1541,20 @@ const styles = StyleSheet.create({
     marginTop: 6,
     lineHeight: 18,
   },
+  retryButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginTop: 20,
+  },
+  retryText: {
+    color: '#E51E25',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
 
   // Order List styles
   orderCard: {
@@ -1373,62 +1654,153 @@ const styles = StyleSheet.create({
     color: '#E51E25',
   },
 
-  // Voucher modal styles
-  voucherCard: {
+  // --- Web Synced Voucher Modal Styles ---
+  voucherBannerContainer: {
+    backgroundColor: '#121212',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 14,
+  },
+  voucherBannerContent: {
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  voucherBannerTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  voucherBannerSubtitle: {
+    fontSize: 11,
+    color: '#A0A0A0',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  voucherFilterRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  voucherFilterTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: '#222222',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  voucherFilterTabActive: {
+    backgroundColor: '#E51E25',
+    borderColor: '#E51E25',
+  },
+  voucherFilterTabText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B0B0B0',
+  },
+  voucherFilterTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  voucherCineCard: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#EAEAEA',
-    borderRadius: 20,
-    padding: 16,
     marginBottom: 14,
-    alignItems: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  voucherLeft: {
-    marginRight: 16,
-  },
-  voucherIconCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#FFF5F5',
+  voucherCineLeft: {
+    width: 90,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 12,
+    borderLeftWidth: 4,
   },
-  voucherRight: {
-    flex: 1,
-  },
-  voucherCodeText: {
-    fontSize: 14,
+  voucherCineVal: {
+    fontSize: 20,
     fontWeight: '900',
-    color: '#E51E25',
+    letterSpacing: 0.5,
   },
-  voucherDescText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#000000',
-    marginTop: 2,
-  },
-  voucherExpiryText: {
+  voucherCineLbl: {
     fontSize: 10,
+    fontWeight: '800',
     color: '#808080',
-    marginTop: 4,
-    fontWeight: '500',
+    marginTop: 2,
+    letterSpacing: 1,
   },
-  copyBtn: {
-    backgroundColor: '#FAF9FB',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    alignSelf: 'flex-start',
-    marginTop: 8,
+  voucherCineRight: {
+    flex: 1,
+    padding: 14,
+    justifyContent: 'center',
   },
-  copyBtnText: {
+  voucherCineBrand: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: '#E51E25',
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+  },
+  voucherCineTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#111111',
+    marginBottom: 2,
+  },
+  voucherCineDesc: {
+    fontSize: 11,
+    color: '#666666',
+    fontWeight: '500',
+    marginBottom: 10,
+    lineHeight: 15,
+  },
+  voucherCineFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 'auto',
+  },
+  voucherCineExp: {
+    fontSize: 10,
+    color: '#888888',
+    fontWeight: '600',
+  },
+  voucherCineCodeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  voucherCodeDashed: {
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderStyle: 'dashed',
+    borderRadius: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+  },
+  voucherCodeString: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#000000',
+    letterSpacing: 0.5,
+  },
+  voucherCopyBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  voucherCopyBtnText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   statusBadgeCancelled: {
     backgroundColor: '#FFEBEE',

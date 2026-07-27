@@ -215,6 +215,8 @@ public class OrderApiController {
                 if (voucherOpt.isPresent()) {
                     voucher = voucherOpt.get();
                     discount = voucherService.calculateDiscount(voucher, total);
+                } else {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Mã giảm giá '" + voucherCode + "' không hợp lệ, đã hết hạn, chưa đủ điều kiện hoặc đã hết lượt sử dụng!"));
                 }
             }
 

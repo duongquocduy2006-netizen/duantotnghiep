@@ -14,6 +14,17 @@ public class OrderService {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        try {
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'cancel_reason') ALTER TABLE orders ADD cancel_reason NVARCHAR(500) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'external_transaction_id') ALTER TABLE orders ADD external_transaction_id NVARCHAR(255) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'voucher_id') ALTER TABLE orders ADD voucher_id INT NULL;");
+        } catch (Exception e) {
+            System.err.println("Error auto-checking orders schema in OrderService: " + e.getMessage());
+        }
+    }
+
     public List<OrderDTO> getAllOrders(String keyword, Integer status) {
         StringBuilder sql = new StringBuilder(
                 "SELECT o.order_code, a.receiving_name, o.created_at, o.final_amount, o.status, pm.method_name " +
@@ -235,7 +246,7 @@ public class OrderService {
     }
 
     /**
-     * Admin hủy đơn hàng với lý do. Cho phép hủy đơn ở trạng thái 1 (Chờ duyệt), 2 (Đang giao), 5 (Đã nhận hàng).
+     * Admin hủy đơn hàng với lý do. Chỉ cho phép hủy đơn ở trạng thái 1 (Chờ duyệt).
      */
     public void cancelOrderByAdmin(String orderCode, String cancelReason) {
         String checkSql = "SELECT status FROM orders WHERE order_code = ?";
@@ -248,7 +259,9 @@ public class OrderService {
 
         int currentStatus = ((Number) order.get("status")).intValue();
 
-        // Admin chỉ được hủy đơn chưa hoàn tất (chưa thành công và chưa bị hủy)
+        if (currentStatus == 2 || currentStatus == 5) {
+            throw new IllegalStateException("Đơn hàng đang giao hoặc đã giao hàng, không được phép hủy đơn!");
+        }
         if (currentStatus == 3 || currentStatus == 4) {
             throw new IllegalStateException("Không thể hủy đơn hàng đã hoàn tất hoặc đã hủy.");
         }
@@ -261,7 +274,8 @@ public class OrderService {
     }
 
     public java.util.Map<String, Object> getOrderDetail(String orderCode) {
-        String sql = "SELECT o.*, a.receiving_name, a.phone_number, a.street_detail, pm.method_name " +
+        String sql = "SELECT o.*, a.receiving_name, a.phone_number, a.street_detail, pm.method_name, " +
+                "(SELECT v.code FROM vouchers v WHERE v.id = o.voucher_id) as voucher_code " +
                 "FROM orders o " +
                 "LEFT JOIN addresses a ON o.receiver_address_id = a.id " +
                 "LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id " +
@@ -339,14 +353,14 @@ public class OrderService {
                 if (minOrderValue == null || newTotalAmount >= minOrderValue) {
                     String discountType = (String) voucherMap.get("discount_type");
                     Double discountValue = ((Number) voucherMap.get("discount_value")).doubleValue();
-                    if ("FIXED".equalsIgnoreCase(discountType)) {
-                        discount = Math.min(discountValue, newTotalAmount);
-                    } else if ("PERCENT".equalsIgnoreCase(discountType)) {
+                    if ("PERCENT".equalsIgnoreCase(discountType)) {
                         discount = newTotalAmount * (discountValue / 100.0);
                         Double maxDiscount = voucherMap.get("max_discount") != null ? ((Number) voucherMap.get("max_discount")).doubleValue() : null;
                         if (maxDiscount != null && maxDiscount > 0) {
                             discount = Math.min(discount, maxDiscount);
                         }
+                    } else {
+                        discount = Math.min(discountValue, newTotalAmount);
                     }
                 } else {
                     voucherId = null;
@@ -464,14 +478,14 @@ public class OrderService {
                     if (minOrderValue == null || newTotalAmount >= minOrderValue) {
                         String discountType = (String) voucherMap.get("discount_type");
                         Double discountValue = ((Number) voucherMap.get("discount_value")).doubleValue();
-                        if ("FIXED".equalsIgnoreCase(discountType)) {
-                            discount = Math.min(discountValue, newTotalAmount);
-                        } else if ("PERCENT".equalsIgnoreCase(discountType)) {
+                        if ("PERCENT".equalsIgnoreCase(discountType)) {
                             discount = newTotalAmount * (discountValue / 100.0);
                             Double maxDiscount = voucherMap.get("max_discount") != null ? ((Number) voucherMap.get("max_discount")).doubleValue() : null;
                             if (maxDiscount != null && maxDiscount > 0) {
                                 discount = Math.min(discount, maxDiscount);
                             }
+                        } else {
+                            discount = Math.min(discountValue, newTotalAmount);
                         }
                     } else {
                         voucherId = null;

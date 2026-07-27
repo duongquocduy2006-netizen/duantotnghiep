@@ -21,11 +21,12 @@ const { width } = Dimensions.get('window');
 const API_TIMEOUT = 4000;
 
 export default function DetailScreen({ route, navigation }) {
-  const { productId } = route.params;
-  const { cart, favorites, toggleFavorite, addToCart } = useContext(CartContext);
+  const initialProduct = route.params?.product || null;
+  const productId = route.params?.productId || route.params?.id || initialProduct?.id;
+  const { cart, favorites, toggleFavorite, addToCart, cartCount } = useContext(CartContext);
 
   const [loading, setLoading] = useState(true);
-  const [productDetail, setProductDetail] = useState(null);
+  const [productDetail, setProductDetail] = useState(initialProduct || null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const showToast = (msg) => {
@@ -38,7 +39,7 @@ export default function DetailScreen({ route, navigation }) {
   const [quantity, setQuantity] = useState(1);
 
   // Sync selected variant's stock with quantity state
-  const currentVariant = productDetail?.variants.find(
+  const currentVariant = productDetail?.variants?.find(
     v => v.sizeName === selectedSize && v.colorName === selectedColor
   );
   const availableStock = currentVariant ? (currentVariant.quantity !== undefined ? currentVariant.quantity : 10) : 10;
@@ -77,18 +78,45 @@ export default function DetailScreen({ route, navigation }) {
         const result = await response.json();
         if (result.success && result.product) {
           const product = result.product;
+          
+          let mainImgUrl = '';
+          if (result.images && result.images.length > 0 && result.images[0].url) {
+            mainImgUrl = result.images[0].url;
+          } else if (product.imageUrl) {
+            mainImgUrl = product.imageUrl;
+          } else if (initialProduct?.imageUrl) {
+            mainImgUrl = initialProduct.imageUrl;
+          }
+
+          let defaultVariants = result.variants && result.variants.length > 0 ? result.variants : (initialProduct?.variants || []);
+          
+          // If no variants exist from API or initial product, generate standard demo variants
+          if (!defaultVariants || defaultVariants.length === 0) {
+            const basePrice = product.price || initialProduct?.price || 3000000;
+            defaultVariants = [
+              { id: 9901, sizeName: "39", colorName: "Đen Nổi Bật", price: basePrice, quantity: 8 },
+              { id: 9902, sizeName: "40", colorName: "Đen Nổi Bật", price: basePrice, quantity: 10 },
+              { id: 9903, sizeName: "41", colorName: "Đen Nổi Bật", price: basePrice, quantity: 5 },
+              { id: 9904, sizeName: "42", colorName: "Đen Nổi Bật", price: basePrice, quantity: 12 }
+            ];
+          }
+
+          const defaultPrice = defaultVariants[0]?.price || product.price || initialProduct?.price || 3000000;
+
           const mappedDetail = {
-            id: product.id,
-            productName: product.productName,
-            brandName: product.brandName || 'Sneaker',
-            categoryName: product.categoryName || 'Chưa phân loại',
-            description: product.description || 'Chưa có mô tả chi tiết cho sản phẩm này.',
-            imageUrl: result.images && result.images.length > 0 ? result.images[0].url : '',
-            variants: result.variants || [],
+            id: product.id || productId,
+            productName: product.productName || initialProduct?.productName || 'Sneaker Cao Cấp',
+            brandName: product.brandName || initialProduct?.brandName || 'Sneaker',
+            categoryName: product.categoryName || initialProduct?.categoryName || 'Chưa phân loại',
+            description: product.description || initialProduct?.description || 'Chưa có mô tả chi tiết cho sản phẩm này.',
+            imageUrl: mainImgUrl,
+            price: defaultPrice,
+            variants: defaultVariants,
             avgRating: result.avgRating || 4.8,
             reviewCount: result.reviewCount || 12,
             flashSale: result.flashSale || null
           };
+
           setProductDetail(mappedDetail);
           
           if (mappedDetail.variants && mappedDetail.variants.length > 0) {
@@ -102,8 +130,8 @@ export default function DetailScreen({ route, navigation }) {
         throw new Error("API response error");
       }
     } catch (error) {
-      console.log("Detail API failed. Fallback to offline mock matched product.");
-      // Fallback matching mock product
+      console.log("Detail API failed or offline mode. Fallback matching product:", error.message);
+      
       const fallbackList = [
         {
           id: 101,
@@ -190,12 +218,39 @@ export default function DetailScreen({ route, navigation }) {
         }
       ];
 
-      const matched = fallbackList.find(p => String(p.id) === String(productId));
+      // 1. Try finding in fallbackList by ID
+      let matched = fallbackList.find(p => String(p.id) === String(productId));
+
+      // 2. If not found in fallbackList, construct product from initialProduct passed in route params
+      if (!matched && initialProduct) {
+        const basePrice = initialProduct.price || 3000000;
+        matched = {
+          id: initialProduct.id || productId,
+          productName: initialProduct.productName || 'Sneaker Độc Quyền',
+          brandName: initialProduct.brandName || 'Sneaker',
+          categoryName: initialProduct.categoryName || 'Chưa phân loại',
+          imageUrl: initialProduct.imageUrl || '',
+          price: basePrice,
+          description: initialProduct.description || 'Mẫu thiết kế độc quyền, phong cách trẻ trung và êm ái.',
+          variants: initialProduct.variants || [
+            { id: 8801, sizeName: "39", colorName: "Mặc định", price: basePrice, quantity: 5 },
+            { id: 8802, sizeName: "40", colorName: "Mặc định", price: basePrice, quantity: 8 },
+            { id: 8803, sizeName: "41", colorName: "Mặc định", price: basePrice, quantity: 10 },
+            { id: 8804, sizeName: "42", colorName: "Mặc định", price: basePrice, quantity: 6 }
+          ]
+        };
+      }
+
+      // 3. If still not found, fallback to first item in list so user screen never stays broken
+      if (!matched && fallbackList.length > 0) {
+        matched = fallbackList[0];
+      }
+
       if (matched) {
         setProductDetail({
           ...matched,
-          avgRating: 4.8,
-          reviewCount: 16
+          avgRating: matched.avgRating || 4.8,
+          reviewCount: matched.reviewCount || 16
         });
         if (matched.variants && matched.variants.length > 0) {
           setSelectedSize(matched.variants[0].sizeName);
@@ -311,12 +366,13 @@ export default function DetailScreen({ route, navigation }) {
           <Ionicons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.navHeaderTitle} numberOfLines={1}>{productDetail.brandName} Edition</Text>
-        <TouchableOpacity style={styles.circleHeaderBtn} onPress={() => toggleFavorite(productDetail.id)}>
-          <Ionicons 
-            name={favorites.includes(productDetail.id) ? "heart" : "heart-outline"} 
-            size={24} 
-            color={favorites.includes(productDetail.id) ? "#E51E25" : "#000000"} 
-          />
+        <TouchableOpacity style={styles.circleHeaderBtn} onPress={() => navigation.navigate('Cart')} activeOpacity={0.7}>
+          <Ionicons name="cart" size={24} color="#000000" />
+          {cartCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{cartCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -585,6 +641,24 @@ const styles = StyleSheet.create({
     borderColor: '#EAEAEA',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#E51E25',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
   navHeaderTitle: {
     color: '#000000',

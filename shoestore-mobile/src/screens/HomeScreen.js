@@ -299,7 +299,7 @@ export default function HomeScreen({ navigation }) {
                   <TouchableOpacity
                     key={item.id}
                     style={styles.gridCard}
-                    onPress={() => navigation.navigate('Detail', { productId: item.id })}
+                    onPress={() => navigation.navigate('Detail', { productId: item.id, product: item })}
                     activeOpacity={0.8}
                   >
                     <View style={styles.gridCardImageWrapper}>

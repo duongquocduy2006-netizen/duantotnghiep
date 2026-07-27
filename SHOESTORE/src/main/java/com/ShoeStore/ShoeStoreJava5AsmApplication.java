@@ -49,7 +49,15 @@ public class ShoeStoreJava5AsmApplication {
                 System.out.println("-> Fix: flash_sales.name NVARCHAR(255)");
             } catch (Exception e) {}
 
-            // 5. Tạo và khởi tạo dữ liệu mẫu cho bảng Lookbooks
+            // 5. Sửa lỗi bảng Orders (thêm cột cancel_reason, voucher_id, external_transaction_id nếu thiếu)
+            try {
+                jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'cancel_reason') ALTER TABLE orders ADD cancel_reason NVARCHAR(500) NULL;");
+                jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'external_transaction_id') ALTER TABLE orders ADD external_transaction_id NVARCHAR(255) NULL;");
+                jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'voucher_id') ALTER TABLE orders ADD voucher_id INT NULL;");
+                System.out.println("-> Fix: orders table columns checked/added");
+            } catch (Exception e) {}
+
+            // 6. Tạo và khởi tạo dữ liệu mẫu cho bảng Lookbooks
             try {
                 jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='lookbooks' AND xtype='U') " +
                         "CREATE TABLE lookbooks (" +

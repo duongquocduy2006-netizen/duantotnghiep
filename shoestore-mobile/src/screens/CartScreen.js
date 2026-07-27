@@ -103,11 +103,11 @@ const FALLBACK_WARDS = {
 };
 
 // Vouchers and Rank requirements configuration
-const AVAILABLE_VOUCHERS = [
-  { code: 'NEW10', desc: 'Giảm 10% giá trị sản phẩm', type: 'percent', value: 10, minPoints: 0, rankName: 'Mọi hạng thành viên' },
-  { code: 'FREESHIP', desc: 'Miễn phí vận chuyển toàn quốc', type: 'shipping', value: 30000, minPoints: 100, rankName: 'Hạng Bạc (Silver) trở lên' },
-  { code: 'SHOE200', desc: 'Giảm ngay 200.000 đ (Đơn từ 4 triệu)', type: 'value', value: 200000, minPoints: 500, rankName: 'Hạng Vàng (Gold) trở lên', minSpend: 4000000 },
-  { code: 'DIAMOND500', desc: 'Giảm ngay 500.000 đ (Đơn từ 5 triệu)', type: 'value', value: 500000, minPoints: 1000, rankName: 'Hạng Kim Cương (Diamond)', minSpend: 5000000 }
+const FALLBACK_VOUCHERS = [
+  { code: 'NEW10', desc: 'Giảm 10% giá trị sản phẩm', type: 'percent', value: 10, minPoints: 0, rankName: 'Mọi hạng thành viên', minSpend: 0 },
+  { code: 'FREESHIP', desc: 'Miễn phí vận chuyển toàn quốc', type: 'shipping', value: 30000, minPoints: 500, rankName: 'Hạng Bạc (Silver) trở lên', minSpend: 0 },
+  { code: 'SHOE200', desc: 'Giảm ngay 200.000 đ (Đơn từ 4 triệu)', type: 'value', value: 200000, minPoints: 2000, rankName: 'Hạng Vàng (Gold) trở lên', minSpend: 4000000 },
+  { code: 'DIAMOND500', desc: 'Giảm ngay 500.000 đ (Đơn từ 5 triệu)', type: 'value', value: 500000, minPoints: 10000, rankName: 'Hạng Kim Cương (Diamond)', minSpend: 5000000 }
 ];
 
 export default function CartScreen({ navigation }) {
@@ -143,6 +143,12 @@ export default function CartScreen({ navigation }) {
   // Membership Rank states
   const [userPoints, setUserPoints] = useState(0);
 
+  // Vouchers state (fetch from database, fallback to static if error/offline)
+  const [vouchers, setVouchers] = useState(FALLBACK_VOUCHERS);
+  const [vouchersLoading, setVouchersLoading] = useState(false);
+  const [inputVoucherCode, setInputVoucherCode] = useState('');
+  const [applyingVoucher, setApplyingVoucher] = useState(false);
+
   // Checkout pricing details
   const [shippingFee] = useState(30000);
   const [appliedVoucher, setAppliedVoucher] = useState(null);
@@ -160,9 +166,9 @@ export default function CartScreen({ navigation }) {
   };
 
   const getMemberRankName = (points) => {
-    if (points >= 1000) return 'Kim Cương (Diamond)';
-    if (points >= 500) return 'Vàng (Gold)';
-    if (points >= 100) return 'Bạc (Silver)';
+    if (points >= 10000) return 'Kim Cương (Diamond)';
+    if (points >= 2000) return 'Vàng (Gold)';
+    if (points >= 500) return 'Bạc (Silver)';
     return 'Đồng (Bronze)';
   };
 
@@ -185,10 +191,65 @@ export default function CartScreen({ navigation }) {
     }
   };
 
+  const fetchRealVouchers = async (userId = null) => {
+    setVouchersLoading(true);
+    try {
+      let requestUrl = `${API_BASE_URL}/api/vouchers`;
+      if (userId) {
+        requestUrl += `?accountId=${userId}`;
+      } else {
+        const storedUser = await AsyncStorage.getItem('userAccount');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          if (user && user.id) {
+            requestUrl += `?accountId=${user.id}`;
+          }
+        }
+      }
+      const response = await fetch(requestUrl, { headers: { 'Accept': 'application/json' } });
+      const data = await response.json();
+      if (response.ok && data.success && Array.isArray(data.vouchers)) {
+        const mapped = data.vouchers.map((v, idx) => {
+          const rawType = (v.discount_type || v.discountType || 'FIXED').toUpperCase();
+          const isPercent = rawType === 'PERCENT';
+          const isShipping = rawType === 'SHIPPING';
+          const val = v.discount_value != null ? Number(v.discount_value) : (v.discountValue != null ? Number(v.discountValue) : 0);
+          const maxDiscount = v.max_discount != null ? Number(v.max_discount) : (v.maxDiscount != null ? Number(v.maxDiscount) : null);
+          const minOrderValue = v.min_order_value != null ? Number(v.min_order_value) : (v.minOrderValue != null ? Number(v.minOrderValue) : 0);
+
+          return {
+            id: v.id || idx + 1,
+            code: v.code || `VOUCHER${idx + 1}`,
+            desc: isPercent 
+              ? `Giảm ${val}%${maxDiscount ? ` (Tối đa ${formatVND(maxDiscount)})` : ''}${minOrderValue ? ` (Đơn từ ${formatVND(minOrderValue)})` : ''}` 
+              : (isShipping ? 'Miễn phí giao hàng toàn quốc' : `Giảm ngay ${formatVND(val)}${minOrderValue ? ` (Đơn từ ${formatVND(minOrderValue)})` : ''}`),
+            type: isPercent ? 'percent' : (isShipping ? 'shipping' : 'value'),
+            value: val,
+            maxDiscount: maxDiscount,
+            minSpend: minOrderValue,
+            minPoints: v.min_points != null ? Number(v.min_points) : (v.minPoints != null ? Number(v.minPoints) : 0),
+            rankName: v.rank_name || v.rankName || (minOrderValue ? `Đơn từ ${formatVND(minOrderValue)}` : 'Mọi đơn hàng / Mọi hạng')
+          };
+        });
+        setVouchers(mapped.filter(v => userPoints >= (v.minPoints || 0)));
+      } else {
+        setVouchers([]);
+      }
+    } catch (e) {
+      console.log("Error fetching real vouchers in CartScreen:", e.message);
+      setVouchers(FALLBACK_VOUCHERS.filter(v => userPoints >= (v.minPoints || 0)));
+    } finally {
+      setVouchersLoading(false);
+    }
+  };
+
   useEffect(() => {
     const initData = async () => {
       // 1. Fetch provinces
       await fetchProvinces();
+
+      // 1.5. Fetch real vouchers from database
+      await fetchRealVouchers();
 
       // 2. Load user account (for userPoints and basic credentials)
       try {
@@ -198,6 +259,9 @@ export default function CartScreen({ navigation }) {
           setRecipientName(user.full_name || '');
           setRecipientPhone(user.phone || '');
           setUserPoints(user.points || 0);
+          if (user.id) {
+            fetchRealVouchers(user.id);
+          }
         }
       } catch (e) {
         console.log("Error loading user info in checkout", e);
@@ -335,15 +399,22 @@ export default function CartScreen({ navigation }) {
 
   // Select Voucher Code card
   const selectVoucher = (voucher) => {
+    if (appliedVoucher?.code === voucher.code) {
+      setAppliedVoucher(null);
+      showToast(`Đã hủy áp dụng mã giảm giá ${voucher.code}`);
+      return;
+    }
+
     // Check rank qualification
-    if (userPoints < voucher.minPoints) {
-      showToast(`Voucher ${voucher.code} yêu cầu ${voucher.rankName}. Hạng hiện tại của bạn chưa đủ điều kiện.`);
+    if (userPoints < (voucher.minPoints || 0)) {
+      showToast(`Voucher ${voucher.code} yêu cầu ${voucher.rankName || 'hạng cao hơn'}. Hạng hiện tại của bạn chưa đủ điều kiện.`);
       return;
     }
 
     // Check spend requirement
-    if (voucher.minSpend && totalAmount < voucher.minSpend) {
-      showToast(`Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã (Yêu cầu từ ${formatVND(voucher.minSpend)}).`);
+    const minReq = voucher.minSpend !== undefined ? voucher.minSpend : (voucher.minOrderValue || 0);
+    if (minReq > 0 && totalAmount < minReq) {
+      showToast(`Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã (Yêu cầu từ ${formatVND(minReq)}).`);
       return;
     }
 
@@ -351,13 +422,86 @@ export default function CartScreen({ navigation }) {
     showToast(`Đã áp dụng mã giảm giá ${voucher.code}!`);
   };
 
+  const handleApplyCustomVoucher = async () => {
+    const codeToApply = inputVoucherCode.trim().toUpperCase();
+    if (!codeToApply) {
+      showToast("Vui lòng nhập mã giảm giá!");
+      return;
+    }
+
+    // 1. Check in currently loaded vouchers list
+    const foundInList = vouchers.find(v => (v.code || '').toUpperCase() === codeToApply);
+    if (foundInList) {
+      selectVoucher(foundInList);
+      setInputVoucherCode('');
+      return;
+    }
+
+    // 2. If not found in local/fetched list, try validating from server or database
+    setApplyingVoucher(true);
+    try {
+      let requestUrl = `${API_BASE_URL}/api/vouchers`;
+      const storedUser = await AsyncStorage.getItem('userAccount');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        if (user && user.id) {
+          requestUrl += `?accountId=${user.id}`;
+        }
+      }
+      const response = await fetch(requestUrl, { headers: { 'Accept': 'application/json' } });
+      const data = await response.json();
+      if (response.ok && data.success && Array.isArray(data.vouchers)) {
+        const serverVoucher = data.vouchers.find(v => (v.code || '').toUpperCase() === codeToApply);
+        if (serverVoucher) {
+          const rawType = (serverVoucher.discount_type || serverVoucher.discountType || 'FIXED').toUpperCase();
+          const isPercent = rawType === 'PERCENT';
+          const isShipping = rawType === 'SHIPPING';
+          const val = serverVoucher.discount_value != null ? Number(serverVoucher.discount_value) : (serverVoucher.discountValue != null ? Number(serverVoucher.discountValue) : 0);
+          const maxDiscount = serverVoucher.max_discount != null ? Number(serverVoucher.max_discount) : (serverVoucher.maxDiscount != null ? Number(serverVoucher.maxDiscount) : null);
+          const minOrderValue = serverVoucher.min_order_value != null ? Number(serverVoucher.min_order_value) : (serverVoucher.minOrderValue != null ? Number(serverVoucher.minOrderValue) : 0);
+
+          const newVoucherObj = {
+            id: serverVoucher.id || Date.now(),
+            code: serverVoucher.code || codeToApply,
+            desc: isPercent 
+              ? `Giảm ${val}%${maxDiscount ? ` (Tối đa ${formatVND(maxDiscount)})` : ''}${minOrderValue ? ` (Đơn từ ${formatVND(minOrderValue)})` : ''}` 
+              : (isShipping ? 'Miễn phí giao hàng toàn quốc' : `Giảm ngay ${formatVND(val)}${minOrderValue ? ` (Đơn từ ${formatVND(minOrderValue)})` : ''}`),
+            type: isPercent ? 'percent' : (isShipping ? 'shipping' : 'value'),
+            value: val,
+            maxDiscount: maxDiscount,
+            minSpend: minOrderValue,
+            minPoints: 0,
+            rankName: minOrderValue ? `Đơn từ ${formatVND(minOrderValue)}` : 'Mọi đơn hàng / Mọi hạng'
+          };
+          
+          setVouchers(prev => [...prev, newVoucherObj]);
+          selectVoucher(newVoucherObj);
+          setInputVoucherCode('');
+          setApplyingVoucher(false);
+          return;
+        }
+      }
+      
+      showToast("Mã giảm giá không hợp lệ, hết hạn hoặc không tồn tại!");
+    } catch (e) {
+      console.log("Error checking custom voucher:", e);
+      showToast("Mã giảm giá không tồn tại hoặc lỗi kết nối!");
+    } finally {
+      setApplyingVoucher(false);
+    }
+  };
+
   // Calculations
   const getVoucherDiscount = () => {
     if (!appliedVoucher) return 0;
     if (appliedVoucher.type === 'percent') {
-      return totalAmount * (appliedVoucher.value / 100);
+      let discount = totalAmount * (appliedVoucher.value / 100);
+      if (appliedVoucher.maxDiscount && discount > appliedVoucher.maxDiscount) {
+        discount = appliedVoucher.maxDiscount;
+      }
+      return discount;
     }
-    if (appliedVoucher.type === 'value') {
+    if (appliedVoucher.type === 'value' || appliedVoucher.type === 'fixed' || appliedVoucher.type === 'AMOUNT') {
       return appliedVoucher.value;
     }
     if (appliedVoucher.type === 'shipping') {
@@ -812,54 +956,104 @@ export default function CartScreen({ navigation }) {
               {/* Voucher Selector Section */}
               <View style={styles.formSection}>
                 <Text style={styles.formSectionTitle}>3. Chọn Mã giảm giá (Voucher)</Text>
-                <Text style={styles.formSectionSubInfo}>Mã giảm giá khả dụng tương ứng với hạng thành viên của bạn:</Text>
                 
-                {AVAILABLE_VOUCHERS.map((voucher) => {
-                  const isUnlocked = userPoints >= voucher.minPoints;
-                  const isApplied = appliedVoucher?.code === voucher.code;
+                {/* Custom Voucher Input Box */}
+                <View style={styles.voucherInputRow}>
+                  <View style={styles.voucherInputContainer}>
+                    <MaterialCommunityIcons name="ticket-percent-outline" size={20} color="#808080" style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={styles.voucherInput}
+                      placeholder="Nhập mã giảm giá..."
+                      placeholderTextColor="#808080"
+                      value={inputVoucherCode}
+                      onChangeText={(text) => setInputVoucherCode(text.toUpperCase())}
+                      autoCapitalize="characters"
+                    />
+                    {inputVoucherCode.length > 0 && (
+                      <TouchableOpacity onPress={() => setInputVoucherCode('')} style={{ padding: 4 }}>
+                        <Ionicons name="close-circle" size={18} color="#808080" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.applyVoucherBtn, !inputVoucherCode.trim() && styles.applyVoucherBtnDisabled]}
+                    onPress={handleApplyCustomVoucher}
+                    disabled={!inputVoucherCode.trim() || applyingVoucher}
+                  >
+                    {applyingVoucher ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.applyVoucherBtnText}>ÁP DỤNG</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
 
-                  return (
-                    <TouchableOpacity
-                      key={voucher.code}
-                      style={[
-                        styles.voucherCard,
-                        !isUnlocked && styles.voucherCardLocked,
-                        isApplied && styles.voucherCardApplied
-                      ]}
-                      onPress={() => selectVoucher(voucher)}
-                      activeOpacity={isUnlocked ? 0.7 : 1}
-                    >
-                      <View style={styles.voucherCardLeft}>
-                        <MaterialCommunityIcons 
-                          name={isUnlocked ? "ticket-percent" : "ticket-lock"} 
-                          size={24} 
-                          color={isApplied ? "#2E7D32" : (isUnlocked ? "#E51E25" : "#808080")} 
-                        />
-                        <View style={{ marginLeft: 12, flex: 1 }}>
-                          <Text style={[styles.voucherCode, !isUnlocked && { color: '#808080' }]}>
-                            {voucher.code}
-                          </Text>
-                          <Text style={styles.voucherDesc}>{voucher.desc}</Text>
-                          <Text style={styles.voucherReqText}>Yêu cầu: {voucher.rankName}</Text>
-                        </View>
-                      </View>
-                      
-                      <View style={styles.voucherCardRight}>
-                        {isApplied ? (
-                          <View style={styles.applyIndicatorActive}>
-                            <Text style={styles.applyIndicatorActiveText}>ĐANG ÁP DỤNG</Text>
-                          </View>
-                        ) : (
-                          <View style={[styles.applyIndicator, !isUnlocked && styles.applyIndicatorLocked]}>
-                            <Text style={[styles.applyIndicatorText, !isUnlocked && { color: '#808080' }]}>
-                              {isUnlocked ? "CHỌN" : "BỊ KHÓA"}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
+                {appliedVoucher && (
+                  <View style={styles.currentAppliedBanner}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                      <Ionicons name="checkmark-circle" size={20} color="#2E7D32" style={{ marginRight: 6 }} />
+                      <Text style={styles.currentAppliedText} numberOfLines={1}>
+                        Đang dùng: <Text style={{ fontWeight: 'bold' }}>{appliedVoucher.code}</Text> (-{formatVND(getVoucherDiscount())})
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => { setAppliedVoucher(null); showToast("Đã hủy áp dụng mã giảm giá"); }}>
+                      <Text style={styles.removeVoucherText}>Bỏ chọn</Text>
                     </TouchableOpacity>
-                  );
-                })}
+                  </View>
+                )}
+
+                <Text style={styles.formSectionSubInfo}>Danh sách mã giảm giá khả dụng cho bạn:</Text>
+                
+                {vouchersLoading ? (
+                  <ActivityIndicator size="small" color="#E51E25" style={{ marginVertical: 15 }} />
+                ) : (
+                  vouchers.filter(voucher => userPoints >= (voucher.minPoints || 0)).map((voucher) => {
+                    const isUnlocked = userPoints >= (voucher.minPoints || 0);
+                    const isApplied = appliedVoucher?.code === voucher.code;
+
+                    return (
+                      <TouchableOpacity
+                        key={voucher.code}
+                        style={[
+                          styles.voucherCard,
+                          !isUnlocked && styles.voucherCardLocked,
+                          isApplied && styles.voucherCardApplied
+                        ]}
+                        onPress={() => selectVoucher(voucher)}
+                        activeOpacity={isUnlocked ? 0.7 : 1}
+                      >
+                        <View style={styles.voucherCardLeft}>
+                          <MaterialCommunityIcons 
+                            name={isUnlocked ? "ticket-percent" : "ticket-lock"} 
+                            size={24} 
+                            color={isApplied ? "#2E7D32" : (isUnlocked ? "#E51E25" : "#808080")} 
+                          />
+                          <View style={{ marginLeft: 12, flex: 1 }}>
+                            <Text style={[styles.voucherCode, !isUnlocked && { color: '#808080' }]}>
+                              {voucher.code}
+                            </Text>
+                            <Text style={styles.voucherDesc}>{voucher.desc}</Text>
+                            <Text style={styles.voucherReqText}>Yêu cầu: {voucher.rankName || 'Mọi hạng thành viên'}</Text>
+                          </View>
+                        </View>
+                        
+                        <View style={styles.voucherCardRight}>
+                          {isApplied ? (
+                            <View style={styles.applyIndicatorActive}>
+                              <Text style={styles.applyIndicatorActiveText}>ĐANG DÙNG</Text>
+                            </View>
+                          ) : (
+                            <View style={[styles.applyIndicator, !isUnlocked && styles.applyIndicatorLocked]}>
+                              <Text style={[styles.applyIndicatorText, !isUnlocked && { color: '#808080' }]}>
+                                {isUnlocked ? "CHỌN" : "KHÓA"}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
               </View>
 
               {/* Payment Methods Section */}
@@ -1290,6 +1484,70 @@ const styles = StyleSheet.create({
     color: '#000000',
     flex: 1,
     marginRight: 8,
+  },
+
+  // Custom Voucher Input Box
+  voucherInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  voucherInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF9FB',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    height: 46,
+    paddingHorizontal: 12,
+    marginRight: 8,
+  },
+  voucherInput: {
+    flex: 1,
+    color: '#000000',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  applyVoucherBtn: {
+    backgroundColor: '#E51E25',
+    borderRadius: 14,
+    height: 46,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  applyVoucherBtnDisabled: {
+    backgroundColor: '#C0C0C0',
+  },
+  applyVoucherBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  currentAppliedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  currentAppliedText: {
+    fontSize: 12,
+    color: '#2E7D32',
+  },
+  removeVoucherText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#E51E25',
+    textDecorationLine: 'underline',
   },
 
   // Voucher Cards list design

@@ -246,7 +246,7 @@ const AdminOrders = () => {
                     <option value="">Trạng thái: Tất cả</option>
                     {(availableStatuses.includes(1) || statusFilter === "1") && <option value="1">Chờ xác nhận</option>}
                     {(availableStatuses.includes(2) || statusFilter === "2") && <option value="2">Đang giao hàng</option>}
-                    {(availableStatuses.includes(5) || statusFilter === "5") && <option value="5">Đã nhận hàng (Chờ duyệt)</option>}
+                    {(availableStatuses.includes(5) || statusFilter === "5") && <option value="5">Đã giao hàng (Chờ khách nhận)</option>}
                     {(availableStatuses.includes(3) || statusFilter === "3") && <option value="3">Đã giao thành công</option>}
                     {(availableStatuses.includes(4) || statusFilter === "4") && <option value="4">Đã hủy</option>}
                 </select>
@@ -320,10 +320,9 @@ const AdminOrders = () => {
                                                 >
                                                     {order.status === 1 && <option value="1">Chờ xác nhận</option>}
                                                     {(order.status === 1 || order.status === 2) && <option value="2">Đang giao hàng</option>}
-                                                    {order.status === 5 && <option value="5">Đã nhận hàng (Chờ duyệt)</option>}
-                                                    {order.status === 5 && <option value="3">Xác nhận thành công</option>}
-                                                    {order.status === 3 && <option value="3">Thành công</option>}
-                                                    {order.status !== 3 && order.status !== 4 && <option value="4">Hủy đơn</option>}
+                                                    {(order.status === 2 || order.status === 5) && <option value="5">Đã giao hàng (Chờ khách nhận)</option>}
+                                                    {(order.status === 5 || order.status === 3) && <option value="3">Xác nhận thành công</option>}
+                                                    {order.status === 1 && <option value="4">Hủy đơn</option>}
                                                     {order.status === 4 && <option value="4">Đã hủy</option>}
                                                 </select>
                                             </div>

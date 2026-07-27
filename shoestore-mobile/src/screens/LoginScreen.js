@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,7 +11,8 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ScrollView,
-  Dimensions
+  Dimensions,
+  Alert
 } from 'react-native';
 import Toast from '../components/Toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -61,6 +62,24 @@ export default function LoginScreen({ navigation }) {
 
   // Focus tracking for input highlights
   const [focusedField, setFocusedField] = useState('');
+
+  // --- AUTO LOAD REMEMBERED CREDENTIALS ---
+  useEffect(() => {
+    const loadRememberedCredentials = async () => {
+      try {
+        const savedData = await AsyncStorage.getItem('rememberedCredentials');
+        if (savedData) {
+          const { email: savedEmail, password: savedPassword, rememberMe: isRemembered } = JSON.parse(savedData);
+          if (savedEmail) setEmail(savedEmail);
+          if (savedPassword) setPassword(savedPassword);
+          if (typeof isRemembered === 'boolean') setRememberMe(isRemembered);
+        }
+      } catch (error) {
+        console.warn("Lỗi khi tải thông tin ghi nhớ đăng nhập:", error);
+      }
+    };
+    loadRememberedCredentials();
+  }, []);
 
   // Switch modes helper
   const switchMode = (newMode) => {
@@ -116,6 +135,19 @@ export default function LoginScreen({ navigation }) {
           return;
         }
 
+        // Save or clear remembered login credentials
+        if (rememberMe) {
+          await AsyncStorage.setItem('rememberedCredentials', JSON.stringify({
+            email,
+            password,
+            rememberMe: true
+          }));
+        } else {
+          await AsyncStorage.removeItem('rememberedCredentials');
+        }
+
+        // Clear old cached orders from previous account
+        await AsyncStorage.removeItem('userOrders');
         // Save account locally
         await AsyncStorage.setItem('userAccount', JSON.stringify(data.account));
         
@@ -139,6 +171,15 @@ export default function LoginScreen({ navigation }) {
           { 
             text: "Dùng tài khoản Demo", 
             onPress: async () => {
+              if (rememberMe) {
+                await AsyncStorage.setItem('rememberedCredentials', JSON.stringify({
+                  email,
+                  password,
+                  rememberMe: true
+                }));
+              } else {
+                await AsyncStorage.removeItem('rememberedCredentials');
+              }
               const demoUser = {
                 id: 99,
                 full_name: "Khách hàng VIP",
@@ -146,6 +187,7 @@ export default function LoginScreen({ navigation }) {
                 role: "USER",
                 points: 120
               };
+              await AsyncStorage.removeItem('userOrders');
               await AsyncStorage.setItem('userAccount', JSON.stringify(demoUser));
               navigation.reset({
                 index: 0,
