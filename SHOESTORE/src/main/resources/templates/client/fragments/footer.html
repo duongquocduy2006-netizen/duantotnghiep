@@ -125,7 +125,7 @@
 
                 productHtml += `
                     <a href="/details?id=${pid}" class="chat-product-card">
-                        <img src="${img.startsWith('http') ? img : '/images/' + img}" class="chat-product-card-img" onerror="this.src='https://placehold.co/100x100?text=Giày'">
+                        <img src="${img.startsWith('http') ? img : (img.startsWith('/') ? img : '/images/' + img)}" class="chat-product-card-img" onerror="this.src='https://placehold.co/100x100?text=Giày'">
                         <div class="chat-product-card-info">
                             <div class="chat-product-card-name">${name}</div>
                             <div class="chat-product-card-price">${new Intl.NumberFormat('vi-VN').format(parsePrice(price))} đ</div>

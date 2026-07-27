@@ -55,8 +55,16 @@ const Chatbox = () => {
             if (!url || url === 'null' || url === 'undefined' || url.trim() === '') {
                 return 'https://ui-avatars.com/api/?name=SP&background=121212&color=00f2ff&bold=true';
             }
-            if (url.startsWith('http') || url.startsWith('data:')) return url;
-            const clean = url.startsWith('/') ? url : '/' + url;
+            let clean = url.trim();
+            if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) {
+                return clean;
+            }
+            if (!clean.startsWith('/')) {
+                clean = '/' + clean;
+            }
+            if (!clean.startsWith('/images/') && !clean.startsWith('/uploads/')) {
+                clean = '/images' + clean;
+            }
             return `http://localhost:8080${clean}`;
         };
 
@@ -71,7 +79,14 @@ const Chatbox = () => {
                             return (
                                 <div key={i} className="ai-product-card">
                                     <div className="ai-card-img-wrapper">
-                                        <img src={getImageUrl(image)} alt={name} />
+                                        <img 
+                                            src={getImageUrl(image)} 
+                                            alt={name} 
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = 'https://ui-avatars.com/api/?name=SP&background=121212&color=00f2ff&bold=true';
+                                            }}
+                                        />
                                     </div>
                                     <div className="product-info">
                                         <h6 title={name}>{name}</h6>

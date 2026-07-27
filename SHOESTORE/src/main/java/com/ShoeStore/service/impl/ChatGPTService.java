@@ -55,8 +55,8 @@ public class ChatGPTService {
 
         try {
             if (targetBrand != null) {
-                // Ưu tiên 1: Tìm theo thương hiệu được nhắc đến
-                sql = "SELECT TOP 5 p.id, p.product_name, b.brand_name, " +
+                // Ưu tiên 1: Tìm theo thương hiệu được nhắc đến (lấy 3 sản phẩm)
+                sql = "SELECT TOP 3 p.id, p.product_name, b.brand_name, " +
                       "COALESCE((SELECT MIN(price) FROM product_variants WHERE product_id = p.id), 0) as price, " +
                       "COALESCE((SELECT TOP 1 image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC), '') as image " +
                       "FROM products p " +
@@ -114,7 +114,15 @@ public class ChatGPTService {
                     priceVal = new java.math.BigDecimal(priceObj.toString()).longValue();
                 } catch (Exception e) {}
             }
-            String img = p.get("image") != null ? p.get("image").toString() : "";
+            String img = p.get("image") != null ? p.get("image").toString().trim() : "";
+            if (!img.isEmpty() && !img.startsWith("http://") && !img.startsWith("https://") && !img.startsWith("data:")) {
+                if (!img.startsWith("/")) {
+                    img = "/" + img;
+                }
+                if (!img.startsWith("/images/") && !img.startsWith("/uploads/")) {
+                    img = "/images" + img;
+                }
+            }
             sb.append(String.format("\n[PRODUCT:%s|%s|%d|%s]",
                 p.get("id"), p.get("product_name"), priceVal, img));
         }
@@ -170,7 +178,7 @@ public class ChatGPTService {
                 String cards = buildProductCardsString(matchedProducts);
                 if (matchedBrand != null) {
                     String brandCap = matchedBrand.substring(0, 1).toUpperCase() + matchedBrand.substring(1);
-                    return "Dạ chào bạn! Đây là 5 mẫu sản phẩm nổi bật của thương hiệu " + brandCap + " tại ShoeStore ạ. Bạn bấm vào sản phẩm để xem chi tiết nhé:" + cards;
+                    return "Dạ chào bạn! Đây là " + matchedProducts.size() + " mẫu sản phẩm nổi bật của thương hiệu " + brandCap + " tại ShoeStore ạ. Bạn bấm vào sản phẩm để xem chi tiết nhé:" + cards;
                 } else if (isSampleRequest) {
                     return "Dạ chào bạn! Đây là các mẫu sản phẩm hot đang bán chạy nhất tại ShoeStore ạ. Bạn bấm vào sản phẩm để xem chi tiết nhé:" + cards;
                 } else {
@@ -267,8 +275,17 @@ public class ChatGPTService {
                             priceVal = new java.math.BigDecimal(priceObj.toString()).longValue();
                         } catch (Exception e) {}
                     }
+                    String img = p.get("image") != null ? p.get("image").toString().trim() : "";
+                    if (!img.isEmpty() && !img.startsWith("http://") && !img.startsWith("https://") && !img.startsWith("data:")) {
+                        if (!img.startsWith("/")) {
+                            img = "/" + img;
+                        }
+                        if (!img.startsWith("/images/") && !img.startsWith("/uploads/")) {
+                            img = "/images" + img;
+                        }
+                    }
                     return String.format("ID: %s, Tên: %s, Giá: %d, Card: [PRODUCT:%s|%s|%d|%s]", 
-                        p.get("id"), p.get("product_name"), priceVal, p.get("id"), p.get("product_name"), priceVal, p.get("image"));
+                        p.get("id"), p.get("product_name"), priceVal, p.get("id"), p.get("product_name"), priceVal, img);
                 })
                 .collect(Collectors.joining("\n"));
         } catch (Exception e) {
