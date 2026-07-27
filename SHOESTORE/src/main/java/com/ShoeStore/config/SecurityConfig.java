@@ -56,8 +56,7 @@ public class SecurityConfig {
                 "http://localhost:5174",
                 "http://127.0.0.1:5174",
                 "http://localhost:5175",
-                "http://127.0.0.1:5175"
-        ));
+                "http://127.0.0.1:5175"));
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(java.util.List.of("*"));
         configuration.setAllowCredentials(true);
@@ -79,14 +78,16 @@ public class SecurityConfig {
                                     response.setCharacterEncoding("UTF-8");
                                     response.getWriter().write("{\"success\":false,\"message\":\"Unauthenticated\"}");
                                 },
-                                org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher.pathPattern("/api/**")
-                        )
-                )
+                                org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher
+                                        .pathPattern("/api/**")))
                 .authorizeHttpRequests((requests) -> requests
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/image-search").permitAll()
+                        .requestMatchers("/api/admin/embedding/**").permitAll()
                         .requestMatchers("/", "/login", "/register", "/forgot-password", "/verify-otp", "/resend-otp",
                                 "/reset-password", "/shop", "/details", "/new-arrivals", "/flash-sale", "/product/**",
-                                "/cart/**", "/api/**", "/api/auth/**", "/assets/**", "/css/**", "/js/**", "/images/**", "/uploads/**", "/error")
+                                "/cart/**", "/api/**", "/api/auth/**", "/assets/**", "/css/**", "/js/**", "/images/**",
+                                "/uploads/**", "/error")
                         .permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/shipper/**").hasRole("SHIPPER")

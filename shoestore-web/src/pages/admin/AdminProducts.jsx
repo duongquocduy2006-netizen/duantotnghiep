@@ -24,7 +24,8 @@ const AdminProducts = () => {
     const fetchProducts = async () => {
         try {
             const response = await api.get('/api/products');
-            setProducts(response.data || []);
+            const dataList = Array.isArray(response.data) ? response.data : (response.data?.products || []);
+            setProducts(dataList);
         } catch (err) {
             console.error("Lỗi tải danh sách sản phẩm:", err);
             setError("Không thể tải danh sách sản phẩm từ hệ thống.");
@@ -48,8 +49,11 @@ const AdminProducts = () => {
     }, []);
 
     const filteredProducts = products.filter(p => {
-        const matchSearch = !searchTerm || p.productName.toLowerCase().includes(searchTerm.toLowerCase()) || p.productCode.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchCategory = selectedCategory === "all" || p.categoryName === selectedCategory;
+        const name = p.productName || p.product_name || '';
+        const code = p.productCode || p.product_code || '';
+        const catName = p.categoryName || p.category_name || '';
+        const matchSearch = !searchTerm || name.toLowerCase().includes(searchTerm.toLowerCase()) || code.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchCategory = selectedCategory === "all" || catName === selectedCategory;
         const matchStatus = selectedStatus === "all" || (selectedStatus === "1" && p.status === 1) || (selectedStatus === "0" && p.status !== 1);
         return matchSearch && matchCategory && matchStatus;
     });
@@ -205,80 +209,90 @@ const AdminProducts = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredProducts.map(p => (
-                                    <tr key={p.id}>
-                                        <td>
-                                            <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <div style={{ width: '50px', height: '50px', background: '#fff', overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: '8px', flexShrink: 0 }}>
-                                                    <img
-                                                        src={getImageUrl(p.imageUrl)}
-                                                        className="product-img"
-                                                        alt={p.productName}
-                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                        onError={(e) => {
-                                                            e.target.onerror = null;
-                                                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.productName)}&background=fff&color=000&bold=true`;
-                                                        }}
-                                                    />
+                                {filteredProducts.map(p => {
+                                    const productName = p.productName || p.product_name || '(Không tên)';
+                                    const productCode = p.productCode || p.product_code || '';
+                                    const categoryName = p.categoryName || p.category_name || '';
+                                    const brandName = p.brandName || p.brand_name || '';
+                                    const imageUrl = p.imageUrl || p.image_url || '';
+                                    const price = p.price ?? p.min_price;
+                                    const variantCount = p.variantCount ?? p.variant_count ?? 0;
+
+                                    return (
+                                        <tr key={p.id}>
+                                            <td>
+                                                <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    <div style={{ width: '50px', height: '50px', background: '#fff', overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: '8px', flexShrink: 0 }}>
+                                                        <img
+                                                            src={getImageUrl(imageUrl)}
+                                                            className="product-img"
+                                                            alt={productName}
+                                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(productName)}&background=fff&color=000&bold=true`;
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div style={{ minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                                                        <span className="product-name" style={{
+                                                            fontWeight: 800,
+                                                            color: '#000',
+                                                            fontSize: '15px',
+                                                            fontFamily: 'Oswald',
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            textTransform: 'uppercase'
+                                                        }} title={productName}>{productName}</span>
+                                                        <span className="product-id" style={{ fontSize: '12px', color: '#555', fontWeight: 600, marginTop: '2px' }}><i className="bi bi-upc-scan"></i> SKU: {productCode}</span>
+                                                    </div>
                                                 </div>
-                                                <div style={{ minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                                                    <span className="product-name" style={{
-                                                        fontWeight: 800,
-                                                        color: '#000',
-                                                        fontSize: '15px',
-                                                        fontFamily: 'Oswald',
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        textTransform: 'uppercase'
-                                                    }} title={p.productName}>{p.productName}</span>
-                                                    <span className="product-id" style={{ fontSize: '12px', color: '#555', fontWeight: 600, marginTop: '2px' }}><i className="bi bi-upc-scan"></i> SKU: {p.productCode}</span>
+                                            </td>
+
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#000', fontFamily: 'Oswald', textTransform: 'uppercase', borderBottom: '1px solid #f1f5f9' }}>{categoryName}</span>
+                                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}><i className="bi bi-tag-fill"></i> {brandName}</span>
                                                 </div>
-                                            </div>
-                                        </td>
+                                            </td>
 
-                                        <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                                <span style={{ fontSize: '13px', fontWeight: 800, color: '#000', fontFamily: 'Oswald', textTransform: 'uppercase', borderBottom: '1px solid #f1f5f9' }}>{p.categoryName}</span>
-                                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}><i className="bi bi-tag-fill"></i> {p.brandName}</span>
-                                            </div>
-                                        </td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                                    <span className="price" style={{ fontWeight: 800, color: '#000', fontFamily: 'Oswald', fontSize: '16px' }}>
+                                                        {price != null ? `${Number(price).toLocaleString()} ₫` : 'N/A'}
+                                                    </span>
+                                                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#000', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '2px 6px' }}>
+                                                        <i className="bi bi-box-seam"></i> {variantCount} BIẾN THỂ
+                                                    </span>
+                                                </div>
+                                            </td>
 
-                                        <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                                <span className="price" style={{ fontWeight: 800, color: '#000', fontFamily: 'Oswald', fontSize: '16px' }}>
-                                                    {p.price != null ? `${p.price.toLocaleString()} ₫` : 'N/A'}
-                                                </span>
-                                                <span style={{ fontSize: '11px', fontWeight: 800, color: '#000', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '2px 6px' }}>
-                                                    <i className="bi bi-box-seam"></i> {p.variantCount} BIẾN THỂ
-                                                </span>
-                                            </div>
-                                        </td>
+                                            <td>
+                                                 <span className={`status-badge ${p.status === 1 ? 'status-active' : 'status-cancel'}`} style={{
+                                                     padding: '6px 12px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', border: '1px solid #e2e8f0',
+                                                     whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                                                 }}>
+                                                     {p.status === 1 ? 'ĐANG BÁN' : 'TẠM ẨN'}
+                                                 </span>
+                                            </td>
 
-                                        <td>
-                                             <span className={`status-badge ${p.status === 1 ? 'status-active' : 'status-cancel'}`} style={{
-                                                 padding: '6px 12px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', border: '1px solid #e2e8f0',
-                                                 whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
-                                             }}>
-                                                 {p.status === 1 ? 'ĐANG BÁN' : 'TẠM ẨN'}
-                                             </span>
-                                        </td>
-
-                                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                                            <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
-                                                <Link to={`/admin/products/detail/${p.id}`} className="action-btn-icon" title="Xem chi tiết">
-                                                    <i className="bi bi-eye"></i>
-                                                </Link>
-                                                <Link to={`/admin/products/edit/${p.id}`} className="action-btn-icon icon-edit" title="Chỉnh sửa">
-                                                    <i className="bi bi-pencil-square"></i>
-                                                </Link>
-                                                <button className="action-btn-icon icon-delete" title="Xóa" onClick={() => triggerDeleteConfirm(p.id, p.productName)}>
-                                                    <i className="bi bi-trash"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                                <div style={{ display: 'flex', gap: '5px', justifyContent: 'flex-end' }}>
+                                                    <Link to={`/admin/products/detail/${p.id}`} className="action-btn-icon" title="Xem chi tiết">
+                                                        <i className="bi bi-eye"></i>
+                                                    </Link>
+                                                    <Link to={`/admin/products/edit/${p.id}`} className="action-btn-icon icon-edit" title="Chỉnh sửa">
+                                                        <i className="bi bi-pencil-square"></i>
+                                                    </Link>
+                                                    <button className="action-btn-icon icon-delete" title="Xóa" onClick={() => triggerDeleteConfirm(p.id, productName)}>
+                                                        <i className="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

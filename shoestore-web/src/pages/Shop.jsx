@@ -13,31 +13,10 @@ const Shop = () => {
     const initialBrand = queryParams.get('brand') || '';
     const initialSearch = queryParams.get('search') || '';
 
-    // ── AI Image Search state: khởi tạo ĐỒNG BỘ từ location.state để tránh race condition ──
-    // Nếu dùng null + useEffect, fetchProducts() sẽ chạy trước khi AI state được set
-    const [aiResult, setAiResult] = useState(() => location.state?.aiResult || null);
-    const [aiResultProducts, setAiResultProducts] = useState(() => {
-        // phân biệt: undefined (không có AI) vs [] (AI không tìm thấy)
-        if (location.state?.aiResult) {
-            const p = location.state.aiResultProducts;
-            return Array.isArray(p) ? p : [];
-        }
-        return null; // null = không ở AI mode
-    });
-    const [imageUrl, setImageUrl] = useState(() => location.state?.imageUrl || null);
-
-    // products: pre-seed từ AI nếu có, tránh flash trống
-    const [products, setProducts] = useState(() => {
-        if (location.state?.aiResult && Array.isArray(location.state?.aiResultProducts)) {
-            console.log(`[AI INIT] Pre-seeding ${location.state.aiResultProducts.length} sản phẩm từ AI`);
-            return location.state.aiResultProducts;
-        }
-        return [];
-    });
-
+    const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
-    const [loading, setLoading] = useState(!location.state?.aiResult); // false nếu AI đã có data
+    const [loading, setLoading] = useState(true);
     const [wishlistIds, setWishlistIds] = useState([]);
     const [lookbooks, setLookbooks] = useState([]);
 
@@ -47,96 +26,66 @@ const Shop = () => {
     const [sortOption, setSortOption] = useState('');
     const [searchQuery, setSearchQuery] = useState(initialSearch);
     const [quickAddProductId, setQuickAddProductId] = useState(null);
+    const [imageSearchProducts, setImageSearchProducts] = useState(null);
+    const [imageSearchUrl, setImageSearchUrl] = useState(null);
 
     const observerRef = useRef(null);
-    const aiInitializedRef = useRef(false);
-
 
     useEffect(() => {
         const queryParams = new URLSearchParams(window.location.search);
         const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
-        if (!hasFilter) {
+        if (!hasFilter && !location.state?.imageSearchProducts) {
             window.scrollTo(0, 0);
         }
     }, []);
 
-    // Parse AI result from location state
-    // Note: state đã được khởi tạo đồng bộ từ useState ở trên.
-    // useEffect này chỉ để handle khi user ĐIỀU HƯỚNG lại (location.state thay đổi sau mount)
+    // Receive image search results from Header navigation
     useEffect(() => {
-        if (location.state?.aiResult) {
-            const aiData = location.state.aiResult;
-            const productsFromBackend = Array.isArray(location.state.aiResultProducts)
-                ? location.state.aiResultProducts : [];
-
-            console.log('🤖 [AI useEffect] Cập nhật AI state do location.state thay đổi');
-            console.log(`  Brand: ${aiData.brand} | Category: ${aiData.category} | Color: ${aiData.color}`);
-            console.log(`  Số sản phẩm AI: ${productsFromBackend.length}`);
-
-            setAiResult(aiData);
-            setImageUrl(location.state.imageUrl);
-            setAiResultProducts(productsFromBackend);
-            setProducts(productsFromBackend);
-            setLoading(false);
-
+        if (location.state?.imageSearchProducts) {
+            setImageSearchProducts(location.state.imageSearchProducts);
+            setImageSearchUrl(location.state.imageSearchUrl || null);
+            // Scroll to products section
             setTimeout(() => {
                 const section = document.getElementById('shop-products-section');
                 if (section) section.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
+            }, 200);
+            // Clear the state so browser back/forward doesn't re-trigger
+            window.history.replaceState({}, document.title);
         }
     }, [location.state]);
-
 
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
 
-        // 1. Đồng bộ từ khóa tìm kiếm
         const searchParam = queryParams.get('search') || '';
-        if (searchParam !== searchQuery) {
-            setSearchQuery(searchParam);
-        }
+        if (searchParam !== searchQuery) setSearchQuery(searchParam);
 
-        // 2 & 3. Chỉ đồng bộ brand/category từ URL khi KHÔNG ở chế độ AI
-        // (Nếu đang AI mode: location.state có aiResult → brand/category đã được set từ AI, không override)
-        if (!location.state?.aiResult) {
-            // 2. Đồng bộ thương hiệu
-            const brandParam = queryParams.get('brand') || '';
-            if (brandParam !== selectedBrand) {
-                setSelectedBrand(brandParam);
-            }
+        const brandParam = queryParams.get('brand') || '';
+        if (brandParam !== selectedBrand) setSelectedBrand(brandParam);
 
-            // 3. Đồng bộ danh mục
-            const catParam = queryParams.get('category') || '';
-            if (catParam !== '') {
-                const parsedId = parseInt(catParam);
-                if (!isNaN(parsedId)) {
-                    if (parsedId !== selectedCategory) {
-                        setSelectedCategory(parsedId);
-                    }
-                } else if (categories.length > 0) {
-                    const matchedCat = categories.find(c => {
-                        const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
-                        const param = catParam.toLowerCase();
-                        if (name.includes(param) || param.includes(name)) return true;
-                        if (param === 'running' && name.includes('chạy bộ')) return true;
-                        if (param === 'sneaker' && name.includes('sneaker')) return true;
-                        return false;
-                    });
-                    if (matchedCat && matchedCat.id !== selectedCategory) {
-                        setSelectedCategory(matchedCat.id);
-                    }
-                }
+        const catParam = queryParams.get('category') || '';
+        if (catParam !== '') {
+            const parsedId = parseInt(catParam);
+            if (!isNaN(parsedId)) {
+                if (parsedId !== selectedCategory) setSelectedCategory(parsedId);
+            } else if (categories.length > 0) {
+                const matchedCat = categories.find(c => {
+                    const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
+                    const param = catParam.toLowerCase();
+                    if (name.includes(param) || param.includes(name)) return true;
+                    if (param === 'running' && name.includes('chạy bộ')) return true;
+                    if (param === 'sneaker' && name.includes('sneaker')) return true;
+                    return false;
+                });
+                if (matchedCat && matchedCat.id !== selectedCategory) setSelectedCategory(matchedCat.id);
             }
         }
 
-        // 4. Nếu URL có chứa bộ lọc (click từ header hoặc home), cuộn mượt mà xuống vùng sản phẩm
         const hasFilter = queryParams.get('brand') || queryParams.get('category') || queryParams.get('search');
         if (hasFilter) {
             const scrollTarget = () => {
                 const section = document.getElementById('shop-products-section');
-                if (section) {
-                    section.scrollIntoView({ behavior: 'smooth' });
-                }
+                if (section) section.scrollIntoView({ behavior: 'smooth' });
             };
             scrollTarget();
             setTimeout(scrollTarget, 100);
@@ -149,67 +98,23 @@ const Shop = () => {
         fetchLookbooks();
     }, []);
 
-    // Khi categories đã load, tự động tick category khớp với AI result
     useEffect(() => {
-        if (aiResult?.category && categories.length > 0 && selectedCategory === '') {
-            const aiCatName = aiResult.category.toLowerCase();
-            const matched = categories.find(c => {
-                const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
-                return name.includes(aiCatName) || aiCatName.includes(name);
-            });
-            if (matched) {
-                console.log(`📂 Auto-select category: ${matched.name || matched.categoryName} (id=${matched.id})`);
-                setSelectedCategory(matched.id);
-            }
-        }
-    }, [categories, aiResult]);
-
-    useEffect(() => {
-        // ── GUARD AI MODE ──
-        // aiResultProducts !== null nghĩa là đang ở AI mode → KHÔNG gọi fetchProducts
-        // aiResultProducts === null nghĩa là bình thường → gọi fetchProducts
-        if (aiResultProducts !== null) {
-            console.log(`[Shop] AI mode ON — hiển thị ${aiResultProducts.length} sản phẩm AI, bỏ qua fetchProducts`);
-            setProducts(aiResultProducts);
-            setLoading(false);
-            return;
-        }
-        console.log(`[Shop] Normal mode — gọi fetchProducts (cat=${selectedCategory}, brand=${selectedBrand})`);
         fetchProducts();
-    }, [selectedCategory, selectedBrand, maxPrice, sortOption, aiResultProducts]);
-
+    }, [selectedCategory, selectedBrand, maxPrice, sortOption]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
-            if (searchQuery) {
-                // User gõ tìm kiếm → thoát AI mode, tìm bình thường
-                console.log(`[Shop] User search: "${searchQuery}" → thoát AI mode, gọi fetchProducts`);
-                setAiResult(null);
-                setAiResultProducts(null);
-                setImageUrl(null);
-                fetchProducts();
-            } else {
-                // searchQuery rỗng VÀ đang ở AI mode → KHÔNG gọi fetchProducts (tránh overwrite AI)
-                if (aiResultProducts !== null) {
-                    console.log('[Shop] searchQuery rỗng, AI mode ON → giữ nguyên AI products, không fetchProducts');
-                    return;
-                }
-                // searchQuery rỗng, không AI mode → fetchProducts bình thường
-                console.log('[Shop] searchQuery rỗng, không AI mode → fetchProducts');
-                fetchProducts();
-            }
+            fetchProducts();
         }, 500);
         return () => clearTimeout(handler);
-    }, [searchQuery, aiResultProducts]);
+    }, [searchQuery]);
 
     // Auto scroll when products loaded after search
     useEffect(() => {
         if (!loading && products.length > 0 && searchQuery) {
             setTimeout(() => {
                 const section = document.getElementById('shop-products-section');
-                if (section) {
-                    section.scrollIntoView({ behavior: 'smooth' });
-                }
+                if (section) section.scrollIntoView({ behavior: 'smooth' });
             }, 100);
         }
     }, [loading, products, searchQuery]);
@@ -218,29 +123,19 @@ const Shop = () => {
         if (!searchQuery) return;
         const query = searchQuery.trim().toLowerCase();
         if (!query) return;
-
         const words = query.split(/\s+/);
-
-        // 1. Quét tìm danh mục trùng khớp thông minh (cộng các ký tự)
         if (categories.length > 0) {
             const matchedCat = categories.find(c => {
                 const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
-                // Match if any of the words match the category name
                 for (let word of words) {
                     if (name === word || name.includes(word) || word.includes(name)) return true;
                     if (word === 'running' && name.includes('chạy bộ')) return true;
-                    if (word === 'sneaker' && name.includes('sneaker')) return true;
                 }
                 if (query.includes('chạy bộ') && name.includes('chạy bộ')) return true;
-                if (query.includes('thể thao') && name.includes('thể thao')) return true;
                 return false;
             });
-            if (matchedCat && matchedCat.id !== selectedCategory) {
-                setSelectedCategory(matchedCat.id);
-            }
+            if (matchedCat && matchedCat.id !== selectedCategory) setSelectedCategory(matchedCat.id);
         }
-
-        // 2. Quét tìm thương hiệu trùng khớp thông minh
         if (brands.length > 0) {
             const matchedBrand = brands.find(b => {
                 const name = (b.name || b.brand_name || b.brandName || '').toLowerCase();
@@ -251,9 +146,7 @@ const Shop = () => {
             });
             if (matchedBrand) {
                 const bName = matchedBrand.name || matchedBrand.brand_name || matchedBrand.brandName;
-                if (bName !== selectedBrand) {
-                    setSelectedBrand(bName);
-                }
+                if (bName !== selectedBrand) setSelectedBrand(bName);
             }
         }
     }, [searchQuery, categories, brands]);
@@ -392,11 +285,13 @@ const Shop = () => {
         return `http://localhost:8080${url}`;
     };
 
-    const handleAiBrandClick = () => {
-        if (aiResult?.brand) {
-            setSelectedBrand(aiResult.brand);
-        }
+    const clearImageSearch = () => {
+        setImageSearchProducts(null);
+        setImageSearchUrl(null);
     };
+
+    // Determine what products to display: image search results take priority
+    const displayProducts = imageSearchProducts || products;
 
     return (
         <Layout>
@@ -448,13 +343,13 @@ const Shop = () => {
                                     <div className="d-flex flex-column gap-2">
                                         <div className="form-check epic-radio">
                                             <input className="form-check-input" type="radio" name="category" id="catAll"
-                                                checked={selectedCategory === ''} onChange={() => { setAiResultProducts(null); setSelectedCategory(''); }} />
+                                                checked={selectedCategory === ''} onChange={() => { clearImageSearch(); setSelectedCategory(''); }} />
                                             <label className="form-check-label fw-bold" htmlFor="catAll">Tất cả</label>
                                         </div>
                                         {categories.map(cat => (
                                             <div className="form-check epic-radio" key={cat.id}>
                                                 <input className="form-check-input" type="radio" name="category" id={`cat${cat.id}`}
-                                                    checked={selectedCategory === cat.id} onChange={() => { setAiResultProducts(null); setSelectedCategory(cat.id); }} />
+                                                    checked={selectedCategory === cat.id} onChange={() => setSelectedCategory(cat.id)} />
                                                 <label className="form-check-label fw-bold" htmlFor={`cat${cat.id}`}>{cat.name || cat.category_name || cat.categoryName}</label>
                                             </div>
                                         ))}
@@ -466,19 +361,17 @@ const Shop = () => {
                                     <div className="d-flex flex-column gap-2">
                                         <div className="form-check epic-radio">
                                             <input className="form-check-input" type="radio" name="brand" id="brandAll"
-                                                checked={selectedBrand === '' && !aiResult} onChange={() => { setAiResultProducts(null); setSelectedBrand(''); }} />
+                                                checked={selectedBrand === '' && !imageSearchProducts} onChange={() => { clearImageSearch(); setSelectedBrand(''); }} />
                                             <label className="form-check-label fw-bold" htmlFor="brandAll">Tất cả</label>
                                         </div>
 
                                         {brands.map(brand => {
                                             const bName = brand.name || brand.brand_name || brand.brandName || '';
-                                            const isChecked = aiResult
-                                                ? bName.toLowerCase() === (aiResult.brand || '').toLowerCase()
-                                                : selectedBrand === bName;
+                                            const isChecked = selectedBrand === bName;
                                             return (
                                                 <div className="form-check epic-radio" key={brand.id}>
                                                     <input className="form-check-input" type="radio" name="brand" id={`brand${brand.id}`}
-                                                        checked={isChecked} onChange={() => { setAiResultProducts(null); setSelectedBrand(bName); }} />
+                                                        checked={isChecked} onChange={() => { clearImageSearch(); setSelectedBrand(bName); }} />
                                                     <label className="form-check-label fw-bold" htmlFor={`brand${brand.id}`}>{bName}</label>
                                                 </div>
                                             );
@@ -511,7 +404,7 @@ const Shop = () => {
                                 <div>
                                     <button className="btn-brutal-outline w-100 mt-2" onClick={() => {
                                         // Xóa toàn bộ AI state và filter, fetch lại từ đầu
-                                        setAiResult(null); setAiResultProducts(null); setImageUrl(null);
+                                        clearImageSearch();
                                         setSelectedCategory(''); setSelectedBrand(''); setMaxPrice(5000000); setSortOption(''); setSearchQuery('');
                                         navigate('/shop');
                                     }}>XÓA BỘ LỌC</button>
@@ -528,140 +421,34 @@ const Shop = () => {
                                 <div className="font-oswald text-uppercase fw-bold position-absolute" style={{ fontSize: '10vw', left: '15%', top: '75%', letterSpacing: '4px' }}>CỬA HÀNG</div>
                             </div>
 
-                            {/* AI RESULT ANALYSIS */}
-                            {aiResult && (
-                                <div className="mb-5 pb-4 border-bottom border-light-subtle animate__animated animate__fadeInUp">
-                                    {/* Header */}
-                                    <div className="mb-3">
-                                        <span className="font-oswald fw-bold text-uppercase" style={{ fontSize: '12px', letterSpacing: '1px', color: '#999' }}>
-                                            TÌM THẤY <span className="text-danger" style={{ fontSize: '16px', fontWeight: '900' }}>{products.length}</span> SẢN PHẨM
-                                        </span>
-                                    </div>
 
-                                    {/* Main AI Result - Horizontal Layout with Hover */}
-                                    <div
-                                        className="d-flex align-items-center gap-3 p-3 bg-light rounded-3 position-relative"
-                                        style={{
-                                            background: '#f9f9f9',
-                                            border: '2px solid #f0f0f0',
-                                            transition: 'all 0.3s ease',
-                                            cursor: 'pointer'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.borderColor = '#ff9800';
-                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 152, 0, 0.2)';
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.borderColor = '#f0f0f0';
-                                            e.currentTarget.style.boxShadow = 'none';
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                        }}
-                                    >
-                                        {/* Image */}
-                                        <div style={{ flexShrink: 0 }}>
-                                            {imageUrl && (
-                                                <div className="position-relative" style={{ display: 'inline-block' }}>
-                                                    <img src={imageUrl} alt="Uploaded" className="rounded-2 shadow-sm" style={{ width: '120px', height: '120px', objectFit: 'cover' }} />
-                                                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '11px', zIndex: 10 }}>
-                                                        Hình của bạn
-                                                    </span>
-                                                </div>
+                            {/* Image Search Results Banner */}
+                            {imageSearchProducts && (
+                                <div className="mb-4 p-4 image-search-banner">
+                                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                        <div className="d-flex align-items-center gap-3">
+                                            {imageSearchUrl && (
+                                                <img src={imageSearchUrl} alt="Ảnh tìm kiếm" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 12, border: '2px solid #ff6600' }} />
                                             )}
-                                        </div>
-
-                                        {/* Details Text */}
-                                        <div style={{ flex: 1 }}>
-                                            <h6 className="text-secondary mb-2 font-oswald" style={{ fontSize: '13px', fontWeight: '600', letterSpacing: '1px' }}>
-                                                KẾT QUẢ TÌM KIẾM
-                                            </h6>
-                                            <div style={{ fontSize: '14px', lineHeight: '1.8', color: '#333' }}>
-                                                <span>
-                                                    <strong>Hãng:</strong>
-                                                    <span
-                                                        onClick={handleAiBrandClick}
-                                                        style={{
-                                                            marginLeft: '6px',
-                                                            cursor: 'pointer',
-                                                            color: selectedBrand === aiResult?.brand ? '#e50914' : '#000',
-                                                            fontWeight: selectedBrand === aiResult?.brand ? '700' : '600',
-                                                            transition: 'all 0.3s ease'
-                                                        }}
-                                                        title="Click để lọc theo thương hiệu"
-                                                    >
-                                                        {aiResult.brand || 'N/A'}
-                                                    </span>
-                                                </span>
-                                                <span style={{ margin: '0 8px', color: '#ccc' }}>|</span>
-                                                <span>
-                                                    <strong>Màu:</strong>
-                                                    <span style={{ marginLeft: '6px', fontWeight: '600' }}>{aiResult.color || 'N/A'}</span>
-                                                </span>
-                                                <span style={{ margin: '0 8px', color: '#ccc' }}>|</span>
-                                                <span>
-                                                    <strong>Loại:</strong>
-                                                    <span style={{ marginLeft: '6px', fontWeight: '600' }}>{aiResult.category || 'N/A'}</span>
-                                                </span>
+                                            <div>
+                                                <div className="text-dark fw-bold font-oswald mb-1" style={{ fontSize: 18, letterSpacing: '0.5px' }}>
+                                                    Kết quả tìm kiếm bằng hình ảnh
+                                                </div>
+                                                <small style={{ color: '#555555', fontSize: 14 }}>
+                                                    Đã tìm thấy <span className="fw-bold" style={{ color: '#ff6600' }}>{imageSearchProducts.length}</span> sản phẩm phù hợp
+                                                </small>
                                             </div>
                                         </div>
-
-                                        {/* Clear Button with Border */}
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            padding: '8px 12px',
-                                            border: '2px solid #e50914',
-                                            borderRadius: '6px',
-                                            backgroundColor: '#fff',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s ease'
-                                        }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.backgroundColor = '#ffe8e8';
-                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(229, 9, 20, 0.2)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.backgroundColor = '#fff';
-                                                e.currentTarget.style.boxShadow = 'none';
-                                            }}>
-                                            <button
-                                                onClick={() => {
-                                                    console.log('🗑️  Xóa AI result');
-                                                    setAiResult(null);
-                                                    setAiResultProducts(null);
-                                                    setImageUrl(null);
-                                                    setSelectedBrand('');
-                                                    setSelectedCategory('');
-                                                    setSearchQuery('');
-                                                    setLoading(true);
-                                                    // Refetch all products after clearing
-                                                    setTimeout(() => {
-                                                        fetchProducts();
-                                                    }, 100);
-                                                }}
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: '#e50914',
-                                                    fontSize: '14px',
-                                                    fontWeight: '700',
-                                                    cursor: 'pointer',
-                                                    padding: '0',
-                                                    letterSpacing: '0.5px'
-                                                }}
-                                                title="Xóa kết quả tìm kiếm"
-                                            >
-                                                XÓA
-                                            </button>
-                                        </div>
+                                        <button className="btn btn-sm btn-image-search-reset font-oswald fw-bold" style={{ letterSpacing: 1 }} onClick={clearImageSearch}>
+                                            <i className="fa fa-times me-1" />Quay lại danh sách sản phẩm
+                                        </button>
                                     </div>
                                 </div>
                             )}
 
                             <div className="d-flex justify-content-between align-items-center border-bottom border-light-subtle pb-3 mb-4 flex-wrap gap-3">
                                 <span className="font-oswald fw-bold fs-5 text-uppercase">
-                                    {aiResult ? 'SẢN PHẨM TƯƠNG ĐỒNG' : 'TÌM THẤY'} <span className="text-danger">{products.length}</span> {!aiResult && 'SẢN PHẨM'}
+                                    TÌM THẤY <span className="text-danger">{displayProducts.length}</span> SẢN PHẨM
                                 </span>
                                 <div className="d-flex align-items-center gap-2">
                                     <span className="font-oswald fw-bold text-uppercase">SẮP XẾP:</span>
@@ -678,9 +465,9 @@ const Shop = () => {
                                 <div className="text-center py-5">
                                     <div className="spinner-border text-danger" role="status" style={{ width: '4rem', height: '4rem', borderWidth: '5px' }}></div>
                                 </div>
-                            ) : products.length > 0 ? (
+                            ) : displayProducts.length > 0 ? (
                                 <div className="row g-4">
-                                    {products.map((p, idx) => (
+                                    {displayProducts.map((p, idx) => (
                                         <div key={p.id} className="col-lg-4 col-md-6 col-12 reveal-item opacity-0 mb-4" style={{ animationDelay: `${(idx % 12) * 0.05}s` }}>
                                             <div className="flat-product-card h-100 bg-white d-flex flex-column position-relative">
                                                 <Link to={`/details?id=${p.id}`} className="stretched-link" style={{ zIndex: 1 }} />
