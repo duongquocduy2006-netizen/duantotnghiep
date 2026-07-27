@@ -70,17 +70,15 @@
 
 /* Toolbar Card */
 .toolbar-container {
-    background: #fff;
-    border: 1px solid var(--border-pink);
-    border-radius: 0px;
-    /* Bo vuông */
+    background: #ffffff;
+    border: 1px solid #f3e8ff;
+    border-radius: 16px;
     padding: 15px;
-    /* Reduced from 20px */
     margin-bottom: 15px;
-    /* Reduced from 20px */
     display: flex;
     gap: 15px;
     align-items: center;
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.05);
 }
 
 .search-input-pill {
@@ -93,39 +91,40 @@
     left: 20px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--accent-red);
+    color: #8b5cf6;
     font-size: 18px;
 }
 
 .search-input-pill input {
     width: 100%;
-    padding: 15px 15px 15px 55px;
-    border: 1px solid #ddd;
-    border-radius: 0px;
-    /* Bo vuông */
-    font-size: 15px;
+    padding: 12px 15px 12px 55px;
+    border: 1px solid #d8b4fe;
+    border-radius: 24px;
+    font-size: 14px;
     outline: none;
-    transition: 0.3s;
-    color: #555;
+    transition: 0.25s ease;
+    color: #374151;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.04);
 }
 
 .search-input-pill input:focus {
-    border-color: var(--accent-red);
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
 }
 
 .filter-select-pill {
     width: 250px;
-    padding: 15px 25px;
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 0px;
-    /* Bo vuông */
-    font-weight: 700;
-    color: #333;
+    padding: 12px 25px;
+    background: #ffffff;
+    border: 1px solid #d8b4fe;
+    border-radius: 24px;
+    font-weight: 500;
+    color: #374151;
     outline: none;
     cursor: pointer;
-    font-size: 13px;
-    text-transform: uppercase;
+    font-size: 14px;
+    transition: 0.25s ease;
 }
 
 /* Table Design */

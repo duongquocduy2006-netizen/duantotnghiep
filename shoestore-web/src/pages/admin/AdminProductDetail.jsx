@@ -4,6 +4,16 @@ import { Link, useParams } from "react-router-dom";
 import api from "../../services/api";
 import "./AdminProductDetail.css";
 
+const sanitizeColorName = (name) => {
+    if (!name) return "";
+    return name
+        .replace(/Tr\?ng/gi, "Trắng")
+        .replace(/Đ\?/gi, "Đỏ")
+        .replace(/Xanh l\?/gi, "Xanh lá")
+        .replace(/V\?ng/gi, "Vàng")
+        .replace(/H\?ng/gi, "Hồng");
+};
+
 const AdminProductDetail = () => {
     const { id } = useParams();
     const [loading, setLoading] = useState(true);
@@ -136,7 +146,7 @@ const AdminProductDetail = () => {
     const getImageUrl = (image) => {
         const url = typeof image === 'string' ? image : image?.url;
         if (!url) return 'https://ui-avatars.com/api/?name=SP&background=121212&color=00f2ff&bold=true';
-        if (url.startsWith('http')) return url;
+        if (url.startsWith('http') || url.startsWith('data:')) return url;
         return `http://localhost:8080${url}`;
     };
 
@@ -327,7 +337,7 @@ const AdminProductDetail = () => {
                                         >
                                             <option value="">-- Chọn Màu --</option>
                                             {colors.map(c => (
-                                                <option key={c.id} value={c.id}>{c.colorName}</option>
+                                                <option key={c.id} value={c.id}>{sanitizeColorName(c.colorName)}</option>
                                             ))}
                                         </select>
                                     )}
@@ -410,7 +420,7 @@ const AdminProductDetail = () => {
                                         {variants.map((v) => (
                                             <tr key={v.id}>
                                                 <td>Size {v.sizeName}</td>
-                                                <td>{v.colorName}</td>
+                                                <td>{sanitizeColorName(v.colorName)}</td>
                                                 <td className="price-value">
                                                     {v.price.toLocaleString("vi-VN")} ₫
                                                 </td>
