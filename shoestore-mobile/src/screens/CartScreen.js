@@ -590,18 +590,24 @@ export default function CartScreen({ navigation }) {
         // Close modals, clear cart
         setCheckoutModalVisible(false);
         
-        showToast("Đặt hàng thành công! Đơn hàng đã được ghi nhận.");
-
         // If payment method is BANK and checkout URL is provided, open it
         if (data.paymentMethod === 'BANK' && data.checkoutUrl) {
+          showToast("Đang mở cổng thanh toán PayOS...");
           Linking.openURL(data.checkoutUrl).catch(err => {
             console.log("Could not open PayOS checkout URL:", err);
+            Alert.alert("Lỗi", "Không thể mở cổng thanh toán PayOS. Vui lòng kiểm tra kết nối mạng.");
           });
+        } else {
+          showToast("Đặt hàng thành công! Đơn hàng đã được ghi nhận.");
         }
 
         setTimeout(() => {
           clearCart();
-          navigation.navigate('Home');
+          if (data.paymentMethod === 'BANK') {
+            navigation.navigate('Profile');
+          } else {
+            navigation.navigate('Home');
+          }
         }, 1200);
       } else {
         showToast(data.message || "Đặt hàng không thành công từ máy chủ.");
@@ -1077,7 +1083,7 @@ export default function CartScreen({ navigation }) {
                   </View>
                 </TouchableOpacity>
 
-                {/* Option 2: Bank Transfer */}
+                {/* Option 2: Bank Transfer (PayOS) */}
                 <TouchableOpacity 
                   style={[styles.payOption, paymentMethod === 'BANK' && styles.payOptionActive]} 
                   onPress={() => setPaymentMethod('BANK')}
@@ -1089,18 +1095,20 @@ export default function CartScreen({ navigation }) {
                     style={{ marginRight: 12 }}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.payOptionText}>Chuyển khoản ngân hàng</Text>
-                    <Text style={styles.payOptionSub}>Nhanh chóng & bảo mật tuyệt đối</Text>
+                    <Text style={styles.payOptionText}>Chuyển khoản QR (PayOS)</Text>
+                    <Text style={styles.payOptionSub}>Quét mã QR tự động & Bảo mật tuyệt đối</Text>
                   </View>
                 </TouchableOpacity>
 
                 {paymentMethod === 'BANK' && (
                   <View style={styles.bankDetailContainer}>
-                    <Text style={styles.bankDetailTitle}>THÔNG TIN CHUYỂN KHOẢN</Text>
-                    <Text style={styles.bankDetailText}>Ngân hàng: <Text style={{ fontWeight: 'bold' }}>MB Bank (Quân Đội)</Text></Text>
-                    <Text style={styles.bankDetailText}>Số tài khoản: <Text style={{ fontWeight: 'bold', color: '#E51E25' }}>1902 8888 9999</Text></Text>
-                    <Text style={styles.bankDetailText}>Chủ tài khoản: <Text style={{ fontWeight: 'bold' }}>CONG TY SHOE STORE VIETNAM</Text></Text>
-                    <Text style={styles.bankDetailText}>Nội dung: <Text style={{ fontWeight: 'bold' }}>CK SHOESTORE</Text></Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                      <MaterialCommunityIcons name="shield-check" size={18} color="#2E7D32" style={{ marginRight: 6 }} />
+                      <Text style={[styles.bankDetailTitle, { color: '#2E7D32', marginBottom: 0 }]}>CỔNG THANH TOÁN TỰ ĐỘNG PAYOS</Text>
+                    </View>
+                    <Text style={styles.bankDetailText}>• <Text style={{ fontWeight: 'bold' }}>Quét mã QR:</Text> Tự động điền chính xác số tiền và nội dung đơn hàng.</Text>
+                    <Text style={styles.bankDetailText}>• <Text style={{ fontWeight: 'bold' }}>Hỗ trợ:</Text> Tất cả Ngân hàng (MB, VCB, Techcombank, ACB...) & MoMo, ZaloPay, VietQR.</Text>
+                    <Text style={styles.bankDetailText}>• <Text style={{ fontWeight: 'bold', color: '#E51E25' }}>Lưu ý:</Text> Sau khi nhấn <Text style={{ fontWeight: 'bold' }}>Xác nhận đặt hàng</Text>, ứng dụng sẽ tự động mở cổng thanh toán PayOS để bạn quét mã hoàn tất.</Text>
                   </View>
                 )}
               </View>

@@ -197,7 +197,7 @@ export default function ProfileScreen({ navigation }) {
               recipientName: o.receiving_name || '',
               recipientPhone: o.phone_number || '',
               shippingAddress: o.street_detail || '',
-              paymentMethod: o.method_name === 'BANK' ? 'Chuyển khoản NH' : (o.method_name || 'Thanh toán COD'),
+              paymentMethod: o.method_name === 'BANK' ? 'Chuyển khoản (PayOS)' : (o.method_name || 'Thanh toán COD'),
               discount: ((Number(o.total_amount) || 0) + (Number(o.shipping_fee) || 0)) - (Number(o.final_amount) || 0),
               voucherCode: o.voucher_code || ''
             }));
@@ -278,7 +278,7 @@ export default function ProfileScreen({ navigation }) {
           recipientName: o.receiving_name || '',
           recipientPhone: o.phone_number || '',
           shippingAddress: o.street_detail || '',
-          paymentMethod: o.method_name === 'BANK' ? 'Chuyển khoản NH' : (o.method_name || 'Thanh toán COD'),
+          paymentMethod: o.method_name === 'BANK' ? 'Chuyển khoản (PayOS)' : (o.method_name || 'Thanh toán COD'),
           discount: ((Number(o.total_amount) || 0) + (Number(o.shipping_fee) || 0)) - (Number(o.final_amount) || 0),
           voucherCode: o.voucher_code || ''
         }));
