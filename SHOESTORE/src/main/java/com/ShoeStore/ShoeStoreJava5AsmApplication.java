@@ -6,9 +6,11 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.ShoeStore"})
+@EnableScheduling
 public class ShoeStoreJava5AsmApplication {
 
     public static void main(String[] args) {
@@ -71,6 +73,14 @@ public class ShoeStoreJava5AsmApplication {
                 }
             } catch (Exception e) {
                 System.out.println("-> Error seeding lookbooks: " + e.getMessage());
+            }
+
+            // 6. Thêm cột updated_at cho bảng orders (theo dõi thời gian chuyển trạng thái)
+            try {
+                jdbcTemplate.execute("ALTER TABLE orders ADD updated_at DATETIME DEFAULT GETDATE()");
+                System.out.println("-> Fix: orders.updated_at DATETIME added");
+            } catch (Exception e) {
+                // Cột đã tồn tại, bỏ qua
             }
             
             System.out.println("=== TẤT CẢ DB FIX ĐÃ HOÀN TẤT ===");
