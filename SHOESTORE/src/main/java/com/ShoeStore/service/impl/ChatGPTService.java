@@ -56,12 +56,11 @@ public class ChatGPTService {
         try {
             if (targetBrand != null) {
                 // Ưu tiên 1: Tìm theo thương hiệu được nhắc đến (lấy 3 sản phẩm)
-                sql = "SELECT TOP 3 p.id, p.product_name, b.brand_name, " +
+                sql = "SELECT TOP 3 p.id, p.product_name, p.brand_name, " +
                       "COALESCE((SELECT MIN(price) FROM product_variants WHERE product_id = p.id), 0) as price, " +
                       "COALESCE((SELECT TOP 1 image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC), '') as image " +
                       "FROM products p " +
-                      "LEFT JOIN brands b ON p.brand_id = b.id " +
-                      "WHERE p.status = 1 AND (LOWER(b.brand_name) LIKE ? OR LOWER(p.product_name) LIKE ?) " +
+                      "WHERE p.status = 1 AND (LOWER(p.brand_name) LIKE ? OR LOWER(p.product_name) LIKE ?) " +
                       "ORDER BY p.id DESC";
                 String pattern = "%" + targetBrand + "%";
                 list = jdbcTemplate.queryForList(sql, pattern, pattern);
@@ -70,22 +69,20 @@ public class ChatGPTService {
                 String cleanQuery = msg.replaceAll("(?i)cho\\s+xem|xem\\s+mẫu|mẫu|giày|dép|sản\\s+phẩm|có|không|tư\\s+vấn|tìm|cần|shop|ơi|gợi\\s+ý|những|nào|đẹp|hot|bán\\s+chạy|mới", "").trim();
 
                 if (!cleanQuery.isEmpty() && cleanQuery.length() >= 2) {
-                    sql = "SELECT TOP 5 p.id, p.product_name, b.brand_name, " +
+                    sql = "SELECT TOP 5 p.id, p.product_name, p.brand_name, " +
                           "COALESCE((SELECT MIN(price) FROM product_variants WHERE product_id = p.id), 0) as price, " +
                           "COALESCE((SELECT TOP 1 image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC), '') as image " +
                           "FROM products p " +
-                          "LEFT JOIN brands b ON p.brand_id = b.id " +
-                          "WHERE p.status = 1 AND (LOWER(p.product_name) LIKE ? OR LOWER(p.description) LIKE ? OR LOWER(b.brand_name) LIKE ?) " +
+                          "WHERE p.status = 1 AND (LOWER(p.product_name) LIKE ? OR LOWER(p.description) LIKE ? OR LOWER(p.brand_name) LIKE ?) " +
                           "ORDER BY p.id DESC";
                     String pattern = "%" + cleanQuery + "%";
                     list = jdbcTemplate.queryForList(sql, pattern, pattern, pattern);
                 } else {
                     // Fallback: 5 sản phẩm mới nhất / bán chạy nhất
-                    sql = "SELECT TOP 5 p.id, p.product_name, b.brand_name, " +
+                    sql = "SELECT TOP 5 p.id, p.product_name, p.brand_name, " +
                           "COALESCE((SELECT MIN(price) FROM product_variants WHERE product_id = p.id), 0) as price, " +
                           "COALESCE((SELECT TOP 1 image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC), '') as image " +
                           "FROM products p " +
-                          "LEFT JOIN brands b ON p.brand_id = b.id " +
                           "WHERE p.status = 1 " +
                           "ORDER BY p.id DESC";
                     list = jdbcTemplate.queryForList(sql);
@@ -212,11 +209,12 @@ public class ChatGPTService {
         headers.set("HTTP-Referer", "http://localhost:8080");
 
         List<String> models = Arrays.asList(
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "deepseek/deepseek-r1:free",
-            "qwen/qwen-2.5-72b-instruct:free",
-            "google/gemini-2.0-flash-exp:free",
-            "openrouter/free"
+            "google/gemini-2.5-flash:free",
+            "deepseek/deepseek-r1-distill-llama-70b:free",
+            "qwen/qwen-2.5-coder-32b-instruct:free",
+            "google/gemma-2-9b-it:free",
+            "mistralai/mistral-7b-instruct:free",
+            "openrouter/auto"
         );
 
         for (String model : models) {
