@@ -1,175 +1,105 @@
 package com.ShoeStore.service;
 
-import com.ShoeStore.model.ImageSearchResult;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import com.ShoeStore.model.EmbeddingDocument;
+import com.ShoeStore.repository.EmbeddingRepository;
+import com.ShoeStore.util.CosineSimilarity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class ImageSearchService {
 
-    private static final Logger log = LoggerFactory.getLogger(ImageSearchService.class);
-    private static final int MAX_RETRIES = 3;
+    @Autowired
+    private GeminiEmbeddingService geminiEmbeddingService;
 
-    @Value("${openai.api.key}")
-    private String apiKey;
+    @Autowired
+    private EmbeddingRepository embeddingRepository;
 
-    private static final String OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+    @Autowired
+    private JdbcTemplate jdbc;
 
-    public ImageSearchResult analyzeImage(MultipartFile file) throws Exception {
-        String base64Image = Base64.getEncoder().encodeToString(file.getBytes());
-        String mimeType = file.getContentType();
-        if (mimeType == null)
-            mimeType = "image/jpeg";
+    public List<Map<String, Object>> searchBySimilarImage(MultipartFile imageFile) throws Exception {
+        byte[] imageBytes = imageFile.getBytes();
+        String mimeType = imageFile.getContentType() != null ? imageFile.getContentType() : "image/jpeg";
+        List<Double> queryVector = geminiEmbeddingService.getEmbedding(imageBytes, mimeType);
 
-        RestTemplate restTemplate = new RestTemplate();
+        if (queryVector == null || queryVector.isEmpty()) {
+            System.err.println("[SEARCH] Lỗi: Vector embedding rỗng từ Gemini API.");
+            return Collections.emptyList();
+        }
 
-        // System message to enforce strict JSON-only output
-        Map<String, Object> systemMessage = new HashMap<>();
-        systemMessage.put("role", "system");
-        systemMessage.put("content", "You are a shoe image analysis AI. You MUST respond with ONLY a valid JSON object. "
-                + "No explanations, no markdown, no extra text. Just pure JSON.");
+        List<EmbeddingDocument> allEmbeddings = embeddingRepository.findAll();
+        if (allEmbeddings == null || allEmbeddings.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        // User message with image
-        Map<String, Object> userMessage = new HashMap<>();
-        userMessage.put("role", "user");
-
-        List<Map<String, Object>> contentList = new ArrayList<>();
-
-        // 1. Text prompt
-        Map<String, Object> textContent = new HashMap<>();
-        textContent.put("type", "text");
-        textContent.put("text", "Analyze this shoe image. Return ONLY this JSON format, nothing else:\n"
-                + "{\"brand\":\"BrandName\",\"category\":\"ShoeType\",\"color\":\"ColorInVietnamese\"}\n\n"
-                + "Rules:\n"
-                + "- brand: Nike, Adidas, Puma, Vans, Converse, etc.\n"
-                + "- category: Sneaker, Running, Basketball, Slip-on, etc.\n"
-                + "- color: Vietnamese color names (Trắng, Đen, Đỏ, Xanh, Hồng, etc.)\n"
-                + "- Use empty string \"\" if unknown.\n"
-                + "RESPOND WITH JSON ONLY.");
-        contentList.add(textContent);
-
-        // 2. Image prompt
-        Map<String, Object> imageContent = new HashMap<>();
-        imageContent.put("type", "image_url");
-        Map<String, String> imageUrlMap = new HashMap<>();
-        imageUrlMap.put("url", "data:" + mimeType + ";base64," + base64Image);
-        imageContent.put("image_url", imageUrlMap);
-        contentList.add(imageContent);
-
-        userMessage.put("content", contentList);
-
-        List<Map<String, Object>> messages = new ArrayList<>();
-        messages.add(systemMessage);
-        messages.add(userMessage);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + apiKey);
-        headers.set("HTTP-Referer", "http://localhost:8080");
-
-        // Retry up to MAX_RETRIES times if AI returns non-JSON
-        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        List<double[]> scored = new ArrayList<>();
+        for (EmbeddingDocument pe : allEmbeddings) {
             try {
-                log.info("Vision analysis attempt {}/{} with openrouter/free", attempt, MAX_RETRIES);
+                List<Double> storedVector = pe.getEmbedding();
+                boolean isEmpty = storedVector == null || storedVector.isEmpty();
 
-                Map<String, Object> requestBody = new HashMap<>();
-                requestBody.put("model", "openrouter/free");
-                requestBody.put("messages", messages);
-                // Request structured output
-                requestBody.put("temperature", 0.1);
-
-                HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-                ResponseEntity<String> response = restTemplate.postForEntity(OPENROUTER_URL, entity, String.class);
-
-                if (response.getStatusCode() != HttpStatus.OK) {
-                    log.warn("Attempt {}: Non-OK status: {}", attempt, response.getStatusCode());
+                if (isEmpty) {
                     continue;
                 }
 
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode rootNode = mapper.readTree(response.getBody());
-
-                String textResult = rootNode.path("choices").get(0)
-                        .path("message").path("content").asText();
-
-                log.info("Attempt {}: Raw AI response: {}", attempt, textResult);
-
-                // Try to extract JSON
-                String jsonStr = extractJson(textResult);
-
-                if (jsonStr != null) {
-                    log.info("Attempt {}: Extracted JSON: {}", attempt, jsonStr);
-                    return mapper.readValue(jsonStr, ImageSearchResult.class);
+                if (storedVector.size() != queryVector.size()) {
+                    System.err.println("[SEARCH] Lỗi: Kích thước vector không khớp (Query=" + queryVector.size() + ", Stored=" + storedVector.size() + " cho ProductId=" + pe.getProductId() + ")");
+                    continue;
                 }
 
-                log.warn("Attempt {}: Could not extract JSON from response: {}", attempt, textResult);
-
+                double similarity = CosineSimilarity.calculate(queryVector, storedVector);
+                scored.add(new double[] { pe.getProductId(), similarity });
             } catch (Exception e) {
-                log.warn("Attempt {}: Error: {}", attempt, e.getMessage());
-                if (attempt == MAX_RETRIES) {
-                    throw new Exception("AI không thể nhận diện hình ảnh sau " + MAX_RETRIES + " lần thử. Vui lòng thử lại.", e);
-                }
+                System.err.println("[SEARCH] Bỏ qua embedding ID=" + pe.getId() + ": " + e.getMessage());
             }
         }
 
-        throw new Exception("AI không trả về kết quả hợp lệ sau " + MAX_RETRIES + " lần thử. Vui lòng thử ảnh khác.");
+        scored.sort((a, b) -> Double.compare(b[1], a[1]));
+
+        List<Integer> top5Ids = new ArrayList<>();
+        for (int i = 0; i < Math.min(5, scored.size()); i++) {
+            top5Ids.add((int) scored.get(i)[0]);
+        }
+
+        if (top5Ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Map<String, Object>> results = fetchProductDetails(top5Ids, scored);
+        System.out.println("[SEARCH] Tìm kiếm bằng hình ảnh thành công, tìm thấy " + results.size() + " sản phẩm phù hợp.");
+        return results;
     }
 
-    /**
-     * Extract a JSON object from a text response that may contain extra text
-     * before/after the JSON, markdown code blocks, etc.
-     */
-    private String extractJson(String text) {
-        if (text == null || text.isEmpty()) return null;
+    private List<Map<String, Object>> fetchProductDetails(List<Integer> ids, List<double[]> scored) {
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql = "SELECT p.id, p.product_name, p.brand_name, " +
+                "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, " +
+                "(SELECT MIN(price) FROM product_variants WHERE product_id = p.id AND quantity > 0) as min_price, " +
+                "(SELECT SUM(quantity) FROM product_variants WHERE product_id = p.id) as total_stock " +
+                "FROM products p " +
+                "WHERE p.id IN (" + placeholders + ") AND p.status = 1";
 
-        // 1. Strip markdown code block wrappers
-        text = text.replaceAll("```json\\s*", "");
-        text = text.replaceAll("```\\s*", "");
-        text = text.trim();
+        List<Map<String, Object>> rows = jdbc.queryForList(sql, ids.toArray());
 
-        ObjectMapper mapper = new ObjectMapper();
-
-        // 2. Try direct parse first
-        if (text.startsWith("{")) {
-            try {
-                mapper.readTree(text);
-                return text;
-            } catch (Exception ignored) {}
+        Map<Integer, Double> scoreMap = new HashMap<>();
+        for (double[] entry : scored) {
+            scoreMap.put((int) entry[0], entry[1]);
         }
 
-        // 3. Find JSON block containing "brand" key
-        Pattern pattern = Pattern.compile("\\{[^{}]*\"brand\"[^{}]*\\}", Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(text);
-        if (matcher.find()) {
-            String candidate = matcher.group();
-            try {
-                mapper.readTree(candidate);
-                return candidate;
-            } catch (Exception ignored) {}
-        }
+        rows.forEach(row -> {
+            int id = ((Number) row.get("id")).intValue();
+            row.put("similarity", scoreMap.getOrDefault(id, 0.0));
+        });
 
-        // 4. Fallback: find any { ... } block
-        int start = text.indexOf('{');
-        int end = text.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            String candidate = text.substring(start, end + 1);
-            try {
-                mapper.readTree(candidate);
-                return candidate;
-            } catch (Exception ignored) {}
-        }
+        rows.sort((a, b) -> Double.compare(
+                (Double) b.get("similarity"),
+                (Double) a.get("similarity")));
 
-        return null;
+        return rows;
     }
 }

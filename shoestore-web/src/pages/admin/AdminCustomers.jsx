@@ -443,6 +443,20 @@ const AdminCustomers = () => {
 
             <style>{`
 
+                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #ffffff !important; padding: 12px 16px; border: 1px solid #f3e8ff !important; border-radius: 16px !important; box-shadow: 0 4px 20px rgba(139,92,246,0.05) !important; flex-wrap: wrap; }
+                .search-box { position: relative; flex: 1; min-width: 220px; max-width: none; }
+                .search-input { width: 100%; background: #ffffff !important; border: 1px solid #d8b4fe !important; padding: 9px 14px 9px 38px; color: #374151 !important; outline: none; height: 42px; font-weight: 400; border-radius: 24px; font-size: 14px; transition: all 0.25s ease; font-family: 'Inter', sans-serif; box-shadow: 0 2px 8px rgba(139,92,246,0.04) !important; }
+                .search-input:focus { border-color: #8b5cf6 !important; box-shadow: 0 0 0 4px rgba(139,92,246,0.15) !important; }
+                .search-input::placeholder { color: #a78bfa !important; }
+                .bi-search { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #8b5cf6 !important; font-size: 14px; pointer-events: none; }
+                .filter-select { background: #ffffff !important; color: #374151 !important; border: 1px solid #d8b4fe !important; padding: 8px 14px; outline: none; cursor: pointer; height: 42px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.25s ease; }
+                .filter-select:focus { border-color: #8b5cf6 !important; box-shadow: 0 0 0 4px rgba(139,92,246,0.15) !important; }
+
+                /* Compact Brutalist Table */
+                .table-card { background: #fff; border: 1px solid #f1f5f9; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-top: 20px; border-radius: 14px; }
+                table { width: 100%; border-collapse: collapse; }
+                th { background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; padding: 14px 20px; text-align: left; font-family: 'Oswald'; border-bottom: 1px solid #f1f5f9; font-weight: 700; white-space: nowrap; }
+                td { padding: 14px 20px; border-bottom: 1px solid #f8fafc; font-size: 14px; color: #1e293b; font-weight: 500; vertical-align: middle; }
                 .customer-profile { display: flex; align-items: center; }
                 .avatar { width: 45px; height: 45px; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 50%; color: #000 !important; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 15px; background-color: #f1f5f9 !important; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03); }
                 .customer-name { display: block; font-weight: 800; color: #000; font-size: 16px; margin-bottom: 2px; }

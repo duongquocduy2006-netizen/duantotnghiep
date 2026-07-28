@@ -98,25 +98,21 @@ const AdminProducts = () => {
 
     const getImageUrl = (url) => {
         if (!url) return '';
-        if (url.startsWith('http')) return url;
+        if (url.startsWith('http') || url.startsWith('data:')) return url;
         return `http://localhost:8080${url}`;
     };
 
     return (
         <AdminLayout>
-            <div className="admin-banners-page">
-                {/* HEADER */}
-                <div className="page-header-wrapper">
-                    <div>
-                        <div className="header-label">
-                            <i className="bi bi-box-seam me-2"></i> REST API SERVICES
-                        </div>
-                        <h1 className="header-title">DANH SÁCH SẢN PHẨM</h1>
-                    </div>
-                    <Link to="/admin/products/create" className="btn-add-pill">
-                        <i className="bi bi-plus-lg"></i> &nbsp;THÊM MỚI
-                    </Link>
+            <div className="admin-page-header" style={{ marginBottom: '35px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div className="header-left">
+                    <span className="sub-title-neon">⌨ SINGLE PAGE APPLICATION (REST API)</span>
+                    <h1 className="cinematic-title" style={{ margin: 0 }}>DANH SÁCH SẢN PHẨM</h1>
                 </div>
+                <Link to="/admin/products/create" className="btn-add-red-solid">
+                    <i className="bi bi-plus-lg" style={{ fontSize: '16px' }}></i> THÊM MỚI
+                </Link>
+            </div>
 
                 {/* TOOLBAR */}
                 <div className="toolbar-container">
@@ -282,7 +278,6 @@ const AdminProducts = () => {
                         </table>
                     )}
                 </div>
-            </div>
 
             {/* CUSTOM CONFIRM MODAL */}
             {confirmModal.isOpen && (
@@ -315,6 +310,43 @@ const AdminProducts = () => {
                     align-items: center;
                     justify-content: center;
                     z-index: 9999;
+                }
+                .btn-cyan-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
+
+                .toolbar { display: flex; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 24px; background: #ffffff !important; padding: 12px 16px; border: 1px solid #f3e8ff !important; border-radius: 16px !important; box-shadow: 0 4px 20px rgba(139,92,246,0.05) !important; flex-wrap: wrap; }
+                .search-box { position: relative; flex: 1; min-width: 220px; max-width: none; }
+                .search-input { width: 100%; background: #ffffff !important; border: 1.5px solid #e9d5ff !important; padding: 9px 14px 9px 38px; color: #374151 !important; outline: none; height: 42px; font-weight: 400; border-radius: 24px; font-size: 14px; transition: all 0.25s ease; font-family: 'Inter', sans-serif; box-shadow: 0 2px 8px rgba(139,92,246,0.04) !important; }
+                .search-input:focus { border-color: #8b5cf6 !important; box-shadow: 0 0 0 4px rgba(139,92,246,0.15) !important; }
+                .search-input::placeholder { color: #a78bfa !important; }
+                .bi-search { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #8b5cf6 !important; font-size: 14px; pointer-events: none; }
+                .filter-select { background: #ffffff !important; color: #374151 !important; border: 1.5px solid #e9d5ff !important; padding: 8px 14px; outline: none; cursor: pointer; height: 42px; border-radius: 24px; min-width: 170px; font-weight: 400; font-family: 'Inter'; font-size: 14px; transition: all 0.25s ease; }
+                .filter-select:focus { border-color: #8b5cf6 !important; box-shadow: 0 0 0 4px rgba(139,92,246,0.15) !important; }
+                .btn-add-red-solid {
+                    background: #e50914 !important;
+                    color: #ffffff !important;
+                    border: none !important;
+                    border-radius: 4px !important;
+                    padding: 0 24px !important;
+                    height: 44px !important;
+                    font-family: 'Oswald', 'Inter', sans-serif !important;
+                    font-weight: 800 !important;
+                    font-size: 15px !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.5px !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 8px !important;
+                    text-decoration: none !important;
+                    cursor: pointer !important;
+                    box-shadow: 0 4px 14px rgba(229, 9, 20, 0.35) !important;
+                    transition: all 0.2s ease-in-out !important;
+                }
+                .btn-add-red-solid:hover {
+                    background: #cc0812 !important;
+                    color: #ffffff !important;
+                    transform: translateY(-2px) !important;
+                    box-shadow: 0 6px 18px rgba(229, 9, 20, 0.5) !important;
                 }
                 .admin-confirm-box {
                     background: #fff;
