@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Quản Lý Khách Hàng | ShoeStore Professional</title>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        /* --- THEME CONFIGURATION (Đồng bộ Dashboard) --- */
+        :root {
+            --bg-body: #050505;
+            --bg-card: #121212;
+            --accent-red: #e50914;
+            --accent-cyan: #00f2ff;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --radius: 6px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-size: 14px;
+            overflow-x: hidden;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        .font-oswald {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* --- LAYOUT --- */
+        .admin-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex-grow: 1;
+            margin-left: 260px;
+            padding: 30px 40px;
+            background-image: radial-gradient(circle at 20% 80%, rgba(229, 9, 20, 0.05) 0%, transparent 40%);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- PAGE HEADER & TOOLBAR --- */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .sub-title {
+            font-size: 13px;
+            color: var(--accent-cyan);
+            font-weight: 600;
+            letter-spacing: 2px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .toolbar {
+            background: var(--bg-card);
+            padding: 20px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        /* SEARCH BOX */
+        .search-box {
+            flex-grow: 1;
+            position: relative;
+            min-width: 250px;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            transition: 0.3s;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            background: #050505;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #fff;
+            font-family: 'Poppins';
+            outline: none;
+            transition: 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+        }
+
+        .search-input:focus+i {
+            color: var(--accent-cyan);
+        }
+
+        /* DROPDOWN */
+        .filter-select {
+            padding: 12px 20px;
+            background: #050505;
+            border: 1px solid #333;
+            color: #ccc;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+            font-family: 'Poppins';
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px top 50%;
+            background-size: 10px;
+            padding-right: 40px;
+        }
+
+        .filter-select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        /* BUTTON EXPORT */
+        .btn-neon {
+            background: var(--accent-red);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            text-decoration: none;
+        }
+
+        .btn-neon:hover {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        /* --- TABLE STYLES --- */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            text-align: left;
+            padding: 20px;
+            font-weight: 500;
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Oswald';
+        }
+
+        td {
+            padding: 20px;
+            border-bottom: 1 solid rgba(255, 255, 255, 0.05);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* CUSTOMER PROFILE */
+        .customer-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+            background-color: #333;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            border: 2px solid #444;
+            font-family: 'Oswald';
+            transition: 0.3s;
+        }
+
+        tr:hover .avatar {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+            color: #fff;
+            background: var(--accent-cyan);
+        }
+
+        .customer-name {
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 14px;
+            margin-bottom: 2px;
+            font-family: 'Oswald';
+            letter-spacing: 0.5px;
+        }
+
+        .customer-email {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* BADGES */
+        .tier-badge {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            text-transform: uppercase;
+            border: 1px solid;
+        }
+
+        .tier-gold {
+            color: #facc15;
+            border-color: rgba(250, 204, 21, 0.3);
+            background: rgba(250, 204, 21, 0.1);
+        }
+
+        .tier-silver {
+            color: #94a3b8;
+            border-color: rgba(148, 163, 184, 0.3);
+            background: rgba(148, 163, 184, 0.1);
+        }
+
+        .tier-bronze {
+            color: #fb923c;
+            border-color: rgba(251, 146, 60, 0.3);
+            background: rgba(251, 146, 60, 0.1);
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            color: #4ade80;
+        }
+
+        .dot-active {
+            width: 6px;
+            height: 6px;
+            background: #4ade80;
+            border-radius: 50%;
+            box-shadow: 0 0 5px #4ade80;
+        }
+
+        .status-blocked {
+            color: var(--accent-red);
+        }
+
+        .dot-blocked {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-red);
+            border-radius: 50%;
+            box-shadow: 0 0 5px var(--accent-red);
+        }
+
+        .total-spent {
+            font-family: 'Oswald';
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        /* ACTIONS */
+        .action-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            background: transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-left: 5px;
+            color: #888;
+        }
+
+        .btn-view:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+        }
+
+        .btn-lock:hover {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+            box-shadow: 0 0 10px rgba(229, 9, 20, 0.3);
+        }
+
+        .btn-unlock:hover {
+            border-color: #4ade80;
+            color: #4ade80;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+        }
+
+        /* PAGINATION */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px;
+            border-top: 1px solid #333;
+        }
+
+        .page-info {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .page-numbers {
+            display: flex;
+            gap: 8px;
+        }
+
+        .page-link {
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #333;
+            color: #888;
+            text-decoration: none;
+            transition: 0.3s;
+            font-family: 'Oswald';
+        }
+
+        .page-link:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+
+        .page-link.active {
+            background: var(--accent-red);
+            border-color: var(--accent-red);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(229, 9, 20, 0.4);
+        }
+
+        /* --- MODAL (Cyberpunk Style) --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-box {
+            background: #121212;
+            width: 600px;
+            padding: 40px;
+            border: 1px solid var(--border-glass);
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            animation: zoomIn 0.3s ease-out;
+        }
+
+        .modal-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-cyan), transparent);
+        }
+
+        @keyframes zoomIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-title {
+            font-family: 'Oswald';
+            font-size: 24px;
+            margin-bottom: 25px;
+            color: #fff;
+            text-transform: uppercase;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: #050505;
+            border: 1px solid #333;
+            padding: 12px;
+            color: #fff;
+            outline: none;
+            transition: 0.3s;
+            box-sizing: border-box;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn-cancel {
+            background: transparent;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 12px 25px;
+            font-family: 'Oswald';
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: 0.3s;
+            flex: 1;
+            text-transform: uppercase;
+        }
+
+        .btn-cancel:hover {
+            background: #333;
+        }
+
+        .btn-edit-rank:hover {
+            border-color: #facc15;
+            color: #facc15;
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
+        }
+
+        .btn-edit-role:hover {
+            border-color: #a855f7;
+            color: #a855f7;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+        }
+
+        .alert-success {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid #4ade80;
+            color: #4ade80;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-family: 'Poppins';
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="admin-wrapper">
+
+        <aside th:replace="~{admin/fragments/sidebar :: sidebar}"></aside>
+
+        <div class="main-content">
+
+            <header th:replace="~{admin/fragments/header :: header}"></header>
+
+            <div class="page-header" style="margin-top: 20px;">
+                <div>
+                    <span class="sub-title"><i class="bi bi-people"></i> MEMBERSHIP</span>
+                    <h1 class="page-title font-oswald">DANH SÁCH KHÁCH HÀNG</h1>
+                </div>
+                <a href="#" class="btn-neon">
+                    <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+                </a>
+            </div>
+
+            <div th:if="${message}" class="alert-success">
+                <i class="bi bi-check-circle-fill"></i>
+                <span th:text="${message}">Thông báo thành công</span>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" class="search-input" placeholder="Tìm tên, email, số điện thoại...">
+                </div>
+
+                <select class="filter-select">
+                    <option>Hạng thành viên: Tất cả</option>
+                    <option>Gold Member</option>
+                    <option>Silver Member</option>
+                    <option>Bronze Member</option>
+                </select>
+
+                <select class="filter-select">
+                    <option>Trạng thái: Tất cả</option>
+                    <option>Hoạt động</option>
+                    <option>Đã khóa</option>
+                </select>
+            </div>
+
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="30%">Thông tin khách hàng</th>
+                            <th>Số điện thoại</th>
+                            <th>Hạng thành viên</th>
+                            <th>Tổng chi tiêu</th>
+                            <th>Trạng thái</th>
+                            <th style="text-align: right;">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="cust : ${customers}"
+                            th:style="${cust.status == 0 ? 'background-color: rgba(229, 9, 20, 0.05);' : ''}">
+                            <td>
+                                <div class="customer-profile">
+                                    <div class="avatar"
+                                        th:style="${cust.status == 0 ? 'color: #666; border-color: #333; background: #000;' : ''}"
+                                        th:text="${cust.initials}">AV</div>
+                                    <div class="customer-info">
+                                        <span class="customer-name" th:text="${cust.fullName}"
+                                            th:style="${cust.status == 0 ? 'color: #666; text-decoration: line-through;' : ''}">Tên
+                                            Khách</span>
+                                        <span class="customer-email" th:text="${cust.email}"
+                                            th:style="${cust.status == 0 ? 'color: #444;' : ''}">email@gmail.com</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td th:text="${cust.phone}"
+                                th:style="${cust.status == 0 ? 'color: #444;' : 'color: #ccc;'}">0900.000.000</td>
+
+                            <td>
+                                <span class="tier-badge"
+                                    th:style="'color: ' + ${cust.rankColor} + '; border-color: ' + ${cust.rankColor} + '; background: ' + ${cust.rankColor} + '1a; padding: 4px 10px; border: 2px solid; border-radius: 4px; font-weight: 700; font-size: 10px; text-transform: uppercase; display: inline-flex; align-items: center; gap: 5px;'">
+                                    <i class="bi bi-star-fill"></i>
+                                    <span th:text="${cust.rankName}">Đồng</span>
+                                </span>
+                            </td>
+
+                            <td class="total-spent"
+                                th:text="${#numbers.formatDecimal(cust.totalSpent, 0, 'COMMA', 0, 'POINT')} + ' ₫'"
+                                th:style="${cust.status == 0 ? 'color: #444;' : ''}">0 ₫</td>
+
+                            <td>
+                                <span th:if="${cust.status == 1}" class="status-badge status-active">
+                                    <span class="dot-active"></span> Hoạt động
+                                </span>
+                                <span th:if="${cust.status == 0}" class="status-badge status-blocked">
+                                    <span class="dot-blocked"></span> Đã khóa
+                                </span>
+                            </td>
+
+                            <td style="text-align: right;">
+                                <a th:href="@{/admin/customers/detail(id=${cust.id})}" class="action-btn btn-view"
+                                    title="Xem chi tiết">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <button class="action-btn btn-edit-rank" title="Chỉnh sửa Rank"
+                                    th:onclick="openRankModal([[${cust.id}]], [[${cust.fullName}]], [[${cust.rankId}]])">
+                                    <i class="bi bi-star-fill"></i>
+                                </button>
+                                <button th:if="${cust.role != 'ADMIN'}" class="action-btn btn-edit-role" title="Phân Quyền (Role)"
+                                    th:onclick="openRoleModal([[${cust.id}]], [[${cust.fullName}]], [[${cust.role}]])">
+                                    <i class="bi bi-person-badge"></i>
+                                </button>
+                                <form th:if="${cust.status == 1 && cust.role != 'ADMIN'}"
+                                    th:action="@{/admin/customers/toggle-status}" method="post"
+                                    style="display: inline;">
+                                    <input type="hidden" name="id" th:value="${cust.id}">
+                                    <input type="hidden" name="status" value="0">
+                                    <button type="submit" class="action-btn btn-lock" title="Khóa tài khoản"
+                                        onclick="return confirm('Bạn có chắc muốn khóa tài khoản này?')">
+                                        <i class="bi bi-lock"></i>
+                                    </button>
+                                </form>
+                                <form th:if="${cust.status == 0 && cust.role != 'ADMIN'}"
+                                    th:action="@{/admin/customers/toggle-status}" method="post"
+                                    style="display: inline;">
+                                    <input type="hidden" name="id" th:value="${cust.id}">
+                                    <input type="hidden" name="status" value="1">
+                                    <button type="submit" class="action-btn btn-unlock" title="Mở khóa"
+                                        onclick="return confirm('Bạn có chắc muốn mở khóa tài khoản này?')">
+                                        <i class="bi bi-unlock-fill"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+
+                        <tr th:if="${#lists.isEmpty(customers)}">
+                            <td colspan="6" style="text-align: center; color: #666; padding: 30px;">
+                                Chưa có khách hàng nào trong hệ thống.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="pagination">
+                    <span class="page-info">Hiển thị 1-10 trong tổng số <span
+                            th:text="${#lists.size(customers)}">0</span> khách hàng</span>
+                    <div class="page-numbers">
+                        <a href="#" class="page-link"><i class="bi bi-chevron-left"></i></a>
+                        <a href="#" class="page-link active">1</a>
+                        <a href="#" class="page-link">2</a>
+                        <a href="#" class="page-link">3</a>
+                        <span style="display:flex; align-items:flex-end; padding:0 5px; color:#666;">...</span>
+                        <a href="#" class="page-link">12</a>
+                        <a href="#" class="page-link"><i class="bi bi-chevron-right"></i></a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <div class="modal-overlay" id="modalRank">
+        <div class="modal-box" style="width: 400px;">
+            <h3 class="modal-title">CẬP NHẬT HẠNG THÀNH VIÊN</h3>
+            <form th:action="@{/admin/customers/update-rank}" method="post">
+                <input type="hidden" name="userId" id="editUserId">
+                <div class="form-group">
+                    <label class="form-label">Khách hàng</label>
+                    <input type="text" id="editUserName" class="form-input" readonly
+                        style="background: #1a1a1a; cursor: not-allowed;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Chọn Hạng Mới</label>
+                    <select name="rankId" id="editRankId" class="form-input">
+                        <option th:each="r : ${ranks}" th:value="${r.id}" th:text="${r.rankName}"></option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">HỦY BỎ</button>
+                    <button type="submit" class="btn-neon" style="flex: 1; justify-content: center; border: none;">CẬP
+                        NHẬT</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL ROLE -->
+    <div class="modal-overlay" id="modalRole">
+        <div class="modal-box" style="width: 400px; border-top-color: #a855f7;">
+            <h3 class="modal-title" style="color: #a855f7;">PHÂN QUYỀN (ROLE)</h3>
+            <form th:action="@{/admin/customers/update-role}" method="post">
+                <input type="hidden" name="userId" id="editRoleUserId">
+                <div class="form-group">
+                    <label class="form-label">Tài Khoản</label>
+                    <input type="text" id="editRoleUserName" class="form-input" readonly
+                        style="background: #1a1a1a; cursor: not-allowed;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cấp Quyền Truy Cập</label>
+                    <select name="role" id="editRoleValue" class="form-input">
+                        <option value="USER">Khách Hàng (USER)</option>
+                        <option value="SHIPPER">Shipper Bưu Tá (SHIPPER)</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeRoleModal()">HỦY BỎ</button>
+                    <button type="submit" class="btn-neon" style="flex: 1; justify-content: center; background: #a855f7; border: none; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);">XÁC NHẬN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openRankModal(id, name, rankId) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUserName').value = name;
+            document.getElementById('editRankId').value = rankId;
+            document.getElementById('modalRank').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modalRank').style.display = 'none';
+        }
+
+        function openRoleModal(id, name, role) {
+            document.getElementById('editRoleUserId').value = id;
+            document.getElementById('editRoleUserName').value = name;
+            document.getElementById('editRoleValue').value = role;
+            document.getElementById('modalRole').style.display = 'flex';
+        }
+
+        function closeRoleModal() {
+            document.getElementById('modalRole').style.display = 'none';
+        }
+
+        window.onclick = function (event) {
+            const modalRank = document.getElementById('modalRank');
+            const modalRole = document.getElementById('modalRole');
+            if (event.target == modalRank) {
+                modalRank.style.display = "none";
+            }
+            if (event.target == modalRole) {
+                modalRole.style.display = "none";
+            }
+        }
+    </script>
+</body>
+
+</html>

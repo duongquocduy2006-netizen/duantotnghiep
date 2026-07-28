@@ -79,13 +79,35 @@ public class VoucherService {
 
         // 5. Kiểm tra Hạng thành viên (QUAN TRỌNG)
         if (v.getApplicableRanks() != null && !v.getApplicableRanks().isEmpty()) {
+            Integer effectiveRankId = userRankId;
+            if (userId != null) {
+                try {
+                    Integer totalPoints = jdbc.queryForObject("SELECT points FROM accounts WHERE id = ?", Integer.class, userId);
+                    if (totalPoints != null) {
+                        List<java.util.Map<String, Object>> ranks = jdbc.queryForList(
+                                "SELECT id, min_points FROM membership_ranks ORDER BY min_points DESC");
+                        for (java.util.Map<String, Object> r : ranks) {
+                            if (totalPoints >= ((Number) r.get("min_points")).intValue()) {
+                                effectiveRankId = ((Number) r.get("id")).intValue();
+                                break;
+                            }
+                        }
+                        if (effectiveRankId != null && !effectiveRankId.equals(userRankId)) {
+                            jdbc.update("UPDATE accounts SET membership_rank_id = ? WHERE id = ?", effectiveRankId, userId);
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("DEBUG Error fetching effective rank from points: " + e.getMessage());
+                }
+            }
+            final Integer finalRankId = effectiveRankId != null ? effectiveRankId : 1;
             System.out.println("DEBUG Voucher: " + v.getCode() + " requires ranks: " +
                     v.getApplicableRanks().stream().map(r -> r.getId().toString()).reduce((a, b) -> a + "," + b)
                             .orElse("none"));
-            System.out.println("DEBUG User Rank: " + userRankId);
+            System.out.println("DEBUG User Effective Rank: " + finalRankId);
 
             boolean isEligible = v.getApplicableRanks().stream()
-                    .anyMatch(rank -> rank.getId().equals(userRankId));
+                    .anyMatch(rank -> rank.getId().equals(finalRankId));
             if (!isEligible) {
                 System.out.println("DEBUG Result: Ineligible Rank");
                 return Optional.empty();
@@ -114,15 +136,15 @@ public class VoucherService {
         if (v.getDiscountValue() == null)
             return 0.0;
 
-        if ("FIXED".equalsIgnoreCase(v.getDiscountType())) {
-            return Math.min(v.getDiscountValue(), orderTotal);
-        } else if ("PERCENT".equalsIgnoreCase(v.getDiscountType())) {
+        if ("PERCENT".equalsIgnoreCase(v.getDiscountType())) {
             Double discount = orderTotal * (v.getDiscountValue() / 100.0);
             if (v.getMaxDiscount() != null && v.getMaxDiscount() > 0) {
                 discount = Math.min(discount, v.getMaxDiscount());
             }
             return discount;
+        } else {
+            // Mặc định các trường hợp còn lại (FIXED, AMOUNT, VALUE, vv.) là giảm giá số tiền cố định
+            return Math.min(v.getDiscountValue(), orderTotal);
         }
-        return 0.0;
     }
 }

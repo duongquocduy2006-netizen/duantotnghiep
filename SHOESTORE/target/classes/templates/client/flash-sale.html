@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Săn Sale Sốc | ShoeStore</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+    <style>
+        /* (Giữ nguyên toàn bộ CSS cũ) */
+        :root { --bg-body: #050505; --card-bg: #121212; --accent-red: #e50914; --accent-gold: #ffd700; --text-main: #ffffff; --glow-red: 0 0 20px rgba(229, 9, 20, 0.6); --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        body { background-color: var(--bg-body); color: var(--text-main); font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+        .flash-hero { background: radial-gradient(circle at center, #1a0505 0%, #000000 70%); padding: 60px 0; text-align: center; border-bottom: 2px solid var(--accent-red); position: relative; overflow: hidden; }
+        .flash-hero::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(229, 9, 20, 0.05) 10px, rgba(229, 9, 20, 0.05) 20px); animation: moveStripes 20s linear infinite; z-index: 0; }
+        @keyframes moveStripes { from { transform: translateY(0); } to { transform: translateY(100px); } }
+        .hero-content { position: relative; z-index: 2; }
+        .flash-title { font-family: 'Oswald', sans-serif; font-size: 60px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 5px; text-shadow: var(--glow-red); margin-bottom: 20px; display: inline-flex; align-items: center; gap: 15px; }
+        .flash-icon { color: var(--accent-gold); animation: pulse 1s infinite; }
+        .countdown-wrapper { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+        .time-box { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); padding: 15px 20px; border-radius: 8px; min-width: 90px; }
+        .time-val { font-family: 'Oswald', sans-serif; font-size: 36px; font-weight: 700; color: var(--accent-red); line-height: 1; }
+        .time-label { font-size: 12px; text-transform: uppercase; color: #aaa; letter-spacing: 1px; margin-top: 5px; }
+        .flash-tabs { display: flex; justify-content: center; gap: 15px; margin: -30px auto 40px; position: relative; z-index: 3; }
+        .flash-tab { background: #222; color: #fff; padding: 12px 30px; border: 1px solid #444; border-radius: 50px; font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: 0.3s; }
+        .flash-tab.active, .flash-tab:hover { background: var(--accent-red); border-color: var(--accent-red); box-shadow: var(--glow-red); transform: translateY(-3px); }
+        .flash-card { background: var(--card-bg); border: 1px solid #222; border-radius: 12px; overflow: hidden; position: relative; transition: var(--transition); }
+        .flash-card:hover { transform: translateY(-5px); border-color: var(--accent-red); box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        .card-img-wrapper { position: relative; overflow: hidden; padding-top: 100%; background: #1a1a1a; }
+        .card-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
+        .flash-card:hover .card-img { transform: scale(1.1); }
+        .discount-badge { position: absolute; top: 0; right: 0; background: var(--accent-gold); color: #000; font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 16px; padding: 5px 12px; border-bottom-left-radius: 12px; z-index: 2; }
+        .lightning-badge { position: absolute; top: 10px; left: 10px; background: var(--accent-red); color: #fff; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; gap: 5px; z-index: 2; }
+        .stock-wrapper { padding: 15px; }
+        .stock-bar-bg { background: #333; height: 6px; border-radius: 10px; position: relative; margin-top: 10px; overflow: hidden; }
+        .stock-bar-fill { background: linear-gradient(90deg, #ff4b1f, #ff9068); height: 100%; border-radius: 10px; position: relative; }
+        .stock-text { font-size: 11px; color: #bbb; display: flex; justify-content: space-between; margin-top: 5px; }
+        .fire-anim { animation: burn 0.5s infinite alternate; color: #ff9068; margin-right: 5px; }
+        @keyframes burn { from { opacity: 0.6; transform: scale(1); } to { opacity: 1; transform: scale(1.2); } }
+        .product-info { padding: 0 15px 20px; }
+        .product-name { font-size: 15px; font-weight: 500; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .price-box { display: flex; align-items: baseline; gap: 10px; }
+        .price-new { font-family: 'Oswald', sans-serif; font-size: 20px; color: var(--accent-red); font-weight: 600; }
+        .price-old { font-size: 13px; color: #666; text-decoration: line-through; }
+        
+        .btn-grab {
+            width: 100%; background: #fff; color: #000;
+            border: none; padding: 10px; font-weight: 700; text-transform: uppercase;
+            font-family: 'Oswald', sans-serif; margin-top: 10px;
+            transition: 0.2s;
+            display: block; text-align: center; text-decoration: none;
+        }
+        .btn-grab:hover { background: var(--accent-red); color: #fff; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+        
+        .product-name a { color: inherit; text-decoration: none; transition: 0.2s; }
+        .product-name a:hover { color: var(--accent-red); }
+    </style>
+</head>
+<body>
+
+    <div th:replace="~{client/fragments/header :: header}"></div>
+
+    <div class="flash-hero">
+        <div class="container hero-content">
+            <h1 class="flash-title animate__animated animate__zoomIn">
+                <i class="fa fa-bolt flash-icon"></i> FLASH SALE <i class="fa fa-bolt flash-icon"></i>
+            </h1>
+            <div th:if="${flashSale != null}">
+                <p class="text-white-50 mb-2" th:text="'Sự kiện: ' + ${flashSale.name}">Sắp kết thúc</p>
+                <div class="countdown-wrapper animate__animated animate__fadeInUp">
+                    <div class="time-box"><div class="time-val" id="days">00</div><div class="time-label">Ngày</div></div>
+                    <div class="time-box"><div class="time-val" id="hours">00</div><div class="time-label">Giờ</div></div>
+                    <div class="time-box"><div class="time-val" id="minutes">00</div><div class="time-label">Phút</div></div>
+                    <div class="time-box"><div class="time-val" id="seconds">00</div><div class="time-label">Giây</div></div>
+                </div>
+            </div>
+            <div th:if="${flashSale == null}">
+                <p class="text-white-50 mb-2">Hiện không có sự kiện Flash Sale nào đang diễn ra.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="flash-tabs animate__animated animate__fadeInUp animate__delay-1s">
+            <div class="flash-tab active">Đang diễn ra</div>
+            <div class="flash-tab">Sắp diễn ra</div>
+            <div class="flash-tab">Ngày mai</div>
+        </div>
+    </div>
+
+    <div class="container pb-5">
+        <div class="row g-4" id="flash-sale-products">
+            
+            <div th:each="fsp : ${flashSaleProducts}" class="col-lg-3 col-md-4 col-6 animate__animated animate__fadeInUp">
+                <div class="flash-card">
+                    <div class="card-img-wrapper">
+                        <!-- Giảm giá tính theo phần trăm -->
+                        <div class="discount-badge" th:if="${fsp.product.variants != null && !fsp.product.variants.isEmpty()}" 
+                             th:with="oldPrice=${fsp.product.variants.iterator().next().price.doubleValue()}, 
+                                      newPrice=${fsp.salePrice.doubleValue()}"
+                             th:text="'-' + ${#numbers.formatDecimal((oldPrice - newPrice) / oldPrice * 100, 0, 0)} + '%'">-0%</div>
+                        <div class="lightning-badge"><i class="fa fa-bolt"></i> Deal sốc</div>
+                        <a th:href="@{/details(id=${fsp.product.id})}">
+                            <img th:src="${fsp.product.images != null && !fsp.product.images.isEmpty() ? '/images/' + fsp.product.images.iterator().next().imageUrl : 'https://placehold.co/400x400?text=No+Image'}" class="card-img">
+                        </a>
+                    </div>
+                    <div class="stock-wrapper">
+                        <div class="stock-text">
+                            <span th:if="${fsp.quantityLimit > 0 && fsp.soldQuantity * 100 / fsp.quantityLimit > 80}"><i class="fa fa-fire fire-anim"></i> Sắp cháy hàng</span>
+                            <span th:if="${fsp.quantityLimit > 0 && fsp.soldQuantity * 100 / fsp.quantityLimit <= 80}">Đang bán chạy</span>
+                            <span th:text="'Đã bán ' + ${fsp.quantityLimit > 0 ? fsp.soldQuantity * 100 / fsp.quantityLimit : 0} + '%'">Đã bán 0%</span>
+                        </div>
+                        <div class="stock-bar-bg">
+                            <div class="stock-bar-fill" th:style="'width: ' + ${fsp.quantityLimit > 0 ? fsp.soldQuantity * 100 / fsp.quantityLimit : 0} + '%;'"></div>
+                        </div>
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">
+                            <a th:href="@{/details(id=${fsp.product.id})}" th:text="${fsp.product.productName}">Product Name</a>
+                        </div>
+                        <div class="price-box">
+                            <span class="price-new" th:text="${#numbers.formatCurrency(fsp.salePrice)}">0đ</span>
+                            <span class="price-old" th:if="${fsp.product.variants != null && !fsp.product.variants.isEmpty()}" 
+                                  th:text="${#numbers.formatCurrency(fsp.product.variants.iterator().next().price)}">0đ</span>
+                        </div>
+                        <a th:href="@{/details(id=${fsp.product.id})}" class="btn-grab">MUA NGAY</a>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${flashSaleProducts.isEmpty()}" class="col-12 text-center py-5">
+                <p class="text-muted">Không có sản phẩm nào trong chương trình Flash Sale này.</p>
+            </div>
+
+        </div>
+    </div>
+        <div th:replace="~{client/fragments/footer :: footer}"></div>
+    
+	    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+	
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const endDateStr = /*[[${flashSale != null ? #temporals.format(flashSale.endDate, 'yyyy-MM-dd''T''HH:mm:ss') : null}]]*/ null;
+        
+        if (endDateStr) {
+            const endDate = new Date(endDateStr).getTime();
+
+            function updateTimer() {
+                const now = new Date().getTime();
+                const distance = endDate - now;
+
+                if (distance < 0) {
+                    document.getElementById('days').innerText = "00";
+                    document.getElementById('hours').innerText = "00";
+                    document.getElementById('minutes').innerText = "00";
+                    document.getElementById('seconds').innerText = "00";
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById('days').innerText = days.toString().padStart(2, '0');
+                document.getElementById('hours').innerText = hours.toString().padStart(2, '0');
+                document.getElementById('minutes').innerText = minutes.toString().padStart(2, '0');
+                document.getElementById('seconds').innerText = seconds.toString().padStart(2, '0');
+            }
+            setInterval(updateTimer, 1000);
+            updateTimer();
+        }
+        /*]]>*/
+    </script>
+
+</body>
+</html>

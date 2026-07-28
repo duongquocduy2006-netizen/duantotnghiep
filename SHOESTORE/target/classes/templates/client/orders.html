@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Lịch sử đơn hàng</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+    <style>
+        /* --- COPY CORE VARIABLES TỪ TRANG PROFILE --- */
+        :root {
+            --bg-color: #f0f2f5;
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            --text-dark: #1a1a1a;
+            --accent-gradient: linear-gradient(135deg, #FF3B3B 0%, #FF8E53 100%);
+            --accent-color: #FF3B3B;
+            --success-color: #00b894;
+            --warning-color: #fdcb6e;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-dark);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Blobs */
+        .ambient-blob {
+            position: absolute;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.6;
+            animation: moveBlob 20s infinite alternate;
+        }
+
+        .blob-1 {
+            top: 10%;
+            left: 10%;
+            width: 300px;
+            height: 300px;
+            background: #ffdee9;
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+        }
+
+        .blob-2 {
+            bottom: 10%;
+            right: 10%;
+            width: 350px;
+            height: 350px;
+            background: #c9efff;
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            animation-delay: -5s;
+        }
+
+        @keyframes moveBlob {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(50px, 50px) rotate(20deg);
+            }
+        }
+
+        /* Glass Panel */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: var(--glass-shadow);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        /* Sidebar Styles (Giữ nguyên) */
+        .profile-cover {
+            height: 120px;
+            background: var(--accent-gradient);
+            position: relative;
+        }
+
+        .user-block {
+            margin-top: -60px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            padding-bottom: 20px;
+        }
+
+        .user-avatar {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 25px rgba(255, 59, 59, 0.3);
+            transition: 0.5s;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05) rotate(5deg);
+        }
+
+        .vip-crown {
+            position: absolute;
+            top: -15px;
+            right: -5px;
+            font-size: 24px;
+            color: #FFD700;
+            animation: floatCrown 3s ease-in-out infinite;
+        }
+
+        @keyframes floatCrown {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            padding: 16px 30px;
+            color: #555;
+            font-weight: 600;
+            text-decoration: none;
+            transition: 0.3s;
+            border-radius: 0 50px 50px 0;
+            margin-right: 20px;
+        }
+
+        .menu-link i {
+            width: 35px;
+            font-size: 18px;
+            color: #999;
+            transition: 0.3s;
+        }
+
+        .menu-link:hover {
+            background: rgba(255, 59, 59, 0.05);
+            color: var(--accent-color);
+            padding-left: 35px;
+        }
+
+        .menu-link:hover i {
+            color: var(--accent-color);
+            transform: scale(1.2);
+        }
+
+        .menu-link.active {
+            background: linear-gradient(90deg, rgba(255, 59, 59, 0.1), transparent);
+            color: var(--accent-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .menu-link.active i {
+            color: var(--accent-color);
+        }
+
+        /* --- NEW STYLES FOR ORDERS --- */
+        .content-header h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: 32px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+            display: inline-block;
+        }
+
+        .luxury-order-card {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            transition: all 0.3s ease-in-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .luxury-order-card:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+            border-color: rgba(255, 59, 59, 0.3);
+        }
+
+        /* Thanh trạng thái màu bên trái */
+        .luxury-order-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: #ddd;
+            transition: 0.3s;
+        }
+
+        .luxury-order-card:hover::before {
+            width: 6px;
+        }
+
+        .luxury-order-card.status-done::before {
+            background: var(--success-color);
+        }
+
+        .luxury-order-card.status-wait::before {
+            background: var(--warning-color);
+        }
+
+        .luxury-order-card.status-delivered::before {
+            background: #a855f7;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.1);
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        .order-id {
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--text-dark);
+            letter-spacing: 0.5px;
+        }
+
+        .order-date {
+            font-size: 13px;
+            color: #888;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+
+        /* Badges */
+        .badge-luxury {
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .badge-success-lux {
+            background: rgba(0, 184, 148, 0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(0, 184, 148, 0.2);
+        }
+
+        .badge-warning-lux {
+            background: rgba(253, 203, 110, 0.1);
+            color: #d35400;
+            border: 1px solid rgba(253, 203, 110, 0.2);
+        }
+
+        /* Product Info */
+        .product-thumb {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            background: #fff;
+            padding: 5px;
+        }
+
+        .product-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .product-meta {
+            font-size: 13px;
+            color: #777;
+        }
+
+        .price-tag {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: 20px;
+            color: var(--accent-color);
+        }
+
+        /* Action Buttons */
+        .btn-outline-luxury {
+            border: 2px solid #eee;
+            color: #555;
+            border-radius: 50px;
+            padding: 8px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: 0.3s;
+            background: transparent;
+        }
+
+        .btn-outline-luxury:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            background: rgba(255, 59, 59, 0.05);
+        }
+
+        /* Star Rating */
+        .star-rating {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: center;
+            gap: 10px;
+        }
+        .star-rating input { display: none; }
+        .star-rating label {
+            font-size: 2.5rem;
+            color: #ddd;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .star-rating input:checked ~ label,
+        .star-rating label:hover,
+        .star-rating label:hover ~ label {
+            color: #f1c40f;
+            transform: scale(1.1);
+        }
+        .review-textarea {
+            width: 100%;
+            border: 1px solid #eee;
+            border-radius: 15px;
+            padding: 15px;
+            min-height: 120px;
+            background: #fdfdfd;
+            outline: none;
+            transition: 0.3s;
+        }
+        .review-textarea:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(255, 59, 59, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{client/fragments/header :: header}"></div>
+
+    <div class="ambient-blob blob-1"></div>
+    <div class="ambient-blob blob-2"></div>
+
+    <div class="container pt-3 pb-5">
+        <div class="row g-5">
+
+            <div class="col-lg-4 animate__animated animate__fadeInLeft">
+                <div class="glass-panel">
+                    <div class="profile-cover"></div>
+                    <div class="user-block">
+                        <div class="avatar-box position-relative d-inline-block">
+                            <img th:src="${'https://ui-avatars.com/api/?name=' + account.full_name + '&background=random'}"
+                                class="user-avatar">
+                            <i class="fa fa-crown vip-crown"></i>
+                        </div>
+                        <h5 class="mt-3 fw-bold" th:text="${account.full_name}">Tên người dùng</h5>
+                        <div class="d-flex flex-column align-items-center gap-1">
+                            <span class="badge bg-dark rounded-pill px-3 py-2"
+                                th:text="${account.rank_name ?: 'Đồng'}">Member</span>
+                            <span class="text-muted small fw-bold"
+                                th:text="${#numbers.formatDecimal(account.points ?: 0, 0, 'POINT', 0, 'POINT') + ' PTS'}">0
+                                PTS</span>
+                        </div>
+                    </div>
+
+                    <div class="pb-4 pt-2">
+                        <a th:href="@{/profile}" class="menu-link">
+                            <i class="fa-regular fa-id-badge"></i> Thông tin cá nhân
+                        </a>
+                        <a th:href="@{/orders}" class="menu-link active">
+                            <i class="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng
+                        </a>
+                        <a th:href="@{/change-password}" class="menu-link">
+                            <i class="fa-solid fa-shield-halved"></i> Đổi mật khẩu
+                        </a>
+                        <div class="my-2 mx-4 border-top opacity-25"></div>
+                        <a th:href="@{/login}" class="menu-link text-danger">
+                            <i class="fa-solid fa-power-off"></i> Đăng xuất
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8 animate__animated animate__fadeIn">
+                <div class="glass-panel p-4 p-lg-5">
+                    <div class="content-header d-flex justify-content-between align-items-end">
+                        <div>
+                            <h4>Đơn hàng của tôi</h4>
+                            <p class="text-muted mb-0">Theo dõi trạng thái và lịch sử mua sắm</p>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="fa-solid fa-filter me-1"></i> Hiển thị: <span th:text="${orders.size()}">0</span>
+                            đơn gần nhất
+                        </div>
+                    </div>
+
+                    <!-- Alert Messages -->
+                    <div th:if="${message}"
+                        class="alert alert-success alert-dismissible fade show mt-3 rounded-pill px-4 animate__animated animate__fadeInDown"
+                        role="alert">
+                        <i class="fa-solid fa-circle-check me-2"></i> <span th:text="${message}">Success message</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    <div th:if="${error}"
+                        class="alert alert-danger alert-dismissible fade show mt-3 rounded-pill px-4 animate__animated animate__shakeX"
+                        role="alert">
+                        <i class="fa-solid fa-circle-exclamation me-2"></i> <span th:text="${error}">Error
+                            message</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+
+                    <div class="mt-4">
+                        <div th:if="${orders.isEmpty()}" class="text-center py-5">
+                            <i class="fa-solid fa-box-open fa-3x text-muted mb-3 d-block"></i>
+                            <p class="text-muted">Bạn chưa có đơn hàng nào.</p>
+                            <a href="/" class="btn btn-outline-danger rounded-pill">Tiếp tục mua sắm</a>
+                        </div>
+
+                        <div th:each="order : ${orders}" class="luxury-order-card"
+                            th:classappend="${order.status == 3 ? 'status-done' : (order.status == 4 ? 'status-canceled' : (order.status == 5 ? 'status-delivered' : 'status-wait'))}">
+                            <div class="order-header">
+                                <div>
+                                    <span class="order-id" th:text="${'#' + order.order_code}">#ORD-0000</span>
+                                    <span class="order-date">
+                                        <i class="fa-regular fa-calendar me-1"></i>
+                                        <span
+                                            th:text="${#dates.format(order.created_at, 'dd/MM/yyyy HH:mm')}">Date</span>
+                                    </span>
+                                </div>
+
+                                <!-- Status Badge -->
+                                <span th:if="${order.status == 1}" class="badge-luxury badge-warning-lux">
+                                    <i class="fa-solid fa-clock me-1"></i> Chờ duyệt
+                                </span>
+                                <span th:if="${order.status == 2}" class="badge-luxury badge-warning-lux"
+                                    style="background: rgba(52, 152, 219, 0.1); color: #3498db; border-color: rgba(52, 152, 219, 0.2);">
+                                    <i class="fa-solid fa-truck-fast me-1"></i> Đang giao
+                                </span>
+                                <span th:if="${order.status == 3}" class="badge-luxury badge-success-lux">
+                                    <i class="fa-solid fa-check-circle me-1"></i> Thành công
+                                </span>
+                                <span th:if="${order.status == 5}" class="badge-luxury"
+                                    style="background: rgba(168, 85, 247, 0.1); color: #a855f7; border-color: rgba(168, 85, 247, 0.2);">
+                                    <i class="fa-solid fa-hourglass-half me-1"></i> Chờ duyệt hoàn tất
+                                </span>
+                                <span th:if="${order.status == 4}" class="badge-luxury"
+                                    style="background: rgba(149, 165, 166, 0.1); color: #95a5a6; border-color: rgba(149, 165, 166, 0.2);">
+                                    <i class="fa-solid fa-times-circle me-1"></i> Đã hủy
+                                </span>
+                            </div>
+
+                            <div class="d-flex align-items-center gap-3">
+                                <img th:src="${order.first_product_image != null ? order.first_product_image : 'https://placehold.co/100x100?text=Shoe'}"
+                                    class="product-thumb">
+                                <div class="flex-grow-1">
+                                    <div class="product-title" th:text="${order.first_product_name}">Tên sản phẩm</div>
+                                    <div class="product-meta"
+                                        th:text="${(order.total_items > 1 ? 'Và ' + (order.total_items - 1) + ' sản phẩm khác' : '1 sản phẩm')}">
+                                        1 sản phẩm</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="price-tag"
+                                        th:text="${#numbers.formatDecimal(order.final_amount, 0, 'POINT', 0, 'POINT') + '₫'}">
+                                        0₫</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top border-light">
+                                <a th:href="@{'/orders/detail/' + ${order.order_code}}" class="btn-outline-luxury">Chi
+                                    tiết đơn hàng</a>
+                                <button th:if="${order.status == 3 and (order.is_reviewed == null or order.is_reviewed == 0)}" 
+                                        th:onclick="openReviewModal([[${order.first_product_id}]], [[${order.first_product_name}]])"
+                                        class="btn-outline-luxury"
+                                        style="border-color: var(--success-color); color: var(--success-color); background: transparent;">
+                                    Đánh giá ngay
+                                </button>
+                                <form th:if="${order.status == 3}" th:action="@{/cart/re-buy}" method="POST" class="d-inline">
+                                    <input type="hidden" name="orderCode" th:value="${order.order_code}">
+                                    <button type="submit" class="btn-outline-luxury"
+                                        style="border-color: var(--text-dark); color: var(--text-dark); background: transparent;">
+                                        Mua lại
+                                    </button>
+                                </form>
+                                <form th:if="${order.status == 1}" th:action="@{/orders/cancel}" method="POST"
+                                    class="d-inline"
+                                    onsubmit="return confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')">
+                                    <input type="hidden" name="orderCode" th:value="${order.order_code}">
+                                    <button type="submit" class="btn-outline-luxury text-danger"
+                                        style="border-color: rgba(255, 59, 59, 0.3); background: transparent;">
+                                        Hủy đơn
+                                    </button>
+                                </form>
+
+                                <!-- Customer Confirmation Button -->
+                                <form th:if="${order.status == 2}" th:action="@{/orders/confirm}" method="POST"
+                                    class="d-inline">
+                                    <input type="hidden" name="orderCode" th:value="${order.order_code}">
+                                    <button type="submit" class="btn-outline-luxury"
+                                        style="background: var(--accent-gradient); color: white; border: none;">
+                                        Đã nhận được hàng
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    </div>
+    </div>
+    </div>
+
+    <!-- Modal Đánh giá sau khi nhận hàng -->
+    <div class="modal fade" id="receiptReviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-dark border-0 shadow-lg" style="border-radius: 20px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="mb-3">
+                        <i class="fa fa-heart text-danger animate__animated animate__heartBeat animate__infinite" style="font-size: 3.5rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3" style="font-family: 'Playfair Display'; color: var(--text-dark);">Xếp thấy sản phẩm thế nào?</h4>
+                    <p class="text-muted mb-4 px-3">Cảm ơn Xếp đã xác nhận nhận hàng! Đội ngũ ShoeStore rất mong nhận được những góp ý chân thành từ Xếp để ngày càng hoàn thiện hơn.</p>
+                    <div class="d-grid gap-2 px-3">
+                        <button type="button" class="btn py-2 fw-bold text-white shadow-sm" 
+                                th:onclick="openReviewModal([[${confirmedOrderProductId}]], [[${confirmedOrderProductName}]])"
+                                style="background: var(--accent-gradient); border: none; border-radius: 50px;"
+                                >ĐÁNH GIÁ NGAY</button>
+                        <button type="button" class="btn btn-link text-muted text-decoration-none" data-bs-dismiss="modal">Để sau</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form Đánh giá -->
+    <div class="modal fade" id="submitReviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 20px; overflow: hidden;">
+                <div class="modal-header border-0 bg-light py-3">
+                    <h5 class="modal-title fw-bold">Đánh giá sản phẩm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-4">
+                        <h6 id="review_product_name" class="fw-bold text-uppercase" style="color: #666;">Tên sản phẩm</h6>
+                        <p class="small text-muted">Xếp vui lòng để lại đánh giá của mình nhé!</p>
+                    </div>
+
+                    <form id="reviewForm">
+                        <input type="hidden" id="review_product_id">
+                        
+                        <div class="star-rating mb-4">
+                            <input type="radio" id="star5" name="rating" value="5" /><label for="star5" title="5 stars"><i class="fa fa-star"></i></label>
+                            <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="4 stars"><i class="fa fa-star"></i></label>
+                            <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="3 stars"><i class="fa fa-star"></i></label>
+                            <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="2 stars"><i class="fa fa-star"></i></label>
+                            <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="1 star"><i class="fa fa-star"></i></label>
+                        </div>
+
+                        <textarea id="review_content" class="review-textarea mb-4" placeholder="Chia sẻ cảm nhận của Xếp về sản phẩm này..."></textarea>
+
+                        <div class="d-grid">
+                            <button type="button" onclick="submitReviewAjax()" class="btn btn-danger py-2 fw-bold rounded-pill shadow-sm" style="background: var(--accent-gradient); border: none;">GỬI ĐÁNH GIÁ</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        function openReviewModal(productId, productName) {
+            if(!productId) return;
+            $('#review_product_id').val(productId);
+            $('#review_product_name').text(productName);
+            
+            // Đóng modal thông báo nhận hàng nếu đang mở
+            const promptModal = bootstrap.Modal.getInstance(document.getElementById('receiptReviewModal'));
+            if(promptModal) promptModal.hide();
+
+            const myModal = new bootstrap.Modal(document.getElementById('submitReviewModal'));
+            myModal.show();
+        }
+
+        function submitReviewAjax() {
+            const pId = $('#review_product_id').val();
+            const rating = $('input[name="rating"]:checked').val();
+            const content = $('#review_content').val();
+
+            if (!rating) {
+                alert("Vui lòng chọn số sao đánh giá!");
+                return;
+            }
+            if (!content || content.trim() === '') {
+                alert("Vui lòng nhập nội dung đánh giá!");
+                return;
+            }
+
+            $.post('/api/reviews/add', {
+                productId: pId,
+                rating: rating,
+                content: content
+            }, function (res) {
+                if (res.success) {
+                    // Đóng modal form
+                    bootstrap.Modal.getInstance(document.getElementById('submitReviewModal')).hide();
+                    
+                    // Hiện modal cảm ơn
+                    const thanksModal = new bootstrap.Modal(document.getElementById('successReviewModal'));
+                    thanksModal.show();
+
+                    // Tự động reload sau 2s
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    alert(res.message);
+                }
+            });
+        }
+    </script>
+    <script th:if="${showReviewModal}">
+        $(document).ready(function() {
+            setTimeout(function() {
+                var myModal = new bootstrap.Modal(document.getElementById('receiptReviewModal'));
+                myModal.show();
+            }, 800);
+        });
+    </script>
+
+    <!-- Modal Cảm ơn sau khi đánh giá -->
+    <div class="modal fade" id="successReviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 text-center p-4" style="border-radius: 20px; background: rgba(255, 255, 255, 0.98);">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-success text-white rounded-circle shadow-sm" style="width: 80px; height: 80px; font-size: 40px;">
+                            <i class="fa fa-check"></i>
+                        </div>
+                    </div>
+                    <h3 class="fw-bold mb-2">Tuyệt vời quá Xếp ơi!</h3>
+                    <p class="text-muted mb-0">Cảm ơn đánh giá chân thành của Xếp. ShoeStore sẽ luôn cố gắng để mang lại trải nghiệm tốt nhất!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
