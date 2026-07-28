@@ -14,6 +14,17 @@ public class OrderService {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        try {
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'cancel_reason') ALTER TABLE orders ADD cancel_reason NVARCHAR(500) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'external_transaction_id') ALTER TABLE orders ADD external_transaction_id NVARCHAR(255) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'voucher_id') ALTER TABLE orders ADD voucher_id INT NULL;");
+        } catch (Exception e) {
+            System.err.println("Error auto-checking orders schema in OrderService: " + e.getMessage());
+        }
+    }
+
     public List<OrderDTO> getAllOrders(String keyword, Integer status) {
         StringBuilder sql = new StringBuilder(
                 "SELECT o.order_code, a.receiving_name, o.created_at, o.final_amount, o.status, pm.method_name " +
@@ -153,7 +164,9 @@ public class OrderService {
     }
 
     public List<java.util.Map<String, Object>> getOrdersByUserId(Long userId) {
-        String sql = "SELECT o.id, o.order_code, o.created_at, o.final_amount, o.status, o.cancel_reason, " +
+        String sql = "SELECT o.id, o.order_code, o.created_at, o.total_amount, o.shipping_fee, o.final_amount, o.status, o.cancel_reason, " +
+                "a.receiving_name, a.phone_number, a.street_detail, pm.method_name, " +
+                "(SELECT v.code FROM vouchers v WHERE v.id = o.voucher_id) as voucher_code, " +
                 "(SELECT TOP 1 p.id " +
                 " FROM order_items oi " +
                 " JOIN product_variants pv ON oi.product_variant_id = pv.id " +
@@ -176,6 +189,8 @@ public class OrderService {
                 "   AND pr.created_at >= o.created_at" +
                 ") as is_reviewed " +
                 "FROM orders o " +
+                "LEFT JOIN addresses a ON o.receiver_address_id = a.id " +
+                "LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id " +
                 "WHERE o.user_id = ? " +
                 "ORDER BY o.created_at DESC";
         return jdbc.queryForList(sql, userId);
@@ -194,7 +209,7 @@ public class OrderService {
         }
 
         if (currentStatus != 2 && currentStatus != 5) {
-            throw new RuntimeException("Chỉ có thể xác nhận khi đơn hàng đang ở trạng thái 'Đang giao' hoặc 'Đã giao'.");
+            throw new RuntimeException("Chỉ có thể xác nhận khi đơn hàng đang ở trạng thái 'Đang giao' hoặc 'Đã giao hàng'.");
         }
 
         // 2. Chuyển sang trạng thái Hoàn tất (3) ngay lập tức
@@ -233,8 +248,7 @@ public class OrderService {
     }
 
     /**
-     * Admin hủy đơn hàng với lý do. Chỉ cho phép hủy khi ở trạng thái 1 (Chờ duyệt).
-     * Không cho hủy khi đang giao (2), đã giao (5), hoàn thành (3), hoặc đã hủy (4).
+     * Admin hủy đơn hàng với lý do. Chỉ cho phép hủy đơn ở trạng thái 1 (Chờ duyệt).
      */
     public void cancelOrderByAdmin(String orderCode, String cancelReason) {
         String checkSql = "SELECT status FROM orders WHERE order_code = ?";
@@ -265,7 +279,8 @@ public class OrderService {
     }
 
     public java.util.Map<String, Object> getOrderDetail(String orderCode) {
-        String sql = "SELECT o.*, a.receiving_name, a.phone_number, a.street_detail, pm.method_name " +
+        String sql = "SELECT o.*, a.receiving_name, a.phone_number, a.street_detail, pm.method_name, " +
+                "(SELECT v.code FROM vouchers v WHERE v.id = o.voucher_id) as voucher_code " +
                 "FROM orders o " +
                 "LEFT JOIN addresses a ON o.receiver_address_id = a.id " +
                 "LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id " +
@@ -343,14 +358,14 @@ public class OrderService {
                 if (minOrderValue == null || newTotalAmount >= minOrderValue) {
                     String discountType = (String) voucherMap.get("discount_type");
                     Double discountValue = ((Number) voucherMap.get("discount_value")).doubleValue();
-                    if ("FIXED".equalsIgnoreCase(discountType)) {
-                        discount = Math.min(discountValue, newTotalAmount);
-                    } else if ("PERCENT".equalsIgnoreCase(discountType)) {
+                    if ("PERCENT".equalsIgnoreCase(discountType)) {
                         discount = newTotalAmount * (discountValue / 100.0);
                         Double maxDiscount = voucherMap.get("max_discount") != null ? ((Number) voucherMap.get("max_discount")).doubleValue() : null;
                         if (maxDiscount != null && maxDiscount > 0) {
                             discount = Math.min(discount, maxDiscount);
                         }
+                    } else {
+                        discount = Math.min(discountValue, newTotalAmount);
                     }
                 } else {
                     voucherId = null;
@@ -468,14 +483,14 @@ public class OrderService {
                     if (minOrderValue == null || newTotalAmount >= minOrderValue) {
                         String discountType = (String) voucherMap.get("discount_type");
                         Double discountValue = ((Number) voucherMap.get("discount_value")).doubleValue();
-                        if ("FIXED".equalsIgnoreCase(discountType)) {
-                            discount = Math.min(discountValue, newTotalAmount);
-                        } else if ("PERCENT".equalsIgnoreCase(discountType)) {
+                        if ("PERCENT".equalsIgnoreCase(discountType)) {
                             discount = newTotalAmount * (discountValue / 100.0);
                             Double maxDiscount = voucherMap.get("max_discount") != null ? ((Number) voucherMap.get("max_discount")).doubleValue() : null;
                             if (maxDiscount != null && maxDiscount > 0) {
                                 discount = Math.min(discount, maxDiscount);
                             }
+                        } else {
+                            discount = Math.min(discountValue, newTotalAmount);
                         }
                     } else {
                         voucherId = null;

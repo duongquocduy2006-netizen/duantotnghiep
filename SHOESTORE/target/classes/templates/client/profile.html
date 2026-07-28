@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Hồ sơ Luxury</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:ital,wght@0,600;1,600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+
+    <style>
+        /* --- CORE VARIABLES --- */
+        :root {
+            --bg-color: #f0f2f5;
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.8);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            --text-dark: #1a1a1a;
+            --accent-gradient: linear-gradient(135deg, #FF3B3B 0%, #FF8E53 100%);
+            /* Màu đỏ cam luxury */
+            --accent-color: #FF3B3B;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-dark);
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* --- AMBIENT BACKGROUND (Hiệu ứng nền trôi chảy) --- */
+        .ambient-blob {
+            position: absolute;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.6;
+            animation: moveBlob 20s infinite alternate;
+        }
+
+        .blob-1 {
+            top: 10%;
+            left: 10%;
+            width: 300px;
+            height: 300px;
+            background: #ffdee9;
+            border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+        }
+
+        .blob-2 {
+            bottom: 10%;
+            right: 10%;
+            width: 350px;
+            height: 350px;
+            background: #c9efff;
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            animation-delay: -5s;
+        }
+
+        @keyframes moveBlob {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            100% {
+                transform: translate(50px, 50px) rotate(20deg);
+            }
+        }
+
+        /* --- ULTRA GLASS CARD --- */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: var(--glass-shadow);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        /* --- SIDEBAR DESIGN --- */
+        .profile-cover {
+            height: 120px;
+            background: var(--accent-gradient);
+            position: relative;
+            mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0));
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0));
+        }
+
+        .user-block {
+            margin-top: -60px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            padding-bottom: 20px;
+        }
+
+        .avatar-box {
+            position: relative;
+            display: inline-block;
+        }
+
+        .user-avatar {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 25px rgba(255, 59, 59, 0.3);
+            transition: 0.5s;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05) rotate(5deg);
+        }
+
+        .vip-crown {
+            position: absolute;
+            top: -15px;
+            right: -5px;
+            font-size: 24px;
+            color: #FFD700;
+            filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.2));
+            animation: floatCrown 3s ease-in-out infinite;
+        }
+
+        @keyframes floatCrown {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .menu-link {
+            display: flex;
+            align-items: center;
+            padding: 16px 30px;
+            color: #555;
+            font-weight: 600;
+            text-decoration: none;
+            transition: 0.3s;
+            position: relative;
+            border-radius: 0 50px 50px 0;
+            margin-right: 20px;
+        }
+
+        .menu-link i {
+            width: 35px;
+            font-size: 18px;
+            color: #999;
+            transition: 0.3s;
+        }
+
+        .menu-link:hover {
+            background: rgba(255, 59, 59, 0.05);
+            color: var(--accent-color);
+            padding-left: 35px;
+        }
+
+        .menu-link:hover i {
+            color: var(--accent-color);
+            transform: scale(1.2);
+        }
+
+        .menu-link.active {
+            background: linear-gradient(90deg, rgba(255, 59, 59, 0.1), transparent);
+            color: var(--accent-color);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .menu-link.active i {
+            color: var(--accent-color);
+        }
+
+        /* --- FORM LUXURY --- */
+        .content-header h4 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: 32px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+            display: inline-block;
+        }
+
+        /* Floating Label Input */
+        .float-input-group {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .float-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            font-size: 16px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+
+        .float-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 5px 20px rgba(255, 59, 59, 0.15);
+        }
+
+        .float-input:not(:placeholder-shown)+label,
+        .float-input:focus+label {
+            top: -10px;
+            left: 15px;
+            font-size: 12px;
+            background: #fff;
+            padding: 0 8px;
+            color: var(--accent-color);
+            font-weight: 700;
+        }
+
+        .float-label {
+            position: absolute;
+            left: 20px;
+            top: 17px;
+            color: #999;
+            pointer-events: none;
+            transition: 0.3s;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .float-input[readonly] {
+            background: #f8f9fa;
+            color: #777;
+            border: 1px dashed #ddd;
+        }
+
+        /* Button Super Luxury */
+        .btn-super {
+            background: var(--text-dark);
+            color: #fff;
+            padding: 15px 50px;
+            border-radius: 50px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: none;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            transition: 0.4s;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-super::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 100%;
+            background: var(--accent-gradient);
+            z-index: -1;
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 50px;
+        }
+
+        .btn-super:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 59, 59, 0.4);
+        }
+
+        .btn-super:hover::before {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div th:replace="~{client/fragments/header :: header}"></div>
+
+    <div class="ambient-blob blob-1"></div>
+    <div class="ambient-blob blob-2"></div>
+
+    <div class="container pt-3 pb-5">
+        <div class="row g-5">
+
+            <div class="col-lg-4 animate__animated animate__fadeInLeft">
+                <div class="glass-panel">
+                    <div class="profile-cover"></div>
+                    <div class="user-block">
+                        <div class="avatar-box">
+                            <img th:src="@{'https://ui-avatars.com/api/?name=' + ${accountInfo.full_name} + '&background=random'}"
+                                class="user-avatar">
+                            <i class="fa fa-crown vip-crown"></i>
+                        </div>
+                        <h5 class="mt-3 fw-bold" th:text="${accountInfo.full_name}">Nguyễn Văn A</h5>
+                        <div class="d-flex flex-column align-items-center gap-1">
+                            <span class="badge bg-dark rounded-pill px-3 py-2"
+                                th:text="${accountInfo.rank_name ?: 'Đồng'}">Thành viên Luxury</span>
+                            <span class="text-muted small fw-bold"
+                                th:text="${#numbers.formatDecimal(accountInfo.points ?: 0, 0, 'POINT', 0, 'POINT') + ' PTS'}">0
+                                PTS</span>
+                        </div>
+                    </div>
+
+                    <div class="pb-4 pt-2">
+                        <a th:href="@{/profile}" class="menu-link active">
+                            <i class="fa-regular fa-id-badge"></i> Thông tin cá nhân
+                        </a>
+                        <a th:href="@{/orders}" class="menu-link">
+                            <i class="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng
+                        </a>
+                        <a th:href="@{/change-password}" class="menu-link">
+                            <i class="fa-solid fa-shield-halved"></i> Đổi mật khẩu
+                        </a>
+                        <div class="my-2 mx-4 border-top opacity-25"></div>
+                        <a th:href="@{/login}" class="menu-link text-danger">
+                            <i class="fa-solid fa-power-off"></i> Đăng xuất
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8 animate__animated animate__fadeIn">
+                <div class="glass-panel p-4 p-lg-5">
+                    <div class="content-header">
+                        <h4>Chỉnh sửa hồ sơ</h4>
+                        <p class="text-muted">Quản lý thông tin hồ sơ của bạn để bảo mật tài khoản</p>
+                        <!-- Thông báo thành công / thất bại -->
+                        <div th:if="${param.success}" class="alert alert-success mt-2">Cập nhật hồ sơ thành công!</div>
+                        <div th:if="${param.error}" class="alert alert-danger mt-2">Có lỗi xảy ra, vui lòng thử lại!
+                        </div>
+                    </div>
+
+                    <form th:action="@{/profile/update}" method="post" class="mt-4">
+                        <div class="row g-4">
+                            <!-- Email -->
+                            <div class="col-md-6">
+                                <div class="float-input-group">
+                                    <input type="email" class="float-input" id="email" th:value="${accountInfo.email}"
+                                        readonly placeholder=" ">
+                                    <label for="email" class="float-label">Địa chỉ Email (Không thể đổi)</label>
+                                </div>
+                            </div>
+
+                            <!-- User Code -->
+                            <div class="col-md-6">
+                                <div class="float-input-group">
+                                    <input type="text" class="float-input" id="usercode"
+                                        th:value="${accountInfo.user_code}" readonly placeholder=" ">
+                                    <label for="usercode" class="float-label">Mã thành viên</label>
+                                </div>
+                            </div>
+
+                            <!-- Full Name -->
+                            <div class="col-md-6">
+                                <div class="float-input-group">
+                                    <input type="text" class="float-input" id="fullname" name="fullName"
+                                        th:value="${accountInfo.full_name}" placeholder=" " required>
+                                    <label for="fullname" class="float-label">Họ và tên</label>
+                                </div>
+                            </div>
+
+                            <!-- Phone -->
+                            <div class="col-md-6">
+                                <div class="float-input-group">
+                                    <input type="text" class="float-input" id="phone" name="phone"
+                                        th:value="${accountInfo.phone}" placeholder=" ">
+                                    <label for="phone" class="float-label">Số điện thoại</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 d-flex align-items-center justify-content-between">
+                            <span class="text-muted small"><i class="fa fa-info-circle me-1"></i> Lần cập nhật cuối:
+                                24/01/2026</span>
+                            <button type="submit" class="btn-super">
+                                Lưu thay đổi <i class="fa fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // JS features
+
+    </script>
+</body>
+
+</html>

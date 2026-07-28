@@ -31,35 +31,63 @@ public class VoucherApiController {
     @Autowired
     private MembershipRankRepository rankRepo;
 
-    // 1. LẤY DANH SÁCH VOUCHER KHẢ DỤNG CHO USER KHI ĐẶT HÀNG
+    // 1. LẤY DANH SÁCH VOUCHER KHẢ DỤNG CHO USER KHI ĐẶT HÀNG / XEM DANH SÁCH
     @GetMapping
-    public ResponseEntity<?> getAvailableVouchers(HttpSession session) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> account = (Map<String, Object>) session.getAttribute("account");
-        
-        int rankId = 1; // Mặc định là hạng Đồng/Mới (id = 1)
-        if (account != null) {
-            Long accountId = ((Number) account.get("id")).longValue();
-            Integer dbRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
-            if (dbRankId != null) {
-                rankId = dbRankId;
-            }
-        }
-
-        // Lấy tất cả Voucher hoạt động và phù hợp với thứ hạng thành viên
-        String sql = "SELECT DISTINCT v.id, v.code, v.discount_value, v.discount_type, v.max_discount, " +
-                "v.min_order_value, v.start_date, v.end_date, v.quantity " +
-                "FROM vouchers v " +
-                "LEFT JOIN voucher_membership_ranks vmr ON v.id = vmr.voucher_id " +
-                "WHERE v.status = 1 AND v.quantity > 0 " +
-                "AND (v.start_date IS NULL OR GETDATE() >= v.start_date) " +
-                "AND (v.end_date IS NULL OR GETDATE() <= v.end_date) " +
-                "AND (vmr.rank_id IS NULL OR vmr.rank_id = ?)";
-
+    public ResponseEntity<?> getAvailableVouchers(
+            HttpSession session,
+            @RequestParam(required = false) Integer rankId,
+            @RequestParam(required = false) Long accountId) {
         try {
-            List<Map<String, Object>> vouchers = jdbc.queryForList(sql, rankId);
+            StringBuilder sql = new StringBuilder(
+                    "SELECT DISTINCT v.id, v.code, v.discount_value, v.discount_type, v.max_discount, " +
+                    "v.min_order_value, v.start_date, v.end_date, v.quantity, v.status, " +
+                    "(SELECT TOP 1 mr.rank_name FROM voucher_membership_ranks vmr JOIN membership_ranks mr ON vmr.rank_id = mr.id WHERE vmr.voucher_id = v.id) as rank_name, " +
+                    "(SELECT TOP 1 mr.min_points FROM voucher_membership_ranks vmr JOIN membership_ranks mr ON vmr.rank_id = mr.id WHERE vmr.voucher_id = v.id) as min_points " +
+                    "FROM vouchers v " +
+                    "WHERE (v.status IS NULL OR v.status = 1) " +
+                    "AND (v.quantity IS NULL OR v.quantity > 0) " +
+                    "AND (v.start_date IS NULL OR GETDATE() >= v.start_date) " +
+                    "AND (v.end_date IS NULL OR GETDATE() <= v.end_date) ");
+
+            List<Object> params = new java.util.ArrayList<>();
+            Integer currentRankId = rankId;
+            if (accountId != null) {
+                try {
+                    Integer totalPoints = jdbc.queryForObject("SELECT points FROM accounts WHERE id = ?", Integer.class, accountId);
+                    if (totalPoints != null) {
+                        List<Map<String, Object>> ranks = jdbc.queryForList("SELECT id, min_points FROM membership_ranks ORDER BY min_points DESC");
+                        for (Map<String, Object> r : ranks) {
+                            if (totalPoints >= ((Number) r.get("min_points")).intValue()) {
+                                currentRankId = ((Number) r.get("id")).intValue();
+                                break;
+                            }
+                        }
+                    }
+                    if (currentRankId == null) {
+                        currentRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error calculating rank in getAvailableVouchers: " + e.getMessage());
+                }
+            }
+
+            if (currentRankId != null) {
+                sql.append("AND (NOT EXISTS (SELECT 1 FROM voucher_membership_ranks vmr WHERE vmr.voucher_id = v.id) " +
+                           "OR EXISTS (SELECT 1 FROM voucher_membership_ranks vmr WHERE vmr.voucher_id = v.id AND vmr.rank_id = ?)) ");
+                params.add(currentRankId);
+            }
+
+            if (accountId != null) {
+                sql.append("AND (v.user_usage_limit IS NULL OR v.user_usage_limit <= 0 OR " +
+                        "(SELECT COUNT(*) FROM voucher_usages vu WHERE vu.voucher_id = v.id AND vu.user_id = ?) < v.user_usage_limit) ");
+                params.add(accountId);
+            }
+            sql.append("ORDER BY v.id DESC");
+
+            List<Map<String, Object>> vouchers = jdbc.queryForList(sql.toString(), params.toArray());
             return ResponseEntity.ok(Map.of("success", true, "vouchers", vouchers));
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Lỗi lấy danh sách voucher: " + e.getMessage()));
         }

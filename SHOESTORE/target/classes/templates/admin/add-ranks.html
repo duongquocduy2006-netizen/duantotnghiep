@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Thêm Hạng Thành Viên | ShoeStore Professional</title>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Poppins:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --bg-body: #050505;
+            --bg-card: #121212;
+            --accent-red: #e50914;
+            --accent-cyan: #00f2ff;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --radius: 6px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-size: 14px;
+            overflow-x: hidden;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        .font-oswald {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .admin-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            margin-left: 260px;
+            padding: 30px 40px;
+            background-image: radial-gradient(circle at 80% 10%, rgba(0, 242, 255, 0.05) 0%, transparent 40%);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 30px;
+            margin-top: 20px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .sub-title {
+            font-size: 13px;
+            color: var(--accent-cyan);
+            font-weight: 600;
+            letter-spacing: 2px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .card-form {
+            background: var(--bg-card);
+            padding: 40px;
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .form-header {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 20px;
+        }
+
+        .form-header h2 {
+            font-size: 20px;
+            color: var(--text-main);
+            margin-bottom: 5px;
+        }
+
+        .form-header p {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 15px;
+            background: #050505;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #fff;
+            outline: none;
+            transition: 0.3s;
+            font-family: 'Poppins';
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 40px;
+        }
+
+        .btn-neon {
+            background: var(--accent-cyan);
+            color: #000;
+            border: none;
+            padding: 14px 30px;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 15px;
+            flex: 1;
+        }
+
+        .btn-neon:hover {
+            background: #fff;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
+        }
+
+        .btn-back {
+            background: transparent;
+            color: #fff;
+            border: 1px solid #333;
+            padding: 14px 30px;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            border-radius: 4px;
+            flex: 1;
+        }
+
+        .btn-back:hover {
+            border-color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .alert-success {
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            padding: 15px 20px;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            max-width: 800px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-wrapper">
+        <aside th:replace="~{admin/fragments/sidebar :: sidebar}"></aside>
+        <div class="main-content">
+            <header th:replace="~{admin/fragments/header :: header}"></header>
+
+            <div class="page-header">
+                <div>
+                    <span class="sub-title"><i class="bi bi-star"></i> MEMBERSHIP</span>
+                    <h1 class="page-title font-oswald"
+                        th:text="${rank.id == null ? 'THÊM HẠNG MỚI' : 'CHỈNH SỬA HẠNG'}">THÊM HẠNG MỚI</h1>
+                </div>
+            </div>
+
+            <div th:if="${message}" class="alert-success">
+                <i class="bi bi-check-circle-fill"></i> <span th:text="${message}"></span>
+            </div>
+
+            <div class="card-form">
+                <div class="form-header">
+                    <h2 class="font-oswald">Thông Tin Hạng Thành Viên</h2>
+                    <p>Thiết lập tên hạng và ngưỡng điểm để đạt được hạng này.</p>
+                </div>
+
+                <form th:action="${rank.id == null ? '/admin/ranks/add' : '/admin/ranks/edit/' + rank.id}"
+                    th:object="${rank}" method="post">
+                    <div class="form-group">
+                        <label><i class="bi bi-tag"></i> Tên hạng thành viên</label>
+                        <input type="text" th:field="*{rankName}" class="form-control"
+                            placeholder="Ví dụ: Đồng, Bạc, Vàng, Kim Cương..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="bi bi-lightning"></i> Ngưỡng điểm tối thiểu</label>
+                        <input type="number" th:field="*{minPoints}" class="form-control"
+                            placeholder="Ví dụ: 0, 5000, 10000..." required min="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="bi bi-palette"></i> Màu sắc hiển thị (Mã màu Hex)</label>
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <input type="color" th:field="*{colorCode}" class="form-control"
+                                style="width: 80px; padding: 5px; height: 50px; cursor: pointer;" id="colorPicker">
+                            <input type="text" th:field="*{colorCode}" class="form-control" placeholder="#000000"
+                                id="colorText" style="flex: 1;" maxlength="7">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Xem trước Badge</label>
+                        <div
+                            style="padding: 20px; background: rgba(255,255,255,0.03); border: 1px dashed #444; border-radius: 4px; display: flex; justify-content: center;">
+                            <span id="badgePreview" class="tier-badge"
+                                style="padding: 6px 15px; border-radius: 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; border: 2px solid; display: inline-flex; align-items: center; gap: 8px;">
+                                <i class="bi bi-star-fill"></i>
+                                <span id="namePreview"
+                                    th:text="${rank.rankName != null ? rank.rankName : 'Tên Hạng'}">Tên Hạng</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <script>
+                        const colorPicker = document.getElementById('colorPicker');
+                        const colorText = document.getElementById('colorText');
+                        const badgePreview = document.getElementById('badgePreview');
+                        const rankNameInput = document.querySelector('input[name="rankName"]');
+                        const namePreview = document.getElementById('namePreview');
+
+                        function updatePreview() {
+                            const color = colorPicker.value;
+                            colorText.value = color.toUpperCase();
+                            badgePreview.style.borderColor = color;
+                            badgePreview.style.color = color;
+                            badgePreview.style.backgroundColor = color + '1A'; // 10% opacity
+                            namePreview.innerText = rankNameInput.value || 'Tên Hạng';
+                        }
+
+                        colorPicker.addEventListener('input', updatePreview);
+                        colorText.addEventListener('input', (e) => {
+                            colorPicker.value = e.target.value;
+                            updatePreview();
+                        });
+                        rankNameInput.addEventListener('input', updatePreview);
+
+                        // Initial color if empty
+                        if (!colorPicker.value || colorPicker.value === '#000000') {
+                            colorPicker.value = '#94A3B8';
+                        }
+                        updatePreview();
+                    </script>
+
+                    <div class="btn-group">
+                        <a th:href="@{/admin/ranks}" class="btn-back">
+                            <i class="bi bi-arrow-left"></i> QUAY LẠI
+                        </a>
+                        <button type="submit" class="btn-neon">
+                            <i class="bi bi-save"></i> LƯU THÔNG TIN
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

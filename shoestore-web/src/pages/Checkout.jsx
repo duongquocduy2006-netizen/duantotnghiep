@@ -855,12 +855,22 @@ const Checkout = () => {
                                     </div>
                                     <div className={`payment-option ${paymentMethod === 'BANK' ? 'active' : ''}`} onClick={() => setPaymentMethod('BANK')}>
                                         <input type="radio" name="paymentMethod" value="BANK" checked={paymentMethod === 'BANK'} readOnly style={{ display: 'none' }} />
-                                        <i className="fa fa-building-columns fa-lg text-primary"></i>
+                                        <i className="fa fa-qrcode fa-lg text-primary"></i>
                                         <div>
-                                            <div className="fw-bold">Chuyển khoản ngân hàng</div>
-                                            <div className="small text-muted">Thanh toán nhanh qua QR Code</div>
+                                            <div className="fw-bold">Chuyển khoản QR (PayOS)</div>
+                                            <div className="small text-muted">Quét mã tự động & Bảo mật tuyệt đối</div>
                                         </div>
                                     </div>
+                                    {paymentMethod === 'BANK' && (
+                                        <div className="mt-3 p-3 rounded" style={{ backgroundColor: 'rgba(13, 110, 253, 0.05)', border: '1px dashed #0d6efd', fontSize: '13px' }}>
+                                            <div className="fw-bold text-primary mb-1"><i className="fa-solid fa-shield-halved me-1"></i> CỔNG THANH TOÁN TỰ ĐỘNG PAYOS</div>
+                                            <ul className="mb-0 ps-3 text-muted" style={{ lineHeight: '1.6' }}>
+                                                <li><b>Quét mã tự động:</b> Không cần nhập số tài khoản hay số tiền, hệ thống tự động nhận diện đơn hàng.</li>
+                                                <li><b>Hỗ trợ:</b> Tất cả Ngân hàng & MoMo, ZaloPay, VietQR.</li>
+                                                <li><b>Lưu ý:</b> Sau khi nhấn <b>Xác nhận đặt hàng</b>, hệ thống sẽ mở cổng thanh toán PayOS để bạn quét mã QR.</li>
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
