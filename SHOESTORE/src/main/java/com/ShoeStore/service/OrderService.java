@@ -65,6 +65,11 @@ public class OrderService {
     }
 
     public void updateOrderStatus(String orderCode, int newStatus, String cancelReason) {
+        // Khi admin chuyển sang "Đã giao" (5) → tự động chuyển thẳng sang "Thành công" (3)
+        if (newStatus == 5) {
+            newStatus = 3;
+        }
+
         // 1. Lấy trạng thái cũ và thông tin đơn hàng trước khi update
         String checkSql = "SELECT status, user_id, final_amount FROM orders WHERE order_code = ?";
         java.util.Map<String, Object> order = jdbc.queryForMap(checkSql, orderCode);

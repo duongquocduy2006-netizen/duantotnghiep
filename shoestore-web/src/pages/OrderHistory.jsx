@@ -104,7 +104,7 @@ const OrderHistory = () => {
             2: { cls: 'badge-luxury badge-info-lux',    icon: 'fa-truck-fast',    text: 'Đang giao' },
             3: { cls: 'badge-luxury badge-success-lux', icon: 'fa-circle-check',  text: 'Thành công' },
             4: { cls: 'badge-luxury badge-danger-lux',  icon: 'fa-circle-xmark',  text: 'Đã hủy' },
-            5: { cls: 'badge-luxury badge-warning-lux', icon: 'fa-hourglass-half',text: 'Chờ hoàn tất' },
+            5: { cls: 'badge-luxury badge-info-lux',    icon: 'fa-box-circle-check', text: 'Đã giao' },
         };
         return map[status] || { cls: 'badge-luxury', icon: 'fa-circle', text: 'Không rõ' };
     };
