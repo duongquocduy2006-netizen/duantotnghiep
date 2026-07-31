@@ -315,6 +315,17 @@ const AdminProductForm = () => {
         }
     };
 
+    const handleClearAiBasicInfo = () => {
+        if (window.confirm("Bạn có chắc chắn muốn xóa Tên sản phẩm và Mô tả chi tiết do AI vừa tạo ra không?")) {
+            setProduct(prev => ({
+                ...prev,
+                productName: '',
+                description: ''
+            }));
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xóa thông tin Tên & Mô tả sản phẩm.' }));
+        }
+    };
+
     // Tag-input: selected size/color names
     const [selectedSizes, setSelectedSizes] = useState([]);
     const [selectedColors, setSelectedColors] = useState([]);
@@ -804,7 +815,58 @@ const AdminProductForm = () => {
                     <div className="form-grid">
                         <div className="left-col">
                             <div className="card-custom">
-                                <h3 className="card-custom-title font-oswald"><i className="bi bi-info-circle"></i> THÔNG TIN CƠ BẢN</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
+                                    <h3 className="card-custom-title font-oswald" style={{ margin: 0 }}>
+                                        <i className="bi bi-info-circle"></i> THÔNG TIN CƠ BẢN
+                                    </h3>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <button
+                                            type="button"
+                                            className="btn-ai-re-extract"
+                                            onClick={handleGenerateAiDescription}
+                                            disabled={generatingDesc || aiAnalyzing}
+                                            title="Bấm để AI phân tích tạo lại Tên & Mô tả chi tiết"
+                                            style={{
+                                                background: '#f3e8ff',
+                                                color: '#7c3aed',
+                                                border: '1px solid #d8b4fe',
+                                                borderRadius: '8px',
+                                                padding: '6px 14px',
+                                                fontSize: '12px',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <i className="bi bi-arrow-clockwise"></i> TẠO LẠI AI
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn-ai-clear-info"
+                                            onClick={handleClearAiBasicInfo}
+                                            title="Bấm để xóa sạch Tên sản phẩm và Mô tả chi tiết vừa tạo"
+                                            style={{
+                                                background: '#fef2f2',
+                                                color: '#ef4444',
+                                                border: '1px solid #fca5a5',
+                                                borderRadius: '8px',
+                                                padding: '6px 14px',
+                                                fontSize: '12px',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <i className="bi bi-trash3"></i> XÓA THÔNG TIN AI
+                                        </button>
+                                    </div>
+                                </div>
                                 <div className="form-group">
                                     <label className="form-label">Tên sản phẩm *</label>
                                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
