@@ -194,7 +194,7 @@ const OrderDetail = () => {
         switch(status) {
             case 1: return { class: 'wait', icon: 'fa-clock', text: 'Chờ duyệt' };
             case 2: return { class: 'shipping', icon: 'fa-truck-fast', text: 'Đang giao' };
-            case 5: return { class: 'shipping', icon: 'fa-box-open', text: 'Chờ hoàn tất' };
+            case 5: return { class: 'shipping', icon: 'fa-box-open', text: 'Đã giao' };
             case 3: return { class: 'done', icon: 'fa-circle-check', text: 'Thành công' };
             case 4: return { class: 'cancel', icon: 'fa-circle-xmark', text: 'Đã hủy' };
             default: return { class: '', icon: 'fa-circle', text: 'Không rõ' };
@@ -205,7 +205,7 @@ const OrderDetail = () => {
     let progressWidth = '0%';
     if (order.status >= 2 && order.status !== 4) progressWidth = '25%';
     if (order.status >= 5 && order.status !== 4) progressWidth = '50%';
-    if (order.status === 3) progressWidth = '75%';
+    if (order.status === 3) progressWidth = '100%';
 
     return (
         <Layout>
@@ -318,7 +318,7 @@ const OrderDetail = () => {
                                             </div>
                                             <div className={`od-step ${order.status >= 5 ? 'completed' : ''}`}>
                                                 <div className="od-step-icon"><i className="fa-solid fa-box-open"></i></div>
-                                                <div className="od-step-label">Đã nhận</div>
+                                                <div className="od-step-label">Đã giao</div>
                                             </div>
                                             <div className={`od-step ${order.status === 3 ? 'completed' : ''}`}>
                                                 <div className="od-step-icon"><i className="fa-solid fa-check-double"></i></div>
@@ -440,7 +440,7 @@ const OrderDetail = () => {
                                     </div>
 
                                     {/* Actions */}
-                                    {(order.status === 1 || order.status === 2 || order.status === 3) && (
+                                    {(order.status === 1 || order.status === 2 || order.status === 3 || order.status === 5) && (
                                         <div className="od-actions d-flex justify-content-end gap-2 pt-3" style={{borderTop: '1px solid #f1f5f9'}}>
                                             {order.status === 1 && (
                                                 <button onClick={(e) => { e.preventDefault(); triggerCancel(order.order_code); }} className="btn-outline-luxury text-danger" style={{border: '1px solid #dc3545', background: 'transparent', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600'}}>
@@ -450,6 +450,11 @@ const OrderDetail = () => {
                                             {order.status === 2 && (
                                                 <button onClick={triggerConfirm} className="btn-super" style={{padding: '10px 20px', fontSize: '13px', borderRadius: '8px'}}>
                                                     <i className="fa-solid fa-box-open"></i> Đã nhận được hàng
+                                                </button>
+                                            )}
+                                            {order.status === 5 && (
+                                                <button onClick={triggerConfirm} className="btn-super" style={{padding: '10px 20px', fontSize: '13px', borderRadius: '8px'}}>
+                                                    <i className="fa-solid fa-circle-check"></i> Xác nhận đã nhận hàng
                                                 </button>
                                             )}
                                             {order.status === 3 && (

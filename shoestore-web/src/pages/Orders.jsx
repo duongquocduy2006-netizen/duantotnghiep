@@ -101,7 +101,7 @@ const Orders = () => {
         if (status === 2) return { cls: 'badge-luxury badge-info-lux', icon: 'fa-truck-fast', text: 'Đang giao' };
         if (status === 3) return { cls: 'badge-luxury badge-success-lux', icon: 'fa-circle-check', text: 'Thành công' };
         if (status === 4) return { cls: 'badge-luxury badge-danger-lux', icon: 'fa-circle-xmark', text: 'Đã hủy' };
-        if (status === 5) return { cls: 'badge-luxury badge-warning-lux', icon: 'fa-hourglass-half', text: 'Chờ hoàn tất' };
+        if (status === 5) return { cls: 'badge-luxury badge-info-lux', icon: 'fa-box-circle-check', text: 'Đã giao' };
         return { cls: 'badge-luxury', icon: 'fa-circle', text: 'Không rõ' };
     };
 
@@ -413,6 +413,16 @@ const Orders = () => {
                                                                     onClick={(e) => { e.preventDefault(); triggerConfirm(order.order_code); }}
                                                                 >
                                                                     <i className="fa-solid fa-box-open me-1"></i> Đã nhận hàng
+                                                                </button>
+                                                            )}
+                                                            {order.status === 5 && (
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn-super"
+                                                                    style={{padding: '8px 16px', fontSize: '13px'}}
+                                                                    onClick={(e) => { e.preventDefault(); triggerConfirm(order.order_code); }}
+                                                                >
+                                                                    <i className="fa-solid fa-circle-check me-1"></i> Xác nhận đã nhận
                                                                 </button>
                                                             )}
                                                         </div>

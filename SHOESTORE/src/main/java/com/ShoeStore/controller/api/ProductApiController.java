@@ -49,6 +49,31 @@ public class ProductApiController {
     @Autowired
     private com.ShoeStore.service.FlashSaleService flashSaleService;
 
+    @Autowired
+    private com.ShoeStore.service.impl.GeminiVisionService geminiVisionService;
+
+    // 0. AI VISION AUTO-EXTRACT PRODUCT DETAILS
+    @PostMapping("/ai-extract")
+    public ResponseEntity<?> extractProductInfoFromImage(@RequestBody Map<String, String> payload) {
+        try {
+            String imageBase64 = payload.get("imageBase64");
+            if (imageBase64 == null || imageBase64.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu dữ liệu ảnh!"));
+            }
+
+            Map<String, Object> result = geminiVisionService.extractProductInfoFromImage(imageBase64);
+            if (Boolean.TRUE.equals(result.get("success"))) {
+                return ResponseEntity.ok(result);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi nhận diện AI: " + e.getMessage()));
+        }
+    }
+
     // 1. LẤY DANH SÁCH SẢN PHẨM
     @GetMapping
     public ResponseEntity<?> getAllProducts() {
@@ -172,7 +197,7 @@ public class ProductApiController {
             vMap.put("sizeId", v.getSize() != null ? v.getSize().getId() : null);
             vMap.put("sizeName", v.getSize() != null ? v.getSize().getSizeName() : "");
             vMap.put("colorId", v.getColor() != null ? v.getColor().getId() : null);
-            vMap.put("colorName", v.getColor() != null ? v.getColor().getColorName() : "");
+            vMap.put("colorName", v.getColor() != null ? fixColorName(v.getColor().getColorName()) : "");
             vMap.put("price", v.getPrice());
             vMap.put("quantity", v.getQuantity());
             return vMap;
@@ -212,7 +237,7 @@ public class ProductApiController {
         List<Map<String, Object>> colors = colorRepository.findAll().stream().map(c -> {
             Map<String, Object> cMap = new HashMap<>();
             cMap.put("id", c.getId());
-            cMap.put("colorName", c.getColorName());
+            cMap.put("colorName", fixColorName(c.getColorName()));
             return cMap;
         }).collect(Collectors.toList());
 
@@ -376,15 +401,65 @@ public class ProductApiController {
             product.setDescription(description);
             product.setStatus(status != null ? status : 1);
 
+            // Auto-ensure Brand exists in brands table for filters & SQL queries
+            if (brandName != null && !brandName.trim().isEmpty()) {
+                String bNameTrim = brandName.trim();
+                boolean exists = brandRepository.findAll().stream()
+                        .anyMatch(b -> b.getName() != null && b.getName().equalsIgnoreCase(bNameTrim));
+                if (!exists) {
+                    Brand newB = new Brand();
+                    newB.setName(bNameTrim);
+                    newB.setActive(true);
+                    brandRepository.save(newB);
+                }
+            }
+
+            // Auto-assign Category
             if (categoryId != null) {
                 Category cat = categoryRepository.findById(categoryId).orElse(null);
                 product.setCategory(cat);
+            } else {
+                List<Category> allCats = categoryRepository.findAll();
+                if (!allCats.isEmpty()) {
+                    product.setCategory(allCats.get(0));
+                }
             }
 
             Product savedProduct = productRepository.save(product);
 
-            // Xử lý lưu ảnh Base64
-            if (imageBase64 != null && !imageBase64.isEmpty()) {
+            // Xử lý lưu danh sách hoặc 1 ảnh Base64
+            @SuppressWarnings("unchecked")
+            List<String> imagesBase64 = (List<String>) payload.get("imagesBase64");
+            if (imagesBase64 != null && !imagesBase64.isEmpty()) {
+                String uploadDir = System.getProperty("user.dir") + "/uploads/";
+                File dir = new File(uploadDir);
+                if (!dir.exists()) {
+                    dir.mkdirs();
+                }
+
+                for (int i = 0; i < imagesBase64.size(); i++) {
+                    String b64 = imagesBase64.get(i);
+                    if (b64 == null || b64.trim().isEmpty()) continue;
+                    try {
+                        String base64Data = b64.contains(",") ? b64.split(",")[1] : b64;
+                        byte[] decodedBytes = Base64.getDecoder().decode(base64Data);
+                        String fileName = UUID.randomUUID().toString() + ".jpg";
+
+                        String filePath = uploadDir + fileName;
+                        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                            fos.write(decodedBytes);
+                        }
+
+                        ProductImage img = new ProductImage();
+                        img.setProduct(savedProduct);
+                        img.setImageUrl(fileName);
+                        img.setIsPrimary(i == 0); // Ảnh 1 làm Ảnh chính!
+                        productImageRepository.save(img);
+                    } catch (Exception imgErr) {
+                        System.err.println("Lỗi lưu ảnh thứ " + (i + 1) + ": " + imgErr.getMessage());
+                    }
+                }
+            } else if (imageBase64 != null && !imageBase64.isEmpty()) {
                 String base64Data = imageBase64.contains(",") ? imageBase64.split(",")[1] : imageBase64;
                 byte[] decodedBytes = Base64.getDecoder().decode(base64Data);
                 String fileName = UUID.randomUUID().toString() + ".jpg";
@@ -870,5 +945,32 @@ public class ProductApiController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Lỗi tải sản phẩm cửa hàng: " + e.getMessage()));
         }
+    }
+
+    private String fixColorName(String raw) {
+        if (raw == null) return "";
+        String clean = raw.trim();
+        String lower = clean.toLowerCase();
+        switch (lower) {
+            case "black": return "Đen";
+            case "white": return "Trắng";
+            case "red": return "Đỏ";
+            case "blue": return "Xanh dương";
+            case "green": return "Xanh lá";
+            case "yellow": return "Vàng";
+            case "pink": return "Hồng";
+            case "grey":
+            case "gray": return "Xám";
+            case "brown": return "Nâu";
+            case "navy": return "Xanh navy";
+            case "purple": return "Tím";
+            case "orange": return "Cam";
+            case "beige": return "Kem";
+        }
+        return clean.replace("Tr?ng", "Trắng")
+                    .replace("Đ?", "Đỏ")
+                    .replace("Xanh l?", "Xanh lá")
+                    .replace("V?ng", "Vàng")
+                    .replace("H?ng", "Hồng");
     }
 }

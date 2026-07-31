@@ -72,12 +72,12 @@ public class OrderService {
         Long userId = ((Number) order.get("user_id")).longValue();
         double finalAmount = ((Number) order.get("final_amount")).doubleValue();
 
-        // 2. Cập nhật trạng thái mới (kèm lý do hủy nếu có)
+        // 2. Cập nhật trạng thái mới (kèm lý do hủy nếu có) + luôn cập nhật updated_at
         if (newStatus == 4 && cancelReason != null && !cancelReason.trim().isEmpty()) {
-            jdbc.update("UPDATE orders SET status = ?, cancel_reason = ? WHERE order_code = ?",
+            jdbc.update("UPDATE orders SET status = ?, cancel_reason = ?, updated_at = GETDATE() WHERE order_code = ?",
                     newStatus, cancelReason.trim(), orderCode);
         } else {
-            jdbc.update("UPDATE orders SET status = ? WHERE order_code = ?", newStatus, orderCode);
+            jdbc.update("UPDATE orders SET status = ?, updated_at = GETDATE() WHERE order_code = ?", newStatus, orderCode);
         }
 
         // 3. Nếu chuyển sang trạng thái "Thành công" (3) và trước đó chưa thành công
@@ -197,8 +197,7 @@ public class OrderService {
     }
 
     public void confirmOrder(String orderCode, Long userId) {
-        // 1. Kiểm tra đơn hàng có thuộc về User này không và đang ở trạng thái Shipping
-        // (2)
+        // 1. Kiểm tra đơn hàng có thuộc về User này không và đang ở trạng thái Đang giao (2) hoặc Đã giao (5)
         String checkSql = "SELECT status, user_id FROM orders WHERE order_code = ?";
         java.util.Map<String, Object> order = jdbc.queryForMap(checkSql, orderCode);
 
@@ -238,6 +237,9 @@ public class OrderService {
         }
 
         if (currentStatus != 1) {
+            if (currentStatus == 2 || currentStatus == 5) {
+                throw new RuntimeException("Đơn hàng đang giao hoặc đã giao không thể hủy!");
+            }
             throw new RuntimeException("Chỉ có thể hủy đơn hàng khi đang ở trạng thái 'Chờ duyệt'.");
         }
 
@@ -259,9 +261,12 @@ public class OrderService {
 
         int currentStatus = ((Number) order.get("status")).intValue();
 
+        // Không cho hủy khi đang giao hoặc đã giao
         if (currentStatus == 2 || currentStatus == 5) {
-            throw new IllegalStateException("Đơn hàng đang giao hoặc đã giao hàng, không được phép hủy đơn!");
+            throw new IllegalStateException("Không thể hủy đơn hàng đang giao hoặc đã giao!");
         }
+
+        // Không cho hủy khi đã hoàn tất hoặc đã hủy rồi
         if (currentStatus == 3 || currentStatus == 4) {
             throw new IllegalStateException("Không thể hủy đơn hàng đã hoàn tất hoặc đã hủy.");
         }

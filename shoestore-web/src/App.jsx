@@ -48,6 +48,7 @@ import ResetPassword from './pages/ResetPassword';
 import OAuth2Redirect from './pages/OAuth2Redirect';
 
 import Chatbox from './components/Chatbox';
+import RoleAccess from './components/RoleAccess';
 
 import './index.css';
 
@@ -97,40 +98,41 @@ function App() {
         <Route path="/verify-otp" element={<VerifyOTP />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/oauth2/redirect" element={<OAuth2Redirect />} />
-
         {/* Shipper Routes */}
-        <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
-        <Route path="/shipper/waiting-orders" element={<ShipperWaitingOrders />} />
-        <Route path="/shipper/shipping-orders" element={<ShipperShippingOrders />} />
-        <Route path="/shipper/completed-orders" element={<ShipperCompletedOrders />} />
-        <Route path="/shipper/earnings" element={<ShipperEarnings />} />
-
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/orders" element={<AdminOrders />} />
-        <Route path="/admin/sale" element={<AdminPOS />} />
-        <Route path="/admin/vouchers" element={<AdminVouchers />} />
-        <Route path="/admin/products" element={<AdminProducts />} />
-        <Route path="/admin/products/create" element={<AdminProductForm />} />
-        <Route path="/admin/products/edit/:id" element={<AdminProductForm />} />
-        <Route path="/admin/products/detail/:id" element={<AdminProductDetail />} />
-
-        <Route path="/admin/customers" element={<AdminCustomers />} />
-        <Route path="/admin/customers/detail/:id" element={<AdminCustomerDetail />} />
-        <Route path="/admin/categories" element={<AdminCategories />} />
-        <Route path="/admin/brands" element={<AdminBrands />} />
-        <Route path="/admin/banners" element={<AdminBanners />} />
-        <Route path="/admin/banners/add" element={<AdminBannerForm />} />
-        <Route path="/admin/banners/edit/:id" element={<AdminBannerForm />} />
-        <Route path="/admin/ranks" element={<AdminRanks />} />
-        <Route path="/admin/ranks/add" element={<AdminRankForm />} />
-        <Route path="/admin/ranks/edit/:id" element={<AdminRankForm />} />
-        <Route path="/admin/flashsales" element={<AdminFlashSales />} />
-        <Route path="/admin/flashsales/create" element={<AdminFlashSaleForm />} />
-        <Route path="/admin/flashsales/edit/:id" element={<AdminFlashSaleForm />} />
-        <Route path="/admin/settings" element={<AdminSettings />} />
-        <Route path="/admin/chat" element={<AdminChat />} />
+        <Route element={<RoleAccess allowedRoles={['shipper']} />}>
+          <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
+          <Route path="/shipper/waiting-orders" element={<ShipperWaitingOrders />} />
+          <Route path="/shipper/shipping-orders" element={<ShipperShippingOrders />} />
+          <Route path="/shipper/completed-orders" element={<ShipperCompletedOrders />} />
+          <Route path="/shipper/earnings" element={<ShipperEarnings />} />
+        </Route>
+        {/* Admin Routes protected */}
+        <Route element={<RoleAccess allowedRoles={['admin']} />}> 
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/orders" element={<AdminOrders />} />
+          <Route path="/admin/sale" element={<AdminPOS />} />
+          <Route path="/admin/vouchers" element={<AdminVouchers />} />
+          <Route path="/admin/products" element={<AdminProducts />} />
+          <Route path="/admin/products/create" element={<AdminProductForm />} />
+          <Route path="/admin/products/edit/:id" element={<AdminProductForm />} />
+          <Route path="/admin/products/detail/:id" element={<AdminProductDetail />} />
+          <Route path="/admin/customers" element={<AdminCustomers />} />
+          <Route path="/admin/customers/detail/:id" element={<AdminCustomerDetail />} />
+          <Route path="/admin/categories" element={<AdminCategories />} />
+          <Route path="/admin/brands" element={<AdminBrands />} />
+          <Route path="/admin/banners" element={<AdminBanners />} />
+          <Route path="/admin/banners/add" element={<AdminBannerForm />} />
+          <Route path="/admin/banners/edit/:id" element={<AdminBannerForm />} />
+          <Route path="/admin/ranks" element={<AdminRanks />} />
+          <Route path="/admin/ranks/add" element={<AdminRankForm />} />
+          <Route path="/admin/ranks/edit/:id" element={<AdminRankForm />} />
+          <Route path="/admin/flashsales" element={<AdminFlashSales />} />
+          <Route path="/admin/flashsales/create" element={<AdminFlashSaleForm />} />
+          <Route path="/admin/flashsales/edit/:id" element={<AdminFlashSaleForm />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route path="/admin/chat" element={<AdminChat />} />
+        </Route>
       </Routes>
     </Router>
   );

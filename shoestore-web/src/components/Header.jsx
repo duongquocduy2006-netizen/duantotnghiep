@@ -168,46 +168,35 @@ const Header = () => {
         if (!file) return;
 
         setIsUploadingImg(true);
-        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đang phân tích hình ảnh bằng AI...' }));
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đang tìm kiếm bằng hình ảnh...' }));
 
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('image', file);
 
         try {
-            const res = await api.post('/api/ai/image-search', formData, {
+            const res = await api.post('/api/image-search', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            if (res.data && (res.data.success || res.status === 200)) {
-                if (res.data.success === false && !res.data.aiResult) {
-                    window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.message || 'Lỗi nhận diện hình ảnh' }));
-                    return;
-                }
-
-                const aiResult = res.data.aiResult || {};
-                const { brand, category } = aiResult;
-
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Phân tích thành công! Đang tìm sản phẩm...' }));
-
-                // Ghép brand + category vào search keyword để Shop tự smart match
-                const searchParts = [brand, category].filter(Boolean);
-                const searchKeyword = searchParts.join(' ').trim();
-
-                if (searchKeyword) {
-                    setSearchQuery(searchKeyword);
-                    navigate(`/shop?search=${encodeURIComponent(searchKeyword)}`);
-                } else {
-                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'AI không nhận diện được thông tin giày.' }));
-                }
+            if (res.data && res.data.success) {
+                const imageUrl = URL.createObjectURL(file);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Tìm thấy ${res.data.count || 0} sản phẩm tương đồng!` }));
+                navigate('/shop', {
+                    state: {
+                        imageSearchProducts: res.data.products || [],
+                        imageSearchUrl: imageUrl
+                    }
+                });
             } else {
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Lỗi nhận diện hình ảnh' }));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Không tìm thấy sản phẩm tương đồng' }));
             }
         } catch (err) {
-            console.error(err);
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Có lỗi xảy ra khi gọi AI nhận diện' }));
+            console.error('❌ Lỗi image search:', err);
+            const msg = err.response?.data?.message || 'Có lỗi xảy ra khi tìm kiếm hình ảnh';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: msg }));
         } finally {
             setIsUploadingImg(false);
-            e.target.value = null; // reset input file
+            e.target.value = null;
         }
     };
 
