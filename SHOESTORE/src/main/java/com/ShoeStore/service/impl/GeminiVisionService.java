@@ -420,7 +420,7 @@ public class GeminiVisionService {
                 + "  \"brandName\": \"Thương hiệu ngắn gọn (ví dụ: Nike, Adidas, Jordan, Puma, Vans, Converse)\",\n"
                 + "  \"categoryName\": \"Loại sản phẩm. Ưu tiên chọn từ danh sách shop: [" + existingCatNames + "]\",\n"
                 + "  \"colorName\": \"Màu sắc chủ đạo bằng Tiếng Việt (ví dụ: Trắng, Đen, Xanh, Đỏ)\",\n"
-                + "  \"description\": \"Đoạn văn mô tả chi tiết, chuyên nghiệp và cuốn hút (BẮT BUỘC ĐỘ DÀI TRÊN 50 KÝ TỰ, từ 3-5 câu) về kiểu dáng, phong cách thời trang và chất liệu cao cấp của đôi giày này.\"\n"
+                + "  \"description\": \"Đoạn văn mô tả chi tiết, chuyên nghiệp, hấp dẫn (BẮT BUỘC ĐỘ DÀI ÍT NHẤT 150 KÝ TỰ, khoảng 4-6 câu dài) về kiểu dáng, phong cách thời trang, công nghệ êm ái và chất liệu cao cấp của đôi giày này.\"\n"
                 + "}\n"
                 + "LƯU Ý QUAN TRỌNG: Chỉ trả về JSON thuần túy, tuyệt đối không bao bọc bởi ```json hoặc bất kỳ ký tự nào khác.");
         parts.add(textPart);
@@ -491,13 +491,13 @@ public class GeminiVisionService {
 
             String promptText = "Bạn là chuyên gia sáng tạo nội dung sản phẩm thời trang cao cấp của cửa hàng ShoeStore.\n"
                     + "Hãy dựa vào tên sản phẩm sau đây: \"" + productName + "\"\n"
-                    + "Tạo ra một đoạn văn mô tả sản phẩm chi tiết, cuốn hút và cao cấp (BẮT BUỘC ĐỘ DÀI TRÊN 50 KÝ TỰ, từ 3 đến 5 câu) về kiểu dáng, phong cách thời thượng và chất liệu êm ái.\n"
+                    + "Tạo ra một đoạn văn mô tả sản phẩm chi tiết, cuốn hút và cao cấp (BẮT BUỘC ĐỘ DÀI ÍT NHẤT 150 KÝ TỰ, khoảng 4 đến 6 câu phong phú) về kiểu dáng, phong cách thời thượng, công nghệ êm ái và chất liệu cao cấp.\n"
                     + "Sau đó, trả về JSON chuẩn DUY NHẤT có cấu trúc:\n"
                     + "{\n"
                     + "  \"productName\": \"" + productName + "\",\n"
                     + "  \"brandName\": \"Thương hiệu dự đoán (VD: Nike, Adidas, Jordan, Puma, Vans, Converse)\",\n"
                     + "  \"categoryName\": \"Loại sản phẩm phù hợp. Chọn từ danh sách: [" + existingCatNames + "]\",\n"
-                    + "  \"description\": \"Đoạn văn mô tả chi tiết trên 50 ký tự về sản phẩm này.\"\n"
+                    + "  \"description\": \"Đoạn văn mô tả chi tiết ít nhất 150 ký tự về sản phẩm này.\"\n"
                     + "}\n"
                     + "Chỉ trả về JSON thuần túy, không bao bọc bởi ```json.";
 
@@ -513,7 +513,7 @@ public class GeminiVisionService {
             if (aiResponseContent == null || aiResponseContent.trim().isEmpty()) {
                 result.put("success", true);
                 result.put("productName", productName);
-                result.put("description", productName + " sở hữu thiết kế thời thượng, phong cách hiện đại kết hợp chất liệu cao cấp giúp mang lại sự êm ái và thoải mái tối đa cho người sử dụng trong mọi hoạt động.");
+                result.put("description", productName + " sở hữu thiết kế thời thượng, phong cách hiện đại kết hợp chất liệu cao cấp mang lại sự êm ái và thoải mái tối đa cho người sử dụng trong mọi hoạt động hàng ngày. Đôi giày là sự lựa chọn hoàn hảo tôn lên cá tính thời trang nổi bật của bạn.");
                 return result;
             }
 
@@ -525,8 +525,8 @@ public class GeminiVisionService {
 
             Map<String, Object> parsed = objectMapper.readValue(cleanJson, Map.class);
             String desc = (String) parsed.getOrDefault("description", "");
-            if (desc == null || desc.trim().length() < 50) {
-                desc = productName + " sở hữu thiết kế thời thượng, phong cách hiện đại kết hợp chất liệu cao cấp giúp mang lại sự êm ái và thoải mái tối đa cho người sử dụng trong mọi hoạt động hàng ngày.";
+            if (desc == null || desc.trim().length() < 150) {
+                desc = (desc != null && !desc.trim().isEmpty() ? desc.trim() + " " : "") + productName + " sở hữu thiết kế thời thượng, phong cách hiện đại kết hợp chất liệu cao cấp giúp mang lại sự êm ái và thoải mái tối đa cho người sử dụng trong mọi hoạt động hàng ngày. Đôi giày là sự lựa chọn hoàn hảo tôn lên cá tính thời trang nổi bật của bạn.";
             }
 
             result.put("success", true);
@@ -539,7 +539,7 @@ public class GeminiVisionService {
             e.printStackTrace();
             result.put("success", true);
             result.put("productName", productName);
-            result.put("description", productName + " sở hữu thiết kế thời thượng, phong cách hiện đại kết hợp chất liệu cao cấp giúp mang lại sự êm ái và thoải mái tối đa cho người sử dụng trong mọi hoạt động.");
+            result.put("description", productName + " sở hữu thiết kế thời thượng, phong cách hiện đại kết hợp chất liệu cao cấp giúp mang lại sự êm ái và thoải mái tối đa cho người sử dụng trong mọi hoạt động hàng ngày. Đôi giày là sự lựa chọn hoàn hảo tôn lên cá tính thời trang nổi bật của bạn.");
             return result;
         }
     }

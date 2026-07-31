@@ -278,9 +278,9 @@ const AdminProductForm = () => {
             if (response.data && response.data.success) {
                 const data = response.data;
                 const rawDesc = data.description || prev.description || '';
-                const finalDesc = rawDesc.trim().length >= 50
+                const finalDesc = rawDesc.trim().length >= 150
                     ? rawDesc
-                    : `${rawDesc ? rawDesc + ' ' : ''}${trimmedName || data.productName || 'Sản phẩm'} sở hữu thiết kế thời thượng, phong cách hiện đại cùng chất liệu cao cấp mang lại sự thoải mái và êm ái tối đa cho người sử dụng trong mọi hoạt động.`;
+                    : `${rawDesc ? rawDesc + ' ' : ''}${trimmedName || data.productName || 'Sản phẩm'} sở hữu thiết kế thời thượng, phong cách hiện đại cùng chất liệu cao cấp mang lại sự thoải mái và êm ái tối đa cho người sử dụng trong mọi hoạt động hàng ngày. Đôi giày là lựa chọn tuyệt vời tôn lên cá tính thời trang nổi bật của bạn.`;
 
                 setProduct(prev => ({
                     ...prev,
