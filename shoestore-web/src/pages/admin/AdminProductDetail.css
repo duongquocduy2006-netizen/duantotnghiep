@@ -493,6 +493,45 @@
 .row-btn.del { color: #ef4444; }
 .row-btn.del:hover { background: #ef4444; color: #fff; border-color: #ef4444; transform: translateY(-2px); }
 
+/* ── Ultra Soft Delicate Pastel Pink Editing Row Highlight ──────────── */
+.vt tr.editing-row td {
+    background: #fff0f3 !important;
+    border-top: 1px solid #ffe4e6 !important;
+    border-bottom: 1px solid #ffe4e6 !important;
+    color: #4c0519 !important;
+    box-shadow: 0 2px 8px rgba(244, 63, 94, 0.06);
+    transition: all 0.25s ease;
+}
+
+.vt tr.editing-row td:first-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-left: 3.5px solid #fb7185 !important;
+}
+
+.vt tr.editing-row td:last-child {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-right: 1px solid #ffe4e6 !important;
+}
+
+.vt tr.editing-row strong {
+    color: #e11d48 !important;
+}
+
+.vt tr.editing-row .price-cell {
+    color: #e11d48 !important;
+    font-weight: 700;
+}
+
+.vt tr.editing-row .row-btn.edit.active {
+    background: #ffe4e6 !important;
+    color: #e11d48 !important;
+    border-color: #fecdd3 !important;
+    box-shadow: 0 2px 8px rgba(225, 29, 72, 0.15);
+    transform: scale(1.05);
+}
+
 /* ── Image Gallery ──────────────────────────────────────────────── */
 .img-grid {
     display: grid;

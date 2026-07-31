@@ -62,7 +62,7 @@ const validateColor = (val) => {
 };
 
 // ─── TagInput Component ──────────────────────────────────────────────────────
-const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, presets = [], validate, hint }) => {
+const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholder, icon, presets = [], validate, hint }) => {
     const [inputVal, setInputVal] = useState("");
     const [editingIdx, setEditingIdx] = useState(null);
     const [editVal, setEditVal] = useState("");
@@ -81,6 +81,21 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, pre
         setInputVal("");
         setError("");
         inputRef.current?.focus();
+    };
+
+    const handleAddAllPresets = () => {
+        presets.forEach(p => {
+            const dup = tags.some(t => t.toLowerCase() === p.toLowerCase());
+            if (!dup) {
+                if (validate) {
+                    const err = validate(p);
+                    if (!err) onAdd(p);
+                } else {
+                    onAdd(p);
+                }
+            }
+        });
+        setError("");
     };
 
     const handleKeyDown = (e) => {
@@ -116,9 +131,61 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, pre
 
     return (
         <div className="tag-input-section">
-            <label className="tag-input-label">
-                {icon && <i className={`bi ${icon}`}></i>} {label}
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                <label className="tag-input-label" style={{ margin: 0 }}>
+                    {icon && <i className={`bi ${icon}`}></i>} {label}
+                </label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                    {presets.length > 0 && (
+                        <button
+                            type="button"
+                            className="btn-tag-add-all"
+                            onClick={handleAddAllPresets}
+                            title="Thêm tất cả các tùy chọn nhanh có sẵn"
+                            style={{
+                                background: '#f3e8ff',
+                                color: '#7c3aed',
+                                border: '1px solid #d8b4fe',
+                                borderRadius: '6px',
+                                padding: '3px 10px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            <i className="bi bi-check-all"></i> THÊM TẤT CẢ
+                        </button>
+                    )}
+                    {tags.length > 0 && onClearAll && (
+                        <button
+                            type="button"
+                            className="btn-tag-clear-all"
+                            onClick={onClearAll}
+                            title="Xóa toàn bộ các tùy chọn đã chọn"
+                            style={{
+                                background: '#fef2f2',
+                                color: '#ef4444',
+                                border: '1px solid #fca5a5',
+                                borderRadius: '6px',
+                                padding: '3px 10px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            <i className="bi bi-trash"></i> XÓA TẤT CẢ
+                        </button>
+                    )}
+                </div>
+            </div>
 
             {/* Hint text */}
             {hint && <p className="tag-hint">{hint}</p>}
@@ -246,9 +313,85 @@ const AdminProductForm = () => {
 
     // AI Vision states
     const [aiAnalyzing, setAiAnalyzing] = useState(false);
+    const [generatingDesc, setGeneratingDesc] = useState(false);
     const [aiSuccessMsg, setAiSuccessMsg] = useState('');
     const [aiImageBase64, setAiImageBase64] = useState('');
     const [aiImagesBase64List, setAiImagesBase64List] = useState([]);
+
+    const handleGenerateAiDescription = async () => {
+        let firstBase64 = aiImageBase64;
+        if (!firstBase64 && images.length > 0) {
+            const url = typeof images[0] === 'string' ? images[0] : images[0]?.url;
+            if (url && url.startsWith('data:')) firstBase64 = url;
+        }
+        if (!firstBase64 && tempImages.length > 0) {
+            firstBase64 = tempImages[0].imageBase64 || tempImages[0].url;
+        }
+
+        const trimmedName = product.productName ? product.productName.trim() : '';
+
+        if (!firstBase64 && !trimmedName) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng nhập Tên sản phẩm hoặc Tải lên ít nhất 1 ảnh sản phẩm để AI Vision tạo mô tả.' }));
+            return;
+        }
+
+        try {
+            setGeneratingDesc(true);
+            const response = await api.post('/api/products/ai-extract', {
+                imageBase64: firstBase64 || null,
+                productName: trimmedName || null
+            });
+
+            if (response.data && response.data.success) {
+                const data = response.data;
+                const rawDesc = data.description || '';
+                const wordCount = rawDesc ? rawDesc.trim().split(/\s+/).filter(Boolean).length : 0;
+                const pName = trimmedName || data.productName || 'Sản phẩm';
+                const finalDesc = wordCount >= 100
+                    ? rawDesc
+                    : (rawDesc ? rawDesc.trim() + '\n\n' : '') + `${pName} là biểu tượng thời trang mang phong cách hiện đại và đẳng cấp, được thiết kế tỉ mỉ để đáp ứng nhu cầu thời trang đỉnh cao của giới trẻ năng động. Đôi giày sở hữu phom dáng chuẩn ôm chân tinh tế, kết hợp cùng chất liệu da cao cấp mềm mại mang lại độ bền vượt trội và khả năng chống bám bẩn hiệu quả. Hệ thống đế cao su tự nhiên nguyên khối được trang bị công nghệ đệm khí tiên tiến, giúp giảm chấn tối đa, mang lại cảm giác êm ái, nhẹ nhàng và tự tin trong từng bước di chuyển. Bên cạnh đó, các rãnh bám thông minh dưới mặt đế giúp tăng cường độ ma sát và chống trượt vượt trội trên mọi địa hình. Dễ dàng phối hợp với nhiều kiểu trang phục từ quần Jeans, Jogger năng động cho đến những bộ Outfit đường phố cá tính, ${pName} chắc chắn sẽ là điểm nhấn hoàn hảo khẳng định gu thời trang thời thượng của bạn.`;
+
+                setProduct(prev => ({
+                    ...prev,
+                    productName: prev.productName || data.productName || '',
+                    description: finalDesc,
+                    brandName: prev.brandName || data.brandName || '',
+                    categoryId: prev.categoryId || data.categoryId || ''
+                }));
+
+                if (data.brandName) {
+                    setBrands(prevBrands => {
+                        const exists = prevBrands.some(b => b.brandName && b.brandName.toLowerCase() === data.brandName.toLowerCase());
+                        if (!exists) {
+                            return [{ id: Date.now(), brandName: data.brandName }, ...prevBrands];
+                        }
+                        return prevBrands;
+                    });
+                }
+
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: '✨ AI Vision đã tự động tạo mô tả sản phẩm thành công!' }));
+            } else {
+                alert(response.data?.message || "Không thể tạo mô tả bằng AI.");
+            }
+        } catch (err) {
+            console.error("Lỗi tạo mô tả AI:", err);
+            const errMsg = err.response?.data?.message || err.message || "Lỗi khi kết nối với AI Vision.";
+            alert(errMsg);
+        } finally {
+            setGeneratingDesc(false);
+        }
+    };
+
+    const handleClearAiBasicInfo = () => {
+        if (window.confirm("Bạn có chắc chắn muốn xóa Tên sản phẩm và Mô tả chi tiết do AI vừa tạo ra không?")) {
+            setProduct(prev => ({
+                ...prev,
+                productName: '',
+                description: ''
+            }));
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xóa thông tin Tên & Mô tả sản phẩm.' }));
+        }
+    };
 
     // Tag-input: selected size/color names
     const [selectedSizes, setSelectedSizes] = useState([]);
@@ -494,6 +637,63 @@ const AdminProductForm = () => {
                 }));
                 return [...prev, ...newImgObjs];
             });
+
+            // Tự động phân loại danh mục, thương hiệu, màu sắc, tên và mô tả từ ảnh thủ công
+            if (base64List.length > 0) {
+                try {
+                    setAiAnalyzing(true);
+                    const response = await api.post('/api/products/ai-extract', { imageBase64: base64List[0] });
+                    if (response.data && response.data.success) {
+                        const data = response.data;
+                        const rawDesc = data.description || '';
+                        const wordCount = rawDesc ? rawDesc.trim().split(/\s+/).filter(Boolean).length : 0;
+                        const pName = data.productName || 'Sản phẩm';
+                        const finalDesc = wordCount >= 100
+                            ? rawDesc
+                            : (rawDesc ? rawDesc.trim() + '\n\n' : '') + `${pName} là biểu tượng thời trang mang phong cách hiện đại và đẳng cấp, được thiết kế tỉ mỉ để đáp ứng nhu cầu thời trang đỉnh cao của giới trẻ năng động. Đôi giày sở hữu phom dáng chuẩn ôm chân tinh tế, kết hợp cùng chất liệu da cao cấp mềm mại mang lại độ bền vượt trội và khả năng chống bám bẩn hiệu quả. Hệ thống đế cao su tự nhiên nguyên khối được trang bị công nghệ đệm khí tiên tiến, giúp giảm chấn tối đa, mang lại cảm giác êm ái, nhẹ nhàng và tự tin trong từng bước di chuyển. Bên cạnh đó, các rãnh bám thông minh dưới mặt đế giúp tăng cường độ ma sát và chống trượt vượt trội trên mọi địa hình. Dễ dàng phối hợp với nhiều kiểu trang phục từ quần Jeans, Jogger năng động cho đến những bộ Outfit đường phố cá tính, ${pName} chắc chắn sẽ là điểm nhấn hoàn hảo khẳng định gu thời trang thời thượng của bạn.`;
+
+                        setProduct(prev => ({
+                            ...prev,
+                            productName: prev.productName || data.productName || '',
+                            description: prev.description || finalDesc,
+                            brandName: prev.brandName || data.brandName || '',
+                            categoryId: prev.categoryId || data.categoryId || ''
+                        }));
+
+                        if (data.brandName) {
+                            setBrands(prevBrands => {
+                                const exists = prevBrands.some(b => b.brandName && b.brandName.toLowerCase() === data.brandName.toLowerCase());
+                                if (!exists) {
+                                    return [{ id: Date.now(), brandName: data.brandName }, ...prevBrands];
+                                }
+                                return prevBrands;
+                            });
+                        }
+
+                        if (data.colorName) {
+                            const vnColor = translateColorToVietnamese(data.colorName);
+                            setSelectedColors(prev => {
+                                if (!prev.some(c => c.toLowerCase() === vnColor.toLowerCase())) {
+                                    return [...prev, vnColor];
+                                }
+                                return prev;
+                            });
+                        }
+
+                        if (selectedSizes.length === 0 && sizes.length > 0) {
+                            setSelectedSizes(sizes.map(s => s.sizeName));
+                        }
+
+                        window.dispatchEvent(new CustomEvent('show-toast', {
+                            detail: `✨ AI Vision đã tự động phân loại Danh mục (${data.categoryName || 'Giày'}), Thương hiệu (${data.brandName || ''}) và Màu sắc từ ảnh tải lên!`
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Lỗi AI tự phân loại từ ảnh tải thủ công:", err);
+                } finally {
+                    setAiAnalyzing(false);
+                }
+            }
             return;
         }
 
@@ -739,21 +939,107 @@ const AdminProductForm = () => {
                     <div className="form-grid">
                         <div className="left-col">
                             <div className="card-custom">
-                                <h3 className="card-custom-title font-oswald"><i className="bi bi-info-circle"></i> THÔNG TIN CƠ BẢN</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
+                                    <h3 className="card-custom-title font-oswald" style={{ margin: 0 }}>
+                                        <i className="bi bi-info-circle"></i> THÔNG TIN CƠ BẢN
+                                    </h3>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <button
+                                            type="button"
+                                            className="btn-ai-clear-info"
+                                            onClick={handleClearAiBasicInfo}
+                                            title="Bấm để xóa sạch Tên sản phẩm và Mô tả chi tiết vừa tạo"
+                                            style={{
+                                                background: '#fef2f2',
+                                                color: '#ef4444',
+                                                border: '1px solid #fca5a5',
+                                                borderRadius: '8px',
+                                                padding: '6px 14px',
+                                                fontSize: '12px',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                        >
+                                            <i className="bi bi-trash3"></i> XÓA THÔNG TIN AI
+                                        </button>
+                                    </div>
+                                </div>
                                 <div className="form-group">
                                     <label className="form-label">Tên sản phẩm *</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="VD: Nike Air Force 1"
-                                        required
-                                        value={product.productName}
-                                        onChange={(e) => setProduct({ ...product, productName: e.target.value })}
-                                    />
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="VD: Nike Air Force 1"
+                                            required
+                                            value={product.productName}
+                                            onChange={(e) => setProduct({ ...product, productName: e.target.value })}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn-ai-gen-desc"
+                                            onClick={handleGenerateAiDescription}
+                                            disabled={generatingDesc}
+                                            title="Bấm để tự động tạo mô tả sản phẩm bằng AI Vision"
+                                            style={{
+                                                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                                                color: '#ffffff',
+                                                border: 'none',
+                                                borderRadius: '12px',
+                                                padding: '0 18px',
+                                                height: '46px',
+                                                fontWeight: '700',
+                                                fontSize: '13px',
+                                                whiteSpace: 'nowrap',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                cursor: 'pointer',
+                                                boxShadow: '0 4px 14px rgba(139, 92, 246, 0.35)',
+                                                transition: 'all 0.25s ease'
+                                            }}
+                                        >
+                                            {generatingDesc ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                    ĐANG TẠO MÔ TẢ...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="bi bi-stars" style={{ fontSize: '16px', color: '#fef08a' }}></i> TỰ ĐỘNG TẠO MÔ TẢ AI
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                     {errors.productName && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.productName}</div>}
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Mô tả chi tiết</label>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <label className="form-label mb-0">Mô tả chi tiết</label>
+                                        <button
+                                            type="button"
+                                            onClick={handleGenerateAiDescription}
+                                            disabled={generatingDesc}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: '#8b5cf6',
+                                                fontWeight: '700',
+                                                fontSize: '12px',
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px'
+                                            }}
+                                        >
+                                            <i className="bi bi-magic"></i> {generatingDesc ? "Đang tạo..." : "Tạo bằng AI Vision"}
+                                        </button>
+                                    </div>
                                     <textarea
                                         className="form-control"
                                         placeholder="Chất liệu, công nghệ, thiết kế..."
@@ -779,9 +1065,10 @@ const AdminProductForm = () => {
                                         onAdd={v => setSelectedSizes(p => [...p, v])}
                                         onRemove={i => setSelectedSizes(p => p.filter((_, idx) => idx !== i))}
                                         onEdit={(i, v) => setSelectedSizes(p => p.map((s, idx) => idx === i ? v : s))}
+                                        onClearAll={() => setSelectedSizes([])}
                                         placeholder="Hoặc nhập size thủ công rồi Enter…"
                                         icon="bi-rulers"
-                                        presets={['18','20','22','24','26','28','30','32','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48']}
+                                        presets={['36','37','38','39','40','41','42','43','44','45']}
                                         validate={validateSize}
                                         hint={`Hợp lệ từ ${SIZE_MIN} (trẻ em) đến ${SIZE_MAX} (người lớn). Chỉ nhập số.`}
                                     />
@@ -794,6 +1081,7 @@ const AdminProductForm = () => {
                                         onAdd={v => setSelectedColors(p => [...p, v])}
                                         onRemove={i => setSelectedColors(p => p.filter((_, idx) => idx !== i))}
                                         onEdit={(i, v) => setSelectedColors(p => p.map((c, idx) => idx === i ? v : c))}
+                                        onClearAll={() => setSelectedColors([])}
                                         placeholder="Hoặc nhập tên màu thủ công rồi Enter…"
                                         icon="bi-palette"
                                         presets={['Đen','Trắng','Đỏ','Xanh dương','Xanh lá','Vàng','Hồng','Xám','Nâu','Cam','Tím','Kem','Be']}
@@ -824,6 +1112,80 @@ const AdminProductForm = () => {
                                             {errors.quantity && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.quantity}</div>}
                                         </div>
                                     </div>
+
+                                    {/* LIVE VARIANTS MATRIX PREVIEW TABLE */}
+                                    {selectedSizes.length > 0 && selectedColors.length > 0 && (
+                                        <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px dotted #cbd5e1' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                                                <h4 className="font-oswald" style={{ margin: 0, fontSize: '16px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <i className="bi bi-box-seam" style={{ color: '#8b5cf6' }}></i>
+                                                    DANH SÁCH BIẾN THỂ ({selectedSizes.length * selectedColors.length})
+                                                </h4>
+                                                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                                                    Tự động cập nhật từ <b>{selectedSizes.length} size</b> × <b>{selectedColors.length} màu</b>
+                                                </span>
+                                            </div>
+
+                                            <div className="table-responsive" style={{ background: '#ffffff', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                                <table className="table table-hover align-middle mb-0" style={{ fontSize: '13px' }}>
+                                                    <thead style={{ background: '#f8fafc', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px' }}>
+                                                        <tr>
+                                                            <th style={{ padding: '12px 16px' }}>KÍCH CỠ</th>
+                                                            <th style={{ padding: '12px 16px' }}>MÀU SẮC</th>
+                                                            <th style={{ padding: '12px 16px' }}>GIÁ BÁN</th>
+                                                            <th style={{ padding: '12px 16px' }}>KHO</th>
+                                                            <th style={{ padding: '12px 16px', textAlign: 'center' }}>HÀNH ĐỘNG</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {selectedSizes.map((size) =>
+                                                            selectedColors.map((color) => {
+                                                                const key = `${size}-${color}`;
+                                                                const displayPrice = variant.price ? `${parseInt(variant.price).toLocaleString('vi-VN')} đ` : 'Chưa nhập';
+                                                                const displayQty = variant.quantity ? `${variant.quantity} đôi` : 'Chưa nhập';
+                                                                return (
+                                                                    <tr key={key}>
+                                                                        <td style={{ padding: '12px 16px', fontWeight: '700', color: '#0f172a' }}>
+                                                                            Size {size}
+                                                                        </td>
+                                                                        <td style={{ padding: '12px 16px', color: '#334155' }}>
+                                                                            {color}
+                                                                        </td>
+                                                                        <td style={{ padding: '12px 16px', fontWeight: '700', color: '#2563eb' }}>
+                                                                            {displayPrice}
+                                                                        </td>
+                                                                        <td style={{ padding: '12px 16px' }}>
+                                                                            <span className="badge" style={{ background: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '20px', fontWeight: '700', fontSize: '12px' }}>
+                                                                                {displayQty}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-sm btn-outline-danger"
+                                                                                title="Xóa biến thể này"
+                                                                                onClick={() => {
+                                                                                    // Remove size if it's the only one, or clear combo
+                                                                                    if (selectedSizes.length > 1) {
+                                                                                        setSelectedSizes(p => p.filter(s => s !== size));
+                                                                                    } else {
+                                                                                        setSelectedColors(p => p.filter(c => c !== color));
+                                                                                    }
+                                                                                }}
+                                                                                style={{ borderRadius: '8px', padding: '4px 10px' }}
+                                                                            >
+                                                                                <i className="bi bi-trash"></i>
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -834,12 +1196,40 @@ const AdminProductForm = () => {
 
                                 <div className="gallery-section">
                                     <label className="form-label-header">Hình ảnh hiện tại</label>
-                                    {(id ? images : tempImages).length === 0 ? (
+                                    {images.length === 0 ? (
                                         <p style={{ color: '#555', fontSize: '12px', fontStyle: 'italic', marginBottom: '20px' }}>Chưa có hình ảnh nào cho sản phẩm này.</p>
                                     ) : (
                                         <div className="gallery-grid">
-                                            {(id ? images : tempImages).map((img, idx) => (
-                                                <div key={img.id || idx} className="gallery-item">
+                                            {images.map((img, idx) => (
+                                                <div key={img.id || idx} className="gallery-item" style={{ position: 'relative' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn-delete-x"
+                                                        onClick={() => handleDeleteImage(img.id, idx)}
+                                                        title="Xóa ảnh này"
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: '6px',
+                                                            right: '6px',
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            borderRadius: '50%',
+                                                            background: 'rgba(239, 68, 68, 0.9)',
+                                                            color: '#ffffff',
+                                                            border: 'none',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: 'bold',
+                                                            zIndex: 10,
+                                                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                                                            transition: 'all 0.15s ease'
+                                                        }}
+                                                    >
+                                                        <i className="bi bi-x-lg"></i>
+                                                    </button>
                                                     {img.isPrimary && <span className="badge-primary">ẢNH CHÍNH</span>}
                                                     <img src={getImageUrl(img)} alt="Product" className="img-fluid" />
                                                     <div className="img-footer">

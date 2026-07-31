@@ -215,13 +215,34 @@ const AdminProductDetail = () => {
     const [price, setPrice] = useState("");
     const [quantity, setQuantity] = useState("");
 
+    const sortVariantsByAscendingSize = (varList) => {
+        if (!Array.isArray(varList)) return [];
+        return [...varList].sort((a, b) => {
+            const numA = parseFloat(a.sizeName);
+            const numB = parseFloat(b.sizeName);
+            if (!isNaN(numA) && !isNaN(numB)) {
+                if (numA !== numB) return numA - numB;
+            } else if (!isNaN(numA)) {
+                return -1;
+            } else if (!isNaN(numB)) {
+                return 1;
+            } else if (a.sizeName && b.sizeName) {
+                const comp = a.sizeName.localeCompare(b.sizeName);
+                if (comp !== 0) return comp;
+            }
+            const colorA = translateColorToVietnamese(a.colorName || '');
+            const colorB = translateColorToVietnamese(b.colorName || '');
+            return colorA.localeCompare(colorB);
+        });
+    };
+
     const fetchProductDetails = async () => {
         try {
             setLoading(true);
             const response = await api.get(`/api/products/${id}`);
             if (response.data && response.data.success) {
                 setProduct(response.data.product);
-                setVariants(response.data.variants || []);
+                setVariants(sortVariantsByAscendingSize(response.data.variants || []));
                 setImages(response.data.images || []);
 
                 const uniqueSizesMap = new Map();
@@ -286,7 +307,6 @@ const AdminProductDetail = () => {
         setSelectedColors(v.colorName ? [translateColorToVietnamese(v.colorName)] : []);
         setPrice(v.price || "");
         setQuantity(v.quantity || "");
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleVariantSubmit = async (e) => {
@@ -307,20 +327,46 @@ const AdminProductDetail = () => {
         setSavingVariant(true);
         try {
             if (variantId) {
-                const sizeId = getSizeId(selectedSizes[0]);
-                const colorId = getColorId(selectedColors[0]);
-                const res = await api.post("/api/products/variant/save", {
-                    productId: parseInt(id), variantId,
-                    sizeId, colorId,
-                    newSizeName: sizeId ? "" : selectedSizes[0],
-                    newColorName: colorId ? "" : selectedColors[0],
-                    price: parseFloat(price), quantity: parseInt(quantity)
-                });
-                if (res.data?.success) {
-                    window.dispatchEvent(new CustomEvent('show-toast', { detail: "Cập nhật biến thể thành công!" }));
-                    resetVariantForm();
-                    fetchProductDetails();
+                const totalCombos = selectedSizes.length * selectedColors.length;
+                let qtyPerVariant = parseInt(quantity);
+                if (totalCombos > 1 && parseInt(quantity) >= totalCombos) {
+                    qtyPerVariant = Math.floor(parseInt(quantity) / totalCombos);
                 }
+
+                let isFirst = true;
+                let countSuccess = 0;
+                for (const sz of selectedSizes) {
+                    for (const cl of selectedColors) {
+                        try {
+                            const sizeId = getSizeId(sz);
+                            const colorId = getColorId(cl);
+                            const targetVariantId = isFirst ? variantId : null;
+
+                            const res = await api.post("/api/products/variant/save", {
+                                productId: parseInt(id),
+                                variantId: targetVariantId,
+                                sizeId,
+                                colorId,
+                                newSizeName: sizeId ? "" : sz,
+                                newColorName: colorId ? "" : cl,
+                                price: parseFloat(price),
+                                quantity: qtyPerVariant
+                            });
+                            if (res.data?.success) countSuccess++;
+                            isFirst = false;
+                        } catch (err) {
+                            console.error("Lỗi lưu tách biến thể:", err);
+                        }
+                    }
+                }
+
+                window.dispatchEvent(new CustomEvent('show-toast', {
+                    detail: totalCombos > 1
+                        ? `✨ Đã tự động tách & cập nhật thành công ${countSuccess} biến thể!`
+                        : "Cập nhật biến thể thành công!"
+                }));
+                resetVariantForm();
+                fetchProductDetails();
             } else {
                 let count = 0;
                 for (const sz of selectedSizes) {
@@ -591,30 +637,33 @@ const AdminProductDetail = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {variants.map(v => (
-                                                <tr key={v.id}>
-                                                    <td><strong>Size {v.sizeName}</strong></td>
-                                                    <td>{translateColorToVietnamese(v.colorName)}</td>
-                                                    <td className="price-cell">{v.price?.toLocaleString("vi-VN")} ₫</td>
-                                                    <td>
-                                                        <span className={`qty-badge ${v.quantity > 0 ? "in" : "out"}`}>
-                                                            {v.quantity} đôi
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div className="row-actions">
-                                                            <button type="button" className="row-btn edit"
-                                                                onClick={() => startEditVariant(v)} title="Sửa">
-                                                                <i className="bi bi-pencil-square"></i>
-                                                            </button>
-                                                            <button type="button" className="row-btn del"
-                                                                onClick={() => handleDeleteVariant(v.id, v.sizeName, v.colorName)} title="Xóa">
-                                                                <i className="bi bi-trash"></i>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {variants.map(v => {
+                                                const isEditing = variantId === v.id;
+                                                return (
+                                                    <tr key={v.id} className={isEditing ? "editing-row" : ""}>
+                                                        <td><strong>Size {v.sizeName}</strong></td>
+                                                        <td>{translateColorToVietnamese(v.colorName)}</td>
+                                                        <td className="price-cell">{v.price?.toLocaleString("vi-VN")} ₫</td>
+                                                        <td>
+                                                            <span className={`qty-badge ${v.quantity > 0 ? "in" : "out"}`}>
+                                                                {v.quantity} đôi
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <div className="row-actions">
+                                                                <button type="button" className={`row-btn edit ${isEditing ? "active" : ""}`}
+                                                                    onClick={() => startEditVariant(v)} title={isEditing ? "Đang chỉnh sửa" : "Sửa"}>
+                                                                    <i className={`bi ${isEditing ? "bi-pencil-fill" : "bi-pencil-square"}`}></i>
+                                                                </button>
+                                                                <button type="button" className="row-btn del"
+                                                                    onClick={() => handleDeleteVariant(v.id, v.sizeName, v.colorName)} title="Xóa">
+                                                                    <i className="bi bi-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
