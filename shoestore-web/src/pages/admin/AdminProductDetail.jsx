@@ -591,30 +591,33 @@ const AdminProductDetail = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {variants.map(v => (
-                                                <tr key={v.id}>
-                                                    <td><strong>Size {v.sizeName}</strong></td>
-                                                    <td>{translateColorToVietnamese(v.colorName)}</td>
-                                                    <td className="price-cell">{v.price?.toLocaleString("vi-VN")} ₫</td>
-                                                    <td>
-                                                        <span className={`qty-badge ${v.quantity > 0 ? "in" : "out"}`}>
-                                                            {v.quantity} đôi
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div className="row-actions">
-                                                            <button type="button" className="row-btn edit"
-                                                                onClick={() => startEditVariant(v)} title="Sửa">
-                                                                <i className="bi bi-pencil-square"></i>
-                                                            </button>
-                                                            <button type="button" className="row-btn del"
-                                                                onClick={() => handleDeleteVariant(v.id, v.sizeName, v.colorName)} title="Xóa">
-                                                                <i className="bi bi-trash"></i>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {variants.map(v => {
+                                                const isEditing = variantId === v.id;
+                                                return (
+                                                    <tr key={v.id} className={isEditing ? "editing-row" : ""}>
+                                                        <td><strong>Size {v.sizeName}</strong></td>
+                                                        <td>{translateColorToVietnamese(v.colorName)}</td>
+                                                        <td className="price-cell">{v.price?.toLocaleString("vi-VN")} ₫</td>
+                                                        <td>
+                                                            <span className={`qty-badge ${v.quantity > 0 ? "in" : "out"}`}>
+                                                                {v.quantity} đôi
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <div className="row-actions">
+                                                                <button type="button" className={`row-btn edit ${isEditing ? "active" : ""}`}
+                                                                    onClick={() => startEditVariant(v)} title={isEditing ? "Đang chỉnh sửa" : "Sửa"}>
+                                                                    <i className={`bi ${isEditing ? "bi-pencil-fill" : "bi-pencil-square"}`}></i>
+                                                                </button>
+                                                                <button type="button" className="row-btn del"
+                                                                    onClick={() => handleDeleteVariant(v.id, v.sizeName, v.colorName)} title="Xóa">
+                                                                    <i className="bi bi-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
