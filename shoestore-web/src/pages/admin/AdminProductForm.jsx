@@ -62,7 +62,7 @@ const validateColor = (val) => {
 };
 
 // ─── TagInput Component ──────────────────────────────────────────────────────
-const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, presets = [], validate, hint }) => {
+const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholder, icon, presets = [], validate, hint }) => {
     const [inputVal, setInputVal] = useState("");
     const [editingIdx, setEditingIdx] = useState(null);
     const [editVal, setEditVal] = useState("");
@@ -81,6 +81,21 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, pre
         setInputVal("");
         setError("");
         inputRef.current?.focus();
+    };
+
+    const handleAddAllPresets = () => {
+        presets.forEach(p => {
+            const dup = tags.some(t => t.toLowerCase() === p.toLowerCase());
+            if (!dup) {
+                if (validate) {
+                    const err = validate(p);
+                    if (!err) onAdd(p);
+                } else {
+                    onAdd(p);
+                }
+            }
+        });
+        setError("");
     };
 
     const handleKeyDown = (e) => {
@@ -116,9 +131,61 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, pre
 
     return (
         <div className="tag-input-section">
-            <label className="tag-input-label">
-                {icon && <i className={`bi ${icon}`}></i>} {label}
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                <label className="tag-input-label" style={{ margin: 0 }}>
+                    {icon && <i className={`bi ${icon}`}></i>} {label}
+                </label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                    {presets.length > 0 && (
+                        <button
+                            type="button"
+                            className="btn-tag-add-all"
+                            onClick={handleAddAllPresets}
+                            title="Thêm tất cả các tùy chọn nhanh có sẵn"
+                            style={{
+                                background: '#f3e8ff',
+                                color: '#7c3aed',
+                                border: '1px solid #d8b4fe',
+                                borderRadius: '6px',
+                                padding: '3px 10px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            <i className="bi bi-check-all"></i> THÊM TẤT CẢ
+                        </button>
+                    )}
+                    {tags.length > 0 && onClearAll && (
+                        <button
+                            type="button"
+                            className="btn-tag-clear-all"
+                            onClick={onClearAll}
+                            title="Xóa toàn bộ các tùy chọn đã chọn"
+                            style={{
+                                background: '#fef2f2',
+                                color: '#ef4444',
+                                border: '1px solid #fca5a5',
+                                borderRadius: '6px',
+                                padding: '3px 10px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            <i className="bi bi-trash"></i> XÓA TẤT CẢ
+                        </button>
+                    )}
+                </div>
+            </div>
 
             {/* Hint text */}
             {hint && <p className="tag-hint">{hint}</p>}
@@ -941,9 +1008,10 @@ const AdminProductForm = () => {
                                         onAdd={v => setSelectedSizes(p => [...p, v])}
                                         onRemove={i => setSelectedSizes(p => p.filter((_, idx) => idx !== i))}
                                         onEdit={(i, v) => setSelectedSizes(p => p.map((s, idx) => idx === i ? v : s))}
+                                        onClearAll={() => setSelectedSizes([])}
                                         placeholder="Hoặc nhập size thủ công rồi Enter…"
                                         icon="bi-rulers"
-                                        presets={['18','20','22','24','26','28','30','32','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48']}
+                                        presets={['36','37','38','39','40','41','42','43','44','45']}
                                         validate={validateSize}
                                         hint={`Hợp lệ từ ${SIZE_MIN} (trẻ em) đến ${SIZE_MAX} (người lớn). Chỉ nhập số.`}
                                     />
@@ -956,6 +1024,7 @@ const AdminProductForm = () => {
                                         onAdd={v => setSelectedColors(p => [...p, v])}
                                         onRemove={i => setSelectedColors(p => p.filter((_, idx) => idx !== i))}
                                         onEdit={(i, v) => setSelectedColors(p => p.map((c, idx) => idx === i ? v : c))}
+                                        onClearAll={() => setSelectedColors([])}
                                         placeholder="Hoặc nhập tên màu thủ công rồi Enter…"
                                         icon="bi-palette"
                                         presets={['Đen','Trắng','Đỏ','Xanh dương','Xanh lá','Vàng','Hồng','Xám','Nâu','Cam','Tím','Kem','Be']}
@@ -986,6 +1055,80 @@ const AdminProductForm = () => {
                                             {errors.quantity && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.quantity}</div>}
                                         </div>
                                     </div>
+
+                                    {/* LIVE VARIANTS MATRIX PREVIEW TABLE */}
+                                    {selectedSizes.length > 0 && selectedColors.length > 0 && (
+                                        <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px dotted #cbd5e1' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                                                <h4 className="font-oswald" style={{ margin: 0, fontSize: '16px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <i className="bi bi-box-seam" style={{ color: '#8b5cf6' }}></i>
+                                                    DANH SÁCH BIẾN THỂ ({selectedSizes.length * selectedColors.length})
+                                                </h4>
+                                                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                                                    Tự động cập nhật từ <b>{selectedSizes.length} size</b> × <b>{selectedColors.length} màu</b>
+                                                </span>
+                                            </div>
+
+                                            <div className="table-responsive" style={{ background: '#ffffff', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                                                <table className="table table-hover align-middle mb-0" style={{ fontSize: '13px' }}>
+                                                    <thead style={{ background: '#f8fafc', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px' }}>
+                                                        <tr>
+                                                            <th style={{ padding: '12px 16px' }}>KÍCH CỠ</th>
+                                                            <th style={{ padding: '12px 16px' }}>MÀU SẮC</th>
+                                                            <th style={{ padding: '12px 16px' }}>GIÁ BÁN</th>
+                                                            <th style={{ padding: '12px 16px' }}>KHO</th>
+                                                            <th style={{ padding: '12px 16px', textAlign: 'center' }}>HÀNH ĐỘNG</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {selectedSizes.map((size) =>
+                                                            selectedColors.map((color) => {
+                                                                const key = `${size}-${color}`;
+                                                                const displayPrice = variant.price ? `${parseInt(variant.price).toLocaleString('vi-VN')} đ` : 'Chưa nhập';
+                                                                const displayQty = variant.quantity ? `${variant.quantity} đôi` : 'Chưa nhập';
+                                                                return (
+                                                                    <tr key={key}>
+                                                                        <td style={{ padding: '12px 16px', fontWeight: '700', color: '#0f172a' }}>
+                                                                            Size {size}
+                                                                        </td>
+                                                                        <td style={{ padding: '12px 16px', color: '#334155' }}>
+                                                                            {color}
+                                                                        </td>
+                                                                        <td style={{ padding: '12px 16px', fontWeight: '700', color: '#2563eb' }}>
+                                                                            {displayPrice}
+                                                                        </td>
+                                                                        <td style={{ padding: '12px 16px' }}>
+                                                                            <span className="badge" style={{ background: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '20px', fontWeight: '700', fontSize: '12px' }}>
+                                                                                {displayQty}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-sm btn-outline-danger"
+                                                                                title="Xóa biến thể này"
+                                                                                onClick={() => {
+                                                                                    // Remove size if it's the only one, or clear combo
+                                                                                    if (selectedSizes.length > 1) {
+                                                                                        setSelectedSizes(p => p.filter(s => s !== size));
+                                                                                    } else {
+                                                                                        setSelectedColors(p => p.filter(c => c !== color));
+                                                                                    }
+                                                                                }}
+                                                                                style={{ borderRadius: '8px', padding: '4px 10px' }}
+                                                                            >
+                                                                                <i className="bi bi-trash"></i>
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
