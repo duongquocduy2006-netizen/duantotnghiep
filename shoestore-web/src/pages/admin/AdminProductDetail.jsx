@@ -215,13 +215,34 @@ const AdminProductDetail = () => {
     const [price, setPrice] = useState("");
     const [quantity, setQuantity] = useState("");
 
+    const sortVariantsByAscendingSize = (varList) => {
+        if (!Array.isArray(varList)) return [];
+        return [...varList].sort((a, b) => {
+            const numA = parseFloat(a.sizeName);
+            const numB = parseFloat(b.sizeName);
+            if (!isNaN(numA) && !isNaN(numB)) {
+                if (numA !== numB) return numA - numB;
+            } else if (!isNaN(numA)) {
+                return -1;
+            } else if (!isNaN(numB)) {
+                return 1;
+            } else if (a.sizeName && b.sizeName) {
+                const comp = a.sizeName.localeCompare(b.sizeName);
+                if (comp !== 0) return comp;
+            }
+            const colorA = translateColorToVietnamese(a.colorName || '');
+            const colorB = translateColorToVietnamese(b.colorName || '');
+            return colorA.localeCompare(colorB);
+        });
+    };
+
     const fetchProductDetails = async () => {
         try {
             setLoading(true);
             const response = await api.get(`/api/products/${id}`);
             if (response.data && response.data.success) {
                 setProduct(response.data.product);
-                setVariants(response.data.variants || []);
+                setVariants(sortVariantsByAscendingSize(response.data.variants || []));
                 setImages(response.data.images || []);
 
                 const uniqueSizesMap = new Map();
