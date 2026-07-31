@@ -23,4 +23,10 @@ public interface FlashSaleRepository extends JpaRepository<FlashSale, Integer> {
     List<FlashSale> findAllWithProductsOrdered();
 
     List<FlashSale> findAllByOrderByStartDateDesc();
+
+    @Query("SELECT COUNT(f) FROM FlashSale f WHERE f.status = 1 AND f.startDate = :startDate AND (:id IS NULL OR f.id != :id)")
+    long countActiveCampaignsInShift(@Param("startDate") LocalDateTime startDate, @Param("id") Integer id);
+
+    @Query("SELECT f FROM FlashSale f WHERE f.status = 1 AND f.endDate > :now ORDER BY f.startDate ASC")
+    List<FlashSale> findActiveOrUpcomingFlashSales(@Param("now") LocalDateTime now);
 }

@@ -21,11 +21,11 @@ const FlashSale = () => {
         days: '00', hours: '00', minutes: '00', seconds: '00'
     });
 
-    const timeSlots = [
+    const [timeSlots, setTimeSlots] = useState([
         { id: 'slot1', time: '09:00', label: 'Đang diễn ra', active: true },
         { id: 'slot2', time: '14:00', label: 'Sắp diễn ra', active: false },
         { id: 'slot3', time: '20:00', label: 'Sắp diễn ra', active: false }
-    ];
+    ]);
 
     const flashVouchers = [
         { id: 'v1', value: '50K', minOrder: 'Đơn từ 400K', desc: 'Áp dụng cho mọi dòng giày thể thao', code: 'FLASH50' },
@@ -38,8 +38,26 @@ const FlashSale = () => {
             setLoading(true);
             const response = await api.get('/api/flash-sales/active');
             if (response.data && response.data.success && response.data.hasActiveCampaign) {
-                setCampaign(response.data.campaign);
+                const cmp = response.data.campaign;
+                setCampaign(cmp);
                 setProducts(response.data.products || []);
+                
+                const start = new Date(cmp.startDate);
+                const hour = start.getHours();
+                const now = new Date();
+                const isUpcoming = start > now;
+                
+                const formattedHour = hour.toString().padStart(2, '0') + ':00';
+                
+                let nextHour1 = '14:00'; let nextHour2 = '20:00';
+                if (hour === 14) { nextHour1 = '20:00'; nextHour2 = '09:00'; }
+                else if (hour === 20) { nextHour1 = '09:00'; nextHour2 = '14:00'; }
+                
+                setTimeSlots([
+                    { id: 'slot1', time: formattedHour, label: isUpcoming ? 'Sắp diễn ra' : 'Đang diễn ra', active: true },
+                    { id: 'slot2', time: nextHour1, label: 'Sắp diễn ra', active: false },
+                    { id: 'slot3', time: nextHour2, label: 'Sắp diễn ra', active: false }
+                ]);
             }
         } catch (error) {
             console.error("Lỗi lấy dữ liệu Flash Sale:", error);
@@ -100,9 +118,16 @@ const FlashSale = () => {
         if (!campaign || !campaign.endDate) return;
 
         const updateTimer = () => {
+            const start = new Date(campaign.startDate).getTime();
             const end = new Date(campaign.endDate).getTime();
             const now = new Date().getTime();
-            const diff = end - now;
+            
+            let target = end;
+            if (now < start) {
+                target = start; // Countdown to start time if upcoming
+            }
+            
+            const diff = target - now;
 
             if (diff <= 0) {
                 setTimeLeft({ days: '00', hours: '00', minutes: '00', seconds: '00' });
@@ -199,10 +224,8 @@ const FlashSale = () => {
         ? [...products].sort((a, b) => getDiscountPercent(b) - getDiscountPercent(a))[0]
         : null;
 
-    // Grid products
-    const gridProducts = spotlightProduct
-        ? filteredProducts.filter(p => p.id !== spotlightProduct.id)
-        : filteredProducts;
+    // Grid products (don't exclude spotlight product so the grid is never empty if there are products)
+    const gridProducts = filteredProducts;
 
     return (
         <Layout>
@@ -212,10 +235,18 @@ const FlashSale = () => {
                     <div className="fs-electric-bg"></div>
                     <div className="container text-center position-relative z-1">
                         <span className="fs-neon-tag">GIỜ VÀNG GIÁ SỐC</span>
-                        <h1 className="fs-glitch-title mt-3 animate__animated animate__zoomIn">SĂN DEAL <span className="text-flash">FLASH SALE</span></h1>
+                        <h1 className="fs-glitch-title mt-3 animate__animated animate__zoomIn">
+                            {campaign && new Date(campaign.startDate) > new Date() ? 'SẮP DIỄN RA ' : 'SĂN DEAL '} 
+                            <span className="text-flash">FLASH SALE</span>
+                        </h1>
                         
                         {campaign && selectedSlot === 'slot1' && (
-                            <div className="d-flex justify-content-center mt-3">
+                            <div className="d-flex justify-content-center mt-3 flex-column align-items-center">
+                                {new Date(campaign.startDate) > new Date() && (
+                                    <div className="text-warning fw-bold mb-2 fs-5">
+                                        <i className="fa-solid fa-clock me-2"></i> BẮT ĐẦU SAU:
+                                    </div>
+                                )}
                                 <div className="fs-countdown">
                                     <div className="cd-block">
                                         <span className="cd-num">{timeLeft.days}</span>
@@ -240,11 +271,7 @@ const FlashSale = () => {
                             </div>
                         )}
 
-                        {selectedSlot !== 'slot1' && (
-                            <div className="text-white-50 mt-3 fs-6 fw-bold">
-                                <i className="fa-solid fa-bell text-warning me-2"></i> Khung giờ này sắp diễn ra. Hãy đăng ký nhận thông báo!
-                            </div>
-                        )}
+                        {/* Text notification removed as requested */}
                     </div>
                 </div>
 
@@ -345,41 +372,7 @@ const FlashSale = () => {
                                         </div>
                                     )}
 
-                                    {/* EXCLUSIVE FLASH VOUCHERS */}
-                                    <div className="fs-vouchers-section mb-5 reveal-item opacity-0">
-                                        <div className="text-center mb-4">
-                                            <span className="fs-section-tag">ƯU ĐÃI ĐỘC QUYỀN</span>
-                                            <h2 className="fs-section-title">MÃ GIẢM GIÁ GIỜ VÀNG</h2>
-                                            <p className="fs-section-subtitle">Lưu nhanh các mã giảm giá đặc quyền chỉ có trong khung giờ Flash Sale này.</p>
-                                        </div>
-                                        
-                                        <div className="fs-vouchers-container">
-                                            {flashVouchers.map(v => {
-                                                const isClaimed = claimedVouchers.includes(v.id);
-                                                return (
-                                                    <div key={v.id} className="fs-voucher-card">
-                                                        <div className="fs-voucher-left">
-                                                            <div className="fs-voucher-value">{v.value.replace('K', '')}<span>{v.value.includes('K') ? 'K' : ''}</span></div>
-                                                            <div className="fs-voucher-type">GIẢM GIÁ</div>
-                                                        </div>
-                                                        <div className="fs-voucher-right">
-                                                            <div>
-                                                                <div className="fs-voucher-title">{v.minOrder}</div>
-                                                                <div className="fs-voucher-desc">{v.desc}</div>
-                                                            </div>
-                                                            <button 
-                                                                className={`fs-voucher-btn ${isClaimed ? 'claimed' : ''}`}
-                                                                onClick={() => handleClaimVoucher(v.id)}
-                                                                disabled={isClaimed}
-                                                            >
-                                                                {isClaimed ? <><i className="fa-solid fa-check me-1"></i> ĐÃ LƯU</> : 'LƯU MÃ'}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
+                                    {/* Removed Flash Vouchers section as requested */}
 
                                     {/* FILTER & SORT CONTROLS */}
                                     <div className="fs-controls-wrap">
@@ -527,14 +520,7 @@ const FlashSale = () => {
                                                             </div>
                                                         </div>
 
-                                                        <div className="fs-card-footer">
-                                                            <button 
-                                                                onClick={(e) => { e.preventDefault(); alert("Đã đăng ký nhận thông báo thành công!"); }} 
-                                                                className="btn btn-dark w-100 py-2 rounded-3 fw-bold fs-6"
-                                                            >
-                                                                <i className="fa-regular fa-bell me-2"></i> NHẬN THÔNG BÁO
-                                                            </button>
-                                                        </div>
+                                                        {/* Notification button removed as requested */}
                                                     </div>
                                                 </div>
                                             );
@@ -543,61 +529,7 @@ const FlashSale = () => {
                                 </div>
                             )}
 
-                            {/* UNIQUE SNEAKER COMBO DEALS */}
-                            <div className="fs-combos-section my-5 reveal-item opacity-0">
-                                <div className="text-center mb-5">
-                                    <span className="fs-section-tag">ƯU ĐÃI ĐI KÈM</span>
-                                    <h2 className="fs-section-title">FLASH COMBO DEALS</h2>
-                                    <p className="fs-section-subtitle">Nhân đôi ưu đãi khi mua kèm các phụ kiện sneaker chính hãng dưới đây.</p>
-                                </div>
-                                <div className="row g-4">
-                                    <div className="col-md-6">
-                                        <div className="fs-combo-card">
-                                            <span className="fs-combo-badge">GIẢM 20%</span>
-                                            <div className="fs-combo-content">
-                                                <h5>COMBO CHĂM SÓC GIÀY CHUYÊN SÂU</h5>
-                                                <p>Mua đôi giày Flash Sale bất kỳ kèm Bộ vệ sinh giày Crep Protect để được chiết khấu ngay 20% cho bộ vệ sinh.</p>
-                                                <Link to="/shop" className="fs-combo-link">Mua ngay combo <i className="fa-solid fa-arrow-right"></i></Link>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="fs-combo-card">
-                                            <span className="fs-combo-badge">GIẢM 30%</span>
-                                            <div className="fs-combo-content">
-                                                <h5>COMBO VỚ THỂ THAO DỆT KIM</h5>
-                                                <p>Mua đôi giày Flash Sale bất kỳ kèm Set 3 đôi vớ Cotton cao cấp chống hôi chân để được chiết khấu ngay 30% cho vớ.</p>
-                                                <Link to="/shop" className="fs-combo-link">Mua ngay combo <i className="fa-solid fa-arrow-right"></i></Link>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* REALTIME SHOPPING LIVE ACTIVITY */}
-                            <div className="fs-live-activity my-5 reveal-item opacity-0">
-                                <div className="d-flex align-items-center gap-3 mb-4">
-                                    <span className="fs-live-dot"></span>
-                                    <h4 className="m-0 fw-bold fs-5 text-uppercase" style={{ letterSpacing: '1px' }}>Hoạt động mua sắm thời gian thực</h4>
-                                </div>
-                                <div className="fs-activity-card">
-                                    <div className="fs-activity-item">
-                                        <i className="fa-solid fa-cart-shopping text-danger"></i>
-                                        <span>Khách hàng <strong>Lê Minh H.</strong> vừa săn thành công đôi **Nike Air Max** (Tiết kiệm 30%)</span>
-                                        <span className="fs-activity-time">30 giây trước</span>
-                                    </div>
-                                    <div className="fs-activity-item">
-                                        <i className="fa-solid fa-ticket text-warning"></i>
-                                        <span>Khách hàng <strong>Trần Quốc T.</strong> vừa áp dụng thành công mã giảm giá **FLASH50**</span>
-                                        <span className="fs-activity-time">2 phút trước</span>
-                                    </div>
-                                    <div className="fs-activity-item">
-                                        <i className="fa-solid fa-cart-shopping text-danger"></i>
-                                        <span>Khách hàng <strong>Nguyễn Thị D.</strong> vừa săn thành công đôi **Adidas Ultraboost** (Tiết kiệm 25%)</span>
-                                        <span className="fs-activity-time">5 phút trước</span>
-                                    </div>
-                                </div>
-                            </div>
+                            {/* Removed Combo Deals and Live Activity sections as requested */}
 
                             {/* SPEED SHOPPING TIPS GUIDE */}
                             <div className="fs-guide-section my-5 reveal-item opacity-0">

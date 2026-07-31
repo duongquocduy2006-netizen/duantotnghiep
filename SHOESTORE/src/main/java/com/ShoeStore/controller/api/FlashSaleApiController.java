@@ -32,6 +32,9 @@ public class FlashSaleApiController {
     @Autowired
     private com.ShoeStore.repository.ProductVariantRepository productVariantRepository;
 
+    @Autowired
+    private com.ShoeStore.repository.FlashSaleRepository flashSaleRepository;
+
     // 1. GET ACTIVE CAMPAIGN FOR CLIENT FRONTEND
     @GetMapping("/active")
     public ResponseEntity<?> getActiveFlashSale() {
@@ -215,8 +218,47 @@ public class FlashSaleApiController {
             if (endDateStr != null && endDateStr.length() == 16)
                 endDateStr += ":00";
 
-            flashSale.setStartDate(java.time.LocalDateTime.parse(startDateStr));
-            flashSale.setEndDate(java.time.LocalDateTime.parse(endDateStr));
+            java.time.LocalDateTime start = java.time.LocalDateTime.parse(startDateStr);
+            java.time.LocalDateTime end = java.time.LocalDateTime.parse(endDateStr);
+
+            int startHour = start.getHour();
+            int startMinute = start.getMinute();
+
+            boolean isValidShift = false;
+            java.time.LocalDateTime maxEnd = start;
+
+            if (startHour == 9 && startMinute == 0) {
+                isValidShift = true;
+                maxEnd = start.withHour(14).withMinute(0).withSecond(0).withNano(0);
+            } else if (startHour == 14 && startMinute == 0) {
+                isValidShift = true;
+                maxEnd = start.withHour(20).withMinute(0).withSecond(0).withNano(0);
+            } else if (startHour == 20 && startMinute == 0) {
+                isValidShift = true;
+                maxEnd = start.plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0);
+            }
+
+            if (!isValidShift) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "message", "Flash Sale chỉ được phép bắt đầu vào các khung giờ cố định (09:00, 14:00, 20:00) và mỗi khung giờ chỉ được có 1 chiến dịch hoạt động. Vui lòng chỉnh sửa lại thời gian."));
+            }
+
+            if (end.isAfter(maxEnd)) {
+                String nextShift = startHour == 9 ? "14:00" : (startHour == 14 ? "20:00" : "09:00 ngày hôm sau");
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "message", "Ca " + String.format("%02d:00", startHour) + " phải kết thúc trước " + nextShift + "!"));
+            }
+
+            if (status == 1) {
+                long count = flashSaleRepository.countActiveCampaignsInShift(start, id);
+                if (count > 0) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("success", false, "message", "Flash Sale chỉ được phép bắt đầu vào các khung giờ cố định (09:00, 14:00, 20:00) và mỗi khung giờ chỉ được có 1 chiến dịch hoạt động. Vui lòng chỉnh sửa lại thời gian."));
+                }
+            }
+
+            flashSale.setStartDate(start);
+            flashSale.setEndDate(end);
             flashSale.setStatus(status);
 
             List<Map<String, Object>> fspList = (List<Map<String, Object>>) payload.get("flashSaleProducts");

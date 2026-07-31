@@ -176,8 +176,34 @@ const AdminFlashSaleForm = () => {
         if (form.startDate && form.endDate) {
             const start = new Date(form.startDate);
             const end = new Date(form.endDate);
-            if (start >= end) {
-                errors.endDate = "Ngày kết thúc phải diễn ra sau ngày bắt đầu!";
+            
+            const startHour = start.getHours();
+            const startMinute = start.getMinutes();
+            
+            let isValidShift = false;
+            let maxEnd = new Date(start);
+            
+            if (startHour === 9 && startMinute === 0) {
+                isValidShift = true;
+                maxEnd.setHours(14, 0, 0, 0);
+            } else if (startHour === 14 && startMinute === 0) {
+                isValidShift = true;
+                maxEnd.setHours(20, 0, 0, 0);
+            } else if (startHour === 20 && startMinute === 0) {
+                isValidShift = true;
+                maxEnd.setDate(maxEnd.getDate() + 1);
+                maxEnd.setHours(9, 0, 0, 0);
+            }
+
+            if (!isValidShift) {
+                errors.startDate = "Flash Sale chỉ được phép bắt đầu vào các khung giờ cố định (09:00, 14:00, 20:00) và mỗi khung giờ chỉ được có 1 chiến dịch hoạt động. Vui lòng chỉnh sửa lại thời gian.";
+            } else {
+                if (start >= end) {
+                    errors.endDate = "Ngày kết thúc phải diễn ra sau ngày bắt đầu!";
+                } else if (end > maxEnd) {
+                    const nextShiftHour = startHour === 9 ? '14:00' : (startHour === 14 ? '20:00' : '09:00 ngày hôm sau');
+                    errors.endDate = `Ca ${startHour.toString().padStart(2, '0')}:00 phải kết thúc trước ${nextShiftHour}!`;
+                }
             }
         }
 
@@ -234,6 +260,13 @@ const AdminFlashSaleForm = () => {
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể kết nối đến server để lưu chiến dịch.";
+                
+            if (errMsg.includes("chỉ được phép bắt đầu vào các khung giờ cố định") || errMsg.includes("một chiến dịch hoạt động")) {
+                setFormErrors(prev => ({ ...prev, startDate: errMsg }));
+            } else if (errMsg.includes("phải kết thúc trước")) {
+                setFormErrors(prev => ({ ...prev, endDate: errMsg }));
+            }
+            
             window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
             setLoading(false);
@@ -445,6 +478,8 @@ const AdminFlashSaleForm = () => {
     .form-label { display: block; color: #000; font-size: 13px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; font-family: 'Oswald'; }
     .form-input-cinematic { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 12px; color: #3c4043; outline: none; transition: 0.2s; font-size: 14px; font-weight: 500; box-shadow: none; border-radius: 8px; }
     .form-input-cinematic:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
+    .input-error { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229,9,20,0.1) !important; }
+    .field-error { color: #e50914; font-size: 12.5px; margin-top: 6px; display: block; font-weight: 500; }
 
     .btn-red-skew { 
         background: #fff; color: #000; border: none; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
