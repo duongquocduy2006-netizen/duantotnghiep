@@ -1001,7 +1001,35 @@ const AdminProductForm = () => {
                                     ) : (
                                         <div className="gallery-grid">
                                             {images.map((img, idx) => (
-                                                <div key={img.id || idx} className="gallery-item">
+                                                <div key={img.id || idx} className="gallery-item" style={{ position: 'relative' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn-delete-x"
+                                                        onClick={() => handleDeleteImage(img.id, idx)}
+                                                        title="Xóa ảnh này"
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: '6px',
+                                                            right: '6px',
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            borderRadius: '50%',
+                                                            background: 'rgba(239, 68, 68, 0.9)',
+                                                            color: '#ffffff',
+                                                            border: 'none',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: 'bold',
+                                                            zIndex: 10,
+                                                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                                                            transition: 'all 0.15s ease'
+                                                        }}
+                                                    >
+                                                        <i className="bi bi-x-lg"></i>
+                                                    </button>
                                                     {img.isPrimary && <span className="badge-primary">ẢNH CHÍNH</span>}
                                                     <img src={getImageUrl(img)} alt="Product" className="img-fluid" />
                                                     <div className="img-footer">
