@@ -246,9 +246,67 @@ const AdminProductForm = () => {
 
     // AI Vision states
     const [aiAnalyzing, setAiAnalyzing] = useState(false);
+    const [generatingDesc, setGeneratingDesc] = useState(false);
     const [aiSuccessMsg, setAiSuccessMsg] = useState('');
     const [aiImageBase64, setAiImageBase64] = useState('');
     const [aiImagesBase64List, setAiImagesBase64List] = useState([]);
+
+    const handleGenerateAiDescription = async () => {
+        let firstBase64 = aiImageBase64;
+        if (!firstBase64 && images.length > 0) {
+            const url = typeof images[0] === 'string' ? images[0] : images[0]?.url;
+            if (url && url.startsWith('data:')) firstBase64 = url;
+        }
+        if (!firstBase64 && tempImages.length > 0) {
+            firstBase64 = tempImages[0].imageBase64 || tempImages[0].url;
+        }
+
+        const trimmedName = product.productName ? product.productName.trim() : '';
+
+        if (!firstBase64 && !trimmedName) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng nhập Tên sản phẩm hoặc Tải lên ít nhất 1 ảnh sản phẩm để AI Vision tạo mô tả.' }));
+            return;
+        }
+
+        try {
+            setGeneratingDesc(true);
+            const response = await api.post('/api/products/ai-extract', {
+                imageBase64: firstBase64 || null,
+                productName: trimmedName || null
+            });
+
+            if (response.data && response.data.success) {
+                const data = response.data;
+                setProduct(prev => ({
+                    ...prev,
+                    productName: prev.productName || data.productName || '',
+                    description: data.description || prev.description || '',
+                    brandName: prev.brandName || data.brandName || '',
+                    categoryId: prev.categoryId || data.categoryId || ''
+                }));
+
+                if (data.brandName) {
+                    setBrands(prevBrands => {
+                        const exists = prevBrands.some(b => b.brandName && b.brandName.toLowerCase() === data.brandName.toLowerCase());
+                        if (!exists) {
+                            return [{ id: Date.now(), brandName: data.brandName }, ...prevBrands];
+                        }
+                        return prevBrands;
+                    });
+                }
+
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: '✨ AI Vision đã tự động tạo mô tả sản phẩm thành công!' }));
+            } else {
+                alert(response.data?.message || "Không thể tạo mô tả bằng AI.");
+            }
+        } catch (err) {
+            console.error("Lỗi tạo mô tả AI:", err);
+            const errMsg = err.response?.data?.message || err.message || "Lỗi khi kết nối với AI Vision.";
+            alert(errMsg);
+        } finally {
+            setGeneratingDesc(false);
+        }
+    };
 
     // Tag-input: selected size/color names
     const [selectedSizes, setSelectedSizes] = useState([]);
@@ -742,18 +800,76 @@ const AdminProductForm = () => {
                                 <h3 className="card-custom-title font-oswald"><i className="bi bi-info-circle"></i> THÔNG TIN CƠ BẢN</h3>
                                 <div className="form-group">
                                     <label className="form-label">Tên sản phẩm *</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="VD: Nike Air Force 1"
-                                        required
-                                        value={product.productName}
-                                        onChange={(e) => setProduct({ ...product, productName: e.target.value })}
-                                    />
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="VD: Nike Air Force 1"
+                                            required
+                                            value={product.productName}
+                                            onChange={(e) => setProduct({ ...product, productName: e.target.value })}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn-ai-gen-desc"
+                                            onClick={handleGenerateAiDescription}
+                                            disabled={generatingDesc}
+                                            title="Bấm để tự động tạo mô tả sản phẩm bằng AI Vision"
+                                            style={{
+                                                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                                                color: '#ffffff',
+                                                border: 'none',
+                                                borderRadius: '12px',
+                                                padding: '0 18px',
+                                                height: '46px',
+                                                fontWeight: '700',
+                                                fontSize: '13px',
+                                                whiteSpace: 'nowrap',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                cursor: 'pointer',
+                                                boxShadow: '0 4px 14px rgba(139, 92, 246, 0.35)',
+                                                transition: 'all 0.25s ease'
+                                            }}
+                                        >
+                                            {generatingDesc ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                    ĐANG TẠO MÔ TẢ...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="bi bi-stars" style={{ fontSize: '16px', color: '#fef08a' }}></i> TỰ ĐỘNG TẠO MÔ TẢ AI
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                     {errors.productName && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.productName}</div>}
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Mô tả chi tiết</label>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <label className="form-label mb-0">Mô tả chi tiết</label>
+                                        <button
+                                            type="button"
+                                            onClick={handleGenerateAiDescription}
+                                            disabled={generatingDesc}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: '#8b5cf6',
+                                                fontWeight: '700',
+                                                fontSize: '12px',
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px'
+                                            }}
+                                        >
+                                            <i className="bi bi-magic"></i> {generatingDesc ? "Đang tạo..." : "Tạo bằng AI Vision"}
+                                        </button>
+                                    </div>
                                     <textarea
                                         className="form-control"
                                         placeholder="Chất liệu, công nghệ, thiết kế..."

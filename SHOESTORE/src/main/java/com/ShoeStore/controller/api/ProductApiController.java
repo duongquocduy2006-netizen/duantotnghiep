@@ -57,11 +57,19 @@ public class ProductApiController {
     public ResponseEntity<?> extractProductInfoFromImage(@RequestBody Map<String, String> payload) {
         try {
             String imageBase64 = payload.get("imageBase64");
-            if (imageBase64 == null || imageBase64.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu dữ liệu ảnh!"));
+            String productName = payload.get("productName");
+
+            if ((imageBase64 == null || imageBase64.trim().isEmpty()) && (productName == null || productName.trim().isEmpty())) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Vui lòng cung cấp ảnh hoặc tên sản phẩm để AI nhận diện!"));
             }
 
-            Map<String, Object> result = geminiVisionService.extractProductInfoFromImage(imageBase64);
+            Map<String, Object> result;
+            if (imageBase64 != null && !imageBase64.trim().isEmpty()) {
+                result = geminiVisionService.extractProductInfoFromImage(imageBase64);
+            } else {
+                result = geminiVisionService.extractProductInfoFromText(productName);
+            }
+
             if (Boolean.TRUE.equals(result.get("success"))) {
                 return ResponseEntity.ok(result);
             } else {

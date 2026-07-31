@@ -472,6 +472,118 @@ public class GeminiVisionService {
         return null;
     }
 
+    public Map<String, Object> extractProductInfoFromText(String productName) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            if (productName == null || productName.trim().isEmpty()) {
+                result.put("success", false);
+                result.put("message", "Vui lòng nhập tên sản phẩm!");
+                return result;
+            }
+
+            List<Category> allCategories = categoryRepository.findAll();
+            StringBuilder catListSb = new StringBuilder();
+            for (Category c : allCategories) {
+                if (c.getName() != null) {
+                    if (catListSb.length() > 0) catListSb.append(", ");
+                    catListSb.append(c.getName());
+                }
+            }
+            String existingCatNames = catListSb.toString();
+
+            String promptText = "Bạn là chuyên gia phân tích và sáng tạo nội dung sản phẩm thời trang giày dép của ShoeStore.\n"
+                    + "Hãy dựa vào tên sản phẩm sau đây: \"" + productName + "\"\n"
+                    + "Tạo ra một mô tả sản phẩm cuốn hút, cao cấp, 2-3 câu về thiết kế, phong cách và chất liệu phù hợp.\n"
+                    + "Sau đó, trả về JSON chuẩn DUY NHẤT có cấu trúc:\n"
+                    + "{\n"
+                    + "  \"productName\": \"" + productName + "\",\n"
+                    + "  \"brandName\": \"Thương hiệu dự đoán (VD: Nike, Adidas, Jordan, Puma, Vans, Converse)\",\n"
+                    + "  \"categoryName\": \"Loại sản phẩm phù hợp. Chọn từ danh sách: [" + existingCatNames + "]\",\n"
+                    + "  \"description\": \"Mô tả hấp dẫn về sản phẩm này.\"\n"
+                    + "}\n"
+                    + "Chỉ trả về JSON thuần túy, không bao bọc bởi ```json.";
+
+            String aiResponseContent = null;
+            if (geminiApiKey != null && !geminiApiKey.trim().isEmpty()) {
+                try {
+                    aiResponseContent = callGeminiDirectTextApi(geminiApiKey.trim(), promptText);
+                } catch (Exception e) {
+                    System.err.println("Lỗi gọi Gemini Text API: " + e.getMessage());
+                }
+            }
+
+            if (aiResponseContent == null || aiResponseContent.trim().isEmpty()) {
+                // Fallback default response
+                result.put("success", true);
+                result.put("productName", productName);
+                result.put("description", productName + " sở hữu thiết kế thời thượng, phong cách hiện đại cùng chất liệu cao cấp mang lại sự thoải mái tối đa cho người sử dụng.");
+                return result;
+            }
+
+            String cleanJson = aiResponseContent.trim();
+            if (cleanJson.startsWith("```json")) cleanJson = cleanJson.substring(7);
+            else if (cleanJson.startsWith("```")) cleanJson = cleanJson.substring(3);
+            if (cleanJson.endsWith("```")) cleanJson = cleanJson.substring(0, cleanJson.length() - 3);
+            cleanJson = cleanJson.trim();
+
+            Map<String, Object> parsed = objectMapper.readValue(cleanJson, Map.class);
+            result.put("success", true);
+            result.put("productName", parsed.getOrDefault("productName", productName));
+            result.put("brandName", parsed.getOrDefault("brandName", ""));
+            result.put("categoryName", parsed.getOrDefault("categoryName", ""));
+            result.put("description", parsed.getOrDefault("description", ""));
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.put("success", true);
+            result.put("productName", productName);
+            result.put("description", productName + " có thiết kế ấn tượng, phù hợp cho mọi hoạt động hàng ngày và phong cách cá tính.");
+            return result;
+        }
+    }
+
+    private String callGeminiDirectTextApi(String apiKey, String promptText) {
+        List<String> googleModels = Arrays.asList("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash");
+        for (String m : googleModels) {
+            try {
+                String targetUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent?key=" + apiKey;
+                Map<String, Object> requestBody = new HashMap<>();
+                List<Map<String, Object>> contents = new ArrayList<>();
+                Map<String, Object> contentObj = new HashMap<>();
+                List<Map<String, Object>> parts = new ArrayList<>();
+                Map<String, Object> textPart = new HashMap<>();
+                textPart.put("text", promptText);
+                parts.add(textPart);
+                contentObj.put("parts", parts);
+                contents.add(contentObj);
+                requestBody.put("contents", contents);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+                ResponseEntity<Map> response = restTemplate.postForEntity(targetUrl, entity, Map.class);
+                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                    Map body = response.getBody();
+                    List candidates = (List) body.get("candidates");
+                    if (candidates != null && !candidates.isEmpty()) {
+                        Map firstCand = (Map) candidates.get(0);
+                        Map candContent = (Map) firstCand.get("content");
+                        List candParts = (List) candContent.get("parts");
+                        Map firstPart = (Map) candParts.get(0);
+                        String text = (String) firstPart.get("text");
+                        if (text != null && !text.trim().isEmpty()) {
+                            return text;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Text API call failed for model " + m + ": " + e.getMessage());
+            }
+        }
+        return null;
+    }
+
     private String extractRegexField(String text, String fieldName) {
         if (text == null) return "";
         try {
