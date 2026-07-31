@@ -637,6 +637,63 @@ const AdminProductForm = () => {
                 }));
                 return [...prev, ...newImgObjs];
             });
+
+            // Tự động phân loại danh mục, thương hiệu, màu sắc, tên và mô tả từ ảnh thủ công
+            if (base64List.length > 0) {
+                try {
+                    setAiAnalyzing(true);
+                    const response = await api.post('/api/products/ai-extract', { imageBase64: base64List[0] });
+                    if (response.data && response.data.success) {
+                        const data = response.data;
+                        const rawDesc = data.description || '';
+                        const wordCount = rawDesc ? rawDesc.trim().split(/\s+/).filter(Boolean).length : 0;
+                        const pName = data.productName || 'Sản phẩm';
+                        const finalDesc = wordCount >= 100
+                            ? rawDesc
+                            : (rawDesc ? rawDesc.trim() + '\n\n' : '') + `${pName} là biểu tượng thời trang mang phong cách hiện đại và đẳng cấp, được thiết kế tỉ mỉ để đáp ứng nhu cầu thời trang đỉnh cao của giới trẻ năng động. Đôi giày sở hữu phom dáng chuẩn ôm chân tinh tế, kết hợp cùng chất liệu da cao cấp mềm mại mang lại độ bền vượt trội và khả năng chống bám bẩn hiệu quả. Hệ thống đế cao su tự nhiên nguyên khối được trang bị công nghệ đệm khí tiên tiến, giúp giảm chấn tối đa, mang lại cảm giác êm ái, nhẹ nhàng và tự tin trong từng bước di chuyển. Bên cạnh đó, các rãnh bám thông minh dưới mặt đế giúp tăng cường độ ma sát và chống trượt vượt trội trên mọi địa hình. Dễ dàng phối hợp với nhiều kiểu trang phục từ quần Jeans, Jogger năng động cho đến những bộ Outfit đường phố cá tính, ${pName} chắc chắn sẽ là điểm nhấn hoàn hảo khẳng định gu thời trang thời thượng của bạn.`;
+
+                        setProduct(prev => ({
+                            ...prev,
+                            productName: prev.productName || data.productName || '',
+                            description: prev.description || finalDesc,
+                            brandName: prev.brandName || data.brandName || '',
+                            categoryId: prev.categoryId || data.categoryId || ''
+                        }));
+
+                        if (data.brandName) {
+                            setBrands(prevBrands => {
+                                const exists = prevBrands.some(b => b.brandName && b.brandName.toLowerCase() === data.brandName.toLowerCase());
+                                if (!exists) {
+                                    return [{ id: Date.now(), brandName: data.brandName }, ...prevBrands];
+                                }
+                                return prevBrands;
+                            });
+                        }
+
+                        if (data.colorName) {
+                            const vnColor = translateColorToVietnamese(data.colorName);
+                            setSelectedColors(prev => {
+                                if (!prev.some(c => c.toLowerCase() === vnColor.toLowerCase())) {
+                                    return [...prev, vnColor];
+                                }
+                                return prev;
+                            });
+                        }
+
+                        if (selectedSizes.length === 0 && sizes.length > 0) {
+                            setSelectedSizes(sizes.map(s => s.sizeName));
+                        }
+
+                        window.dispatchEvent(new CustomEvent('show-toast', {
+                            detail: `✨ AI Vision đã tự động phân loại Danh mục (${data.categoryName || 'Giày'}), Thương hiệu (${data.brandName || ''}) và Màu sắc từ ảnh tải lên!`
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Lỗi AI tự phân loại từ ảnh tải thủ công:", err);
+                } finally {
+                    setAiAnalyzing(false);
+                }
+            }
             return;
         }
 
