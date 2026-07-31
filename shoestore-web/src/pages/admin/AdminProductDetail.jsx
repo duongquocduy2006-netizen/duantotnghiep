@@ -307,7 +307,6 @@ const AdminProductDetail = () => {
         setSelectedColors(v.colorName ? [translateColorToVietnamese(v.colorName)] : []);
         setPrice(v.price || "");
         setQuantity(v.quantity || "");
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleVariantSubmit = async (e) => {
@@ -508,58 +507,10 @@ const AdminProductDetail = () => {
 
                         {/* Card: Cấu hình biến thể */}
                         <div className="apd-card">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '8px' }}>
-                                <h3 className="apd-card-title" style={{ margin: 0, paddingBottom: 0, borderBottom: 'none' }}>
-                                    <i className={`bi ${variantId ? "bi-pencil-square" : "bi-plus-circle"}`}></i>
-                                    {variantId ? " Cập nhật biến thể" : " Cấu hình biến thể"}
-                                </h3>
-                                {variantId ? (
-                                    <button
-                                        type="button"
-                                        className="btn-new-variant"
-                                        onClick={resetVariantForm}
-                                        title="Thoát chế độ chỉnh sửa để tạo mới biến thể khác"
-                                        style={{
-                                            background: '#f3e8ff',
-                                            color: '#7c3aed',
-                                            border: '1px solid #d8b4fe',
-                                            borderRadius: '8px',
-                                            padding: '6px 14px',
-                                            fontSize: '12px',
-                                            fontWeight: '700',
-                                            cursor: 'pointer',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                    >
-                                        <i className="bi bi-plus-lg"></i> TẠO BIẾN THỂ MỚI
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="btn-reset-form-top"
-                                        onClick={resetVariantForm}
-                                        title="Xóa trắng các ô nhập để làm mới"
-                                        style={{
-                                            background: '#f8fafc',
-                                            color: '#64748b',
-                                            border: '1px solid #e2e8f0',
-                                            borderRadius: '8px',
-                                            padding: '6px 12px',
-                                            fontSize: '12px',
-                                            fontWeight: '700',
-                                            cursor: 'pointer',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '5px'
-                                        }}
-                                    >
-                                        <i className="bi bi-arrow-counterclockwise"></i> LÀM MỚI FORM
-                                    </button>
-                                )}
-                            </div>
+                            <h3 className="apd-card-title">
+                                <i className={`bi ${variantId ? "bi-pencil-square" : "bi-plus-circle"}`}></i>
+                                {variantId ? " Cập nhật biến thể" : " Cấu hình biến thể"}
+                            </h3>
 
                             <form onSubmit={handleVariantSubmit}>
                                 {/* SIZE TAG INPUT */}
@@ -628,42 +579,9 @@ const AdminProductDetail = () => {
                                             "LƯU BIẾN THỂ"
                                         )}
                                     </button>
-                                    {variantId ? (
-                                        <>
-                                            <button
-                                                type="button"
-                                                className="btn-new-variant-action"
-                                                onClick={resetVariantForm}
-                                                style={{
-                                                    background: '#f3e8ff',
-                                                    color: '#7c3aed',
-                                                    border: '1.5px solid #d8b4fe',
-                                                    borderRadius: '10px',
-                                                    padding: '13px 20px',
-                                                    fontFamily: 'Oswald, sans-serif',
-                                                    fontSize: '13px',
-                                                    fontWeight: '700',
-                                                    cursor: 'pointer',
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: '6px',
-                                                    transition: 'all 0.2s ease'
-                                                }}
-                                            >
-                                                <i className="bi bi-plus-circle-fill"></i> TẠO BIẾN THỂ MỚI
-                                            </button>
-                                            <button type="button" className="btn-cancel-v" onClick={resetVariantForm}>
-                                                HỦY BỎ
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            className="btn-cancel-v"
-                                            onClick={resetVariantForm}
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                                        >
-                                            <i className="bi bi-arrow-counterclockwise"></i> LÀM MỚI
+                                    {variantId && (
+                                        <button type="button" className="btn-cancel-v" onClick={resetVariantForm}>
+                                            HỦY BỎ
                                         </button>
                                     )}
                                 </div>
