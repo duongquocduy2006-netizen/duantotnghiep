@@ -327,20 +327,46 @@ const AdminProductDetail = () => {
         setSavingVariant(true);
         try {
             if (variantId) {
-                const sizeId = getSizeId(selectedSizes[0]);
-                const colorId = getColorId(selectedColors[0]);
-                const res = await api.post("/api/products/variant/save", {
-                    productId: parseInt(id), variantId,
-                    sizeId, colorId,
-                    newSizeName: sizeId ? "" : selectedSizes[0],
-                    newColorName: colorId ? "" : selectedColors[0],
-                    price: parseFloat(price), quantity: parseInt(quantity)
-                });
-                if (res.data?.success) {
-                    window.dispatchEvent(new CustomEvent('show-toast', { detail: "Cập nhật biến thể thành công!" }));
-                    resetVariantForm();
-                    fetchProductDetails();
+                const totalCombos = selectedSizes.length * selectedColors.length;
+                let qtyPerVariant = parseInt(quantity);
+                if (totalCombos > 1 && parseInt(quantity) >= totalCombos) {
+                    qtyPerVariant = Math.floor(parseInt(quantity) / totalCombos);
                 }
+
+                let isFirst = true;
+                let countSuccess = 0;
+                for (const sz of selectedSizes) {
+                    for (const cl of selectedColors) {
+                        try {
+                            const sizeId = getSizeId(sz);
+                            const colorId = getColorId(cl);
+                            const targetVariantId = isFirst ? variantId : null;
+
+                            const res = await api.post("/api/products/variant/save", {
+                                productId: parseInt(id),
+                                variantId: targetVariantId,
+                                sizeId,
+                                colorId,
+                                newSizeName: sizeId ? "" : sz,
+                                newColorName: colorId ? "" : cl,
+                                price: parseFloat(price),
+                                quantity: qtyPerVariant
+                            });
+                            if (res.data?.success) countSuccess++;
+                            isFirst = false;
+                        } catch (err) {
+                            console.error("Lỗi lưu tách biến thể:", err);
+                        }
+                    }
+                }
+
+                window.dispatchEvent(new CustomEvent('show-toast', {
+                    detail: totalCombos > 1
+                        ? `✨ Đã tự động tách & cập nhật thành công ${countSuccess} biến thể!`
+                        : "Cập nhật biến thể thành công!"
+                }));
+                resetVariantForm();
+                fetchProductDetails();
             } else {
                 let count = 0;
                 for (const sz of selectedSizes) {
