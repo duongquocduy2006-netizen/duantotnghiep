@@ -493,44 +493,44 @@
 .row-btn.del { color: #ef4444; }
 .row-btn.del:hover { background: #ef4444; color: #fff; border-color: #ef4444; transform: translateY(-2px); }
 
-/* ── Luxury Active Editing Row Highlight ────────────────────────── */
+/* ── Luxury Active Editing Row Highlight (Pastel Pink) ──────────── */
 .vt tr.editing-row td {
-    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 60%, #fde68a 100%) !important;
-    border-top: 1.5px solid #f59e0b !important;
-    border-bottom: 1.5px solid #f59e0b !important;
-    color: #78350f !important;
-    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18);
+    background: linear-gradient(135deg, #fff5f7 0%, #ffe4e6 50%, #fecdd3 100%) !important;
+    border-top: 1.5px solid #fda4af !important;
+    border-bottom: 1.5px solid #fda4af !important;
+    color: #881337 !important;
+    box-shadow: 0 4px 14px rgba(244, 63, 94, 0.15);
     transition: all 0.25s ease;
 }
 
 .vt tr.editing-row td:first-child {
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
-    border-left: 4.5px solid #d97706 !important;
+    border-left: 4.5px solid #f43f5e !important;
 }
 
 .vt tr.editing-row td:last-child {
     border-top-right-radius: 10px;
     border-bottom-right-radius: 10px;
-    border-right: 1.5px solid #f59e0b !important;
+    border-right: 1.5px solid #fda4af !important;
 }
 
 .vt tr.editing-row strong {
-    color: #92400e !important;
+    color: #9f1239 !important;
     font-size: 14.5px;
 }
 
 .vt tr.editing-row .price-cell {
-    color: #b45309 !important;
+    color: #be123c !important;
     font-weight: 800;
     font-size: 15px;
 }
 
 .vt tr.editing-row .row-btn.edit.active {
-    background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+    background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%) !important;
     color: #ffffff !important;
-    border-color: #b45309 !important;
-    box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+    border-color: #e11d48 !important;
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.35);
     transform: scale(1.1);
 }
 
