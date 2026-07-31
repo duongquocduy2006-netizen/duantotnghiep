@@ -49,7 +49,7 @@ const validateColor = (val) => {
 };
 
 // ─── TagInput Component ──────────────────────────────────────────────────────
-const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onCreateNewColor, placeholder, icon, presets = [], validate, hint }) => {
+const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, presets = [], validate, hint }) => {
     const [inputVal, setInputVal] = useState("");
     const [editingIdx, setEditingIdx] = useState(null);
     const [editVal, setEditVal] = useState("");
@@ -103,36 +103,9 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onCreateNewColor, plac
 
     return (
         <div className="tag-input-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                <label className="tag-input-label" style={{ margin: 0 }}>
-                    {icon && <i className={`bi ${icon}`}></i>} {label}
-                </label>
-                {onCreateNewColor && (
-                    <button
-                        type="button"
-                        className="btn-create-new-color"
-                        onClick={onCreateNewColor}
-                        title="Tạo tên màu sắc biến thể mới"
-                        style={{
-                            background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-                            color: '#ffffff',
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '4px 12px',
-                            fontSize: '11px',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            boxShadow: '0 2px 8px rgba(109, 40, 217, 0.25)',
-                            transition: 'all 0.2s ease'
-                        }}
-                    >
-                        <i className="bi bi-palette-fill"></i> + TẠO MÀU MỚI
-                    </button>
-                )}
-            </div>
+            <label className="tag-input-label">
+                {icon && <i className={`bi ${icon}`}></i>} {label}
+            </label>
 
             {/* Hint text */}
             {hint && <p className="tag-hint">{hint}</p>}
@@ -241,30 +214,6 @@ const AdminProductDetail = () => {
     const [variantId, setVariantId] = useState(null);
     const [price, setPrice] = useState("");
     const [quantity, setQuantity] = useState("");
-
-    // Modal state for creating new custom color
-    const [showNewColorModal, setShowNewColorModal] = useState(false);
-    const [newCustomColorName, setNewCustomColorName] = useState("");
-    const [newColorError, setNewColorError] = useState("");
-
-    const handleCreateNewCustomColor = () => {
-        const trimmed = newCustomColorName.trim();
-        const err = validateColor(trimmed);
-        if (err) {
-            setNewColorError(err);
-            return;
-        }
-        const dup = selectedColors.some(c => c.toLowerCase() === trimmed.toLowerCase());
-        if (dup) {
-            setNewColorError(`Màu "${trimmed}" đã được chọn rồi!`);
-            return;
-        }
-        setSelectedColors(prev => [...prev, trimmed]);
-        setNewCustomColorName("");
-        setNewColorError("");
-        setShowNewColorModal(false);
-        window.dispatchEvent(new CustomEvent('show-toast', { detail: `✨ Đã tạo & chọn màu mới "${trimmed}"!` }));
-    };
 
     const sortVariantsByAscendingSize = (varList) => {
         if (!Array.isArray(varList)) return [];
@@ -559,10 +508,58 @@ const AdminProductDetail = () => {
 
                         {/* Card: Cấu hình biến thể */}
                         <div className="apd-card">
-                            <h3 className="apd-card-title">
-                                <i className={`bi ${variantId ? "bi-pencil-square" : "bi-plus-circle"}`}></i>
-                                {variantId ? " Cập nhật biến thể" : " Cấu hình biến thể"}
-                            </h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '8px' }}>
+                                <h3 className="apd-card-title" style={{ margin: 0, paddingBottom: 0, borderBottom: 'none' }}>
+                                    <i className={`bi ${variantId ? "bi-pencil-square" : "bi-plus-circle"}`}></i>
+                                    {variantId ? " Cập nhật biến thể" : " Cấu hình biến thể"}
+                                </h3>
+                                {variantId ? (
+                                    <button
+                                        type="button"
+                                        className="btn-new-variant"
+                                        onClick={resetVariantForm}
+                                        title="Thoát chế độ chỉnh sửa để tạo mới biến thể khác"
+                                        style={{
+                                            background: '#f3e8ff',
+                                            color: '#7c3aed',
+                                            border: '1px solid #d8b4fe',
+                                            borderRadius: '8px',
+                                            padding: '6px 14px',
+                                            fontSize: '12px',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <i className="bi bi-plus-lg"></i> TẠO BIẾN THỂ MỚI
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="btn-reset-form-top"
+                                        onClick={resetVariantForm}
+                                        title="Xóa trắng các ô nhập để làm mới"
+                                        style={{
+                                            background: '#f8fafc',
+                                            color: '#64748b',
+                                            border: '1px solid #e2e8f0',
+                                            borderRadius: '8px',
+                                            padding: '6px 12px',
+                                            fontSize: '12px',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '5px'
+                                        }}
+                                    >
+                                        <i className="bi bi-arrow-counterclockwise"></i> LÀM MỚI FORM
+                                    </button>
+                                )}
+                            </div>
 
                             <form onSubmit={handleVariantSubmit}>
                                 {/* SIZE TAG INPUT */}
@@ -586,7 +583,6 @@ const AdminProductDetail = () => {
                                     onAdd={addColor}
                                     onRemove={removeColor}
                                     onEdit={editColor}
-                                    onCreateNewColor={() => setShowNewColorModal(true)}
                                     placeholder="Hoặc nhập tên màu thủ công rồi Enter…"
                                     icon="bi-palette"
                                     presets={['Đen','Trắng','Đỏ','Xanh dương','Xanh lá','Vàng','Hồng','Xám','Nâu','Cam','Tím','Kem','Be']}
@@ -632,9 +628,42 @@ const AdminProductDetail = () => {
                                             "LƯU BIẾN THỂ"
                                         )}
                                     </button>
-                                    {variantId && (
-                                        <button type="button" className="btn-cancel-v" onClick={resetVariantForm}>
-                                            HỦY BỎ
+                                    {variantId ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn-new-variant-action"
+                                                onClick={resetVariantForm}
+                                                style={{
+                                                    background: '#f3e8ff',
+                                                    color: '#7c3aed',
+                                                    border: '1.5px solid #d8b4fe',
+                                                    borderRadius: '10px',
+                                                    padding: '13px 20px',
+                                                    fontFamily: 'Oswald, sans-serif',
+                                                    fontSize: '13px',
+                                                    fontWeight: '700',
+                                                    cursor: 'pointer',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                <i className="bi bi-plus-circle-fill"></i> TẠO BIẾN THỂ MỚI
+                                            </button>
+                                            <button type="button" className="btn-cancel-v" onClick={resetVariantForm}>
+                                                HỦY BỎ
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="btn-cancel-v"
+                                            onClick={resetVariantForm}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                        >
+                                            <i className="bi bi-arrow-counterclockwise"></i> LÀM MỚI
                                         </button>
                                     )}
                                 </div>
@@ -739,61 +768,6 @@ const AdminProductDetail = () => {
                     </div>
                 </div>
             </div>
-
-            {showNewColorModal && (
-                <div className="admin-confirm-overlay" style={{ zIndex: 9999 }}>
-                    <div className="admin-confirm-box animate__animated animate__zoomIn" style={{ maxWidth: '420px', padding: '24px', borderRadius: '16px' }}>
-                        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#f3e8ff', color: '#7c3aed', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', marginBottom: '10px' }}>
-                                <i className="bi bi-palette-fill"></i>
-                            </div>
-                            <h4 style={{ margin: 0, fontFamily: 'Oswald, sans-serif', fontSize: '20px', color: '#0f172a' }}>
-                                TẠO MÀU SẮC BIẾN THỂ MỚI
-                            </h4>
-                            <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#64748b' }}>
-                                Nhập tên màu phối hoặc màu sắc mới (VD: Trắng Đen, Xanh Mint, Hồng Pastel...)
-                            </p>
-                        </div>
-
-                        <div style={{ marginBottom: '16px' }}>
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="VD: Trắng Đen, Xanh Mint..."
-                                value={newCustomColorName}
-                                onChange={e => { setNewCustomColorName(e.target.value); setNewColorError(""); }}
-                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateNewCustomColor(); } }}
-                                autoFocus
-                                style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '14px' }}
-                            />
-                            {newColorError && (
-                                <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                                    {newColorError}
-                                </div>
-                            )}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => { setShowNewColorModal(false); setNewCustomColorName(""); setNewColorError(""); }}
-                                style={{ borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: '600' }}
-                            >
-                                HỦY BỎ
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={handleCreateNewCustomColor}
-                                style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)', border: 'none', borderRadius: '8px', padding: '8px 20px', fontSize: '13px', fontWeight: '700' }}
-                            >
-                                TẠO MÀU
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </AdminLayout>
     );
 };
