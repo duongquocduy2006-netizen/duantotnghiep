@@ -277,10 +277,12 @@ const AdminProductForm = () => {
 
             if (response.data && response.data.success) {
                 const data = response.data;
-                const rawDesc = data.description || prev.description || '';
-                const finalDesc = rawDesc.trim().length >= 150
+                const rawDesc = data.description || '';
+                const wordCount = rawDesc ? rawDesc.trim().split(/\s+/).filter(Boolean).length : 0;
+                const pName = trimmedName || data.productName || 'Sản phẩm';
+                const finalDesc = wordCount >= 100
                     ? rawDesc
-                    : `${rawDesc ? rawDesc + ' ' : ''}${trimmedName || data.productName || 'Sản phẩm'} sở hữu thiết kế thời thượng, phong cách hiện đại cùng chất liệu cao cấp mang lại sự thoải mái và êm ái tối đa cho người sử dụng trong mọi hoạt động hàng ngày. Đôi giày là lựa chọn tuyệt vời tôn lên cá tính thời trang nổi bật của bạn.`;
+                    : (rawDesc ? rawDesc.trim() + '\n\n' : '') + `${pName} là biểu tượng thời trang mang phong cách hiện đại và đẳng cấp, được thiết kế tỉ mỉ để đáp ứng nhu cầu thời trang đỉnh cao của giới trẻ năng động. Đôi giày sở hữu phom dáng chuẩn ôm chân tinh tế, kết hợp cùng chất liệu da cao cấp mềm mại mang lại độ bền vượt trội và khả năng chống bám bẩn hiệu quả. Hệ thống đế cao su tự nhiên nguyên khối được trang bị công nghệ đệm khí tiên tiến, giúp giảm chấn tối đa, mang lại cảm giác êm ái, nhẹ nhàng và tự tin trong từng bước di chuyển. Bên cạnh đó, các rãnh bám thông minh dưới mặt đế giúp tăng cường độ ma sát và chống trượt vượt trội trên mọi địa hình. Dễ dàng phối hợp với nhiều kiểu trang phục từ quần Jeans, Jogger năng động cho đến những bộ Outfit đường phố cá tính, ${pName} chắc chắn sẽ là điểm nhấn hoàn hảo khẳng định gu thời trang thời thượng của bạn.`;
 
                 setProduct(prev => ({
                     ...prev,
