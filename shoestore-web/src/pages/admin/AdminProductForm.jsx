@@ -822,29 +822,6 @@ const AdminProductForm = () => {
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                         <button
                                             type="button"
-                                            className="btn-ai-re-extract"
-                                            onClick={handleGenerateAiDescription}
-                                            disabled={generatingDesc || aiAnalyzing}
-                                            title="Bấm để AI phân tích tạo lại Tên & Mô tả chi tiết"
-                                            style={{
-                                                background: '#f3e8ff',
-                                                color: '#7c3aed',
-                                                border: '1px solid #d8b4fe',
-                                                borderRadius: '8px',
-                                                padding: '6px 14px',
-                                                fontSize: '12px',
-                                                fontWeight: '700',
-                                                cursor: 'pointer',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            <i className="bi bi-arrow-clockwise"></i> TẠO LẠI AI
-                                        </button>
-                                        <button
-                                            type="button"
                                             className="btn-ai-clear-info"
                                             onClick={handleClearAiBasicInfo}
                                             title="Bấm để xóa sạch Tên sản phẩm và Mô tả chi tiết vừa tạo"
