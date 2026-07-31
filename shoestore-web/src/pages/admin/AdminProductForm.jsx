@@ -957,11 +957,11 @@ const AdminProductForm = () => {
 
                                 <div className="gallery-section">
                                     <label className="form-label-header">Hình ảnh hiện tại</label>
-                                    {(id ? images : tempImages).length === 0 ? (
+                                    {images.length === 0 ? (
                                         <p style={{ color: '#555', fontSize: '12px', fontStyle: 'italic', marginBottom: '20px' }}>Chưa có hình ảnh nào cho sản phẩm này.</p>
                                     ) : (
                                         <div className="gallery-grid">
-                                            {(id ? images : tempImages).map((img, idx) => (
+                                            {images.map((img, idx) => (
                                                 <div key={img.id || idx} className="gallery-item">
                                                     {img.isPrimary && <span className="badge-primary">ẢNH CHÍNH</span>}
                                                     <img src={getImageUrl(img)} alt="Product" className="img-fluid" />
