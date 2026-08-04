@@ -605,11 +605,9 @@ const AdminProductDetail = () => {
                                             "LƯU BIẾN THỂ"
                                         )}
                                     </button>
-                                    {variantId && (
-                                        <button type="button" className="btn-cancel-v" onClick={resetVariantForm}>
-                                            HỦY BỎ
-                                        </button>
-                                    )}
+                                    <button type="button" className="btn-cancel-v" onClick={resetVariantForm}>
+                                        <i className="fa-solid fa-rotate-right" style={{ marginRight: '5px' }}></i>LÀM MỚI
+                                    </button>
                                 </div>
                             </form>
                         </div>

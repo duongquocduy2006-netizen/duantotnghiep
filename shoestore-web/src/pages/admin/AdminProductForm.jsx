@@ -879,6 +879,26 @@ const AdminProductForm = () => {
                         </div>
                         <div className="btn-group">
                             <Link to="/admin/products" className="btn-cancel">HỦY BỎ</Link>
+                            {!isEdit && (
+                                <button type="button" className="btn-cancel" style={{ background: '#334155', color: '#f1f5f9', border: '1.5px solid #475569' }} onClick={() => {
+                                    if (window.confirm("Bạn có chắc chắn muốn làm mới toàn bộ form?")) {
+                                        setProduct({ productName: '', description: '', status: 1, brandName: '', categoryId: '' });
+                                        setVariant({ sizeId: '', colorId: '', price: '', quantity: '' });
+                                        setSelectedSizes([]);
+                                        setSelectedColors([]);
+                                        setAiImageBase64('');
+                                        setAiImagesBase64List([]);
+                                        setImages([]);
+                                        setTempImages([]);
+                                        setAiSuccessMsg('');
+                                        setErrors({});
+                                        setError(null);
+                                        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã làm mới form thành công!' }));
+                                    }
+                                }}>
+                                    <i className="fa-solid fa-rotate-right" style={{ marginRight: '6px' }}></i>LÀM MỚI
+                                </button>
+                            )}
                             <button type="submit" className="btn-save" disabled={saving}>
                                 {saving ? (
                                     <>
