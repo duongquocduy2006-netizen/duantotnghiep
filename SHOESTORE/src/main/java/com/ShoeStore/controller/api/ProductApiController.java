@@ -514,6 +514,10 @@ public class ProductApiController {
     public ResponseEntity<?> saveVariant(@RequestBody Map<String, Object> payload) {
         try {
             Integer productId = (Integer) payload.get("productId");
+            String sku = (String) payload.get("sku");
+            if (sku == null) {
+                sku = (String) payload.get("productCode");
+            }
             Integer variantId = (Integer) payload.get("variantId");
             Integer sizeId = (Integer) payload.get("sizeId");
             Integer colorId = (Integer) payload.get("colorId");
@@ -525,14 +529,16 @@ public class ProductApiController {
             }
             Integer quantity = (Integer) payload.get("quantity");
 
-            if (productId == null) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu productId!"));
+            Product product = null;
+            if (productId != null) {
+                product = productRepository.findById(productId).orElse(null);
+            }
+            if (product == null && sku != null && !sku.trim().isEmpty()) {
+                product = productRepository.findByProductCode(sku.trim()).orElse(null);
             }
 
-            Product product = productRepository.findById(productId).orElse(null);
             if (product == null) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Không tìm thấy sản phẩm!"));
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu productId hoặc SKU sản phẩm không tồn tại!"));
             }
 
             // Validate and create new color
@@ -592,9 +598,9 @@ public class ProductApiController {
                         .body(Map.of("success", false, "message", "Giá bán phải lớn hơn 5,000 VNĐ!"));
             }
 
-            if (quantity == null || quantity < 1 || quantity > 100) {
+            if (quantity == null || quantity < 1) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Số lượng tồn kho phải từ 1 đến 100!"));
+                        .body(Map.of("success", false, "message", "Số lượng tồn kho thêm mới phải từ 1 trở lên!"));
             }
 
             Size size = sizeRepository.findById(sizeId).orElse(null);
@@ -606,18 +612,33 @@ public class ProductApiController {
             }
 
             ProductVariant variant;
+            boolean accumulated = false;
+            int totalQty = quantity;
+
             if (variantId == null) {
-                // ADD NEW: Check for duplicate
+                // ADD NEW: If duplicate variant (same product/SKU, size, color) exists, ACCUMULATE (cộng dồn)
                 java.util.Optional<ProductVariant> duplicate = productVariantRepository
                         .findByProductAndSizeAndColor(product, size, color);
                 if (duplicate.isPresent()) {
-                    return ResponseEntity.badRequest().body(Map.of("success", false, "message",
-                            "Lỗi: Sản phẩm đã có biến thể Size " + size.getSizeName() + " - Màu " + color.getColorName()
-                                    + "!"));
+                    variant = duplicate.get();
+                    int currentQty = variant.getQuantity() != null ? variant.getQuantity() : 0;
+                    totalQty = currentQty + quantity;
+                    variant.setQuantity(totalQty);
+                    if (price != null) {
+                        variant.setPrice(price);
+                    }
+                    accumulated = true;
+                } else {
+                    variant = new ProductVariant();
+                    variant.setProduct(product);
+                    variant.setSize(size);
+                    variant.setColor(color);
+                    variant.setPrice(price);
+                    variant.setQuantity(quantity);
+                    variant.setStatus(1);
                 }
-                variant = new ProductVariant();
             } else {
-                // EDIT
+                // EDIT: Check if target (size, color) clashes with another variant
                 variant = productVariantRepository.findById(variantId).orElse(null);
                 if (variant == null) {
                     return ResponseEntity.badRequest()
@@ -627,22 +648,42 @@ public class ProductApiController {
                 java.util.Optional<ProductVariant> clash = productVariantRepository
                         .findByProductAndSizeAndColor(product, size, color);
                 if (clash.isPresent() && !clash.get().getId().equals(variantId)) {
-                    return ResponseEntity.badRequest().body(Map.of("success", false, "message",
-                            "Lỗi: Size " + size.getSizeName() + " - Màu " + color.getColorName()
-                                    + " đã được dùng cho biến thể khác!"));
+                    // Merge/accumulate variant into clash variant
+                    ProductVariant clashVariant = clash.get();
+                    int currentQty = clashVariant.getQuantity() != null ? clashVariant.getQuantity() : 0;
+                    totalQty = currentQty + quantity;
+                    clashVariant.setQuantity(totalQty);
+                    if (price != null) {
+                        clashVariant.setPrice(price);
+                    }
+                    productVariantRepository.save(clashVariant);
+
+                    // Remove old merged variantId
+                    productVariantRepository.deleteRelatedCartItems(variantId);
+                    productVariantRepository.deleteById(variantId);
+
+                    return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "accumulated", true,
+                        "message", "Đã cộng dồn biến thể trùng Size " + size.getSizeName() + " - Màu " + color.getColorName() + " (Tổng tồn kho: " + totalQty + ")!"
+                    ));
+                } else {
+                    variant.setProduct(product);
+                    variant.setSize(size);
+                    variant.setColor(color);
+                    variant.setPrice(price);
+                    variant.setQuantity(quantity);
+                    variant.setStatus(1);
                 }
             }
 
-            variant.setProduct(product);
-            variant.setSize(size);
-            variant.setColor(color);
-            variant.setPrice(price);
-            variant.setQuantity(quantity);
-            variant.setStatus(1);
-
             productVariantRepository.save(variant);
 
-            return ResponseEntity.ok(Map.of("success", true, "message", "Lưu biến thể thành công!"));
+            String message = accumulated
+                    ? "Đã cộng dồn " + quantity + " sản phẩm vào biến thể Size " + size.getSizeName() + " - Màu " + color.getColorName() + " (Tổng tồn kho: " + totalQty + ")!"
+                    : "Lưu biến thể thành công!";
+
+            return ResponseEntity.ok(Map.of("success", true, "accumulated", accumulated, "message", message));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

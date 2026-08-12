@@ -551,40 +551,67 @@ public class AdminProductManager {
             Color color = colorRepository.findById(colorId).orElse(null);
 
             if (size != null && color != null) {
+                if (quantity == null || quantity < 1) {
+                    redirectAttributes.addFlashAttribute("error", "Lỗi: Số lượng tồn kho phải lớn hơn hoặc bằng 1!");
+                    return "redirect:/admin/products/detail/" + productId;
+                }
+
                 ProductVariant variant;
                 if (variantId == null) {
-                    // ADD NEW: Check for duplicate first
+                    // ADD NEW: Check for duplicate first -> ACCUMULATE
                     java.util.Optional<ProductVariant> duplicate = productVariantRepository.findByProductAndSizeAndColor(product, size, color);
                     if (duplicate.isPresent()) {
-                        redirectAttributes.addFlashAttribute("error", "Lỗi: Sản phẩm đã có biến thể Size " + size.getSizeName() + " - Màu " + color.getColorName() + "!");
+                        variant = duplicate.get();
+                        int oldQty = variant.getQuantity() != null ? variant.getQuantity() : 0;
+                        int newQty = oldQty + quantity;
+                        variant.setQuantity(newQty);
+                        if (price != null) variant.setPrice(price);
+                        productVariantRepository.save(variant);
+                        redirectAttributes.addFlashAttribute("success", "Đã cộng dồn " + quantity + " vào biến thể Size " + size.getSizeName() + " - Màu " + color.getColorName() + " (Tổng tồn kho: " + newQty + ")!");
+                        return "redirect:/admin/products/detail/" + productId;
+                    } else {
+                        variant = new ProductVariant();
+                        variant.setProduct(product);
+                        variant.setSize(size);
+                        variant.setColor(color);
+                        variant.setPrice(price);
+                        variant.setQuantity(quantity);
+                        variant.setStatus(1);
+                        productVariantRepository.save(variant);
+                        redirectAttributes.addFlashAttribute("success", "Thêm biến thể mới thành công!");
                         return "redirect:/admin/products/detail/" + productId;
                     }
-                    variant = new ProductVariant();
                 } else {
-                    // EDIT: Check if new combination clashes with another existing variant
+                    // EDIT: Check if new combination clashes with another existing variant -> ACCUMULATE & MERGE
                     variant = productVariantRepository.findById(variantId).orElse(null);
                     if (variant == null) return "redirect:/admin/products/detail/" + productId;
 
                     java.util.Optional<ProductVariant> clash = productVariantRepository.findByProductAndSizeAndColor(product, size, color);
                     if (clash.isPresent() && !clash.get().getId().equals(variantId)) {
-                        redirectAttributes.addFlashAttribute("error", "Lỗi: Size " + size.getSizeName() + " - Màu " + color.getColorName() + " đã được dùng cho biến thể khác!");
+                        ProductVariant clashVariant = clash.get();
+                        int oldQty = clashVariant.getQuantity() != null ? clashVariant.getQuantity() : 0;
+                        int newQty = oldQty + quantity;
+                        clashVariant.setQuantity(newQty);
+                        if (price != null) clashVariant.setPrice(price);
+                        productVariantRepository.save(clashVariant);
+
+                        productVariantRepository.deleteRelatedCartItems(variantId);
+                        productVariantRepository.deleteById(variantId);
+
+                        redirectAttributes.addFlashAttribute("success", "Đã cộng dồn biến thể trùng Size " + size.getSizeName() + " - Màu " + color.getColorName() + " (Tổng tồn kho: " + newQty + ")!");
+                        return "redirect:/admin/products/detail/" + productId;
+                    } else {
+                        variant.setProduct(product);
+                        variant.setSize(size);
+                        variant.setColor(color);
+                        variant.setPrice(price);
+                        variant.setQuantity(quantity);
+                        variant.setStatus(1);
+                        productVariantRepository.save(variant);
+                        redirectAttributes.addFlashAttribute("success", "Cập nhật biến thể thành công!");
                         return "redirect:/admin/products/detail/" + productId;
                     }
                 }
-
-                if (quantity == null || quantity < 1 || quantity > 100) {
-                    redirectAttributes.addFlashAttribute("error", "Lỗi: Số lượng tồn kho phải lớn hơn hoặc bằng 1 và không vượt quá 100!");
-                    return "redirect:/admin/products/detail/" + productId;
-                }
-
-                variant.setProduct(product);
-                variant.setSize(size);
-                variant.setColor(color);
-                variant.setPrice(price);
-                variant.setQuantity(quantity);
-                variant.setStatus(1);
-
-                productVariantRepository.save(variant);
             }
         } catch (Exception e) {
             e.printStackTrace();

@@ -15,7 +15,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/lookbooks")
-@CrossOrigin(origins = "*")
+@CrossOrigin(originPatterns = "*")
 public class LookbookApiController {
 
     @Autowired

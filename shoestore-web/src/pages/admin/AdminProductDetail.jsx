@@ -335,6 +335,7 @@ const AdminProductDetail = () => {
 
                 let isFirst = true;
                 let countSuccess = 0;
+                let lastMsg = "";
                 for (const sz of selectedSizes) {
                     for (const cl of selectedColors) {
                         try {
@@ -344,6 +345,7 @@ const AdminProductDetail = () => {
 
                             const res = await api.post("/api/products/variant/save", {
                                 productId: parseInt(id),
+                                sku: product?.productCode || null,
                                 variantId: targetVariantId,
                                 sizeId,
                                 colorId,
@@ -352,7 +354,10 @@ const AdminProductDetail = () => {
                                 price: parseFloat(price),
                                 quantity: qtyPerVariant
                             });
-                            if (res.data?.success) countSuccess++;
+                            if (res.data?.success) {
+                                countSuccess++;
+                                if (res.data.message) lastMsg = res.data.message;
+                            }
                             isFirst = false;
                         } catch (err) {
                             console.error("Lỗi lưu tách biến thể:", err);
@@ -361,31 +366,44 @@ const AdminProductDetail = () => {
                 }
 
                 window.dispatchEvent(new CustomEvent('show-toast', {
-                    detail: totalCombos > 1
+                    detail: lastMsg || (totalCombos > 1
                         ? `✨ Đã tự động tách & cập nhật thành công ${countSuccess} biến thể!`
-                        : "Cập nhật biến thể thành công!"
+                        : "Cập nhật biến thể thành công!")
                 }));
                 resetVariantForm();
                 fetchProductDetails();
             } else {
                 let count = 0;
+                let lastMsg = "";
+                let accumulatedCount = 0;
                 for (const sz of selectedSizes) {
                     for (const cl of selectedColors) {
                         try {
                             const sizeId = getSizeId(sz);
                             const colorId = getColorId(cl);
                             const res = await api.post('/api/products/variant/save', {
-                                productId: parseInt(id), variantId: null,
+                                productId: parseInt(id),
+                                sku: product?.productCode || null,
+                                variantId: null,
                                 sizeId, colorId,
                                 newSizeName: sizeId ? "" : sz,
                                 newColorName: colorId ? "" : cl,
                                 price: parseFloat(price), quantity: parseInt(quantity)
                             });
-                            if (res.data?.success) count++;
+                            if (res.data?.success) {
+                                count++;
+                                if (res.data.accumulated) accumulatedCount++;
+                                if (res.data.message) lastMsg = res.data.message;
+                            }
                         } catch {}
                     }
                 }
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã lưu ${count} biến thể thành công!` }));
+                const toastMsg = (count === 1 && lastMsg) 
+                    ? lastMsg 
+                    : (accumulatedCount > 0 
+                        ? `✨ Đã xử lý & cộng dồn ${count} biến thể thành công!` 
+                        : `Đã lưu ${count} biến thể thành công!`);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: toastMsg }));
                 resetVariantForm();
                 fetchProductDetails();
             }

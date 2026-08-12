@@ -17,7 +17,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/banners")
-@CrossOrigin(origins = "*")
+@CrossOrigin(originPatterns = "*")
 public class BannerApiController {
 
     @Autowired
