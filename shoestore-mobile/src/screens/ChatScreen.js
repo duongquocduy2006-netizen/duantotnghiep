@@ -88,34 +88,12 @@ export default function ChatScreen({ navigation }) {
         throw new Error('API server returned error');
       }
     } catch (e) {
-      console.log("Chatbot API Connection Failed, using smart offline fallback:", e.message);
-
-      // Simulate natural typing delay for offline bot
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const lowerText = text.toLowerCase();
-      let offlineReply = '';
-
-      if (lowerText.includes('size') || lowerText.includes('kích thước') || lowerText.includes('cỡ')) {
-        offlineReply = 'Để chọn size giày chuẩn, bạn có thể đo chiều dài bàn chân (từ gót đến mũi ngón chân dài nhất) bằng cm, sau đó cộng thêm từ 0.5 - 1 cm rồi đối chiếu với bảng size của từng hãng. Nike/Adidas thường là size EU tiêu chuẩn, còn Jordan có thể chọn lớn hơn 0.5 size nếu chân bè ngang.';
-      } else if (lowerText.includes('đổi') || lowerText.includes('trả') || lowerText.includes('hoàn tiền')) {
-        offlineReply = 'ShoeStore hỗ trợ đổi trả sản phẩm miễn phí trong vòng 7 ngày kể từ ngày nhận hàng với điều kiện sản phẩm còn mới nguyên tem mác, hộp giày không rách nát và chưa có dấu hiệu sử dụng thực tế.';
-      } else if (lowerText.includes('khuyến mãi') || lowerText.includes('mã') || lowerText.includes('voucher') || lowerText.includes('giảm')) {
-        offlineReply = 'Hiện tại ShoeStore đang có các chương trình khuyến mãi và Voucher hấp dẫn: NEW10 (giảm 10% cho thành viên mới), FREESHIP (miễn phí vận chuyển cho hạng Bạc trở lên) và SHOE200 (giảm 200k cho đơn từ 4 triệu đồng).';
-      } else if (lowerText.includes('chạy') || lowerText.includes('thể thao') || lowerText.includes('run')) {
-        offlineReply = 'Đối với hoạt động chạy bộ và thể thao thể hình, bạn nên chọn các dòng Nike Air Max Plus (sử dụng công nghệ đệm Tuned Air êm ái) hoặc Yeezy Boost 350 V2 (sở hữu đế đệm Boost siêu đàn hồi từ adidas) để nâng niu bàn chân tốt nhất!';
-      } else if (lowerText.includes('chào') || lowerText.includes('hello') || lowerText.includes('hi')) {
-        offlineReply = 'Xin chào! Tôi là trợ lý ảo ShoeStore AI. Tôi có thể hỗ trợ gì cho bạn về các dòng sản phẩm giày thể thao và hướng dẫn mua hàng hôm nay?';
-      } else if (lowerText.includes('cảm ơn') || lowerText.includes('cám ơn') || lowerText.includes('thanks') || lowerText.includes('thank')) {
-        offlineReply = 'Rất hân hạnh được hỗ trợ bạn! Chúc bạn chọn được những mẫu sneaker ưng ý và có trải nghiệm tuyệt vời tại ShoeStore.';
-      } else {
-        offlineReply = 'Tôi đang chạy ở chế độ Ngoại tuyến (Offline Demo) do không thể kết nối tới server Spring Boot. Bạn có thể thử đặt các câu hỏi xoay quanh: Cách chọn size giày, Chính sách đổi trả, Mã voucher giảm giá, hoặc Đề xuất giày chạy bộ nhé!';
-      }
+      console.log("Chatbot API Connection Failed:", e.message);
 
       const botReply = {
         id: String(Date.now() + 1),
         sender: 'bot',
-        text: offlineReply,
+        text: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.',
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, botReply]);

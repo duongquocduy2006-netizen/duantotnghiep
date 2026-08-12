@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  Alert,
   TextInput
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -16,6 +15,8 @@ import { CartContext } from '../context/CartContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../config';
 import Toast from '../components/Toast';
+import LoginPromptSheet from '../components/LoginPromptSheet';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const API_TIMEOUT = 4000;
@@ -32,6 +33,14 @@ export default function DetailScreen({ route, navigation }) {
   const showToast = (msg) => {
     setToastMessage(msg);
     setToastVisible(true);
+  };
+
+  // Login prompt sheet state
+  const [loginPromptVisible, setLoginPromptVisible] = useState(false);
+  const [loginPromptMessage, setLoginPromptMessage] = useState('');
+  const showLoginPrompt = (msg) => {
+    setLoginPromptMessage(msg);
+    setLoginPromptVisible(true);
   };
   
   const [selectedSize, setSelectedSize] = useState('');
@@ -89,17 +98,6 @@ export default function DetailScreen({ route, navigation }) {
           }
 
           let defaultVariants = result.variants && result.variants.length > 0 ? result.variants : (initialProduct?.variants || []);
-          
-          // If no variants exist from API or initial product, generate standard demo variants
-          if (!defaultVariants || defaultVariants.length === 0) {
-            const basePrice = product.price || initialProduct?.price || 3000000;
-            defaultVariants = [
-              { id: 9901, sizeName: "39", colorName: "Đen Nổi Bật", price: basePrice, quantity: 8 },
-              { id: 9902, sizeName: "40", colorName: "Đen Nổi Bật", price: basePrice, quantity: 10 },
-              { id: 9903, sizeName: "41", colorName: "Đen Nổi Bật", price: basePrice, quantity: 5 },
-              { id: 9904, sizeName: "42", colorName: "Đen Nổi Bật", price: basePrice, quantity: 12 }
-            ];
-          }
 
           const defaultPrice = defaultVariants[0]?.price || product.price || initialProduct?.price || 3000000;
 
@@ -130,128 +128,24 @@ export default function DetailScreen({ route, navigation }) {
         throw new Error("API response error");
       }
     } catch (error) {
-      console.log("Detail API failed or offline mode. Fallback matching product:", error.message);
+      console.log("Detail API failed:", error.message);
       
-      const fallbackList = [
-        {
-          id: 101,
-          productName: "Air Jordan 1 Low 'Shadow'",
-          brandName: "Jordan",
-          categoryName: "Sneaker Cổ Thấp",
-          imageUrl: "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600&auto=format&fit=crop&q=80",
-          price: 3890000,
-          description: "Phiên bản Air Jordan 1 Low mang phong cách bóng rổ huyền thoại với cách phối màu xám đen 'Shadow' lịch lãm.",
-          variants: [
-            { id: 1011, sizeName: "39", colorName: "Xám Đen", price: 3890000, quantity: 5 },
-            { id: 1012, sizeName: "40", colorName: "Xám Đen", price: 3890000, quantity: 2 },
-            { id: 1013, sizeName: "41", colorName: "Xám Đen", price: 3950000, quantity: 0 },
-            { id: 1014, sizeName: "42", colorName: "Xám Đen", price: 3950000, quantity: 12 }
-          ]
-        },
-        {
-          id: 102,
-          productName: "Nike Air Max Plus 'Volt'",
-          brandName: "Nike",
-          categoryName: "Chạy bộ / Thể thao",
-          imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
-          price: 4890000,
-          description: "Nike Air Max Plus mang lại cảm giác êm ái vượt trội với công nghệ đệm Tuned Air.",
-          variants: [
-            { id: 1021, sizeName: "40", colorName: "Neon Đỏ", price: 4890000, quantity: 8 },
-            { id: 1022, sizeName: "41", colorName: "Neon Đỏ", price: 4890000, quantity: 0 },
-            { id: 1023, sizeName: "42", colorName: "Đen Tuyền", price: 4990000, quantity: 4 }
-          ]
-        },
-        {
-          id: 103,
-          productName: "Yeezy Boost 350 V2 'Carbon'",
-          brandName: "Yeezy",
-          categoryName: "Sneaker Cao Cấp",
-          imageUrl: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80",
-          price: 6500000,
-          description: "Sự kết hợp hoàn hảo giữa công nghệ dệt Primeknit thoáng khí và đế Boost siêu êm từ adidas.",
-          variants: [
-            { id: 1031, sizeName: "41", colorName: "Carbon", price: 6500000, quantity: 3 },
-            { id: 1032, sizeName: "42", colorName: "Carbon", price: 6500000, quantity: 7 },
-            { id: 1033, sizeName: "43", colorName: "Carbon", price: 6600000, quantity: 0 }
-          ]
-        },
-        {
-          id: 104,
-          productName: "Adidas NMD R1 V2 Streetwear",
-          brandName: "Adidas",
-          categoryName: "Streetwear",
-          imageUrl: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&auto=format&fit=crop&q=80",
-          price: 3450000,
-          description: "Hành trình khám phá thành phố năng động với dòng NMD thiết kế phá cách.",
-          variants: [
-            { id: 1041, sizeName: "39", colorName: "Trắng Hồng", price: 3450000, quantity: 6 },
-            { id: 1042, sizeName: "40", colorName: "Trắng Hồng", price: 3450000, quantity: 0 },
-            { id: 1043, sizeName: "41", colorName: "Đen Neon", price: 3500000, quantity: 5 }
-          ]
-        },
-        {
-          id: 105,
-          productName: "Puma RS-X Reinvention",
-          brandName: "Puma",
-          categoryName: "Chunky Sneaker",
-          imageUrl: "https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=600&auto=format&fit=crop&q=80",
-          price: 2990000,
-          description: "Dòng RS (Running System) tái xuất với thiết kế chunky hầm hố của thập niên 80.",
-          variants: [
-            { id: 1051, sizeName: "40", colorName: "Trắng Xanh Đỏ", price: 2990000, quantity: 10 },
-            { id: 1052, sizeName: "41", colorName: "Trắng Xanh Đỏ", price: 2990000, quantity: 3 }
-          ]
-        },
-        {
-          id: 106,
-          productName: "Nike Dunk Low Retro 'Panda'",
-          brandName: "Nike",
-          categoryName: "Classic Sneaker",
-          imageUrl: "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=600&auto=format&fit=crop&q=80",
-          price: 3200000,
-          description: "Đôi giày quốc dân không thể thiếu trong tủ đồ của các bạn trẻ.",
-          variants: [
-            { id: 1061, sizeName: "38", colorName: "Trắng Đen", price: 3200000, quantity: 0 },
-            { id: 1062, sizeName: "39", colorName: "Trắng Đen", price: 3200000, quantity: 9 }
-          ]
-        }
-      ];
-
-      // 1. Try finding in fallbackList by ID
-      let matched = fallbackList.find(p => String(p.id) === String(productId));
-
-      // 2. If not found in fallbackList, construct product from initialProduct passed in route params
-      if (!matched && initialProduct) {
-        const basePrice = initialProduct.price || 3000000;
-        matched = {
+      // Use initialProduct passed in route params if available
+      if (initialProduct) {
+        const basePrice = initialProduct.price || 0;
+        const matched = {
           id: initialProduct.id || productId,
-          productName: initialProduct.productName || 'Sneaker Độc Quyền',
-          brandName: initialProduct.brandName || 'Sneaker',
+          productName: initialProduct.productName || 'Sản phẩm',
+          brandName: initialProduct.brandName || '',
           categoryName: initialProduct.categoryName || 'Chưa phân loại',
           imageUrl: initialProduct.imageUrl || '',
           price: basePrice,
-          description: initialProduct.description || 'Mẫu thiết kế độc quyền, phong cách trẻ trung và êm ái.',
-          variants: initialProduct.variants || [
-            { id: 8801, sizeName: "39", colorName: "Mặc định", price: basePrice, quantity: 5 },
-            { id: 8802, sizeName: "40", colorName: "Mặc định", price: basePrice, quantity: 8 },
-            { id: 8803, sizeName: "41", colorName: "Mặc định", price: basePrice, quantity: 10 },
-            { id: 8804, sizeName: "42", colorName: "Mặc định", price: basePrice, quantity: 6 }
-          ]
+          description: initialProduct.description || 'Chưa có mô tả chi tiết cho sản phẩm này.',
+          variants: initialProduct.variants || [],
+          avgRating: initialProduct.avgRating || null,
+          reviewCount: initialProduct.reviewCount || 0
         };
-      }
-
-      // 3. If still not found, fallback to first item in list so user screen never stays broken
-      if (!matched && fallbackList.length > 0) {
-        matched = fallbackList[0];
-      }
-
-      if (matched) {
-        setProductDetail({
-          ...matched,
-          avgRating: matched.avgRating || 4.8,
-          reviewCount: matched.reviewCount || 16
-        });
+        setProductDetail(matched);
         if (matched.variants && matched.variants.length > 0) {
           setSelectedSize(matched.variants[0].sizeName);
           setSelectedColor(matched.variants[0].colorName);
@@ -266,8 +160,19 @@ export default function DetailScreen({ route, navigation }) {
     fetchProductDetail();
   }, [productId]);
 
-  const handleAddToCartAction = () => {
+  const handleAddToCartAction = async () => {
     if (!productDetail) return;
+
+    // Check if user is logged in
+    try {
+      const storedUser = await AsyncStorage.getItem('userAccount');
+      if (!storedUser) {
+        showLoginPrompt('Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng.');
+        return;
+      }
+    } catch (e) {
+      console.warn('Error checking auth state:', e);
+    }
 
     if (availableStock === 0) {
       showToast("Sản phẩm phiên bản này hiện tại đang hết hàng!");
@@ -296,8 +201,19 @@ export default function DetailScreen({ route, navigation }) {
     showToast(`Đã thêm ${quantity} sản phẩm vào giỏ hàng thành công!`);
   };
 
-  const handleBuyNowAction = () => {
+  const handleBuyNowAction = async () => {
     if (!productDetail) return;
+
+    // Check if user is logged in
+    try {
+      const storedUser = await AsyncStorage.getItem('userAccount');
+      if (!storedUser) {
+        showLoginPrompt('Bạn cần đăng nhập để mua hàng.');
+        return;
+      }
+    } catch (e) {
+      console.warn('Error checking auth state:', e);
+    }
 
     if (availableStock === 0) {
       showToast("Sản phẩm phiên bản này hiện tại đang hết hàng!");
@@ -577,6 +493,15 @@ export default function DetailScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
       <Toast message={toastMessage} visible={toastVisible} onDismiss={() => setToastVisible(false)} />
+      <LoginPromptSheet
+        visible={loginPromptVisible}
+        message={loginPromptMessage}
+        onDismiss={() => setLoginPromptVisible(false)}
+        onLogin={() => {
+          setLoginPromptVisible(false);
+          navigation.navigate('Login');
+        }}
+      />
     </SafeAreaView>
   );
 }

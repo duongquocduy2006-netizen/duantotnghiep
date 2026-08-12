@@ -11,8 +11,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ScrollView,
-  Dimensions,
-  Alert
+  Dimensions
 } from 'react-native';
 import Toast from '../components/Toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -163,40 +162,7 @@ export default function LoginScreen({ navigation }) {
       }
     } catch (error) {
       console.warn("Login Connection Error:", error.message);
-      Alert.alert(
-        "Lỗi Kết Nối 🔌",
-        "Không thể kết nối đến máy chủ. Bạn có muốn tiếp tục bằng tài khoản Demo?",
-        [
-          { text: "Hủy", style: "cancel" },
-          { 
-            text: "Dùng tài khoản Demo", 
-            onPress: async () => {
-              if (rememberMe) {
-                await AsyncStorage.setItem('rememberedCredentials', JSON.stringify({
-                  email,
-                  password,
-                  rememberMe: true
-                }));
-              } else {
-                await AsyncStorage.removeItem('rememberedCredentials');
-              }
-              const demoUser = {
-                id: 99,
-                full_name: "Khách hàng VIP",
-                email: email || "demo@shoestore.com",
-                role: "USER",
-                points: 120
-              };
-              await AsyncStorage.removeItem('userOrders');
-              await AsyncStorage.setItem('userAccount', JSON.stringify(demoUser));
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'MainTabs' }],
-              });
-            }
-          }
-        ]
-      );
+      showToast("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.");
     } finally {
       setLoading(false);
     }
@@ -326,6 +292,17 @@ export default function LoginScreen({ navigation }) {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
           
+          {/* BACK BUTTON */}
+          {navigation.canGoBack() && (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={22} color="#000000" />
+            </TouchableOpacity>
+          )}
+
           {/* HEADER LOGO SECTION */}
           <View style={styles.logoSection}>
             <View style={styles.footprintRow}>
@@ -732,6 +709,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 28,
     paddingVertical: 40,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FAF9FB',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   logoSection: {
     alignItems: 'center',

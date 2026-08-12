@@ -21,6 +21,7 @@ import { CartContext } from '../context/CartContext';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../config';
 import Toast from '../components/Toast';
+import LoginPromptSheet from '../components/LoginPromptSheet';
 
 const { width, height } = Dimensions.get('window');
 
@@ -102,13 +103,6 @@ const FALLBACK_WARDS = {
   ]
 };
 
-// Vouchers and Rank requirements configuration
-const FALLBACK_VOUCHERS = [
-  { code: 'NEW10', desc: 'Giảm 10% giá trị sản phẩm', type: 'percent', value: 10, minPoints: 0, rankName: 'Mọi hạng thành viên', minSpend: 0 },
-  { code: 'FREESHIP', desc: 'Miễn phí vận chuyển toàn quốc', type: 'shipping', value: 30000, minPoints: 500, rankName: 'Hạng Bạc (Silver) trở lên', minSpend: 0 },
-  { code: 'SHOE200', desc: 'Giảm ngay 200.000 đ (Đơn từ 4 triệu)', type: 'value', value: 200000, minPoints: 2000, rankName: 'Hạng Vàng (Gold) trở lên', minSpend: 4000000 },
-  { code: 'DIAMOND500', desc: 'Giảm ngay 500.000 đ (Đơn từ 5 triệu)', type: 'value', value: 500000, minPoints: 10000, rankName: 'Hạng Kim Cương (Diamond)', minSpend: 5000000 }
-];
 
 export default function CartScreen({ navigation }) {
   const { cart, totalAmount, updateCartQuantity, clearCart } = useContext(CartContext);
@@ -121,6 +115,11 @@ export default function CartScreen({ navigation }) {
     setToastMessage(msg);
     setToastVisible(true);
   };
+
+  // Login prompt sheet state
+  const [loginPromptVisible, setLoginPromptVisible] = useState(false);
+  const showLoginPrompt = () => setLoginPromptVisible(true);
+
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [specificAddress, setSpecificAddress] = useState('');
@@ -143,8 +142,8 @@ export default function CartScreen({ navigation }) {
   // Membership Rank states
   const [userPoints, setUserPoints] = useState(0);
 
-  // Vouchers state (fetch from database, fallback to static if error/offline)
-  const [vouchers, setVouchers] = useState(FALLBACK_VOUCHERS);
+  // Vouchers state (fetch from database)
+  const [vouchers, setVouchers] = useState([]);
   const [vouchersLoading, setVouchersLoading] = useState(false);
   const [inputVoucherCode, setInputVoucherCode] = useState('');
   const [applyingVoucher, setApplyingVoucher] = useState(false);
@@ -237,7 +236,7 @@ export default function CartScreen({ navigation }) {
       }
     } catch (e) {
       console.log("Error fetching real vouchers in CartScreen:", e.message);
-      setVouchers(FALLBACK_VOUCHERS.filter(v => userPoints >= (v.minPoints || 0)));
+      setVouchers([]);
     } finally {
       setVouchersLoading(false);
     }
@@ -719,7 +718,18 @@ export default function CartScreen({ navigation }) {
 
               <TouchableOpacity
                 style={styles.checkoutBtn}
-                onPress={() => setCheckoutModalVisible(true)}
+                onPress={async () => {
+                  try {
+                    const storedUser = await AsyncStorage.getItem('userAccount');
+                    if (!storedUser) {
+                      showLoginPrompt();
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn('Error checking auth state:', e);
+                  }
+                  setCheckoutModalVisible(true);
+                }}
               >
                 <Text style={styles.checkoutBtnText}>TIẾN HÀNH ĐẶT HÀNG</Text>
                 <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
@@ -1155,6 +1165,15 @@ export default function CartScreen({ navigation }) {
       </Modal>
 
       <Toast message={toastMessage} visible={toastVisible} onDismiss={() => setToastVisible(false)} />
+      <LoginPromptSheet
+        visible={loginPromptVisible}
+        message="Bạn cần đăng nhập để tiến hành đặt hàng."
+        onDismiss={() => setLoginPromptVisible(false)}
+        onLogin={() => {
+          setLoginPromptVisible(false);
+          navigation.navigate('Login');
+        }}
+      />
     </SafeAreaView>
   );
 }
