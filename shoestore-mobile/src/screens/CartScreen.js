@@ -149,7 +149,7 @@ export default function CartScreen({ navigation }) {
   const [applyingVoucher, setApplyingVoucher] = useState(false);
 
   // Checkout pricing details
-  const [shippingFee] = useState(30000);
+  const shippingFee = (userPoints >= 2000 || totalAmount >= 500000) ? 0 : 30000;
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('COD'); // 'COD' | 'BANK'
 
@@ -230,7 +230,7 @@ export default function CartScreen({ navigation }) {
             rankName: v.rank_name || v.rankName || (minOrderValue ? `Đơn từ ${formatVND(minOrderValue)}` : 'Mọi đơn hàng / Mọi hạng')
           };
         });
-        setVouchers(mapped.filter(v => userPoints >= (v.minPoints || 0)));
+        setVouchers(mapped);
       } else {
         setVouchers([]);
       }
@@ -708,7 +708,9 @@ export default function CartScreen({ navigation }) {
               </View>
               <View style={styles.billingRow}>
                 <Text style={styles.billingLabel}>Vận chuyển</Text>
-                <Text style={[styles.billingValue, { color: '#2E7D32' }]}>Miễn Phí</Text>
+                <Text style={[styles.billingValue, shippingFee === 0 && { color: '#2E7D32' }]}>
+                  {shippingFee === 0 ? 'Miễn Phí' : formatVND(shippingFee)}
+                </Text>
               </View>
               <View style={styles.divider} />
               <View style={[styles.billingRow, { marginTop: 8 }]}>
@@ -1023,7 +1025,7 @@ export default function CartScreen({ navigation }) {
                 {vouchersLoading ? (
                   <ActivityIndicator size="small" color="#E51E25" style={{ marginVertical: 15 }} />
                 ) : (
-                  vouchers.filter(voucher => userPoints >= (voucher.minPoints || 0)).map((voucher) => {
+                  vouchers.map((voucher) => {
                     const isUnlocked = userPoints >= (voucher.minPoints || 0);
                     const isApplied = appliedVoucher?.code === voucher.code;
 

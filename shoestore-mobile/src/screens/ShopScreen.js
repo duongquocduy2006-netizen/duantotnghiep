@@ -32,6 +32,7 @@ export default function ShopScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('Tất cả');
+  const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [selectedPriceRange, setSelectedPriceRange] = useState('Tất cả');
   const [sortBy, setSortBy] = useState('Mặc định'); // 'Mặc định' | 'Giá tăng' | 'Giá giảm'
   const [userName, setUserName] = useState('Khách hàng');
@@ -111,6 +112,12 @@ export default function ShopScreen({ navigation }) {
     return ['Tất cả', ...Array.from(brands)];
   }, [products]);
 
+  // Get categories dynamically from products list
+  const categoriesList = useMemo(() => {
+    const categories = new Set(products.map(p => p.categoryName).filter(Boolean));
+    return ['Tất cả', ...Array.from(categories)];
+  }, [products]);
+
   // Format Image URL helper
   const formatImageUrl = (url) => {
     if (!url) return 'https://via.placeholder.com/150';
@@ -141,6 +148,11 @@ export default function ShopScreen({ navigation }) {
       result = result.filter(p => p.brandName === selectedBrand);
     }
 
+    // Filter by Category
+    if (selectedCategory !== 'Tất cả') {
+      result = result.filter(p => p.categoryName === selectedCategory);
+    }
+
     // 3. Filter by Price Range
     if (selectedPriceRange !== 'Tất cả') {
       if (selectedPriceRange === 'Dưới 3tr') {
@@ -160,7 +172,7 @@ export default function ShopScreen({ navigation }) {
     }
 
     return result;
-  }, [products, searchQuery, selectedBrand, selectedPriceRange, sortBy]);
+  }, [products, searchQuery, selectedBrand, selectedCategory, selectedPriceRange, sortBy]);
 
   // Render Product Card
   const renderProductItem = ({ item }) => {
@@ -251,6 +263,27 @@ export default function ShopScreen({ navigation }) {
                 >
                   <Text style={[styles.badgeText, isActive && styles.badgeTextActive]}>
                     {brand}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Category Scroll */}
+        <View style={[styles.filterRow, { marginTop: 8 }]}>
+          <Text style={styles.filterLabel}>Danh mục:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            {categoriesList.map((category, idx) => {
+              const isActive = selectedCategory === category;
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.badge, isActive && styles.badgeActive]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <Text style={[styles.badgeText, isActive && styles.badgeTextActive]}>
+                    {category}
                   </Text>
                 </TouchableOpacity>
               );

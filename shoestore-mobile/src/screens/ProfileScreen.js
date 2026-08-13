@@ -123,7 +123,7 @@ export default function ProfileScreen({ navigation }) {
             color: isPercent ? '#00B4DB' : (isShipping ? '#FFB703' : '#E51E25')
           };
         });
-        setVouchers(mapped.filter(v => userPoints >= (v.minPoints || 0)));
+        setVouchers(mapped);
       } else {
         setVouchers([]);
       }
@@ -315,10 +315,13 @@ export default function ProfileScreen({ navigation }) {
           onPress: async () => {
             await AsyncStorage.removeItem('userAccount');
             await AsyncStorage.removeItem('userOrders');
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
+            setIsLoggedIn(false);
+            setUserName('Khách hàng');
+            setUserEmail('');
+            setUserPhone('');
+            setUserPoints(0);
+            setOrders([]);
+            navigation.navigate('Login');
           }
         }
       ]
