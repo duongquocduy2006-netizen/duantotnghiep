@@ -372,4 +372,57 @@ public class AuthApiController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
+
+    // ==================== GOOGLE LOGIN (MOBILE) ====================
+    @PostMapping("/google-login-mobile")
+    public ResponseEntity<?> googleLoginMobile(@RequestBody Map<String, String> body, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        String email = body.get("email");
+        String fullName = body.get("fullName");
+
+        if (email == null || email.trim().isEmpty()) {
+            response.put("success", false);
+            response.put("message", "Thiếu email từ Google!");
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        try {
+            Map<String, Object> account;
+            String checkEmailSql = "SELECT COUNT(*) FROM accounts WHERE email = ?";
+            Integer count = jdbc.queryForObject(checkEmailSql, Integer.class, email);
+
+            if (count != null && count > 0) {
+                // Account exists
+                account = jdbc.queryForMap("SELECT id, password, role, full_name, status, email, phone, points, membership_rank_id FROM accounts WHERE email = ?", email);
+                if (account.get("status") != null && ((Number) account.get("status")).intValue() == 0) {
+                    response.put("success", false);
+                    response.put("message", "Tài khoản của bạn đã bị khóa! Vui lòng liên hệ Admin.");
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+                }
+            } else {
+                // Create new account
+                String userCode = "G" + (System.currentTimeMillis() % 10000);
+                String randomPassword = passwordEncoder.encode(java.util.UUID.randomUUID().toString());
+                String insertSql = "INSERT INTO accounts (user_code, email, password, full_name, role, status, membership_rank_id) VALUES (?, ?, ?, ?, 'USER', 1, 1)";
+                jdbc.update(insertSql, userCode, email, randomPassword, fullName != null ? fullName : "Google User");
+                
+                account = jdbc.queryForMap("SELECT id, password, role, full_name, status, email, phone, points, membership_rank_id FROM accounts WHERE email = ?", email);
+            }
+
+            // Create new session to mimic login
+            HttpSession session = request.getSession(true);
+            session.setAttribute("account", account);
+
+            response.put("success", true);
+            response.put("message", "Đăng nhập Google thành công!");
+            response.put("account", account);
+            response.put("role", account.get("role"));
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi xử lý đăng nhập Google: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 }

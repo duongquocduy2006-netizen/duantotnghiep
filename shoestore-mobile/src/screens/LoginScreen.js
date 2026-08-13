@@ -11,14 +11,18 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   ScrollView,
-  Dimensions,
-  Alert
+  Dimensions
 } from 'react-native';
 import Toast from '../components/Toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { API_BASE_URL } from '../config';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AuthSession from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get('window');
 
@@ -47,10 +51,10 @@ export default function LoginScreen({ navigation }) {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   
-  const [regFullNameError, setRegFullNameError] = useState(false);
-  const [regEmailError, setRegEmailError] = useState(false);
-  const [regPasswordError, setRegPasswordError] = useState(false);
-  const [regConfirmPasswordError, setRegConfirmPasswordError] = useState(false);
+  const [regFullNameError, setRegFullNameError] = useState('');
+  const [regEmailError, setRegEmailError] = useState('');
+  const [regPasswordError, setRegPasswordError] = useState('');
+  const [regConfirmPasswordError, setRegConfirmPasswordError] = useState('');
   
   const [isRegPasswordVisible, setIsRegPasswordVisible] = useState(false);
   const [isRegConfirmPasswordVisible, setIsRegConfirmPasswordVisible] = useState(false);
@@ -62,6 +66,96 @@ export default function LoginScreen({ navigation }) {
 
   // Focus tracking for input highlights
   const [focusedField, setFocusedField] = useState('');
+
+  // --- GOOGLE OAUTH NATIVE BROWSER METHOD ---
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      const redirectUri = AuthSession.makeRedirectUri({ scheme: 'shoestore' });
+      const clientId = '63955611424-9bml5f3n4s4p3s6h06r2j365qf9qk58k.apps.googleusercontent.com';
+      // Construct auth URL explicitly to prevent 404 from bad proxy/URL generation
+      const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth' + 
+                      '?client_id=' + clientId + 
+                      '&redirect_uri=' + encodeURIComponent(redirectUri) + 
+                      '&response_type=token' + 
+                      '&scope=openid%20profile%20email';
+      
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      
+      if (result.type === 'success' && result.url) {
+        // Parse token from hash or search string
+        const hash = result.url.split('#')[1];
+        const query = result.url.split('?')[1];
+        const params = hash || query || '';
+        
+        let accessToken = null;
+        params.split('&').forEach(pair => {
+            const [key, val] = pair.split('=');
+            if (key === 'access_token') accessToken = val;
+        });
+
+        if (!accessToken) {
+          showToast("Không nhận được token từ Google.");
+          setLoading(false);
+          return;
+        }
+
+        // Fetch user info from Google
+        const userInfoResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const userInfo = await userInfoResponse.json();
+
+        if (!userInfo.email) {
+          showToast("Không lấy được email từ Google.");
+          setLoading(false);
+          return;
+        }
+
+        // Send to our backend API
+        const backendResponse = await fetch(`${API_BASE_URL}/api/auth/google-login-mobile`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            email: userInfo.email,
+            fullName: userInfo.name,
+          })
+        });
+
+        if (backendResponse.status === 404) {
+          showToast("Lỗi 404: Đường dẫn API không tồn tại trên máy chủ!");
+          setLoading(false);
+          return;
+        }
+
+        const data = await backendResponse.json();
+        
+        if (backendResponse.ok && data.success) {
+          await AsyncStorage.removeItem('userOrders');
+          await AsyncStorage.setItem('userAccount', JSON.stringify(data.account));
+          
+          showToast("Đăng nhập Google thành công!");
+          setTimeout(() => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'MainTabs' }],
+            });
+          }, 1200);
+        } else {
+          showToast(data.message || "Không thể đăng nhập bằng Google.");
+        }
+      } else {
+         setLoading(false); // User cancelled or failed
+      }
+    } catch (error) {
+      console.warn("Google SignIn Error:", error);
+      showToast("Lỗi khi kết nối đăng nhập Google.");
+      setLoading(false);
+    }
+  };
 
   // --- AUTO LOAD REMEMBERED CREDENTIALS ---
   useEffect(() => {
@@ -87,10 +181,10 @@ export default function LoginScreen({ navigation }) {
     // Reset all errors and fields when switching
     setEmailError(false);
     setPasswordError(false);
-    setRegFullNameError(false);
-    setRegEmailError(false);
-    setRegPasswordError(false);
-    setRegConfirmPasswordError(false);
+    setRegFullNameError('');
+    setRegEmailError('');
+    setRegPasswordError('');
+    setRegConfirmPasswordError('');
     setForgotEmailError(false);
   };
 
@@ -124,6 +218,12 @@ export default function LoginScreen({ navigation }) {
         },
         body: JSON.stringify({ email, password })
       });
+
+      if (response.status === 404) {
+        showToast("Lỗi 404: Không tìm thấy API đăng nhập trên máy chủ!");
+        setLoading(false);
+        return;
+      }
 
       const data = await response.json();
 
@@ -163,40 +263,7 @@ export default function LoginScreen({ navigation }) {
       }
     } catch (error) {
       console.warn("Login Connection Error:", error.message);
-      Alert.alert(
-        "Lỗi Kết Nối 🔌",
-        "Không thể kết nối đến máy chủ. Bạn có muốn tiếp tục bằng tài khoản Demo?",
-        [
-          { text: "Hủy", style: "cancel" },
-          { 
-            text: "Dùng tài khoản Demo", 
-            onPress: async () => {
-              if (rememberMe) {
-                await AsyncStorage.setItem('rememberedCredentials', JSON.stringify({
-                  email,
-                  password,
-                  rememberMe: true
-                }));
-              } else {
-                await AsyncStorage.removeItem('rememberedCredentials');
-              }
-              const demoUser = {
-                id: 99,
-                full_name: "Khách hàng VIP",
-                email: email || "demo@shoestore.com",
-                role: "USER",
-                points: 120
-              };
-              await AsyncStorage.removeItem('userOrders');
-              await AsyncStorage.setItem('userAccount', JSON.stringify(demoUser));
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'MainTabs' }],
-              });
-            }
-          }
-        ]
-      );
+      showToast("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.");
     } finally {
       setLoading(false);
     }
@@ -205,41 +272,45 @@ export default function LoginScreen({ navigation }) {
   // --- REGISTER SUBMIT FLOW ---
   const handleRegister = async () => {
     let valid = true;
+    
+    setRegFullNameError('');
+    setRegEmailError('');
+    setRegPasswordError('');
+    setRegConfirmPasswordError('');
 
     if (!regFullName.trim()) {
-      setRegFullNameError(true);
+      setRegFullNameError('Vui lòng nhập họ và tên!');
       valid = false;
-    } else {
-      setRegFullNameError(false);
+    } else if (regFullName.trim().length < 3) {
+      setRegFullNameError('Họ tên phải có ít nhất 3 ký tự!');
+      valid = false;
     }
 
     if (!regEmail.trim()) {
-      setRegEmailError(true);
+      setRegEmailError('Vui lòng nhập địa chỉ email!');
       valid = false;
-    } else {
-      setRegEmailError(false);
+    } else if (!/^\S+@\S+\.\S+$/.test(regEmail.trim())) {
+      setRegEmailError('Email không đúng định dạng!');
+      valid = false;
     }
 
-    if (!regPassword.trim()) {
-      setRegPasswordError(true);
+    if (!regPassword) {
+      setRegPasswordError('Vui lòng nhập mật khẩu!');
       valid = false;
-    } else {
-      setRegPasswordError(false);
+    } else if (regPassword.length < 6) {
+      setRegPasswordError('Mật khẩu phải có ít nhất 6 ký tự!');
+      valid = false;
     }
 
-    if (!regConfirmPassword.trim()) {
-      setRegConfirmPasswordError(true);
+    if (!regConfirmPassword) {
+      setRegConfirmPasswordError('Vui lòng xác nhận mật khẩu!');
       valid = false;
-    } else {
-      setRegConfirmPasswordError(false);
+    } else if (regPassword !== regConfirmPassword) {
+      setRegConfirmPasswordError('Mật khẩu xác nhận không khớp!');
+      valid = false;
     }
 
     if (!valid) return;
-
-    if (regPassword !== regConfirmPassword) {
-      showToast("Mật khẩu xác nhận không khớp!");
-      return;
-    }
 
     if (!agreeTerms) {
       showToast("Vui lòng đồng ý với điều khoản sử dụng!");
@@ -255,17 +326,35 @@ export default function LoginScreen({ navigation }) {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          email: regEmail,
+          fullName: regFullName.trim(),
+          email: regEmail.trim(),
           password: regPassword,
           confirmPassword: regConfirmPassword,
-          fullName: regFullName
+          agreeTerms: agreeTerms
         })
       });
+
+      if (response.status === 404) {
+        showToast("Lỗi 404: Không tìm thấy API đăng ký trên máy chủ!");
+        setLoading(false);
+        return;
+      }
 
       const data = await response.json();
 
       if (response.ok && data.success) {
         showToast("Đăng ký tài khoản thành công!");
+        
+        // Tự động điền email vào form đăng nhập
+        setEmail(regEmail.trim());
+        
+        // Xóa trắng form đăng ký
+        setRegFullName('');
+        setRegEmail('');
+        setRegPassword('');
+        setRegConfirmPassword('');
+        setAgreeTerms(false);
+        
         setTimeout(() => {
           switchMode('login');
         }, 1200);
@@ -326,6 +415,17 @@ export default function LoginScreen({ navigation }) {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
           
+          {/* BACK BUTTON */}
+          {navigation.canGoBack() && (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={22} color="#000000" />
+            </TouchableOpacity>
+          )}
+
           {/* HEADER LOGO SECTION */}
           <View style={styles.logoSection}>
             <View style={styles.footprintRow}>
@@ -445,6 +545,8 @@ export default function LoginScreen({ navigation }) {
                 )}
               </TouchableOpacity>
 
+
+
             </View>
           )}
 
@@ -456,7 +558,7 @@ export default function LoginScreen({ navigation }) {
               <View style={[
                 styles.inputWrapper, 
                 focusedField === 'regName' && styles.inputWrapperFocused,
-                regFullNameError && styles.inputWrapperError
+                !!regFullNameError && styles.inputWrapperError
               ]}>
                 <TextInput
                   style={styles.input}
@@ -465,17 +567,17 @@ export default function LoginScreen({ navigation }) {
                   value={regFullName}
                   onChangeText={(val) => {
                     setRegFullName(val);
-                    if (val.trim()) setRegFullNameError(false);
+                    if (val.trim()) setRegFullNameError('');
                   }}
                   autoCapitalize="words"
                   onFocus={() => setFocusedField('regName')}
                   onBlur={() => setFocusedField('')}
                 />
               </View>
-              {regFullNameError && (
+              {!!regFullNameError && (
                 <View style={styles.errorRow}>
                   <Ionicons name="alert-circle" size={14} color="#E51E25" style={{ marginRight: 4 }} />
-                  <Text style={styles.errorText}>Vui lòng nhập họ và tên!</Text>
+                  <Text style={styles.errorText}>{regFullNameError}</Text>
                 </View>
               )}
 
@@ -484,7 +586,7 @@ export default function LoginScreen({ navigation }) {
               <View style={[
                 styles.inputWrapper, 
                 focusedField === 'regEmail' && styles.inputWrapperFocused,
-                regEmailError && styles.inputWrapperError
+                !!regEmailError && styles.inputWrapperError
               ]}>
                 <TextInput
                   style={styles.input}
@@ -493,7 +595,7 @@ export default function LoginScreen({ navigation }) {
                   value={regEmail}
                   onChangeText={(val) => {
                     setRegEmail(val);
-                    if (val.trim()) setRegEmailError(false);
+                    if (val.trim()) setRegEmailError('');
                   }}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -501,10 +603,10 @@ export default function LoginScreen({ navigation }) {
                   onBlur={() => setFocusedField('')}
                 />
               </View>
-              {regEmailError && (
+              {!!regEmailError && (
                 <View style={styles.errorRow}>
                   <Ionicons name="alert-circle" size={14} color="#E51E25" style={{ marginRight: 4 }} />
-                  <Text style={styles.errorText}>Vui lòng nhập email tài khoản!</Text>
+                  <Text style={styles.errorText}>{regEmailError}</Text>
                 </View>
               )}
 
@@ -513,7 +615,7 @@ export default function LoginScreen({ navigation }) {
               <View style={[
                 styles.inputWrapper, 
                 focusedField === 'regPassword' && styles.inputWrapperFocused,
-                regPasswordError && styles.inputWrapperError
+                !!regPasswordError && styles.inputWrapperError
               ]}>
                 <TextInput
                   style={styles.input}
@@ -523,7 +625,7 @@ export default function LoginScreen({ navigation }) {
                   value={regPassword}
                   onChangeText={(val) => {
                     setRegPassword(val);
-                    if (val.trim()) setRegPasswordError(false);
+                    if (val.trim()) setRegPasswordError('');
                   }}
                   autoCapitalize="none"
                   onFocus={() => setFocusedField('regPassword')}
@@ -540,10 +642,10 @@ export default function LoginScreen({ navigation }) {
                   />
                 </TouchableOpacity>
               </View>
-              {regPasswordError && (
+              {!!regPasswordError && (
                 <View style={styles.errorRow}>
                   <Ionicons name="alert-circle" size={14} color="#E51E25" style={{ marginRight: 4 }} />
-                  <Text style={styles.errorText}>Vui lòng nhập mật khẩu!</Text>
+                  <Text style={styles.errorText}>{regPasswordError}</Text>
                 </View>
               )}
 
@@ -552,7 +654,7 @@ export default function LoginScreen({ navigation }) {
               <View style={[
                 styles.inputWrapper, 
                 focusedField === 'regConfirm' && styles.inputWrapperFocused,
-                regConfirmPasswordError && styles.inputWrapperError
+                !!regConfirmPasswordError && styles.inputWrapperError
               ]}>
                 <TextInput
                   style={styles.input}
@@ -562,7 +664,7 @@ export default function LoginScreen({ navigation }) {
                   value={regConfirmPassword}
                   onChangeText={(val) => {
                     setRegConfirmPassword(val);
-                    if (val.trim()) setRegConfirmPasswordError(false);
+                    if (val.trim()) setRegConfirmPasswordError('');
                   }}
                   autoCapitalize="none"
                   onFocus={() => setFocusedField('regConfirm')}
@@ -579,10 +681,10 @@ export default function LoginScreen({ navigation }) {
                   />
                 </TouchableOpacity>
               </View>
-              {regConfirmPasswordError && (
+              {!!regConfirmPasswordError && (
                 <View style={styles.errorRow}>
                   <Ionicons name="alert-circle" size={14} color="#E51E25" style={{ marginRight: 4 }} />
-                  <Text style={styles.errorText}>Vui lòng xác nhận mật khẩu!</Text>
+                  <Text style={styles.errorText}>{regConfirmPasswordError}</Text>
                 </View>
               )}
 
@@ -687,7 +789,12 @@ export default function LoginScreen({ navigation }) {
               </View>
 
               {/* Google Button */}
-              <TouchableOpacity style={styles.googleBtn} activeOpacity={0.8}>
+              <TouchableOpacity 
+                style={styles.googleBtn} 
+                activeOpacity={0.8}
+                onPress={handleGoogleLogin}
+                disabled={loading}
+              >
                 <Text style={styles.googleBtnG}>G</Text>
                 <Text style={styles.googleBtnText}>TÀI KHOẢN GOOGLE</Text>
               </TouchableOpacity>
@@ -732,6 +839,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 28,
     paddingVertical: 40,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FAF9FB',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   logoSection: {
     alignItems: 'center',

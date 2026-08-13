@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Animated, Platform } from 'react-native';
+import { StyleSheet, Text, View, Animated, Platform, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Toast({ message, visible, onDismiss, type = 'success' }) {
@@ -11,7 +11,7 @@ export default function Toast({ message, visible, onDismiss, type = 'success' })
       // Slide down & fade in
       Animated.parallel([
         Animated.timing(translateY, {
-          toValue: Platform.OS === 'ios' ? 50 : 20,
+          toValue: Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight || 24) + 10,
           duration: 350,
           useNativeDriver: true,
         }),

@@ -8,19 +8,22 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  Alert,
   TextInput
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { CartContext } from '../context/CartContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../config';
 import Toast from '../components/Toast';
+import LoginPromptSheet from '../components/LoginPromptSheet';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const API_TIMEOUT = 4000;
 
 export default function DetailScreen({ route, navigation }) {
+  const isFocused = useIsFocused();
   const initialProduct = route.params?.product || null;
   const productId = route.params?.productId || route.params?.id || initialProduct?.id;
   const { cart, favorites, toggleFavorite, addToCart, cartCount } = useContext(CartContext);
@@ -33,16 +36,44 @@ export default function DetailScreen({ route, navigation }) {
     setToastMessage(msg);
     setToastVisible(true);
   };
+
+  // Login prompt sheet state
+  const [loginPromptVisible, setLoginPromptVisible] = useState(false);
+  const [loginPromptMessage, setLoginPromptMessage] = useState('');
+  const showLoginPrompt = (msg) => {
+    setLoginPromptMessage(msg);
+    setLoginPromptVisible(true);
+  };
   
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [activeTab, setActiveTab] = useState('desc');
 
   // Sync selected variant's stock with quantity state
   const currentVariant = productDetail?.variants?.find(
     v => v.sizeName === selectedSize && v.colorName === selectedColor
   );
   const availableStock = currentVariant ? (currentVariant.quantity !== undefined ? currentVariant.quantity : 10) : 10;
+
+  // Review states
+  const [reviewContent, setReviewContent] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const user = await AsyncStorage.getItem('userAccount');
+        setIsLoggedIn(!!user);
+      } catch (e) {
+        setIsLoggedIn(false);
+      }
+    };
+    if (isFocused) {
+      checkAuth();
+    }
+  }, [isFocused]);
 
   useEffect(() => {
     if (productDetail) {
@@ -89,31 +120,23 @@ export default function DetailScreen({ route, navigation }) {
           }
 
           let defaultVariants = result.variants && result.variants.length > 0 ? result.variants : (initialProduct?.variants || []);
-          
-          // If no variants exist from API or initial product, generate standard demo variants
-          if (!defaultVariants || defaultVariants.length === 0) {
-            const basePrice = product.price || initialProduct?.price || 3000000;
-            defaultVariants = [
-              { id: 9901, sizeName: "39", colorName: "Đen Nổi Bật", price: basePrice, quantity: 8 },
-              { id: 9902, sizeName: "40", colorName: "Đen Nổi Bật", price: basePrice, quantity: 10 },
-              { id: 9903, sizeName: "41", colorName: "Đen Nổi Bật", price: basePrice, quantity: 5 },
-              { id: 9904, sizeName: "42", colorName: "Đen Nổi Bật", price: basePrice, quantity: 12 }
-            ];
-          }
 
-          const defaultPrice = defaultVariants[0]?.price || product.price || initialProduct?.price || 3000000;
+          const defaultPrice = defaultVariants[0]?.price || product.price || initialProduct?.price || 0;
 
           const mappedDetail = {
             id: product.id || productId,
-            productName: product.productName || initialProduct?.productName || 'Sneaker Cao Cấp',
-            brandName: product.brandName || initialProduct?.brandName || 'Sneaker',
-            categoryName: product.categoryName || initialProduct?.categoryName || 'Chưa phân loại',
+            productCode: product.productCode || 'N/A',
+            productName: product.productName || initialProduct?.productName || 'Sản phẩm',
+            brandName: product.brandName || initialProduct?.brandName || '',
+            categoryName: product.categoryName || initialProduct?.categoryName || '',
             description: product.description || initialProduct?.description || 'Chưa có mô tả chi tiết cho sản phẩm này.',
             imageUrl: mainImgUrl,
             price: defaultPrice,
             variants: defaultVariants,
-            avgRating: result.avgRating || 4.8,
-            reviewCount: result.reviewCount || 12,
+            avgRating: result.avgRating || 0,
+            reviewCount: result.reviewCount || 0,
+            reviews: result.reviews || [],
+            hasPurchased: result.hasPurchased || false,
             flashSale: result.flashSale || null
           };
 
@@ -130,128 +153,27 @@ export default function DetailScreen({ route, navigation }) {
         throw new Error("API response error");
       }
     } catch (error) {
-      console.log("Detail API failed or offline mode. Fallback matching product:", error.message);
+      console.log("Detail API failed:", error.message);
       
-      const fallbackList = [
-        {
-          id: 101,
-          productName: "Air Jordan 1 Low 'Shadow'",
-          brandName: "Jordan",
-          categoryName: "Sneaker Cổ Thấp",
-          imageUrl: "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600&auto=format&fit=crop&q=80",
-          price: 3890000,
-          description: "Phiên bản Air Jordan 1 Low mang phong cách bóng rổ huyền thoại với cách phối màu xám đen 'Shadow' lịch lãm.",
-          variants: [
-            { id: 1011, sizeName: "39", colorName: "Xám Đen", price: 3890000, quantity: 5 },
-            { id: 1012, sizeName: "40", colorName: "Xám Đen", price: 3890000, quantity: 2 },
-            { id: 1013, sizeName: "41", colorName: "Xám Đen", price: 3950000, quantity: 0 },
-            { id: 1014, sizeName: "42", colorName: "Xám Đen", price: 3950000, quantity: 12 }
-          ]
-        },
-        {
-          id: 102,
-          productName: "Nike Air Max Plus 'Volt'",
-          brandName: "Nike",
-          categoryName: "Chạy bộ / Thể thao",
-          imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
-          price: 4890000,
-          description: "Nike Air Max Plus mang lại cảm giác êm ái vượt trội với công nghệ đệm Tuned Air.",
-          variants: [
-            { id: 1021, sizeName: "40", colorName: "Neon Đỏ", price: 4890000, quantity: 8 },
-            { id: 1022, sizeName: "41", colorName: "Neon Đỏ", price: 4890000, quantity: 0 },
-            { id: 1023, sizeName: "42", colorName: "Đen Tuyền", price: 4990000, quantity: 4 }
-          ]
-        },
-        {
-          id: 103,
-          productName: "Yeezy Boost 350 V2 'Carbon'",
-          brandName: "Yeezy",
-          categoryName: "Sneaker Cao Cấp",
-          imageUrl: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80",
-          price: 6500000,
-          description: "Sự kết hợp hoàn hảo giữa công nghệ dệt Primeknit thoáng khí và đế Boost siêu êm từ adidas.",
-          variants: [
-            { id: 1031, sizeName: "41", colorName: "Carbon", price: 6500000, quantity: 3 },
-            { id: 1032, sizeName: "42", colorName: "Carbon", price: 6500000, quantity: 7 },
-            { id: 1033, sizeName: "43", colorName: "Carbon", price: 6600000, quantity: 0 }
-          ]
-        },
-        {
-          id: 104,
-          productName: "Adidas NMD R1 V2 Streetwear",
-          brandName: "Adidas",
-          categoryName: "Streetwear",
-          imageUrl: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&auto=format&fit=crop&q=80",
-          price: 3450000,
-          description: "Hành trình khám phá thành phố năng động với dòng NMD thiết kế phá cách.",
-          variants: [
-            { id: 1041, sizeName: "39", colorName: "Trắng Hồng", price: 3450000, quantity: 6 },
-            { id: 1042, sizeName: "40", colorName: "Trắng Hồng", price: 3450000, quantity: 0 },
-            { id: 1043, sizeName: "41", colorName: "Đen Neon", price: 3500000, quantity: 5 }
-          ]
-        },
-        {
-          id: 105,
-          productName: "Puma RS-X Reinvention",
-          brandName: "Puma",
-          categoryName: "Chunky Sneaker",
-          imageUrl: "https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=600&auto=format&fit=crop&q=80",
-          price: 2990000,
-          description: "Dòng RS (Running System) tái xuất với thiết kế chunky hầm hố của thập niên 80.",
-          variants: [
-            { id: 1051, sizeName: "40", colorName: "Trắng Xanh Đỏ", price: 2990000, quantity: 10 },
-            { id: 1052, sizeName: "41", colorName: "Trắng Xanh Đỏ", price: 2990000, quantity: 3 }
-          ]
-        },
-        {
-          id: 106,
-          productName: "Nike Dunk Low Retro 'Panda'",
-          brandName: "Nike",
-          categoryName: "Classic Sneaker",
-          imageUrl: "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=600&auto=format&fit=crop&q=80",
-          price: 3200000,
-          description: "Đôi giày quốc dân không thể thiếu trong tủ đồ của các bạn trẻ.",
-          variants: [
-            { id: 1061, sizeName: "38", colorName: "Trắng Đen", price: 3200000, quantity: 0 },
-            { id: 1062, sizeName: "39", colorName: "Trắng Đen", price: 3200000, quantity: 9 }
-          ]
-        }
-      ];
-
-      // 1. Try finding in fallbackList by ID
-      let matched = fallbackList.find(p => String(p.id) === String(productId));
-
-      // 2. If not found in fallbackList, construct product from initialProduct passed in route params
-      if (!matched && initialProduct) {
-        const basePrice = initialProduct.price || 3000000;
-        matched = {
+      // Use initialProduct passed in route params if available
+      if (initialProduct) {
+        const basePrice = initialProduct.price || 0;
+        const matched = {
           id: initialProduct.id || productId,
-          productName: initialProduct.productName || 'Sneaker Độc Quyền',
-          brandName: initialProduct.brandName || 'Sneaker',
+          productCode: initialProduct.productCode || 'N/A',
+          productName: initialProduct.productName || 'Sản phẩm',
+          brandName: initialProduct.brandName || '',
           categoryName: initialProduct.categoryName || 'Chưa phân loại',
           imageUrl: initialProduct.imageUrl || '',
           price: basePrice,
-          description: initialProduct.description || 'Mẫu thiết kế độc quyền, phong cách trẻ trung và êm ái.',
-          variants: initialProduct.variants || [
-            { id: 8801, sizeName: "39", colorName: "Mặc định", price: basePrice, quantity: 5 },
-            { id: 8802, sizeName: "40", colorName: "Mặc định", price: basePrice, quantity: 8 },
-            { id: 8803, sizeName: "41", colorName: "Mặc định", price: basePrice, quantity: 10 },
-            { id: 8804, sizeName: "42", colorName: "Mặc định", price: basePrice, quantity: 6 }
-          ]
+          description: initialProduct.description || 'Chưa có mô tả chi tiết cho sản phẩm này.',
+          variants: initialProduct.variants || [],
+          avgRating: initialProduct.avgRating || 0,
+          reviewCount: initialProduct.reviewCount || 0,
+          reviews: initialProduct.reviews || [],
+          hasPurchased: false
         };
-      }
-
-      // 3. If still not found, fallback to first item in list so user screen never stays broken
-      if (!matched && fallbackList.length > 0) {
-        matched = fallbackList[0];
-      }
-
-      if (matched) {
-        setProductDetail({
-          ...matched,
-          avgRating: matched.avgRating || 4.8,
-          reviewCount: matched.reviewCount || 16
-        });
+        setProductDetail(matched);
         if (matched.variants && matched.variants.length > 0) {
           setSelectedSize(matched.variants[0].sizeName);
           setSelectedColor(matched.variants[0].colorName);
@@ -266,8 +188,67 @@ export default function DetailScreen({ route, navigation }) {
     fetchProductDetail();
   }, [productId]);
 
-  const handleAddToCartAction = () => {
+  const submitReview = async () => {
+    if (!reviewContent.trim()) {
+      showToast("Vui lòng nhập nội dung đánh giá!");
+      return;
+    }
+
+    try {
+      const storedUser = await AsyncStorage.getItem('userAccount');
+      if (!storedUser) {
+        showLoginPrompt('Bạn cần đăng nhập để gửi đánh giá.');
+        return;
+      }
+    } catch (e) {
+      console.warn('Error checking auth state:', e);
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("productId", productId);
+      formData.append("rating", reviewRating);
+      formData.append("content", reviewContent);
+
+      const response = await fetch(`${API_BASE_URL}/api/reviews/add`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json'
+        },
+        body: formData
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success) {
+        showToast("Đã gửi đánh giá thành công!");
+        setReviewContent('');
+        setReviewRating(5);
+        fetchProductDetail();
+      } else {
+        showToast(result.message || "Gửi đánh giá thất bại.");
+      }
+    } catch (err) {
+      console.error("Lỗi gửi đánh giá:", err);
+      showToast("Không thể gửi đánh giá. Vui lòng kiểm tra kết nối mạng.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddToCartAction = async () => {
     if (!productDetail) return;
+
+    // Check if user is logged in
+    try {
+      const storedUser = await AsyncStorage.getItem('userAccount');
+      if (!storedUser) {
+        showLoginPrompt('Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng.');
+        return;
+      }
+    } catch (e) {
+      console.warn('Error checking auth state:', e);
+    }
 
     if (availableStock === 0) {
       showToast("Sản phẩm phiên bản này hiện tại đang hết hàng!");
@@ -296,8 +277,19 @@ export default function DetailScreen({ route, navigation }) {
     showToast(`Đã thêm ${quantity} sản phẩm vào giỏ hàng thành công!`);
   };
 
-  const handleBuyNowAction = () => {
+  const handleBuyNowAction = async () => {
     if (!productDetail) return;
+
+    // Check if user is logged in
+    try {
+      const storedUser = await AsyncStorage.getItem('userAccount');
+      if (!storedUser) {
+        showLoginPrompt('Bạn cần đăng nhập để mua hàng.');
+        return;
+      }
+    } catch (e) {
+      console.warn('Error checking auth state:', e);
+    }
 
     if (availableStock === 0) {
       showToast("Sản phẩm phiên bản này hiện tại đang hết hàng!");
@@ -414,7 +406,7 @@ export default function DetailScreen({ route, navigation }) {
           <View style={styles.ratingRow}>
             <Ionicons name="star" size={16} color="#FFD700" style={{ marginRight: 4 }} />
             <Text style={styles.ratingText}>
-              {productDetail.avgRating} ★ ({productDetail.reviewCount} đánh giá của giới điệu mộ)
+              {productDetail.avgRating} ★ ({productDetail.reviewCount} đánh giá)
             </Text>
           </View>
 
@@ -533,10 +525,196 @@ export default function DetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* DESCRIPTION */}
-          <View style={styles.descSection}>
-            <Text style={styles.selectorTitle}>Mô Tả Sản Phẩm</Text>
-            <Text style={styles.descriptionText}>{productDetail.description}</Text>
+          {/* TABS HEADER */}
+          <View style={styles.tabsHeader}>
+            <TouchableOpacity 
+              style={[styles.tabBtn, activeTab === 'desc' && styles.tabBtnActive]} 
+              onPress={() => setActiveTab('desc')}
+            >
+              <Text style={[styles.tabBtnText, activeTab === 'desc' && styles.tabBtnTextActive]}>MÔ TẢ</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.tabBtn, activeTab === 'specs' && styles.tabBtnActive]} 
+              onPress={() => setActiveTab('specs')}
+            >
+              <Text style={[styles.tabBtnText, activeTab === 'specs' && styles.tabBtnTextActive]}>THÔNG SỐ</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.tabBtn, activeTab === 'reviews' && styles.tabBtnActive]} 
+              onPress={() => setActiveTab('reviews')}
+            >
+              <Text style={[styles.tabBtnText, activeTab === 'reviews' && styles.tabBtnTextActive]}>
+                ĐÁNH GIÁ ({productDetail.reviewCount})
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* TABS CONTENT */}
+          <View style={styles.tabContentContainer}>
+            {activeTab === 'desc' && (
+              <View style={styles.descTab}>
+                <View style={styles.highlightBox}>
+                  <Ionicons name="star" size={20} color="#ffb800" style={styles.highlightIcon} />
+                  <Text style={styles.highlightText}>
+                    Đặc điểm nổi bật: Sản phẩm sở hữu thiết kế trẻ trung, chất liệu cao cấp cùng đường may tỉ mỉ, mang lại trải nghiệm êm ái và thoải mái tối đa cho người sử dụng.
+                  </Text>
+                </View>
+                <Text style={styles.descriptionText}>{productDetail.description}</Text>
+                
+                <View style={styles.featuresGrid}>
+                  <View style={styles.featureItem}>
+                    <Ionicons name="checkmark-circle" size={16} color="#E51E25" />
+                    <Text style={styles.featureText}>Chính hãng 100%</Text>
+                  </View>
+                  <View style={styles.featureItem}>
+                    <Ionicons name="checkmark-circle" size={16} color="#E51E25" />
+                    <Text style={styles.featureText}>Đổi size dễ dàng</Text>
+                  </View>
+                  <View style={styles.featureItem}>
+                    <Ionicons name="checkmark-circle" size={16} color="#E51E25" />
+                    <Text style={styles.featureText}>Hỗ trợ trả góp 0%</Text>
+                  </View>
+                  <View style={styles.featureItem}>
+                    <Ionicons name="checkmark-circle" size={16} color="#E51E25" />
+                    <Text style={styles.featureText}>Bảo hành keo 6 tháng</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {activeTab === 'specs' && (
+              <View style={styles.specsTab}>
+                <Text style={styles.specGroupTitle}>Thông số nổi bật</Text>
+                <View style={styles.specRow}>
+                  <Text style={styles.specKey}>MÃ SẢN PHẨM</Text>
+                  <View style={styles.specValPillContainer}>
+                    <Text style={styles.specValPill}>{productDetail.productCode || 'N/A'}</Text>
+                  </View>
+                </View>
+                <View style={styles.specRow}>
+                  <Text style={styles.specKey}>THƯƠNG HIỆU</Text>
+                  <Text style={styles.specVal}>{productDetail.brandName || 'N/A'}</Text>
+                </View>
+                <View style={styles.specRow}>
+                  <Text style={styles.specKey}>DANH MỤC</Text>
+                  <Text style={styles.specVal}>{productDetail.categoryName || 'N/A'}</Text>
+                </View>
+              </View>
+            )}
+
+            {activeTab === 'reviews' && (
+              <View style={styles.reviewsTab}>
+                <View style={styles.ratingSummaryBox}>
+                  <Text style={styles.ratingAvgText}>{Number(productDetail.avgRating).toFixed(1)}</Text>
+                  <View style={styles.ratingStarsRow}>
+                    {Array.from({length: 5}).map((_, i) => (
+                      <Ionicons 
+                        key={i} 
+                        name={i < Math.round(productDetail.avgRating) ? "star" : "star-outline"} 
+                        size={20} 
+                        color="#ffb800" 
+                        style={{ marginHorizontal: 2 }}
+                      />
+                    ))}
+                  </View>
+                  <Text style={styles.ratingCountText}>dựa trên {productDetail.reviewCount} đánh giá</Text>
+                </View>
+
+                {/* REVIEW FORM */}
+                {(isLoggedIn && productDetail.hasPurchased) ? (
+                  <View style={styles.reviewFormContainer}>
+                    <Text style={styles.reviewFormTitle}>Viết đánh giá của bạn</Text>
+                    <Text style={styles.reviewFormLabel}>Chọn mức điểm:</Text>
+                    <View style={styles.ratingSelectRow}>
+                      {[1, 2, 3, 4, 5].map(num => (
+                        <TouchableOpacity key={num} onPress={() => setReviewRating(num)}>
+                          <Ionicons 
+                            name="star" 
+                            size={32} 
+                            color={num <= reviewRating ? '#ffb800' : '#EAEAEA'} 
+                            style={{ marginRight: 10 }}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <TextInput
+                      style={styles.reviewInput}
+                      placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..."
+                      placeholderTextColor="#B0B0B0"
+                      multiline
+                      numberOfLines={4}
+                      value={reviewContent}
+                      onChangeText={setReviewContent}
+                      textAlignVertical="top"
+                    />
+                    <TouchableOpacity style={styles.submitReviewBtn} onPress={submitReview}>
+                      <Text style={styles.submitReviewBtnText}>Gửi đánh giá</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.reviewLockedContainer}>
+                    <Ionicons name="lock-closed" size={36} color="#808080" style={{ marginBottom: 12 }} />
+                    <Text style={styles.reviewLockedText}>
+                      Bạn cần mua sản phẩm này và nhận hàng thành công để có thể viết đánh giá.
+                    </Text>
+                  </View>
+                )}
+                
+                <View style={styles.reviewList}>
+                  <Text style={styles.reviewListTitle}>Khách hàng nhận xét</Text>
+                  {(!productDetail.reviews || productDetail.reviews.length === 0) ? (
+                    <Text style={styles.noReviewsText}>Chưa có đánh giá nào cho sản phẩm này.</Text>
+                  ) : (
+                    productDetail.reviews.map(r => (
+                      <View key={r.id} style={styles.reviewItem}>
+                        <View style={styles.reviewHeader}>
+                          <View style={styles.reviewAvatar}>
+                            <Text style={styles.reviewAvatarText}>
+                              {r.user_name ? r.user_name.charAt(0).toUpperCase() : 'U'}
+                            </Text>
+                          </View>
+                          <View style={styles.reviewMeta}>
+                            <Text style={styles.reviewAuthor}>{r.user_name}</Text>
+                            <View style={styles.reviewStars}>
+                              {Array.from({length: 5}).map((_, i) => (
+                                <Ionicons 
+                                  key={i} 
+                                  name={i < Math.round(r.rating) ? "star" : "star-outline"} 
+                                  size={12} 
+                                  color="#ffb800" 
+                                />
+                              ))}
+                            </View>
+                          </View>
+                          <Text style={styles.reviewDate}>
+                            {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                          </Text>
+                        </View>
+                        <Text style={styles.reviewContent}>{r.content}</Text>
+                        
+                        {r.replies && r.replies.length > 0 && (
+                          <View style={styles.reviewReplies}>
+                            {r.replies.map(reply => (
+                              <View key={reply.id} style={styles.replyItem}>
+                                <View style={styles.replyHeader}>
+                                  <Text style={styles.replyAuthor}>{reply.user_name}</Text>
+                                  {reply.role === 'ADMIN' && (
+                                    <View style={styles.adminBadge}>
+                                      <Text style={styles.adminBadgeText}>QTV</Text>
+                                    </View>
+                                  )}
+                                </View>
+                                <Text style={styles.replyContent}>{reply.content}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    ))
+                  )}
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -577,6 +755,15 @@ export default function DetailScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
       <Toast message={toastMessage} visible={toastVisible} onDismiss={() => setToastVisible(false)} />
+      <LoginPromptSheet
+        visible={loginPromptVisible}
+        message={loginPromptMessage}
+        onDismiss={() => setLoginPromptVisible(false)}
+        onLogin={() => {
+          setLoginPromptVisible(false);
+          navigation.navigate('Login');
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -869,13 +1056,294 @@ const styles = StyleSheet.create({
     color: '#E51E25',
     letterSpacing: 0.5,
   },
-  descSection: {
-    marginTop: 10,
+  tabsHeader: {
+    flexDirection: 'row',
+    marginTop: 15,
+    borderBottomWidth: 1,
+    borderColor: '#EAEAEA',
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabBtnActive: {
+    borderBottomColor: '#E51E25',
+  },
+  tabBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#808080',
+  },
+  tabBtnTextActive: {
+    color: '#E51E25',
+  },
+  tabContentContainer: {
+    paddingVertical: 15,
+  },
+  descTab: {
+    marginTop: 5,
+  },
+  highlightBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF4E5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  highlightIcon: {
+    marginRight: 10,
+    marginTop: 2,
+  },
+  highlightText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#D97706',
+    fontWeight: '600',
+    lineHeight: 20,
   },
   descriptionText: {
     color: '#606060',
+    fontSize: 14,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  featuresGrid: {
+    marginTop: 10,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  featureText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#000000',
+    fontWeight: '500',
+  },
+  specsTab: {
+    marginTop: 5,
+  },
+  specGroupTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 15,
+  },
+  specRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  specKey: {
     fontSize: 13,
+    color: '#808080',
+    fontWeight: '600',
+  },
+  specVal: {
+    fontSize: 14,
+    color: '#000000',
+    fontWeight: '500',
+  },
+  specValPillContainer: {
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  specValPill: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#000000',
+  },
+  reviewsTab: {
+    marginTop: 5,
+  },
+  ratingSummaryBox: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    backgroundColor: '#FAF9FB',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  ratingAvgText: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#000000',
+  },
+  ratingStarsRow: {
+    flexDirection: 'row',
+    marginVertical: 5,
+  },
+  ratingCountText: {
+    fontSize: 12,
+    color: '#808080',
+  },
+  reviewFormContainer: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  reviewFormTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 12,
+  },
+  reviewFormLabel: {
+    fontSize: 13,
+    color: '#606060',
+    marginBottom: 8,
+  },
+  ratingSelectRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  reviewInput: {
+    backgroundColor: '#FAF9FB',
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: '#000000',
+    minHeight: 100,
+    marginBottom: 16,
+  },
+  submitReviewBtn: {
+    backgroundColor: '#000000',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  submitReviewBtnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  reviewLockedContainer: {
+    backgroundColor: '#FFF4E5',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+  },
+  reviewLockedText: {
+    fontSize: 13,
+    color: '#D97706',
+    textAlign: 'center',
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  reviewList: {
+    marginTop: 10,
+  },
+  reviewListTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 15,
+  },
+  noReviewsText: {
+    fontSize: 14,
+    color: '#808080',
+    fontStyle: 'italic',
+  },
+  reviewItem: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  reviewAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#3b82f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  reviewAvatarText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  reviewMeta: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  reviewAuthor: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#000000',
+    marginBottom: 4,
+  },
+  reviewStars: {
+    flexDirection: 'row',
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: '#808080',
+    alignSelf: 'flex-start',
+  },
+  reviewContent: {
+    fontSize: 14,
+    color: '#4B5563',
     lineHeight: 22,
+  },
+  reviewReplies: {
+    marginTop: 15,
+    paddingLeft: 15,
+    borderLeftWidth: 2,
+    borderLeftColor: '#E5E7EB',
+  },
+  replyItem: {
+    marginTop: 10,
+  },
+  replyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  replyAuthor: {
+    fontWeight: 'bold',
+    fontSize: 13,
+    color: '#000000',
+  },
+  adminBadge: {
+    backgroundColor: '#E51E25',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  adminBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  replyContent: {
+    fontSize: 13,
+    color: '#6B7280',
+    lineHeight: 20,
   },
   bottomActionBar: {
     position: 'absolute',

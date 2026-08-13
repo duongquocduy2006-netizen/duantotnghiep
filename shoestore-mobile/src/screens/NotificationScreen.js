@@ -11,6 +11,7 @@ import {
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -58,12 +59,37 @@ export default function NotificationScreen({ navigation }) {
   useEffect(() => {
     if (isFocused) {
       setActiveTab('Notifications');
+      loadReadStatus();
     }
   }, [isFocused]);
+
+  const loadReadStatus = async () => {
+    try {
+      const savedState = await AsyncStorage.getItem('readNotifications');
+      if (savedState) {
+        const readIds = JSON.parse(savedState);
+        setNotifications(prev => prev.map(n => 
+          readIds.includes(n.id) ? { ...n, read: true } : n
+        ));
+      }
+    } catch (e) {
+      console.warn('Lỗi load trạng thái thông báo:', e);
+    }
+  };
+
+  const saveReadStatus = async (updatedList) => {
+    try {
+      const readIds = updatedList.filter(n => n.read).map(n => n.id);
+      await AsyncStorage.setItem('readNotifications', JSON.stringify(readIds));
+    } catch (e) {
+      console.warn('Lỗi lưu trạng thái thông báo:', e);
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
     setTimeout(() => {
+      // Simulate fetching new notifications
       setRefreshing(false);
     }, 1000);
   };
@@ -71,6 +97,16 @@ export default function NotificationScreen({ navigation }) {
   const markAllAsRead = () => {
     const updated = notifications.map(n => ({ ...n, read: true }));
     setNotifications(updated);
+    saveReadStatus(updated);
+  };
+
+  const markAsRead = (id) => {
+    const updated = notifications.map(n => {
+      if (n.id === id) return { ...n, read: true };
+      return n;
+    });
+    setNotifications(updated);
+    saveReadStatus(updated);
   };
 
   const getNotificationIcon = (type) => {
@@ -99,7 +135,11 @@ export default function NotificationScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => (
-    <View style={[styles.notiItem, !item.read && styles.notiUnread]}>
+    <TouchableOpacity 
+      style={[styles.notiItem, !item.read && styles.notiUnread]}
+      onPress={() => markAsRead(item.id)}
+      activeOpacity={0.7}
+    >
       <View style={[styles.iconWrapper, { backgroundColor: getIconBgColor(item.type) }]}>
         {getNotificationIcon(item.type)}
       </View>
@@ -111,7 +151,7 @@ export default function NotificationScreen({ navigation }) {
         <Text style={styles.notiText}>{item.content}</Text>
         <Text style={styles.notiTime}>{item.time}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (

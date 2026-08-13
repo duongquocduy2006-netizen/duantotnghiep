@@ -10,8 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
-  FlatList,
-  Alert
+  FlatList
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
@@ -23,50 +22,6 @@ import { API_BASE_URL } from '../config';
 const { width } = Dimensions.get('window');
 const API_TIMEOUT = 4000;
 
-const MOCK_PRODUCTS = [
-  {
-    id: 101,
-    productName: "Air Jordan 1 Low 'Shadow'",
-    brandName: "Jordan",
-    imageUrl: "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600&auto=format&fit=crop&q=80",
-    price: 3890000,
-  },
-  {
-    id: 102,
-    productName: "Nike Air Max Plus 'Volt'",
-    brandName: "Nike",
-    imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
-    price: 4890000,
-  },
-  {
-    id: 103,
-    productName: "Yeezy Boost 350 V2 'Carbon'",
-    brandName: "Yeezy",
-    imageUrl: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80",
-    price: 6500000,
-  },
-  {
-    id: 104,
-    productName: "Adidas NMD R1 V2 Streetwear",
-    brandName: "Adidas",
-    imageUrl: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&auto=format&fit=crop&q=80",
-    price: 3450000,
-  },
-  {
-    id: 105,
-    productName: "Puma RS-X Reinvention",
-    brandName: "Puma",
-    imageUrl: "https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=600&auto=format&fit=crop&q=80",
-    price: 2990000,
-  },
-  {
-    id: 106,
-    productName: "Nike Dunk Low Retro 'Panda'",
-    brandName: "Nike",
-    imageUrl: "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=600&auto=format&fit=crop&q=80",
-    price: 3200000,
-  }
-];
 
 export default function ShopScreen({ navigation }) {
   const { favorites, toggleFavorite } = useContext(CartContext);
@@ -77,6 +32,7 @@ export default function ShopScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('Tất cả');
+  const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [selectedPriceRange, setSelectedPriceRange] = useState('Tất cả');
   const [sortBy, setSortBy] = useState('Mặc định'); // 'Mặc định' | 'Giá tăng' | 'Giá giảm'
   const [userName, setUserName] = useState('Khách hàng');
@@ -127,14 +83,14 @@ export default function ShopScreen({ navigation }) {
         if (Array.isArray(data) && data.length > 0) {
           setProducts(data);
         } else {
-          setProducts(MOCK_PRODUCTS);
+          setProducts([]);
         }
       } else {
         throw new Error('API Error response');
       }
     } catch (error) {
-      console.warn("Could not connect to API, using backup mock data:", error.message);
-      setProducts(MOCK_PRODUCTS);
+      console.warn("Could not connect to API:", error.message);
+      setProducts([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -154,6 +110,12 @@ export default function ShopScreen({ navigation }) {
   const brandsList = useMemo(() => {
     const brands = new Set(products.map(p => p.brandName));
     return ['Tất cả', ...Array.from(brands)];
+  }, [products]);
+
+  // Get categories dynamically from products list
+  const categoriesList = useMemo(() => {
+    const categories = new Set(products.map(p => p.categoryName).filter(Boolean));
+    return ['Tất cả', ...Array.from(categories)];
   }, [products]);
 
   // Format Image URL helper
@@ -186,6 +148,11 @@ export default function ShopScreen({ navigation }) {
       result = result.filter(p => p.brandName === selectedBrand);
     }
 
+    // Filter by Category
+    if (selectedCategory !== 'Tất cả') {
+      result = result.filter(p => p.categoryName === selectedCategory);
+    }
+
     // 3. Filter by Price Range
     if (selectedPriceRange !== 'Tất cả') {
       if (selectedPriceRange === 'Dưới 3tr') {
@@ -205,7 +172,7 @@ export default function ShopScreen({ navigation }) {
     }
 
     return result;
-  }, [products, searchQuery, selectedBrand, selectedPriceRange, sortBy]);
+  }, [products, searchQuery, selectedBrand, selectedCategory, selectedPriceRange, sortBy]);
 
   // Render Product Card
   const renderProductItem = ({ item }) => {
@@ -296,6 +263,27 @@ export default function ShopScreen({ navigation }) {
                 >
                   <Text style={[styles.badgeText, isActive && styles.badgeTextActive]}>
                     {brand}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Category Scroll */}
+        <View style={[styles.filterRow, { marginTop: 8 }]}>
+          <Text style={styles.filterLabel}>Danh mục:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            {categoriesList.map((category, idx) => {
+              const isActive = selectedCategory === category;
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.badge, isActive && styles.badgeActive]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <Text style={[styles.badgeText, isActive && styles.badgeTextActive]}>
+                    {category}
                   </Text>
                 </TouchableOpacity>
               );

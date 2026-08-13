@@ -98,9 +98,8 @@ public class FlashSaleServiceImpl implements FlashSaleService {
 
     @Override
     public Optional<FlashSale> getActiveFlashSale() {
-        // Cộng thêm 5 phút đệm để hiển thị sớm hoặc tránh lệch giây giữa Client/Server
-        LocalDateTime nowPlusBuffer = LocalDateTime.now().plusMinutes(5);
-        List<FlashSale> activeSales = flashSaleRepository.findActiveFlashSales(nowPlusBuffer);
+        LocalDateTime now = LocalDateTime.now();
+        List<FlashSale> activeSales = flashSaleRepository.findActiveOrUpcomingFlashSales(now);
         return activeSales.isEmpty() ? Optional.empty() : Optional.of(activeSales.get(0));
     }
 

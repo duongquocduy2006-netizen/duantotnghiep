@@ -123,7 +123,7 @@ export default function ProfileScreen({ navigation }) {
             color: isPercent ? '#00B4DB' : (isShipping ? '#FFB703' : '#E51E25')
           };
         });
-        setVouchers(mapped.filter(v => userPoints >= (v.minPoints || 0)));
+        setVouchers(mapped);
       } else {
         setVouchers([]);
       }
@@ -315,10 +315,13 @@ export default function ProfileScreen({ navigation }) {
           onPress: async () => {
             await AsyncStorage.removeItem('userAccount');
             await AsyncStorage.removeItem('userOrders');
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
+            setIsLoggedIn(false);
+            setUserName('Khách hàng');
+            setUserEmail('');
+            setUserPhone('');
+            setUserPoints(0);
+            setOrders([]);
+            navigation.navigate('Login');
           }
         }
       ]
@@ -352,15 +355,54 @@ export default function ProfileScreen({ navigation }) {
           showToast("Mật khẩu mới xác nhận không khớp!");
           return;
         }
-        // Save new password
-        user.password = newPassword;
+        
+        // 1. Call API to change password
+        const passwordResponse = await fetch(`${API_BASE_URL}/api/profile/change-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            oldPassword: currentPassword,
+            newPassword: newPassword,
+            confirmPassword: confirmPassword
+          })
+        });
+        
+        const passwordData = await passwordResponse.json();
+        if (!passwordResponse.ok || !passwordData.success) {
+          showToast(passwordData.message || "Đổi mật khẩu thất bại!");
+          return; // Stop here if password change fails
+        }
       }
 
-      // Update phone number
-      user.phone = editPhone;
+      // 2. Call API to update phone number
+      const updateResponse = await fetch(`${API_BASE_URL}/api/profile/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          fullName: user.full_name || userName,
+          phone: editPhone
+        })
+      });
+      
+      const updateData = await updateResponse.json();
+      if (!updateResponse.ok || !updateData.success) {
+        showToast(updateData.message || "Cập nhật thông tin thất bại!");
+        return;
+      }
 
-      // Save to AsyncStorage
-      await AsyncStorage.setItem('userAccount', JSON.stringify(user));
+      // Save to AsyncStorage (sync updated data from server)
+      if (updateData.account) {
+        await AsyncStorage.setItem('userAccount', JSON.stringify(updateData.account));
+      } else {
+        user.phone = editPhone;
+        await AsyncStorage.setItem('userAccount', JSON.stringify(user));
+      }
       
       // Reset password fields
       setCurrentPassword('');
@@ -372,7 +414,8 @@ export default function ProfileScreen({ navigation }) {
       setInfoModalVisible(false);
       showToast("Thông tin tài khoản đã được cập nhật thành công!");
     } catch (e) {
-      showToast("Không thể lưu thông tin thay đổi.");
+      console.log("Error saving profile info:", e);
+      showToast("Không thể lưu thông tin thay đổi do lỗi kết nối.");
     }
   };
 

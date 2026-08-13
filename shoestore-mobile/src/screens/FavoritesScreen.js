@@ -35,15 +35,7 @@ export default function FavoritesScreen({ navigation }) {
       }
       throw new Error();
     } catch {
-      // Mock Fallback
-      setAllProducts([
-        { id: 101, productName: "Air Jordan 1 Low 'Shadow'", brandName: "Jordan", imageUrl: "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=600", price: 3890000 },
-        { id: 102, productName: "Nike Air Max Plus 'Volt'", brandName: "Nike", imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600", price: 4890000 },
-        { id: 103, productName: "Yeezy Boost 350 V2 'Carbon'", brandName: "Yeezy", imageUrl: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600", price: 6500000 },
-        { id: 104, productName: "Adidas NMD R1 V2 Streetwear", brandName: "Adidas", imageUrl: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600", price: 3450000 },
-        { id: 105, productName: "Puma RS-X Reinvention", brandName: "Puma", imageUrl: "https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=600", price: 2990000 },
-        { id: 106, productName: "Nike Dunk Low Retro 'Panda'", brandName: "Nike", imageUrl: "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=600", price: 3200000 }
-      ]);
+      setAllProducts([]);
     }
   };
 
