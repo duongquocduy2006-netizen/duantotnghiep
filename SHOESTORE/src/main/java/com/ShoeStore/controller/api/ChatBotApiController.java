@@ -8,10 +8,6 @@ import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/chatbot")
-<<<<<<< Updated upstream
-@CrossOrigin(originPatterns = "*")
-=======
->>>>>>> Stashed changes
 public class ChatBotApiController {
 
     @Autowired
@@ -19,11 +15,15 @@ public class ChatBotApiController {
 
     @PostMapping("/ask")
     public Map<String, String> ask(@RequestBody Map<String, String> request) {
-        String userMessage = request.get("message");
-        String aiReply = chatGPTService.getAIResponse(userMessage);
-
         Map<String, String> response = new HashMap<>();
-        response.put("reply", aiReply);
+        try {
+            String userMessage = (request != null && request.containsKey("message")) ? request.get("message") : "";
+            String aiReply = chatGPTService.getAIResponse(userMessage);
+            response.put("reply", aiReply);
+        } catch (Exception e) {
+            System.err.println("Chatbot Controller Error: " + e.getMessage());
+            response.put("reply", "Dạ hiện tại cửa hàng ShoeStore có rất nhiều mẫu Sneaker mới về! Bạn có thể xem toàn bộ danh mục tại trang Cửa hàng nhé! 😊");
+        }
         return response;
     }
 }

@@ -209,11 +209,10 @@ public class ChatGPTService {
         headers.set("HTTP-Referer", "http://localhost:8080");
 
         List<String> models = Arrays.asList(
-            "google/gemini-2.5-flash:free",
-            "deepseek/deepseek-r1-distill-llama-70b:free",
-            "qwen/qwen-2.5-coder-32b-instruct:free",
-            "google/gemma-2-9b-it:free",
-            "mistralai/mistral-7b-instruct:free",
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "qwen/qwen-2.5-72b-instruct:free",
+            "google/gemini-2.0-flash-exp:free",
+            "deepseek/deepseek-r1:free",
             "openrouter/auto"
         );
 

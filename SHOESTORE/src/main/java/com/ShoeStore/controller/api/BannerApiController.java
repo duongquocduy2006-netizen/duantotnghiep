@@ -17,10 +17,6 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/banners")
-<<<<<<< Updated upstream
-@CrossOrigin(originPatterns = "*")
-=======
->>>>>>> Stashed changes
 public class BannerApiController {
 
     @Autowired
