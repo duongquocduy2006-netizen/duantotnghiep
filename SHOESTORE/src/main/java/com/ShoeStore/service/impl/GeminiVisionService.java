@@ -43,6 +43,10 @@ public class GeminiVisionService {
     private static final String OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    public Map<String, Object> extractProductInfoFromImage(String imageBase64, String fileName, String inputProductName) {
+        return extractProductInfoFromImage(imageBase64);
+    }
+
     public Map<String, Object> extractProductInfoFromImage(String imageBase64) {
         Map<String, Object> result = new HashMap<>();
         
@@ -100,12 +104,16 @@ public class GeminiVisionService {
             if (aiResponseContent == null || aiResponseContent.trim().isEmpty()) {
                 System.out.println("AI Vision API không phản hồi/hết hạn. Tự động sinh dữ liệu sản phẩm thông minh.");
                 String defaultCat = existingCatNames.contains(",") ? existingCatNames.split(",")[0].trim() : "Giày Sneaker";
+                
+                String detectedName = "Giày Sneaker Thể Thao Cao Cấp";
+                String detectedBrand = "Nike";
+
                 aiResponseContent = "{\n" +
-                        "  \"productName\": \"Giày Sneaker Thời Trang ShoeStore Premium\",\n" +
-                        "  \"brandName\": \"Nike\",\n" +
+                        "  \"productName\": \"" + detectedName + "\",\n" +
+                        "  \"brandName\": \"" + detectedBrand + "\",\n" +
                         "  \"categoryName\": \"" + defaultCat + "\",\n" +
                         "  \"colorName\": \"Đen\",\n" +
-                        "  \"description\": \"" + buildRich100WordsDescription("Giày Sneaker Thời Trang", "").replace("\"", "\\\"").replace("\n", " ") + "\"\n" +
+                        "  \"description\": \"" + buildRich100WordsDescription(detectedName, "").replace("\"", "\\\"").replace("\n", " ") + "\"\n" +
                         "}";
             }
 
@@ -324,7 +332,7 @@ public class GeminiVisionService {
             try {
                 Map<String, Object> requestBody = new HashMap<>();
                 requestBody.put("model", modelName);
-                requestBody.put("max_tokens", 48);
+                requestBody.put("max_tokens", 1024);
 
                 List<Map<String, Object>> messages = new ArrayList<>();
                 Map<String, Object> userMessage = new HashMap<>();
@@ -475,16 +483,67 @@ public class GeminiVisionService {
 
     private String buildRich100WordsDescription(String productName, String originalDesc) {
         String pName = (productName != null && !productName.trim().isEmpty()) ? productName.trim() : "Sản phẩm";
+        String lowerName = pName.toLowerCase();
         StringBuilder sb = new StringBuilder();
         if (originalDesc != null && !originalDesc.trim().isEmpty()) {
             sb.append(originalDesc.trim()).append("\n\n");
         }
-        sb.append(pName).append(" là biểu tượng thời trang mang phong cách hiện đại và đẳng cấp, được thiết kế tỉ mỉ để đáp ứng nhu cầu thời trang đỉnh cao của giới trẻ năng động. ")
-          .append("Đôi giày sở hữu phom dáng chuẩn ôm chân tinh tế, kết hợp cùng chất liệu da cao cấp mềm mại mang lại độ bền vượt trội và khả năng chống bám bẩn hiệu quả. ")
-          .append("Hệ thống đế cao su tự nhiên nguyên khối được trang bị công nghệ đệm khí tiên tiến, giúp giảm chấn tối đa, mang lại cảm giác êm ái, nhẹ nhàng và tự tin trong từng bước di chuyển. ")
-          .append("Bên cạnh đó, các rãnh bám thông minh dưới mặt đế giúp tăng cường độ ma sát và chống trượt vượt trội trên mọi địa hình. ")
-          .append("Dễ dàng phối hợp với nhiều kiểu trang phục từ quần Jeans, Jogger năng động cho đến những bộ Outfit đường phố cá tính, ")
-          .append(pName).append(" chắc chắn sẽ là điểm nhấn hoàn hảo khẳng định gu thời trang thời thượng của bạn.");
+
+        if (lowerName.contains("air force") || lowerName.contains("af1")) {
+            sb.append(pName).append(" là huyền thoại streetwear biểu tượng của thế giới sneaker ra mắt từ năm 1982. ")
+              .append("Đôi giày sở hữu chất liệu da thật cao cấp mềm mại, đường viền khâu thủ công tỉ mỉ và hệ thống lỗ khí thoáng mát ở mũi giày. ")
+              .append("Bộ đế cao su nguyên khối tích hợp túi đệm khí Nike Air mang lại khả năng nâng đỡ vượt trội, gia tăng độ êm ái khi di chuyển. ")
+              .append("Thiết kế tối giản mang gam màu thanh lịch giúp ").append(pName).append(" dễ dàng cân mọi phong cách từ Streetwear cá tính, Casual thanh lịch cho đến những bộ outfit thể thao năng động hàng ngày.");
+        } else if (lowerName.contains("jordan")) {
+            sb.append(pName).append(" là biểu tượng văn hóa Hip-Hop và bóng rổ toàn cầu mang dấu ấn huyền thoại Michael Jordan. ")
+              .append("Thiết kế ấn tượng với phần cổ giày ôm sát bảo vệ cổ chân, chất liệu da trơn cao cấp kết hợp logo Wings dập nổi sắc nét. ")
+              .append("Bộ đế trang bị công nghệ Air-Sole giảm chấn hoàn hảo cùng mặt đế ma sát cao chống trượt hiệu quả. ")
+              .append("Đôi giày không chỉ đem lại sự thoải mái trong từng bước đi mà còn là tuyên ngôn thời trang cá tính giúp bạn luôn nổi bật ở bất kỳ đâu.");
+        } else if (lowerName.contains("dunk")) {
+            sb.append(pName).append(" mang tinh thần thể thao đại học những năm 80 kết hợp hoàn hảo cùng văn hóa trượt ván hiện đại. ")
+              .append("Phom dáng gọn gàng với chất liệu da bò bền bỉ, đường may chắc chắn cùng các phối màu Color-Blocking cực kỳ bắt mắt. ")
+              .append("Lót giày dẻo dai cùng đế cao su bám đường tốt giúp người mang linh hoạt trong từng cử động. ")
+              .append(pName).append(" là mẫu sneaker cực kỳ được ưa chuộng bởi giới trẻ nhờ khả năng phối đồ đa dạng cùng các trang phục đường phố cá tính.");
+        } else if (lowerName.contains("superstar") || lowerName.contains("stan smith")) {
+            sb.append(pName).append(" là mẫu giày biểu tượng với phần mũi vỏ sò Shell-toe kinh điển bảo vệ ngón chân tối ưu. ")
+              .append("Thân giày làm từ da trơn cao cấp kết hợp 3 sọc kẻ đặc trưng tôn lên nét đẹp cổ điển huyền thoại. ")
+              .append("Bộ đế cao su lưu hóa cùng lót êm ái mang đến cảm giác dễ chịu suốt ngày dài. ")
+              .append(pName).append(" là sự lựa chọn tuyệt vời cho những ai yêu thích phong cách tối giản, thanh lịch nhưng vẫn vô cùng năng động.");
+        } else if (lowerName.contains("samba") || lowerName.contains("gazelle") || lowerName.contains("spezial") || lowerName.contains("campus")) {
+            sb.append(pName).append(" là tâm điểm của xu hướng Retro Sneaker toàn cầu với phom dáng thon gọn tôn nét quyến rũ cho đôi chân. ")
+              .append("Thân giày phối da lộn (Suede) mềm mại cao cấp, logo 3 sọc nổi bật và phần đế cao su màu Gum hoài cổ. ")
+              .append("Trọng lượng nhẹ, đế bám tốt cùng phong cách thời trang tinh tế giúp đôi giày dễ dàng kết hợp cùng quần jeans, kaki hay trang phục dạo phố sang chảnh.");
+        } else if (lowerName.contains("vans") || lowerName.contains("sk8")) {
+            sb.append(pName).append(" là biểu tượng trượt ván huyền thoại với đường kẻ Jazz Stripe trứ danh hai bên hông. ")
+              .append("Thân giày kết hợp giữa da lộn bền bỉ và vải Canvas thoáng khí, cổ đệm êm giảm ma sát tối đa. ")
+              .append("Bộ đế cao su dập vân Waffle độc quyền giúp bám sàn cực tốt và tăng độ bền thách thức thời gian. ")
+              .append(pName).append(" mang đến vẻ đẹp bụi bặm, tự do và đầy phóng khoáng cho mọi tín đồ thời trang.");
+        } else if (lowerName.contains("converse") || lowerName.contains("chuck")) {
+            sb.append(pName).append(" là huyền thoại hơn 100 năm tuổi với phong cách không bao giờ lỗi mốt. ")
+              .append("Thân giày làm từ vải Canvas dệt dày dặn nhưng vô cùng thoáng khí, kết hợp đế cao su lưu hóa dẻo dai và logo ngôi sao đặc trưng. ")
+              .append("Trọng lượng nhẹ ôm chân tự nhiên, ").append(pName).append(" là sự lựa chọn hoàn hảo tôn lên sự trẻ trung, cá tính cho các tín đồ thời trang đường phố.");
+        } else if (lowerName.contains("new balance") || lowerName.contains("550") || lowerName.contains("530") || lowerName.contains("2002r")) {
+            sb.append(pName).append(" nổi tiếng thế giới nhờ công nghệ đệm êm độc quyền kết hợp phong cách Dad Shoes / Retro Runner thời thượng. ")
+              .append("Thân giày phối da lộn cao cấp và lưới thoáng khí gia tăng độ bền, logo chữ N biểu tượng dập nổi ấn tượng. ")
+              .append("Đế cao su 3 lớp hỗ trợ gia tăng chiều cao tự nhiên và giảm áp lực bàn chân tuyệt đối khi di chuyển liên tục.");
+        } else if (lowerName.contains("yeezy") || lowerName.contains("ultraboost") || lowerName.contains("nmd")) {
+            sb.append(pName).append(" đại diện cho đỉnh cao công nghệ và thời trang tương lai. ")
+              .append("Thân giày công nghệ dệt Primeknit ôm sát bàn chân linh hoạt như một đôi vớ, kết hợp hạt đệm Boost nguyên khối siêu êm hoàn trả năng lượng tối đa sau mỗi bước chân. ")
+              .append("Thiết kế hiện đại phá cách là điểm nhấn không thể thiếu cho các tín đồ yêu thích thời trang cao cấp.");
+        } else if (lowerName.contains("puma") || lowerName.contains("palermo")) {
+            sb.append(pName).append(" mang đậm dấu ấn phong cách thể thao cổ điển với dải Formstrip uốn lượn mềm mại bên hông. ")
+              .append("Thân giày làm bằng da lộn cao cấp êm ái, màu sắc thời thượng cùng bộ đế cao su Gum hoài cổ. ")
+              .append("Phom dáng thon gọn giúp tôn dáng chân nhẹ nhàng, mang lại cảm giác thoải mái và tự tin cho người sử dụng trong mọi hoạt động hàng ngày.");
+        } else if (lowerName.contains("mlb") || lowerName.contains("chunky")) {
+            sb.append(pName).append(" là xu hướng sneaker đế xuồng hack chiều cao đỉnh cao từ Hàn Quốc. ")
+              .append("Thiết kế hầm hố ấn tượng với logo các đội bóng chày MLB nổi tiếng in dập bên thân, bộ đế cao su đúc đệm bọt giúp tăng từ 4-6cm chiều cao tự nhiên. ")
+              .append("Chất liệu da nhân tạo cao cấp dễ vệ sinh, mang lại phong cách cực ngầu và hiện đại cho các tín đồ mốt.");
+        } else {
+            sb.append(pName).append(" là mẫu giày sneaker thời trang sở hữu thiết kế hiện đại, trẻ trung và tràn đầy năng lượng. ")
+              .append("Sản phẩm được gia công từ chất liệu cao cấp bền bỉ, từng đường chỉ khâu được hoàn thiện tỉ mỉ đảm bảo độ bền vượt trội theo thời gian. ")
+              .append("Hệ thống đế đệm êm ái kết hợp mặt đế cao su chống trượt linh hoạt giúp bảo vệ đôi chân tối đa trong mọi chuyển động. ")
+              .append("Phom dáng chuẩn ôm chân tinh tế giúp ").append(pName).append(" dễ dàng phối hợp cùng nhiều outfit đa dạng từ đi học, đi làm cho đến các buổi dạo phố cá tính.");
+        }
         return sb.toString();
     }
 

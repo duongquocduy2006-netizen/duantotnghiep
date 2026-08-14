@@ -347,9 +347,7 @@ const AdminProductForm = () => {
                 const rawDesc = data.description || '';
                 const wordCount = rawDesc ? rawDesc.trim().split(/\s+/).filter(Boolean).length : 0;
                 const pName = trimmedName || data.productName || 'Sản phẩm';
-                const finalDesc = wordCount >= 100
-                    ? rawDesc
-                    : (rawDesc ? rawDesc.trim() + '\n\n' : '') + `${pName} là biểu tượng thời trang mang phong cách hiện đại và đẳng cấp, được thiết kế tỉ mỉ để đáp ứng nhu cầu thời trang đỉnh cao của giới trẻ năng động. Đôi giày sở hữu phom dáng chuẩn ôm chân tinh tế, kết hợp cùng chất liệu da cao cấp mềm mại mang lại độ bền vượt trội và khả năng chống bám bẩn hiệu quả. Hệ thống đế cao su tự nhiên nguyên khối được trang bị công nghệ đệm khí tiên tiến, giúp giảm chấn tối đa, mang lại cảm giác êm ái, nhẹ nhàng và tự tin trong từng bước di chuyển. Bên cạnh đó, các rãnh bám thông minh dưới mặt đế giúp tăng cường độ ma sát và chống trượt vượt trội trên mọi địa hình. Dễ dàng phối hợp với nhiều kiểu trang phục từ quần Jeans, Jogger năng động cho đến những bộ Outfit đường phố cá tính, ${pName} chắc chắn sẽ là điểm nhấn hoàn hảo khẳng định gu thời trang thời thượng của bạn.`;
+                const finalDesc = data.description || rawDesc;
 
                 setProduct(prev => ({
                     ...prev,
@@ -430,14 +428,32 @@ const AdminProductForm = () => {
             const firstBase64 = base64List[0];
 
             setAiImageBase64(firstBase64);
-            setAiImagesBase64List(base64List);
+            setAiImagesBase64List(prev => [...prev, ...base64List]);
 
-            // Set gallery images preview: Image 1 is Primary!
-            const previewImages = base64List.map((url, idx) => ({
-                url,
-                isPrimary: idx === 0
-            }));
-            setImages(previewImages);
+            // Append gallery images preview so they display in 'HÌNH ẢNH HIỆN TẠI'
+            setImages(prev => {
+                const hasPrimary = prev.some(img => img.isPrimary);
+                const newImgObjs = base64List.map((url, idx) => ({
+                    url,
+                    isPrimary: !hasPrimary && idx === 0
+                }));
+                return [...prev, ...newImgObjs];
+            });
+
+            // If editing an existing product, automatically persist newly uploaded images to the server
+            if (isEdit && id) {
+                try {
+                    for (let i = 0; i < base64List.length; i++) {
+                        await api.post(`/api/products/${id}/image`, { imageBase64: base64List[i] });
+                    }
+                    const prodRes = await api.get(`/api/products/${id}`);
+                    if (prodRes.data && prodRes.data.images) {
+                        setImages(prodRes.data.images);
+                    }
+                } catch (imgErr) {
+                    console.error("Lỗi tự động lưu ảnh AI lên server:", imgErr);
+                }
+            }
 
             // Send first image to AI Vision for product extraction
             const response = await api.post('/api/products/ai-extract', { imageBase64: firstBase64 });
@@ -462,37 +478,6 @@ const AdminProductForm = () => {
                     });
                 }
 
-                // Dynamic Color Option insertion if missing in dropdown
-                if (data.colorId && data.colorName) {
-                    const vnColorName = translateColorToVietnamese(data.colorName);
-                    setColors(prevColors => {
-                        const exists = prevColors.some(c => String(c.id) === String(data.colorId) || c.colorName.toLowerCase() === vnColorName.toLowerCase());
-                        if (!exists) {
-                            return [{ id: data.colorId, colorName: vnColorName }, ...prevColors];
-                        }
-                        return prevColors;
-                    });
-                }
-
-                if (!isEdit) {
-                    // Auto-select ALL sizes on AI auto-fill
-                    if (sizes.length > 0) {
-                        setSelectedSizes(sizes.map(s => s.sizeName));
-                    }
-                    // Auto-select color
-                    if (data.colorName) {
-                        const vn = translateColorToVietnamese(data.colorName);
-                        setSelectedColors([vn]);
-                    } else if (colors.length > 0) {
-                        setSelectedColors([translateColorToVietnamese(colors[0].colorName)]);
-                    }
-
-                    setVariant(prev => ({
-                        ...prev,
-                        price: prev.price || '1500000',
-                        quantity: prev.quantity || '100'
-                    }));
-                }
 
                 const countMsg = files.length > 1 ? ` Đã nạp ${files.length} ảnh (Ảnh 1 tự động chọn làm Ảnh chính).` : '';
                 setAiSuccessMsg(`AI đã trích xuất & tự động điền 100% dữ liệu: Tên sản phẩm, Thương hiệu (${data.brandName}), Danh mục (${data.categoryName || 'Tự động'}), Mô tả, Tất cả Sizes, Màu sắc, Giá bán & Số lượng!`);

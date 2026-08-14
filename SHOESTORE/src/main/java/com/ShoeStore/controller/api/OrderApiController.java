@@ -201,9 +201,6 @@ public class OrderApiController {
                     tempShipping = 0;
                 }
             }
-            if (tempShipping != 0 && total >= 500000) {
-                tempShipping = 0;
-            }
             final double shipping = tempShipping;
 
             // Kiểm tra voucher

@@ -106,7 +106,7 @@ const AdminProducts = () => {
         <AdminLayout>
             <div className="admin-page-header" style={{ marginBottom: '35px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div className="header-left">
-                    <span className="sub-title-neon">⌨ SINGLE PAGE APPLICATION (REST API)</span>
+                    <span className="sub-title-neon"><i className="bi bi-box-seam me-1"></i> PRODUCT MANAGEMENT (REST API)</span>
                     <h1 className="cinematic-title" style={{ margin: 0 }}>DANH SÁCH SẢN PHẨM</h1>
                 </div>
                 <Link to="/admin/products/create" className="btn-add-red-solid">

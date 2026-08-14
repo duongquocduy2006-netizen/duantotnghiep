@@ -198,6 +198,18 @@ public class ProductApiController {
         prodMap.put("categoryId", product.getCategory() != null ? product.getCategory().getId() : null);
         prodMap.put("categoryName", product.getCategory() != null ? product.getCategory().getName() : "");
 
+        String mainImg = "";
+        if (product.getImages() != null && !product.getImages().isEmpty()) {
+            ProductImage firstImg = product.getImages().stream()
+                    .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
+                    .findFirst()
+                    .orElse(product.getImages().iterator().next());
+            if (firstImg != null && firstImg.getImageUrl() != null) {
+                mainImg = "/images/" + firstImg.getImageUrl();
+            }
+        }
+        prodMap.put("imageUrl", mainImg);
+
         // Map variants
         List<Map<String, Object>> variantsList = product.getVariants().stream().map(v -> {
             Map<String, Object> vMap = new HashMap<>();
@@ -317,15 +329,24 @@ public class ProductApiController {
             java.util.Optional<com.ShoeStore.model.FlashSale> activeFs = flashSaleService.getActiveFlashSale();
             if (activeFs.isPresent()) {
                 com.ShoeStore.model.FlashSale fs = activeFs.get();
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                boolean isLive = (now.isAfter(fs.getStartDate()) || now.isEqual(fs.getStartDate())) && (now.isBefore(fs.getEndDate()) || now.isEqual(fs.getEndDate()));
+                boolean isUpcoming = now.isBefore(fs.getStartDate());
+
                 List<com.ShoeStore.model.FlashSaleProduct> fspList = flashSaleService.getProductsByFlashSaleId(fs.getId());
                 for (com.ShoeStore.model.FlashSaleProduct fsp : fspList) {
                     if (fsp.getProduct() != null && fsp.getProduct().getId().equals(id)) {
                         flashSaleInfo = new HashMap<>();
-                        flashSaleInfo.put("salePrice", fsp.getSalePrice());
+                        flashSaleInfo.put("isLive", isLive);
+                        flashSaleInfo.put("isUpcoming", isUpcoming);
+                        flashSaleInfo.put("campaignName", fs.getName());
+                        flashSaleInfo.put("startDate", fs.getStartDate());
+                        flashSaleInfo.put("endDate", fs.getEndDate());
                         flashSaleInfo.put("quantityLimit", fsp.getQuantityLimit());
                         flashSaleInfo.put("soldQuantity", fsp.getSoldQuantity());
-                        flashSaleInfo.put("campaignName", fs.getName());
-                        flashSaleInfo.put("endDate", fs.getEndDate());
+
+                        flashSaleInfo.put("salePrice", fsp.getSalePrice() != null ? fsp.getSalePrice().doubleValue() : 0.0);
+
                         // Calculate original price from first variant
                         double origPrice = 0;
                         if (product.getVariants() != null && !product.getVariants().isEmpty()) {
@@ -344,7 +365,6 @@ public class ProductApiController {
                 }
             }
         } catch (Exception e) {
-            // Silently fail - flash sale info is optional
             e.printStackTrace();
         }
         // --------------------------
@@ -875,10 +895,8 @@ public class ProductApiController {
                     " AND fsp.sold_quantity < fsp.quantity_limit) as sale_price " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
-                    "WHERE p.status = 1 AND c.status = 1 " +
-                    "AND EXISTS (SELECT 1 FROM brands b WHERE b.brand_name = p.brand_name AND b.status = 1) " +
+                    "WHERE p.status = 1 " +
                     "AND p.created_at >= DATEADD(day, -3, GETDATE()) " +
-                    "AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.quantity > 0) " +
                     "ORDER BY p.created_at DESC";
 
             List<Map<String, Object>> newProducts = jdbc.queryForList(sql);
@@ -908,84 +926,109 @@ public class ProductApiController {
             List<Map<String, Object>> activeCategories = jdbc.queryForList(
                     "SELECT id, category_name FROM categories WHERE status = 1 ORDER BY category_name ASC");
 
-            // Xây dựng câu lệnh SQL truy vấn động
-            StringBuilder sql = new StringBuilder();
-            sql.append("SELECT p.id, p.product_name, p.brand_name, ")
-                    .append("(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, ")
-                    .append("(SELECT MIN(price) FROM product_variants WHERE product_id = p.id) as min_price ")
-                    .append("FROM products p ")
-                    .append("LEFT JOIN categories c ON p.category_id = c.id ")
-                    .append("WHERE p.status = 1 AND c.status = 1 ")
-                    .append("AND EXISTS (SELECT 1 FROM brands b WHERE b.brand_name = p.brand_name AND b.status = 1) ")
-                    .append("AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.quantity > 0) ");
-
-            List<Object> params = new java.util.ArrayList<>();
-
-            String searchTerm = keyword != null ? keyword : q;
-            // Lọc theo từ khóa (Tên sản phẩm, thương hiệu hoặc danh mục) - Smart Search
-            if (searchTerm != null && !searchTerm.trim().isEmpty()) {
-                String[] words = searchTerm.trim().split("\\s+");
-                for (String word : words) {
-                    String term = "%" + word + "%";
-                    sql.append("AND (p.product_name LIKE ? OR p.brand_name LIKE ? OR c.category_name LIKE ?) ");
-                    params.add(term);
-                    params.add(term);
-                    params.add(term);
-                }
+            List<Product> allProducts = productRepository.findAll();
+            System.out.println("=== SEARCH API ALL PRODUCTS SIZE: " + allProducts.size());
+            for (Product p : allProducts) {
+                System.out.println("   DB Product ID: " + p.getId() + " | Name: " + p.getProductName() + " | Status: " + p.getStatus() + " | Category: " + (p.getCategory() != null ? p.getCategory().getName() : "NULL"));
             }
 
-            // Lọc theo Thương hiệu (IN)
-            if (brand != null && !brand.isEmpty()) {
-                sql.append("AND p.brand_name IN (");
-                for (int i = 0; i < brand.size(); i++) {
-                    sql.append("?");
-                    params.add(brand.get(i));
-                    if (i < brand.size() - 1) {
-                        sql.append(",");
-                    }
-                }
-                sql.append(") ");
-            }
+            String searchTerm = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim().toLowerCase() : ((q != null && !q.trim().isEmpty()) ? q.trim().toLowerCase() : null);
 
-            // Lọc theo Danh mục (IN)
-            if (category != null && !category.isEmpty()) {
-                sql.append("AND p.category_id IN (");
-                for (int i = 0; i < category.size(); i++) {
-                    sql.append("?");
-                    params.add(category.get(i));
-                    if (i < category.size() - 1) {
-                        sql.append(",");
-                    }
-                }
-                sql.append(") ");
-            }
+            List<String> validBrands = brand != null ? brand.stream()
+                    .filter(b -> b != null && !b.trim().isEmpty())
+                    .map(b -> b.trim().toLowerCase())
+                    .collect(Collectors.toList()) : java.util.Collections.emptyList();
 
-            // Lọc theo khoảng giá
-            if (min != null) {
-                sql.append("AND (SELECT MIN(price) FROM product_variants WHERE product_id = p.id) >= ? ");
-                params.add(min);
-            }
-            if (max != null) {
-                sql.append("AND (SELECT MIN(price) FROM product_variants WHERE product_id = p.id) <= ? ");
-                params.add(max);
-            }
+            List<Integer> validCategories = category != null ? category.stream()
+                    .filter(c -> c != null)
+                    .collect(Collectors.toList()) : java.util.Collections.emptyList();
 
-            // Sắp xếp
-            if ("price-asc".equalsIgnoreCase(sort)) {
-                sql.append("ORDER BY (SELECT MIN(price) FROM product_variants WHERE product_id = p.id) ASC");
-            } else if ("price-desc".equalsIgnoreCase(sort)) {
-                sql.append("ORDER BY (SELECT MIN(price) FROM product_variants WHERE product_id = p.id) DESC");
+            List<Map<String, Object>> productList = allProducts.stream()
+                    .filter(p -> p != null)
+                    .filter(p -> p.getStatus() == null || p.getStatus() == 1)
+                    .filter(p -> p.getCategory() == null || p.getCategory().isActive())
+                    .filter(p -> {
+                        if (searchTerm == null) return true;
+                        String pName = p.getProductName() != null ? p.getProductName().toLowerCase() : "";
+                        String bName = p.getBrandName() != null ? p.getBrandName().toLowerCase() : "";
+                        String cName = (p.getCategory() != null && p.getCategory().getName() != null) ? p.getCategory().getName().toLowerCase() : "";
+                        return pName.contains(searchTerm) || bName.contains(searchTerm) || cName.contains(searchTerm);
+                    })
+                    .filter(p -> {
+                        if (validBrands.isEmpty()) return true;
+                        String bName = p.getBrandName() != null ? p.getBrandName().toLowerCase() : "";
+                        return validBrands.contains(bName);
+                    })
+                    .filter(p -> {
+                        if (validCategories.isEmpty()) return true;
+                        return p.getCategory() != null && validCategories.contains(p.getCategory().getId());
+                    })
+                    .map(p -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", p.getId());
+                        map.put("product_name", p.getProductName() != null ? p.getProductName() : "");
+                        map.put("brand_name", p.getBrandName() != null ? p.getBrandName() : "");
+
+                        String imgUrl = "";
+                        if (p.getImages() != null && !p.getImages().isEmpty()) {
+                            ProductImage firstImg = p.getImages().stream()
+                                    .filter(img -> Boolean.TRUE.equals(img.getIsPrimary()))
+                                    .findFirst()
+                                    .orElse(p.getImages().iterator().next());
+                            if (firstImg != null && firstImg.getImageUrl() != null) {
+                                imgUrl = "/images/" + firstImg.getImageUrl();
+                            }
+                        }
+                        map.put("image_url", imgUrl);
+
+                        Double minPrice = 0.0;
+                        if (p.getVariants() != null && !p.getVariants().isEmpty()) {
+                            minPrice = p.getVariants().stream()
+                                    .filter(v -> v.getPrice() != null)
+                                    .mapToDouble(v -> v.getPrice().doubleValue())
+                                    .min()
+                                    .orElse(0.0);
+                        }
+                        map.put("min_price", minPrice);
+                        return map;
+                    })
+                    .filter(p -> {
+                        Double price = (Double) p.get("min_price");
+                        if (min != null && price < min) return false;
+                        if (max != null && price > max) return false;
+                        return true;
+                    })
+                    .collect(Collectors.toList());
+
+            if ("price-asc".equalsIgnoreCase(sort) || "price_asc".equalsIgnoreCase(sort)) {
+                productList.sort((a, b) -> Double.compare((Double) a.get("min_price"), (Double) b.get("min_price")));
+            } else if ("price-desc".equalsIgnoreCase(sort) || "price_desc".equalsIgnoreCase(sort)) {
+                productList.sort((a, b) -> Double.compare((Double) b.get("min_price"), (Double) a.get("min_price")));
             } else {
-                sql.append("ORDER BY p.created_at DESC");
+                productList.sort((a, b) -> Integer.compare((Integer) b.get("id"), (Integer) a.get("id")));
             }
 
-            List<Map<String, Object>> products = jdbc.queryForList(sql.toString(), params.toArray());
+            double overallMinPrice = allProducts.stream()
+                    .flatMap(p -> p.getVariants() != null ? p.getVariants().stream() : java.util.stream.Stream.empty())
+                    .filter(v -> v.getPrice() != null)
+                    .mapToDouble(v -> v.getPrice().doubleValue())
+                    .min()
+                    .orElse(0.0);
+
+            double overallMaxPrice = allProducts.stream()
+                    .flatMap(p -> p.getVariants() != null ? p.getVariants().stream() : java.util.stream.Stream.empty())
+                    .filter(v -> v.getPrice() != null)
+                    .mapToDouble(v -> v.getPrice().doubleValue())
+                    .max()
+                    .orElse(5000000.0);
 
             Map<String, Object> result = new HashMap<>();
             result.put("success", true);
-            result.put("products", products);
+            result.put("products", productList);
             result.put("brands", activeBrands.stream().map(b -> b.get("name")).collect(Collectors.toList()));
             result.put("categories", activeCategories);
+            result.put("min_price", overallMinPrice);
+            result.put("max_price", overallMaxPrice);
 
             return ResponseEntity.ok(result);
 

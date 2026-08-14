@@ -168,7 +168,7 @@ const Favourites = () => {
                 </div>
             </div>
             {quickAddProductId && (
-                <QuickCartModal productId={quickAddProductId} onClose={() => setQuickAddProductId(null)} />
+                <QuickCartModal productId={quickAddProductId} isOpen={true} onClose={() => setQuickAddProductId(null)} />
             )}
         </Layout>
     );

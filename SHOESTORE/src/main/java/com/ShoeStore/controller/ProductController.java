@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpSession;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 public class ProductController {
@@ -45,9 +46,7 @@ public class ProductController {
                         " AND fsp.sold_quantity < fsp.quantity_limit) as sale_price " +
                         "FROM products p " +
                         "LEFT JOIN categories c ON p.category_id = c.id " +
-                        "WHERE p.status = 1 AND c.status = 1 " +
-                        "AND EXISTS (SELECT 1 FROM brands b WHERE b.brand_name = p.brand_name AND b.status = 1) " +
-                        "AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.quantity > 0) ");
+                        "WHERE 1=1 ");
 
         // --- FILTER LOGIC ---
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -58,13 +57,19 @@ public class ProductController {
         }
 
         if (brands != null && !brands.isEmpty()) {
-            sql.append(" AND p.brand_name IN (");
-            for (int i = 0; i < brands.size(); i++) {
-                sql.append("'").append(brands.get(i).replace("'", "''")).append("'");
-                if (i < brands.size() - 1)
-                    sql.append(",");
+            List<String> validBrands = brands.stream()
+                    .filter(b -> b != null && !b.trim().isEmpty())
+                    .map(b -> b.replace("'", "''").trim().toLowerCase())
+                    .collect(Collectors.toList());
+            if (!validBrands.isEmpty()) {
+                sql.append(" AND LOWER(p.brand_name) IN (");
+                for (int i = 0; i < validBrands.size(); i++) {
+                    sql.append("'").append(validBrands.get(i)).append("'");
+                    if (i < validBrands.size() - 1)
+                        sql.append(",");
+                }
+                sql.append(") ");
             }
-            sql.append(") ");
         }
 
         if (categories != null && !categories.isEmpty()) {

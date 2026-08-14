@@ -43,7 +43,9 @@ const Details = () => {
     const [flashSale, setFlashSale] = useState(null);
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+        const val = Number(amount);
+        if (isNaN(val) || amount === null || amount === undefined) return '0 đ';
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
     };
 
     const getImageUrl = (url) => {
@@ -516,42 +518,77 @@ const Details = () => {
                                     </div>
                                     
                                     {flashSale ? (
-                                        <>
-                                            <div className="det-flash-sale-banner">
-                                                <div className="det-flash-sale-icon">
-                                                    <i className="fa-solid fa-bolt"></i>
-                                                </div>
-                                                <div className="det-flash-sale-info">
-                                                    <span className="det-flash-sale-tag">FLASH SALE</span>
-                                                    <span className="det-flash-sale-name">{flashSale.campaignName}</span>
-                                                </div>
-                                                <div className="det-flash-sale-discount-badge">
-                                                    -{flashSale.discountPercent}%
-                                                </div>
-                                            </div>
-                                            <div className="det-price-block det-price-block--sale">
-                                                <div>
-                                                    <div className="det-price-label">Giá Flash Sale</div>
-                                                    <div className="det-price-value det-price-value--sale">{formatCurrency(flashSale.salePrice)}</div>
-                                                    <div className="det-price-original">
-                                                        <span className="det-price-old">{formatCurrency(displayPrice)}</span>
-                                                        <span className="det-price-save">Tiết kiệm {formatCurrency(displayPrice - flashSale.salePrice)}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="det-price-badge det-price-badge--sale">Flash Sale</div>
-                                            </div>
-                                            {flashSale.quantityLimit > 0 && (
-                                                <div className="det-flash-sale-progress">
-                                                    <div className="det-flash-progress-text">
-                                                        <span>{(flashSale.soldQuantity / flashSale.quantityLimit * 100) >= 80 ? <><i className="fa-solid fa-fire text-danger me-1"></i>Sắp hết</> : 'Đang bán'}</span>
-                                                        <span>Đã bán {flashSale.soldQuantity}/{flashSale.quantityLimit}</span>
-                                                    </div>
-                                                    <div className="det-flash-progress-bar">
-                                                        <div className="det-flash-progress-fill" style={{ width: `${Math.min((flashSale.soldQuantity / flashSale.quantityLimit) * 100, 100)}%` }}></div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
+                                        (() => {
+                                            const isLiveSale = flashSale.isLive === true || (flashSale.salePrice && flashSale.isLive !== false && flashSale.isUpcoming !== true);
+                                            if (isLiveSale) {
+                                                return (
+                                                    <>
+                                                        <div className="det-flash-sale-banner">
+                                                            <div className="det-flash-sale-icon">
+                                                                <i className="fa-solid fa-bolt"></i>
+                                                            </div>
+                                                            <div className="det-flash-sale-info">
+                                                                <span className="det-flash-sale-tag">FLASH SALE ĐANG DIỄN RA</span>
+                                                                <span className="det-flash-sale-name">{flashSale.campaignName}</span>
+                                                            </div>
+                                                            <div className="det-flash-sale-discount-badge">
+                                                                -{flashSale.discountPercent}%
+                                                            </div>
+                                                        </div>
+                                                        <div className="det-price-block det-price-block--sale">
+                                                            <div>
+                                                                <div className="det-price-label">Giá Flash Sale</div>
+                                                                <div className="det-price-value det-price-value--sale">{formatCurrency(flashSale.salePrice)}</div>
+                                                                <div className="det-price-original">
+                                                                    <span className="det-price-old">{formatCurrency(displayPrice)}</span>
+                                                                    <span className="det-price-save">Tiết kiệm {formatCurrency((displayPrice || 0) - (flashSale.salePrice || 0))}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="det-price-badge det-price-badge--sale">Flash Sale</div>
+                                                        </div>
+                                                        {flashSale.quantityLimit > 0 && (
+                                                            <div className="det-flash-sale-progress">
+                                                                <div className="det-flash-progress-text">
+                                                                    <span>{(flashSale.soldQuantity / flashSale.quantityLimit * 100) >= 80 ? <><i className="fa-solid fa-fire text-danger me-1"></i>Sắp hết</> : 'Đang bán'}</span>
+                                                                    <span>Đã bán {flashSale.soldQuantity}/{flashSale.quantityLimit}</span>
+                                                                </div>
+                                                                <div className="det-flash-progress-bar">
+                                                                    <div className="det-flash-progress-fill" style={{ width: `${Math.min((flashSale.soldQuantity / flashSale.quantityLimit) * 100, 100)}%` }}></div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            } else {
+                                                const saleVal = flashSale.salePrice !== undefined && flashSale.salePrice !== null ? flashSale.salePrice : flashSale.upcomingSalePrice;
+                                                return (
+                                                    <>
+                                                        <div className="det-flash-sale-banner" style={{ background: 'linear-gradient(135deg, #ff4d4f 0%, #dc2626 100%)', border: '1px solid #ef4444' }}>
+                                                            <div className="det-flash-sale-icon" style={{ background: 'rgba(255, 255, 255, 0.2)', color: '#ffffff' }}>
+                                                                <i className="fa-solid fa-clock"></i>
+                                                            </div>
+                                                            <div className="det-flash-sale-info">
+                                                                <span className="det-flash-sale-tag" style={{ background: '#ffffff', color: '#dc2626', fontWeight: 'bold' }}>SẮP DIỄN RA FLASH SALE</span>
+                                                                <span className="det-flash-sale-name" style={{ color: '#ffffff' }}>{flashSale.campaignName}</span>
+                                                            </div>
+                                                            <div className="det-flash-sale-discount-badge" style={{ background: '#ffffff', color: '#dc2626', fontWeight: 'bold' }}>
+                                                                SẮP GIẢM -{flashSale.discountPercent}%
+                                                            </div>
+                                                        </div>
+                                                        <div className="det-price-block" style={{ background: '#ffffff', border: '2px solid #fee2e2', borderRadius: '16px' }}>
+                                                            <div>
+                                                                <div className="det-price-label text-muted">Giá bán hiện tại (Chưa đến giờ Sale)</div>
+                                                                <div className="det-price-value text-danger fw-bold">{formatCurrency(displayPrice)}</div>
+                                                                <div className="mt-2 text-danger fw-bold font-oswald d-flex align-items-center gap-1" style={{ fontSize: '15px' }}>
+                                                                    <i className="fa-solid fa-clock text-danger me-1"></i> Giá Flash Sale sắp tới: {formatCurrency(saleVal)}
+                                                                </div>
+                                                            </div>
+                                                            <div className="det-price-badge" style={{ background: '#ef4444', color: '#ffffff' }}>Sắp Sale</div>
+                                                        </div>
+                                                    </>
+                                                );
+                                            }
+                                        })()
                                     ) : (
                                         <div className="det-price-block">
                                             <div>

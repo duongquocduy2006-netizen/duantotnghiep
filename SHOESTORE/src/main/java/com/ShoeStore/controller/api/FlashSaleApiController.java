@@ -39,62 +39,76 @@ public class FlashSaleApiController {
     @GetMapping("/active")
     public ResponseEntity<?> getActiveFlashSale() {
         try {
-            Optional<FlashSale> activeFlashSaleOpt = flashSaleService.getActiveFlashSale();
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            List<FlashSale> activeOrUpcomingSales = flashSaleRepository.findActiveOrUpcomingFlashSales(now);
 
-            if (activeFlashSaleOpt.isEmpty()) {
+            if (activeOrUpcomingSales.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "success", true,
                         "hasActiveCampaign", false,
+                        "campaigns", List.of(),
                         "message", "Hiện tại không có chương trình Flash Sale nào đang diễn ra."));
             }
 
-            FlashSale fs = activeFlashSaleOpt.get();
-            Map<String, Object> campaignMap = new HashMap<>();
-            campaignMap.put("id", fs.getId());
-            campaignMap.put("name", fs.getName());
-            campaignMap.put("startDate", fs.getStartDate());
-            campaignMap.put("endDate", fs.getEndDate());
+            List<Map<String, Object>> campaignsMapList = new ArrayList<>();
 
-            List<FlashSaleProduct> flashProducts = flashSaleService.getProductsByFlashSaleId(fs.getId());
-            List<Map<String, Object>> productsMap = flashProducts.stream().map(fsp -> {
-                Map<String, Object> fMap = new HashMap<>();
-                fMap.put("id", fsp.getId());
-                fMap.put("salePrice", fsp.getSalePrice());
-                fMap.put("quantityLimit", fsp.getQuantityLimit());
-                fMap.put("soldQuantity", fsp.getSoldQuantity());
+            for (FlashSale fs : activeOrUpcomingSales) {
+                boolean isLive = (now.isAfter(fs.getStartDate()) || now.isEqual(fs.getStartDate())) && (now.isBefore(fs.getEndDate()) || now.isEqual(fs.getEndDate()));
+                boolean isUpcoming = now.isBefore(fs.getStartDate());
 
-                Map<String, Object> pMap = new HashMap<>();
-                var p = fsp.getProduct();
-                pMap.put("id", p.getId());
-                pMap.put("productName", p.getProductName());
-                pMap.put("brandName", p.getBrandName());
+                Map<String, Object> campaignMap = new HashMap<>();
+                campaignMap.put("id", fs.getId());
+                campaignMap.put("name", fs.getName());
+                campaignMap.put("startDate", fs.getStartDate());
+                campaignMap.put("endDate", fs.getEndDate());
+                campaignMap.put("isLive", isLive);
+                campaignMap.put("isUpcoming", isUpcoming);
 
-                // Fetch main image URL
-                String mainImg = "";
-                if (p.getImages() != null && !p.getImages().isEmpty()) {
-                    mainImg = "/images/" + p.getImages().iterator().next().getImageUrl();
-                }
-                pMap.put("imageUrl", mainImg);
+                List<FlashSaleProduct> flashProducts = flashSaleService.getProductsByFlashSaleId(fs.getId());
+                List<Map<String, Object>> productsMap = flashProducts.stream().map(fsp -> {
+                    Map<String, Object> fMap = new HashMap<>();
+                    fMap.put("id", fsp.getId());
+                    fMap.put("salePrice", fsp.getSalePrice());
+                    fMap.put("quantityLimit", fsp.getQuantityLimit());
+                    fMap.put("soldQuantity", fsp.getSoldQuantity());
 
-                // Fetch min price representing original price
-                double oldPrice = 0;
-                if (p.getVariants() != null && !p.getVariants().isEmpty()) {
-                    var firstVar = p.getVariants().iterator().next();
-                    if (firstVar != null && firstVar.getPrice() != null) {
-                        oldPrice = firstVar.getPrice().doubleValue();
+                    Map<String, Object> pMap = new HashMap<>();
+                    var p = fsp.getProduct();
+                    pMap.put("id", p.getId());
+                    pMap.put("productName", p.getProductName());
+                    pMap.put("brandName", p.getBrandName());
+
+                    String mainImg = "";
+                    if (p.getImages() != null && !p.getImages().isEmpty()) {
+                        mainImg = "/images/" + p.getImages().iterator().next().getImageUrl();
                     }
-                }
-                pMap.put("oldPrice", oldPrice);
+                    pMap.put("imageUrl", mainImg);
 
-                fMap.put("product", pMap);
-                return fMap;
-            }).collect(Collectors.toList());
+                    double oldPrice = 0;
+                    if (p.getVariants() != null && !p.getVariants().isEmpty()) {
+                        var firstVar = p.getVariants().iterator().next();
+                        if (firstVar != null && firstVar.getPrice() != null) {
+                            oldPrice = firstVar.getPrice().doubleValue();
+                        }
+                    }
+                    pMap.put("oldPrice", oldPrice);
+
+                    fMap.put("product", pMap);
+                    return fMap;
+                }).collect(Collectors.toList());
+
+                campaignMap.put("products", productsMap);
+                campaignsMapList.add(campaignMap);
+            }
+
+            Map<String, Object> firstCampaign = campaignsMapList.get(0);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("hasActiveCampaign", true);
-            response.put("campaign", campaignMap);
-            response.put("products", productsMap);
+            response.put("campaign", firstCampaign);
+            response.put("products", firstCampaign.get("products"));
+            response.put("campaigns", campaignsMapList);
 
             return ResponseEntity.ok(response);
 

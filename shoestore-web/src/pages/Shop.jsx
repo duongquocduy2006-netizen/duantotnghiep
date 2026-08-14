@@ -56,13 +56,15 @@ const Shop = () => {
     const [selectedCategory, setSelectedCategory] = useState('');
     const [selectedBrand, setSelectedBrand] = useState(initialBrand);
     const [maxPrice, setMaxPrice] = useState(5000000);
+    const [minPriceBound, setMinPriceBound] = useState(0);
+    const [maxPriceBound, setMaxPriceBound] = useState(5000000);
     const [sortOption, setSortOption] = useState('');
     const [searchQuery, setSearchQuery] = useState(initialSearch);
     const [quickAddProductId, setQuickAddProductId] = useState(null);
     const [imageSearchProducts, setImageSearchProducts] = useState(null);
     const [imageSearchUrl, setImageSearchUrl] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 9;
+    const ITEMS_PER_PAGE = 6;
     
     const observerRef = useRef(null);
 
@@ -125,6 +127,10 @@ const Shop = () => {
                     setSelectedCategory(matchedCat.id);
                 }
             }
+        } else {
+            if (selectedCategory !== '') {
+                setSelectedCategory('');
+            }
         }
 
         // 4. Nếu URL có chứa bộ lọc (click từ header hoặc home), cuộn mượt mà xuống vùng sản phẩm
@@ -157,49 +163,7 @@ const Shop = () => {
         return () => clearTimeout(handler);
     }, [searchQuery]);
 
-    useEffect(() => {
-        if (!searchQuery) return;
-        const query = searchQuery.trim().toLowerCase();
-        if (!query) return;
 
-        const words = query.split(/\s+/);
-
-        // 1. Quét tìm danh mục trùng khớp thông minh (cộng các ký tự)
-        if (categories.length > 0) {
-            const matchedCat = categories.find(c => {
-                const name = (c.name || c.category_name || c.categoryName || '').toLowerCase();
-                // Match if any of the words match the category name
-                for (let word of words) {
-                    if (name === word || name.includes(word) || word.includes(name)) return true;
-                    if (word === 'running' && name.includes('chạy bộ')) return true;
-                    if (word === 'sneaker' && name.includes('sneaker')) return true;
-                }
-                if (query.includes('chạy bộ') && name.includes('chạy bộ')) return true;
-                if (query.includes('thể thao') && name.includes('thể thao')) return true;
-                return false;
-            });
-            if (matchedCat && matchedCat.id !== selectedCategory) {
-                setSelectedCategory(matchedCat.id);
-            }
-        }
-
-        // 2. Quét tìm thương hiệu trùng khớp thông minh
-        if (brands.length > 0) {
-            const matchedBrand = brands.find(b => {
-                const name = (b.name || b.brand_name || b.brandName || '').toLowerCase();
-                for (let word of words) {
-                    if (name === word || name.includes(word) || word.includes(name)) return true;
-                }
-                return false;
-            });
-            if (matchedBrand) {
-                const bName = matchedBrand.name || matchedBrand.brand_name || matchedBrand.brandName;
-                if (bName !== selectedBrand) {
-                    setSelectedBrand(bName);
-                }
-            }
-        }
-    }, [searchQuery, categories, brands]);
 
     useEffect(() => {
         observerRef.current = new IntersectionObserver((entries) => {
@@ -288,19 +252,36 @@ const Shop = () => {
         try {
             setLoading(true);
             setCurrentPage(1);
+            if (!location.state?.imageSearchProducts) {
+                setImageSearchProducts(null);
+                setImageSearchUrl(null);
+            }
             let url = '/api/products/search?';
-            if (searchQuery) url += `keyword=${encodeURIComponent(searchQuery)}&`;
+            if (searchQuery && searchQuery.trim()) url += `keyword=${encodeURIComponent(searchQuery.trim())}&`;
             if (selectedCategory) url += `category=${selectedCategory}&`;
-            if (selectedBrand) url += `brand=${selectedBrand}&`;
+            if (selectedBrand && selectedBrand.trim()) url += `brand=${encodeURIComponent(selectedBrand.trim())}&`;
             if (sortOption) url += `sort=${sortOption}&`;
 
             const response = await api.get(url);
             let data = [];
-            if (response.data && response.data.success) data = response.data.products || [];
-            
-            if (maxPrice < 5000000) {
+            if (response.data && response.data.success) {
+                data = response.data.products || [];
+                if (response.data.min_price != null && response.data.max_price != null && response.data.max_price > 0) {
+                    setMinPriceBound(response.data.min_price);
+                    setMaxPriceBound(response.data.max_price);
+                } else if (data.length > 0) {
+                    const prices = data.map(p => p.min_price || 0).filter(pr => pr > 0);
+                    if (prices.length > 0) {
+                        setMinPriceBound(Math.min(...prices));
+                        setMaxPriceBound(Math.max(...prices));
+                    }
+                }
+            }
+            console.log("=== FRONTEND FETCH PRODUCTS RECEIVED:", data);
+
+            if (maxPrice < maxPriceBound) {
                 data = data.filter(p => {
-                    const price = p.min_price || 0;
+                    const price = p.min_price != null ? p.min_price : 0;
                     return price <= maxPrice;
                 });
             }
@@ -330,9 +311,18 @@ const Shop = () => {
     };
 
     // Determine what products to display: image search results take priority
-    const displayProducts = imageSearchProducts || products;
-    const totalPages = Math.ceil(displayProducts.length / ITEMS_PER_PAGE);
-    const paginatedProducts = displayProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    let displayProducts = [...(imageSearchProducts || products)];
+    if (sortOption === 'price_asc' || sortOption === 'price-asc') {
+        displayProducts.sort((a, b) => (a.min_price || 0) - (b.min_price || 0));
+    } else if (sortOption === 'price_desc' || sortOption === 'price-desc') {
+        displayProducts.sort((a, b) => (b.min_price || 0) - (a.min_price || 0));
+    } else if (sortOption === 'newest') {
+        displayProducts.sort((a, b) => (b.id || 0) - (a.id || 0));
+    }
+
+    const totalPages = Math.ceil(displayProducts.length / ITEMS_PER_PAGE) || 1;
+    const validPage = Math.min(Math.max(1, currentPage), totalPages);
+    const paginatedProducts = displayProducts.slice((validPage - 1) * ITEMS_PER_PAGE, validPage * ITEMS_PER_PAGE);
 
     return (
         <Layout>
@@ -445,20 +435,20 @@ const Shop = () => {
                                     <h6 className="font-oswald fw-bold text-uppercase text-danger mb-2">MỨC GIÁ TỐI ĐA</h6>
                                     <div className="epic-slider-wrapper">
                                         <div className="epic-slider-label fw-bold mb-2 text-dark" style={{ fontSize: '14px' }}>
-                                            {maxPrice === 5000000 ? "Tất cả các mức giá" : `Dưới ${formatCurrency(maxPrice)}`}
+                                            {maxPrice >= maxPriceBound ? "Tất cả các mức giá" : `Dưới ${formatCurrency(maxPrice)}`}
                                         </div>
                                         <input 
                                             type="range" 
-                                            min="500000" 
-                                            max="5000000" 
-                                            step="100000" 
-                                            value={maxPrice} 
+                                            min={minPriceBound} 
+                                            max={maxPriceBound} 
+                                            step="50000" 
+                                            value={Math.min(maxPrice, maxPriceBound)} 
                                             onChange={(e) => setMaxPrice(Number(e.target.value))} 
                                             className="epic-range-input w-100" 
                                         />
                                         <div className="d-flex justify-content-between mt-1 text-muted" style={{ fontSize: '11px', fontWeight: '600' }}>
-                                            <span>500.000đ</span>
-                                            <span>5.000.000đ+</span>
+                                            <span>{formatCurrency(minPriceBound)}</span>
+                                            <span>{formatCurrency(maxPriceBound)}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -467,7 +457,7 @@ const Shop = () => {
                                     <button className="btn-brutal-outline w-100 mt-2" onClick={() => {
                                         clearImageSearch();
                                         navigate('/shop');
-                                        setSelectedCategory(''); setSelectedBrand(''); setMaxPrice(5000000); setSortOption(''); setSearchQuery('');
+                                        setSelectedCategory(''); setSelectedBrand(''); setMaxPrice(maxPriceBound); setSortOption(''); setSearchQuery('');
                                     }}>XÓA BỘ LỌC</button>
                                 </div>
                             </div>
@@ -528,7 +518,7 @@ const Shop = () => {
                                 <>
                                     <div className="row g-4">
                                         {paginatedProducts.map((p, idx) => (
-                                            <div key={p.id} className="col-lg-4 col-md-6 col-12 reveal-item opacity-0 mb-4" style={{ animationDelay: `${(idx % 12) * 0.05}s` }}>
+                                            <div key={p.id} className="col-lg-4 col-md-6 col-12 reveal-item mb-4" style={{ animationDelay: `${(idx % 12) * 0.05}s` }}>
                                                 <div className="flat-product-card h-100 bg-white d-flex flex-column position-relative">
                                                     <Link to={`/details?id=${p.id}`} className="stretched-link" style={{ zIndex: 1 }} />
 
@@ -646,7 +636,7 @@ const Shop = () => {
                 </div>
             </div>
             {quickAddProductId && (
-                <QuickCartModal productId={quickAddProductId} onClose={() => setQuickAddProductId(null)} />
+                <QuickCartModal productId={quickAddProductId} isOpen={true} onClose={() => setQuickAddProductId(null)} />
             )}
         </Layout>
     );

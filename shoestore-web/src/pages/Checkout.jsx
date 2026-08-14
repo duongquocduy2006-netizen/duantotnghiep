@@ -574,15 +574,13 @@ const Checkout = () => {
         }
     };
 
+    const isRankFreeShip = account?.free_shipping === true || account?.free_shipping === 1 || account?.freeShipping === true || account?.freeShipping === 1;
+
     const calculateGHNFee = async (dId, wCode, customTotal = null, customRankId = null) => {
         const currentTotal = customTotal !== null ? customTotal : totalPrice;
         
-        const hasFreeShip = account?.free_shipping || (customRankId && account?.membership_rank_id === customRankId && account?.free_shipping);
+        const hasFreeShip = isRankFreeShip || (customRankId && account?.membership_rank_id === customRankId && isRankFreeShip);
         if (hasFreeShip) {
-            setShippingFee(0);
-            return;
-        }
-        if (currentTotal >= 500000) {
             setShippingFee(0);
             return;
         }
@@ -604,12 +602,10 @@ const Checkout = () => {
     };
 
     useEffect(() => {
-        if (account?.free_shipping) {
-            setShippingFee(0);
-        } else if (totalPrice >= 500000) {
+        if (isRankFreeShip) {
             setShippingFee(0);
         }
-    }, [totalPrice, account]);
+    }, [totalPrice, account, isRankFreeShip]);
 
     const finalTotal = cartItems.length > 0 ? Math.max(0, totalPrice + shippingFee - discount) : 0;
 

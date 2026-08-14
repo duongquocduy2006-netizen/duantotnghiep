@@ -108,9 +108,8 @@ const Cart = () => {
         }
     };
 
-    const shippingFee = totalPrice >= 500000 ? 0 : (cartItems.length > 0 ? 30000 : 0);
+    const shippingFee = cartItems.length > 0 ? 30000 : 0;
     const finalTotal = cartItems.length > 0 ? (totalPrice + shippingFee) : 0;
-    const progressWidth = totalPrice > 500000 ? 100 : (totalPrice * 100 / 500000);
 
     if (loading) {
         return (
@@ -158,23 +157,6 @@ const Cart = () => {
                             {cartSuccess && (
                                 <div className="mb-4 bg-success-subtle text-success p-3 rounded-3 border border-success-subtle d-flex align-items-center font-oswald fw-bold" style={{ fontSize: '14px', letterSpacing: '0.5px' }}>
                                     <i className="fa-solid fa-circle-check me-2 fs-5"></i> {cartSuccess}
-                                </div>
-                            )}
-
-                            {cartItems.length > 0 && (
-                                <div className="mb-4 bg-white p-3 rounded-3 border border-light-subtle d-flex flex-column" style={{ boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
-                                    {totalPrice < 500000 ? (
-                                        <div className="free-ship-text font-oswald letter-spacing-1 text-dark mb-2">
-                                            <i className="fa fa-truck-fast me-2 text-danger"></i> MUA THÊM <b className="text-danger">{formatCurrency(500000 - totalPrice)}</b> ĐỂ ĐƯỢC FREESHIP
-                                        </div>
-                                    ) : (
-                                        <div className="free-ship-text font-oswald letter-spacing-1 text-dark mb-2">
-                                            <i className="fa fa-truck-fast me-2 text-success"></i> BẠN ĐÃ ĐỦ ĐIỀU KIỆN <b className="text-success">MIỄN PHÍ VẬN CHUYỂN!</b>
-                                        </div>
-                                    )}
-                                    <div className="progress rounded-pill" style={{ height: '8px', backgroundColor: '#f0f0f0' }}>
-                                        <div className="progress-bar bg-danger rounded-pill" role="progressbar" style={{ width: `${progressWidth}%`, transition: 'width 0.5s ease' }}></div>
-                                    </div>
                                 </div>
                             )}
 
@@ -252,7 +234,7 @@ const Cart = () => {
                                 </div>
                                 <div className="summary-row font-oswald text-uppercase mb-4 d-flex justify-content-between text-muted fs-6">
                                     <span>Phí vận chuyển</span>
-                                    <span className="text-dark fw-bold">{totalPrice >= 500000 || cartItems.length === 0 ? '0₫' : '30.000₫'}</span>
+                                    <span className="text-dark fw-bold">{cartItems.length === 0 ? '0₫' : '30.000₫'}</span>
                                 </div>
 
                                 <div className="promo-input-group d-flex gap-2 mb-4">

@@ -161,9 +161,6 @@ public class CheckoutController {
                 shippingFee = 0.0;
             }
         }
-        if (shippingFee != 0.0 && totalPrice >= 500000) {
-            shippingFee = 0.0;
-        }
         Double discount = 0.0;
 
         Voucher voucher = (Voucher) session.getAttribute("appliedVoucher");
@@ -323,9 +320,6 @@ public class CheckoutController {
                 if (Boolean.TRUE.equals(freeShip)) {
                     shipping = 0;
                 }
-            }
-            if (shipping != 0 && total >= 500000) {
-                shipping = 0;
             }
         }
 

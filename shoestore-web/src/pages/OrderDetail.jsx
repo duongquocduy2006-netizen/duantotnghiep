@@ -370,6 +370,15 @@ const OrderDetail = () => {
                                             </div>
                                         </div>
                                         <div className="od-info-card">
+                                            <h3 className="od-info-title"><i className="fa-solid fa-truck-fast"></i> Phương thức vận chuyển</h3>
+                                            <div className="od-info-content">
+                                                <p className="mb-2"><strong>Giao hàng tiêu chuẩn (GHN Express)</strong></p>
+                                                <p className="mb-0 text-muted">
+                                                    <i className="fa-solid fa-money-bill-wave me-1"></i> Phí ship: {Number(order.shipping_fee) > 0 ? formatCurrency(order.shipping_fee) : '0 ₫ (Miễn phí)'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="od-info-card">
                                             <h3 className="od-info-title"><i className="fa-solid fa-credit-card"></i> Phương thức thanh toán</h3>
                                             <div className="od-info-content">
                                                 <p className="mb-3"><strong>{order.method_name}</strong></p>
@@ -420,14 +429,14 @@ const OrderDetail = () => {
                                                 <div className="od-summary-row d-flex justify-content-between mb-2" style={{fontSize: '14px'}}>
                                                     <span className="text-muted">Phí vận chuyển</span>
                                                     <span className="fw-semibold text-dark">
-                                                        {order.shipping_fee > 0 ? formatCurrency(order.shipping_fee) : 'MIỄN PHÍ'}
+                                                        {Number(order.shipping_fee) > 0 ? formatCurrency(order.shipping_fee) : '0 ₫ (MIỄN PHÍ)'}
                                                     </span>
                                                 </div>
-                                                {order.total_amount + order.shipping_fee - order.final_amount > 0 && (
+                                                {((Number(order.total_amount) || 0) + (Number(order.shipping_fee) || 0) - (Number(order.final_amount) || 0)) > 0 && (
                                                     <div className="od-summary-row d-flex justify-content-between mb-2" style={{fontSize: '14px', color: '#16a34a'}}>
                                                         <span style={{color: '#16a34a'}}>Giảm giá</span>
                                                         <span className="fw-bold" style={{color: '#16a34a'}}>
-                                                            -{formatCurrency(order.total_amount + order.shipping_fee - order.final_amount)}
+                                                            -{formatCurrency((Number(order.total_amount) || 0) + (Number(order.shipping_fee) || 0) - (Number(order.final_amount) || 0))}
                                                         </span>
                                                     </div>
                                                 )}

@@ -96,9 +96,7 @@ public class HomeApiController {
                     "(SELECT MIN(price) FROM product_variants WHERE product_id = p.id) as min_price " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
-                    "WHERE p.status = 1 AND c.status = 1 " +
-                    "AND EXISTS (SELECT 1 FROM brands b WHERE b.brand_name = p.brand_name AND b.status = 1) " +
-                    "AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.quantity > 0) " +
+                    "WHERE p.status = 1 AND (c.status IS NULL OR c.status = 1) " +
                     "ORDER BY p.created_at DESC";
 
             List<Map<String, Object>> latestProducts = jdbc.queryForList(sql);
