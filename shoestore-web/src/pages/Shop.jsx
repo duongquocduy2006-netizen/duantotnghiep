@@ -61,6 +61,8 @@ const Shop = () => {
     const [quickAddProductId, setQuickAddProductId] = useState(null);
     const [imageSearchProducts, setImageSearchProducts] = useState(null);
     const [imageSearchUrl, setImageSearchUrl] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 9;
     
     const observerRef = useRef(null);
 
@@ -285,6 +287,7 @@ const Shop = () => {
     const fetchProducts = async () => {
         try {
             setLoading(true);
+            setCurrentPage(1);
             let url = '/api/products/search?';
             if (searchQuery) url += `keyword=${encodeURIComponent(searchQuery)}&`;
             if (selectedCategory) url += `category=${selectedCategory}&`;
@@ -323,10 +326,13 @@ const Shop = () => {
     const clearImageSearch = () => {
         setImageSearchProducts(null);
         setImageSearchUrl(null);
+        setCurrentPage(1);
     };
 
     // Determine what products to display: image search results take priority
     const displayProducts = imageSearchProducts || products;
+    const totalPages = Math.ceil(displayProducts.length / ITEMS_PER_PAGE);
+    const paginatedProducts = displayProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
     return (
         <Layout>
@@ -519,57 +525,99 @@ const Shop = () => {
                                     <div className="spinner-border text-danger" role="status" style={{ width: '4rem', height: '4rem', borderWidth: '5px' }}></div>
                                 </div>
                             ) : displayProducts.length > 0 ? (
-                                <div className="row g-4">
-                                    {displayProducts.map((p, idx) => (
-                                        <div key={p.id} className="col-lg-4 col-md-6 col-12 reveal-item opacity-0 mb-4" style={{ animationDelay: `${(idx % 12) * 0.05}s` }}>
-                                            <div className="flat-product-card h-100 bg-white d-flex flex-column position-relative">
-                                                <Link to={`/details?id=${p.id}`} className="stretched-link" style={{ zIndex: 1 }} />
+                                <>
+                                    <div className="row g-4">
+                                        {paginatedProducts.map((p, idx) => (
+                                            <div key={p.id} className="col-lg-4 col-md-6 col-12 reveal-item opacity-0 mb-4" style={{ animationDelay: `${(idx % 12) * 0.05}s` }}>
+                                                <div className="flat-product-card h-100 bg-white d-flex flex-column position-relative">
+                                                    <Link to={`/details?id=${p.id}`} className="stretched-link" style={{ zIndex: 1 }} />
 
-                                                {/* Image */}
-                                                <div className="flat-card-img-box position-relative overflow-hidden d-flex align-items-center justify-content-center"
-                                                     style={{ aspectRatio: '1', padding: 16, background: '#f8f8f8' }}>
-                                                    {getImageUrl(p.image_url) ? (
-                                                        <img src={getImageUrl(p.image_url)} alt={p.product_name} className="product-card-img w-100 h-100" style={{ objectFit: 'contain' }} />
-                                                    ) : (
-                                                        <div className="text-center text-muted">
-                                                            <i className="fa-solid fa-image fa-3x opacity-50"></i>
+                                                    {/* Image */}
+                                                    <div className="flat-card-img-box position-relative overflow-hidden d-flex align-items-center justify-content-center"
+                                                         style={{ aspectRatio: '1', padding: 16, background: '#f8f8f8' }}>
+                                                        {getImageUrl(p.image_url) ? (
+                                                            <img src={getImageUrl(p.image_url)} alt={p.product_name} className="product-card-img w-100 h-100" style={{ objectFit: 'contain' }} />
+                                                        ) : (
+                                                            <div className="text-center text-muted">
+                                                                <i className="fa-solid fa-image fa-3x opacity-50"></i>
+                                                            </div>
+                                                        )}
+                                                        <div className="position-absolute" style={{ top: 10, right: 10, zIndex: 10 }}>
+                                                            <button className="wishlist-btn btn" onClick={(e) => toggleWishlist(e, p.id)}>
+                                                                <i className={`${wishlistIds.includes(p.id) ? 'fa-solid text-danger' : 'fa-regular text-secondary'} fa-heart`} style={{ fontSize: 16 }} />
+                                                            </button>
                                                         </div>
-                                                    )}
-                                                    <div className="position-absolute" style={{ top: 10, right: 10, zIndex: 10 }}>
-                                                        <button className="wishlist-btn btn" onClick={(e) => toggleWishlist(e, p.id)}>
-                                                            <i className={`${wishlistIds.includes(p.id) ? 'fa-solid text-danger' : 'fa-regular text-secondary'} fa-heart`} style={{ fontSize: 16 }} />
-                                                        </button>
                                                     </div>
-                                                </div>
 
-                                                {/* Info */}
-                                                <div className="flat-card-info p-3 d-flex flex-column flex-grow-1" style={{ background: '#fff' }}>
-                                                    <div className="flat-brand mb-1 text-danger fw-bold font-oswald text-uppercase">{p.brand_name}</div>
-                                                    <h5 className="flat-name text-dark mb-2" style={{ fontSize: 15, WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                                        {p.product_name}
-                                                    </h5>
-                                                    <div className="mb-3">
-                                                        <span className="price-new text-dark fw-bold" style={{ fontSize: 19 }}>
-                                                            {p.min_price != null ? formatCurrency(p.min_price) : 'Liên hệ'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="d-flex gap-2 mt-auto" style={{ position: 'relative', zIndex: 10 }}>
-                                                        <button onClick={(e) => { e.preventDefault(); setQuickAddProductId(p.id); }}
-                                                                className="btn flat-btn-cart d-flex align-items-center justify-content-center"
-                                                                style={{ width: 46, height: 44, flexShrink: 0 }}>
-                                                            <i className="fa-solid fa-cart-plus" style={{ fontSize: 16 }} />
-                                                        </button>
-                                                        <button onClick={(e) => { e.preventDefault(); navigate(`/details?id=${p.id}`); }}
-                                                                className="btn flat-btn-buy flex-grow-1"
-                                                                style={{ height: 44, fontSize: 14, letterSpacing: 1 }}>
-                                                            MUA NGAY
-                                                        </button>
+                                                    {/* Info */}
+                                                    <div className="flat-card-info p-3 d-flex flex-column flex-grow-1" style={{ background: '#fff' }}>
+                                                        <div className="flat-brand mb-1 text-danger fw-bold font-oswald text-uppercase">{p.brand_name}</div>
+                                                        <h5 className="flat-name text-dark mb-2" style={{ fontSize: 15, WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                            {p.product_name}
+                                                        </h5>
+                                                        <div className="mb-3">
+                                                            <span className="price-new text-dark fw-bold" style={{ fontSize: 19 }}>
+                                                                {p.min_price != null ? formatCurrency(p.min_price) : 'Liên hệ'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="d-flex gap-2 mt-auto" style={{ position: 'relative', zIndex: 10 }}>
+                                                            <button onClick={(e) => { e.preventDefault(); setQuickAddProductId(p.id); }}
+                                                                    className="btn flat-btn-cart d-flex align-items-center justify-content-center"
+                                                                    style={{ width: 46, height: 44, flexShrink: 0 }}>
+                                                                <i className="fa-solid fa-cart-plus" style={{ fontSize: 16 }} />
+                                                            </button>
+                                                            <button onClick={(e) => { e.preventDefault(); navigate(`/details?id=${p.id}`); }}
+                                                                    className="btn flat-btn-buy flex-grow-1"
+                                                                    style={{ height: 44, fontSize: 14, letterSpacing: 1 }}>
+                                                                MUA NGAY
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                        ))}
+                                    </div>
+
+                                    {/* PAGINATION CONTROLS */}
+                                    {totalPages > 1 && (
+                                        <div className="d-flex justify-content-center align-items-center gap-2 mt-5 pt-3 border-top border-light-subtle flex-wrap">
+                                            <button 
+                                                className="btn btn-outline-danger px-3 py-2 font-oswald text-uppercase fw-bold rounded-2"
+                                                style={{ fontSize: '13px', letterSpacing: '1px' }}
+                                                disabled={currentPage === 1}
+                                                onClick={() => {
+                                                    setCurrentPage(prev => Math.max(prev - 1, 1));
+                                                    document.getElementById('shop-products-section')?.scrollIntoView({ behavior: 'smooth' });
+                                                }}>
+                                                <i className="fa-solid fa-chevron-left me-1"></i> Trước
+                                            </button>
+
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                <button
+                                                    key={page}
+                                                    className={`btn font-oswald fw-bold px-3 py-2 rounded-2 ${currentPage === page ? 'btn-danger' : 'btn-outline-dark'}`}
+                                                    style={{ fontSize: '14px', minWidth: '40px' }}
+                                                    onClick={() => {
+                                                        setCurrentPage(page);
+                                                        document.getElementById('shop-products-section')?.scrollIntoView({ behavior: 'smooth' });
+                                                    }}>
+                                                    {page}
+                                                </button>
+                                            ))}
+
+                                            <button 
+                                                className="btn btn-outline-danger px-3 py-2 font-oswald text-uppercase fw-bold rounded-2"
+                                                style={{ fontSize: '13px', letterSpacing: '1px' }}
+                                                disabled={currentPage === totalPages}
+                                                onClick={() => {
+                                                    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+                                                    document.getElementById('shop-products-section')?.scrollIntoView({ behavior: 'smooth' });
+                                                }}>
+                                                Sau <i className="fa-solid fa-chevron-right ms-1"></i>
+                                            </button>
                                         </div>
-                                    ))}
-                                </div>
+                                    )}
+                                </>
                             ) : (
                                 <div className="text-center py-5 border border-light-subtle rounded-3">
                                     <i className="fa-solid fa-box-open fa-4x text-muted mb-3 opacity-50"></i>
@@ -580,24 +628,7 @@ const Shop = () => {
                         </div>
                     </div>
 
-                    {/* FEATURED CAMPAIGN SPLIT */}
-                    <div className="row g-4 mt-5 pt-5 border-top border-light-subtle align-items-center">
-                        <div className="col-md-6 animate__animated animate__fadeInLeft">
-                            <div className="campaign-img-box overflow-hidden rounded-3 border border-light-subtle" style={{ aspectRatio: '16/9', background: '#f5f5f5' }}>
-                                <img src="/campaign_banner.png" alt="Chiến dịch" className="w-100 h-100 object-fit-cover" style={{ transition: 'transform 0.5s ease' }} />
-                            </div>
-                        </div>
-                        <div className="col-md-6 p-4 animate__animated animate__fadeInRight">
-                            <span className="text-danger fw-bold font-oswald text-uppercase" style={{ letterSpacing: '3px', fontSize: '13px' }}>BẮT ĐẦU PHONG CÁCH MỚI</span>
-                            <h3 className="font-oswald text-uppercase fw-bold text-dark mt-2" style={{ fontSize: '28px' }}>NÂNG TẦM TRẢI NGHIỆM SNEAKER</h3>
-                            <p className="text-muted small mt-3 mb-4" style={{ lineHeight: '1.7' }}>
-                                Chọn lựa phong cách phù hợp với cá tính của bạn. Mỗi thiết kế đều được sản xuất để đảm bảo tính thời trang tối ưu và sự êm ái trên từng chuyển động hàng ngày. Đột phá phong cách của bạn ngay hôm nay cùng những mẫu giày hàng đầu.
-                            </p>
-                            <button className="btn btn-dark font-oswald text-uppercase px-4 py-2 rounded-0 fw-bold" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ letterSpacing: '1px', fontSize: '13px' }}>
-                                XEM SẢN PHẨM PHÙ HỢP
-                            </button>
-                        </div>
-                    </div>                    </div>
+                </div>
 
                 {/* EDITORIAL BANNER */}
                 <div className="shop-editorial-section py-5 border-top border-light-subtle bg-black text-white text-center position-relative overflow-hidden mt-5" style={{ minHeight: '300px', display: 'flex', alignItems: 'center' }}>
