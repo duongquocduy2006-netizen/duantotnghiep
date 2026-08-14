@@ -6,7 +6,14 @@ import 'animate.css';
 const Header = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const [account, setAccount] = useState(null);
+    const [account, setAccount] = useState(() => {
+        try {
+            const saved = localStorage.getItem('account');
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            return null;
+        }
+    });
     const [cartCount, setCartCount] = useState(0);
     const [searchQuery, setSearchQuery] = useState(() => {
         const params = new URLSearchParams(window.location.search);
@@ -18,15 +25,37 @@ const Header = () => {
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
 
+    const [authVersion, setAuthVersion] = useState(0);
+
+    // Lắng nghe sự kiện auth-changed (login/logout) để cập nhật Header
+    useEffect(() => {
+        const handleAuthChanged = () => {
+            try {
+                const saved = localStorage.getItem('account');
+                if (saved) setAccount(JSON.parse(saved));
+            } catch (e) {}
+            setAuthVersion(v => v + 1);
+        };
+        window.addEventListener('auth-changed', handleAuthChanged);
+        return () => window.removeEventListener('auth-changed', handleAuthChanged);
+    }, []);
+
     useEffect(() => {
         const fetchHeaderData = async () => {
             try {
                 const profileRes = await api.get('/api/profile');
                 if (profileRes.data && profileRes.data.success) {
                     setAccount(profileRes.data.account);
+                    localStorage.setItem('account', JSON.stringify(profileRes.data.account));
+                } else {
+                    setAccount(null);
+                    localStorage.removeItem('account');
                 }
             } catch (err) {
-                setAccount(null);
+                if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+                    setAccount(null);
+                    localStorage.removeItem('account');
+                }
             }
 
             try {
@@ -85,7 +114,7 @@ const Header = () => {
         return () => {
             window.removeEventListener('show-toast', handleShowToast);
         };
-    }, []);
+    }, [location.pathname, authVersion]);
 
     useEffect(() => {
         if (toast) {
@@ -103,14 +132,14 @@ const Header = () => {
     const handleLogout = async () => {
         try {
             await api.post('/api/auth/logout');
-            sessionStorage.setItem('toast_message', 'Đăng xuất thành công!');
-            setAccount(null);
-            setCartCount(0);
-            navigate('/login');
         } catch (err) {
             console.error('Lỗi đăng xuất:', err);
+        } finally {
+            localStorage.removeItem('account');
             setAccount(null);
             setCartCount(0);
+            sessionStorage.setItem('toast_message', 'Đăng xuất thành công!');
+            window.dispatchEvent(new Event('auth-changed'));
             navigate('/login');
         }
     };

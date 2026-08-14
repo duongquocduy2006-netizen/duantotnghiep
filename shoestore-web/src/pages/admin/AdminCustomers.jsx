@@ -17,7 +17,7 @@ const AdminCustomers = () => {
 
     // Modals control
     const [modalRankOpen, setModalRankOpen] = useState(false);
-    const [modalRoleOpen, setModalRoleOpen] = useState(false);
+
     const [selectedCustomer, setSelectedCustomer] = useState(null);
 
     // Custom Confirm Modal State
@@ -30,7 +30,7 @@ const AdminCustomers = () => {
 
     // Selected options for modals
     const [selectedRankId, setSelectedRankId] = useState("");
-    const [selectedRole, setSelectedRole] = useState("USER");
+
 
     const fetchCustomers = async () => {
         try {
@@ -60,11 +60,7 @@ const AdminCustomers = () => {
         setModalRankOpen(true);
     };
 
-    const openRoleModal = (customer) => {
-        setSelectedCustomer(customer);
-        setSelectedRole(customer.role || "USER");
-        setModalRoleOpen(true);
-    };
+
 
     const toggleStatus = (userId, currentStatus) => {
         const action = currentStatus === 1 ? "khóa" : "mở khóa";
@@ -131,26 +127,7 @@ const AdminCustomers = () => {
         }
     };
 
-    const handleRoleUpdate = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await api.post("/api/admin/customers/update-role", {
-                userId: selectedCustomer.id,
-                role: selectedRole
-            });
-            if (response.data && response.data.success) {
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message }));
-                setModalRoleOpen(false);
-                setCustomers(customers.map(c => c.id === selectedCustomer.id ? { ...c, role: selectedRole } : c));
-            }
-        } catch (err) {
-            console.error("Lỗi cập nhật quyền tài khoản:", err);
-            const errMsg = err.response && err.response.data && err.response.data.message
-                ? err.response.data.message
-                : "Không thể thay đổi quyền tài khoản.";
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
-        }
-    };
+
 
     const getInitials = (name) => {
         if (!name) return "KH";
@@ -331,11 +308,7 @@ const AdminCustomers = () => {
                                                 <button className="btn-icon-action" title="Chỉnh sửa Rank" onClick={() => openRankModal(cust)}>
                                                     <i className="bi bi-star-fill"></i>
                                                 </button>
-                                                {cust.role !== 'ADMIN' && (
-                                                    <button className="btn-icon-action" title="Phân Quyền (Role)" onClick={() => openRoleModal(cust)}>
-                                                        <i className="bi bi-person-badge"></i>
-                                                    </button>
-                                                )}
+
                                                 {cust.role !== 'ADMIN' && (
                                                     <button
                                                         className="btn-icon-action"
@@ -393,36 +366,7 @@ const AdminCustomers = () => {
                 </div>
             )}
 
-            {/* MODAL ROLE */}
-            {modalRoleOpen && (
-                <div className="modal-overlay" style={{ display: 'flex' }}>
-                    <div className="modal-box" style={{ width: '400px', borderTop: '4px solid #a855f7' }}>
-                        <h3 className="modal-title font-oswald" style={{ color: '#a855f7', borderBottom: '1px solid #ffe8ff' }}><i className="bi bi-person-gear"></i> PHÂN QUYỀN (ROLE)</h3>
-                        <form onSubmit={handleRoleUpdate}>
-                            <div className="form-group">
-                                <label className="form-label">Tài Khoản</label>
-                                <input type="text" value={selectedCustomer?.fullName || ""} className="form-input" readOnly style={{ background: '#f4f4f4', cursor: 'not-allowed', color: '#555' }} />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Cấp Quyền Truy Cập</label>
-                                <select
-                                    className="form-input"
-                                    value={selectedRole}
-                                    onChange={(e) => setSelectedRole(e.target.value)}
-                                    required
-                                >
-                                    <option value="USER">Khách Hàng (USER)</option>
-                                    <option value="SHIPPER">Shipper Bưu Tá (SHIPPER)</option>
-                                </select>
-                            </div>
-                            <div className="modal-actions" style={{ display: 'flex', gap: '15px', marginTop: '25px' }}>
-                                <button type="button" className="btn-cancel" onClick={() => setModalRoleOpen(false)}>HỦY BỎ</button>
-                                <button type="submit" className="btn-neon" style={{ flex: 1, justifyContent: 'center', background: '#a855f7', border: '1px solid #000', color: '#fff', fontFamily: 'Oswald', fontWeight: 'bold' }}>XÁC NHẬN</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+
 
             {/* CUSTOM CONFIRM MODAL */}
             {confirmModal.isOpen && (

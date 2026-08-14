@@ -15,22 +15,48 @@ const AdminFlashSaleForm = () => {
         status: '1',
         startDate: '',
         endDate: '',
+        durationHours: 1,
         flashSaleProducts: []
     });
+
+    // Track which fixed shift is selected (9, 14, or 20). null = none chosen yet.
+    const [selectedShift, setSelectedShift] = useState(null);
 
     const [products, setProducts] = useState([]);
     const [productVariants, setProductVariants] = useState({});
     const [loading, setLoading] = useState(false);
     const [formErrors, setFormErrors] = useState({});
 
-    const getCurrentDateTimeString = () => {
+    // Returns today's date string (YYYY-MM-DD) for date picker
+    const getTodayDateString = () => {
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+        return `${year}-${month}-${day}`;
+    };
+
+    // Returns today's date string for use as `min` attribute (blocks past dates)
+    const getMinDateString = () => {
+        return getTodayDateString();
+    };
+
+    // Quick-pick: select a fixed shift hour (9, 14, or 20)
+    const pickShift = (shiftHour) => {
+        setSelectedShift(shiftHour);
+        // If no date is picked yet, auto-set to today (or tomorrow if shift has passed)
+        if (!form.startDate) {
+            const now = new Date();
+            const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), shiftHour, 0, 0, 0);
+            if (candidate <= now) {
+                candidate.setDate(candidate.getDate() + 1);
+            }
+            const y = candidate.getFullYear();
+            const mo = String(candidate.getMonth() + 1).padStart(2, '0');
+            const d = String(candidate.getDate()).padStart(2, '0');
+            setForm(prev => ({ ...prev, startDate: `${y}-${mo}-${d}` }));
+        }
+        if (formErrors.startDate) setFormErrors(p => ({ ...p, startDate: '' }));
     };
 
     // 1. Fetch available products list for dropdown selection
@@ -62,6 +88,26 @@ const AdminFlashSaleForm = () => {
         }
     };
 
+    // Helper: build a full datetime string from date (YYYY-MM-DD) + shift hour
+    const buildFullStartDate = (dateStr, shiftHour) => {
+        if (!dateStr || shiftHour == null) return '';
+        return `${dateStr}T${String(shiftHour).padStart(2, '0')}:00`;
+    };
+
+    // Helper: compute endDate string from full startDate datetime + durationHours
+    const computeEndDate = (startDateStr, hours) => {
+        if (!startDateStr || !hours) return '';
+        const start = new Date(startDateStr);
+        if (isNaN(start.getTime())) return '';
+        const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
+        const y = end.getFullYear();
+        const mo = String(end.getMonth() + 1).padStart(2, '0');
+        const d = String(end.getDate()).padStart(2, '0');
+        const h = String(end.getHours()).padStart(2, '0');
+        const mi = String(end.getMinutes()).padStart(2, '0');
+        return `${y}-${mo}-${d}T${h}:${mi}`;
+    };
+
     // 2. Fetch campaign details if editing
     const fetchFlashSaleDetail = async () => {
         try {
@@ -69,16 +115,35 @@ const AdminFlashSaleForm = () => {
             const response = await api.get(`/api/flash-sales/${id}`);
             if (response.data && response.data.success) {
                 const fs = response.data.flashSale;
-                // Format dates to datetime-local format (YYYY-MM-DDTHH:mm)
+                // Extract date (YYYY-MM-DD) and shift hour from existing startDate
                 const startFormatted = fs.startDate ? fs.startDate.substring(0, 16) : '';
+                const startDateOnly = fs.startDate ? fs.startDate.substring(0, 10) : '';
                 const endFormatted = fs.endDate ? fs.endDate.substring(0, 16) : '';
 
+                // Detect shift hour from startDate
+                let detectedShift = null;
+                if (startFormatted) {
+                    const startObj = new Date(startFormatted);
+                    const h = startObj.getHours();
+                    if ([9, 14, 20].includes(h)) detectedShift = h;
+                }
+
+                // Compute durationHours from start and end
+                let durHours = 1;
+                if (startFormatted && endFormatted) {
+                    const diffMs = new Date(endFormatted) - new Date(startFormatted);
+                    const diffH = Math.round(diffMs / (1000 * 60 * 60));
+                    if (diffH >= 1 && diffH <= 24) durHours = diffH;
+                }
+
+                setSelectedShift(detectedShift);
                 setForm({
                     id: fs.id,
                     name: fs.name || '',
                     status: String(fs.status != null ? fs.status : 1),
-                    startDate: startFormatted,
+                    startDate: startDateOnly,
                     endDate: endFormatted,
+                    durationHours: durHours,
                     flashSaleProducts: fs.flashSaleProducts || []
                 });
             }
@@ -169,41 +234,41 @@ const AdminFlashSaleForm = () => {
             errors.startDate = "Vui lòng chọn ngày bắt đầu chiến dịch!";
         }
 
-        if (!form.endDate) {
-            errors.endDate = "Vui lòng chọn ngày kết thúc chiến dịch!";
+        if (selectedShift == null) {
+            errors.startDate = (errors.startDate || '') + (errors.startDate ? ' ' : '') + "Vui lòng chọn khung giờ (ca) Flash Sale!";
         }
 
-        if (form.startDate && form.endDate) {
-            const start = new Date(form.startDate);
-            const end = new Date(form.endDate);
+        if (!form.durationHours || form.durationHours < 1) {
+            errors.durationHours = "Thời lượng tối thiểu là 1 giờ!";
+        } else if (form.durationHours > 24) {
+            errors.durationHours = "Thời lượng tối đa là 24 giờ!";
+        }
+
+        // Build full startDate datetime from date + shift
+        const fullStartDate = buildFullStartDate(form.startDate, selectedShift);
+        const computedEndDate = computeEndDate(fullStartDate, form.durationHours);
+        const submittedForm = { ...form, startDate: fullStartDate, endDate: computedEndDate };
+
+        if (fullStartDate && computedEndDate) {
+            const start = new Date(fullStartDate);
+            const end = new Date(computedEndDate);
             
-            const startHour = start.getHours();
-            const startMinute = start.getMinutes();
-            
-            let isValidShift = false;
             let maxEnd = new Date(start);
             
-            if (startHour === 9 && startMinute === 0) {
-                isValidShift = true;
+            if (selectedShift === 9) {
                 maxEnd.setHours(14, 0, 0, 0);
-            } else if (startHour === 14 && startMinute === 0) {
-                isValidShift = true;
+            } else if (selectedShift === 14) {
                 maxEnd.setHours(20, 0, 0, 0);
-            } else if (startHour === 20 && startMinute === 0) {
-                isValidShift = true;
+            } else if (selectedShift === 20) {
                 maxEnd.setDate(maxEnd.getDate() + 1);
                 maxEnd.setHours(9, 0, 0, 0);
             }
 
-            if (!isValidShift) {
-                errors.startDate = "Flash Sale chỉ được phép bắt đầu vào các khung giờ cố định (09:00, 14:00, 20:00) và mỗi khung giờ chỉ được có 1 chiến dịch hoạt động. Vui lòng chỉnh sửa lại thời gian.";
-            } else {
-                if (start >= end) {
-                    errors.endDate = "Ngày kết thúc phải diễn ra sau ngày bắt đầu!";
-                } else if (end > maxEnd) {
-                    const nextShiftHour = startHour === 9 ? '14:00' : (startHour === 14 ? '20:00' : '09:00 ngày hôm sau');
-                    errors.endDate = `Ca ${startHour.toString().padStart(2, '0')}:00 phải kết thúc trước ${nextShiftHour}!`;
-                }
+            if (start >= end) {
+                errors.durationHours = "Thời gian kết thúc phải sau thời gian bắt đầu!";
+            } else if (end > maxEnd) {
+                const nextShiftHour = selectedShift === 9 ? '14:00' : (selectedShift === 14 ? '20:00' : '09:00 ngày hôm sau');
+                errors.durationHours = `Ca ${String(selectedShift).padStart(2, '0')}:00 phải kết thúc trước ${nextShiftHour}!`;
             }
         }
 
@@ -245,8 +310,8 @@ const AdminFlashSaleForm = () => {
         try {
             setLoading(true);
             const payload = {
-                ...form,
-                status: parseInt(form.status)
+                ...submittedForm,
+                status: parseInt(submittedForm.status)
             };
             const response = await api.post('/api/flash-sales/save', payload);
             if (response.data && response.data.success) {
@@ -264,7 +329,7 @@ const AdminFlashSaleForm = () => {
             if (errMsg.includes("chỉ được phép bắt đầu vào các khung giờ cố định") || errMsg.includes("một chiến dịch hoạt động")) {
                 setFormErrors(prev => ({ ...prev, startDate: errMsg }));
             } else if (errMsg.includes("phải kết thúc trước")) {
-                setFormErrors(prev => ({ ...prev, endDate: errMsg }));
+                setFormErrors(prev => ({ ...prev, durationHours: errMsg }));
             }
             
             window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
@@ -313,59 +378,184 @@ const AdminFlashSaleForm = () => {
                                     <option value="0">TẠM DỪNG</option>
                                 </select>
                             </div>
-                            <div className="form-group">
-                                <div className="d-flex justify-content-between align-items-center mb-1">
-                                    <label className="form-label mb-0">Ngày bắt đầu *</label>
-                                    <button 
-                                        type="button" 
-                                        className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
-                                        style={{ fontSize: '11px', letterSpacing: '0.5px' }}
-                                        onClick={() => {
-                                            setForm({...form, startDate: getCurrentDateTimeString()});
-                                            if (formErrors.startDate) setFormErrors(p => ({...p, startDate: ''}));
-                                        }}
-                                    >
-                                        <i className="bi bi-clock-history me-1"></i> Ngay lúc này
-                                    </button>
+                            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                {/* ===== LỊCH TRÌNH CHIẾN DỊCH ===== */}
+                                <div className="schedule-section">
+                                    {/* Section label */}
+                                    <div className="schedule-section-header">
+                                        <span className="schedule-section-label">
+                                            <i className="bi bi-calendar2-week me-2"></i>LỊCH TRÌNH CHIẾN DỊCH
+                                        </span>
+                                        <span className="schedule-past-badge">
+                                            <i className="bi bi-shield-check me-1"></i>Chỉ từ hôm nay trở đi
+                                        </span>
+                                    </div>
+
+                                    <div className="schedule-body">
+                                        {/* ---- CỔT TRÁI: NGÀY BẮT ĐẦU ---- */}
+                                        <div className="schedule-col">
+                                            <label className="form-label">
+                                                <i className="bi bi-play-circle-fill text-danger me-1"></i>
+                                                BẮT ĐẦU *
+                                            </label>
+
+                                            {/* Quick-pick ca */}
+                                            <div className="mb-2">
+                                                <p className="shift-hint-text"><i className="bi bi-lightning-fill me-1"></i>Chọn ca Flash Sale: *</p>
+                                                <div className="d-flex gap-2 flex-wrap">
+                                                    {[9, 14, 20].map(h => (
+                                                        <button
+                                                            key={h}
+                                                            type="button"
+                                                            className={`shift-pill ${
+                                                                selectedShift === h
+                                                                    ? 'shift-pill-active'
+                                                                    : ''
+                                                            }`}
+                                                            onClick={() => pickShift(h)}
+                                                        >
+                                                            <i className="bi bi-clock me-1"></i>
+                                                            {String(h).padStart(2, '0')}:00
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Date picker + nút Hôm nay */}
+                                            <div className="schedule-input-row">
+                                                <input
+                                                    type="date"
+                                                    className={`form-input-cinematic flex-1 ${formErrors.startDate ? 'input-error' : ''}`}
+                                                    value={form.startDate}
+                                                    min={getMinDateString()}
+                                                    onChange={(e) => {
+                                                        setForm({ ...form, startDate: e.target.value });
+                                                        if (formErrors.startDate) setFormErrors(p => ({ ...p, startDate: '' }));
+                                                    }}
+                                                    required
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="now-pill"
+                                                    title="Chọn ngày hôm nay"
+                                                    onClick={() => {
+                                                        setForm({ ...form, startDate: getTodayDateString() });
+                                                        if (formErrors.startDate) setFormErrors(p => ({ ...p, startDate: '' }));
+                                                    }}
+                                                >
+                                                    <i className="bi bi-calendar-event"></i>
+                                                    <span>Hôm nay</span>
+                                                </button>
+                                            </div>
+                                            {formErrors.startDate && <span className="field-error">{formErrors.startDate}</span>}
+
+                                            {/* Preview ngày + ca đầy đủ */}
+                                            {form.startDate && selectedShift != null && (
+                                                <div className="schedule-preview-chip schedule-preview-green">
+                                                    <i className="bi bi-calendar-check"></i>
+                                                    <span>{(() => {
+                                                        const fullDt = buildFullStartDate(form.startDate, selectedShift);
+                                                        if (!fullDt) return '—';
+                                                        return new Date(fullDt).toLocaleString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                                    })()}</span>
+                                                </div>
+                                            )}
+                                            {form.startDate && selectedShift == null && (
+                                                <div className="schedule-preview-chip" style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e' }}>
+                                                    <i className="bi bi-exclamation-triangle"></i>
+                                                    <span>Vui lòng chọn ca (09:00 / 14:00 / 20:00) ở trên</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* ---- DIVIDER ---- */}
+                                        <div className="schedule-divider">
+                                            <div className="schedule-divider-line"></div>
+                                            <div className="schedule-divider-pill">
+                                                <i className="bi bi-arrow-right"></i>
+                                                <span>{selectedShift != null ? `${String(selectedShift).padStart(2,'0')}:00` : '??:00'} +{form.durationHours}h</span>
+                                            </div>
+                                            <div className="schedule-divider-line"></div>
+                                        </div>
+
+                                        {/* ---- CỔT PHẢI: THỜI LƯỢNG ---- */}
+                                        <div className="schedule-col">
+                                            <label className="form-label">
+                                                <i className="bi bi-hourglass-split text-danger me-1"></i>
+                                                THỜI LƯỢNG KếT THÚC *
+                                            </label>
+
+                                            {/* Slider */}
+                                            <div className="duration-block">
+                                                <div className="d-flex justify-content-between mb-1">
+                                                    {[1,6,12,18,24].map(t => (
+                                                        <span key={t} className="dur-tick">{t}h</span>
+                                                    ))}
+                                                </div>
+                                                <input
+                                                    type="range" min="1" max="24" step="1"
+                                                    className="dur-slider"
+                                                    value={form.durationHours}
+                                                    onChange={(e) => {
+                                                        const val = parseInt(e.target.value);
+                                                        setForm({ ...form, durationHours: val });
+                                                        if (formErrors.durationHours) setFormErrors(p => ({ ...p, durationHours: '' }));
+                                                    }}
+                                                    style={{ '--pct': `${((form.durationHours - 1) / 23) * 100}%` }}
+                                                />
+                                            </div>
+
+                                            {/* Stepper */}
+                                            <div className="d-flex align-items-center justify-content-between">
+                                                <div className="dur-stepper">
+                                                    <button type="button" className="dur-step-btn" onClick={() => {
+                                                        const v = Math.max(1, form.durationHours - 1);
+                                                        setForm({ ...form, durationHours: v });
+                                                        if (formErrors.durationHours) setFormErrors(p => ({ ...p, durationHours: '' }));
+                                                    }}>
+                                                        <i className="bi bi-dash"></i>
+                                                    </button>
+                                                    <input
+                                                        type="number" min="1" max="24"
+                                                        className={`dur-number ${formErrors.durationHours ? 'input-error' : ''}`}
+                                                        value={form.durationHours}
+                                                        onChange={(e) => {
+                                                            let val = parseInt(e.target.value) || 1;
+                                                            if (val < 1) val = 1;
+                                                            if (val > 24) val = 24;
+                                                            setForm({ ...form, durationHours: val });
+                                                            if (formErrors.durationHours) setFormErrors(p => ({ ...p, durationHours: '' }));
+                                                        }}
+                                                    />
+                                                    <button type="button" className="dur-step-btn" onClick={() => {
+                                                        const v = Math.min(24, form.durationHours + 1);
+                                                        setForm({ ...form, durationHours: v });
+                                                        if (formErrors.durationHours) setFormErrors(p => ({ ...p, durationHours: '' }));
+                                                    }}>
+                                                        <i className="bi bi-plus"></i>
+                                                    </button>
+                                                    <span className="dur-unit">GIỜ</span>
+                                                </div>
+                                                <span className="dur-range-note">Tối thiểu 1h • Tối đa 24h</span>
+                                            </div>
+
+                                            {formErrors.durationHours && <span className="field-error">{formErrors.durationHours}</span>}
+
+                                            {/* Kết thúc preview */}
+                                            {form.startDate && selectedShift != null && (
+                                                <div className="schedule-preview-chip schedule-preview-red">
+                                                    <i className="bi bi-flag-fill"></i>
+                                                    <span>Kết thúc lúc&nbsp;<strong>{(() => {
+                                                        const fullStart = buildFullStartDate(form.startDate, selectedShift);
+                                                        const end = computeEndDate(fullStart, form.durationHours);
+                                                        if (!end) return '—';
+                                                        return new Date(end).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                                    })()}</strong></span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                <input 
-                                    type="datetime-local" 
-                                    className={`form-input-cinematic ${formErrors.startDate ? 'input-error' : ''}`} 
-                                    value={form.startDate}
-                                    onChange={(e) => {
-                                        setForm({...form, startDate: e.target.value});
-                                        if (formErrors.startDate) setFormErrors(p => ({...p, startDate: ''}));
-                                    }}
-                                    required
-                                />
-                                {formErrors.startDate && <span className="field-error">{formErrors.startDate}</span>}
-                            </div>
-                            <div className="form-group">
-                                <div className="d-flex justify-content-between align-items-center mb-1">
-                                    <label className="form-label mb-0">Ngày kết thúc *</label>
-                                    <button 
-                                        type="button" 
-                                        className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
-                                        style={{ fontSize: '11px', letterSpacing: '0.5px' }}
-                                        onClick={() => {
-                                            setForm({...form, endDate: getCurrentDateTimeString()});
-                                            if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
-                                        }}
-                                    >
-                                        <i className="bi bi-clock-history me-1"></i> Ngay lúc này
-                                    </button>
-                                </div>
-                                <input 
-                                    type="datetime-local" 
-                                    className={`form-input-cinematic ${formErrors.endDate ? 'input-error' : ''}`} 
-                                    value={form.endDate}
-                                    onChange={(e) => {
-                                        setForm({...form, endDate: e.target.value});
-                                        if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
-                                    }}
-                                    required
-                                />
-                                {formErrors.endDate && <span className="field-error">{formErrors.endDate}</span>}
                             </div>
                         </div>
                     </div>
@@ -469,32 +659,154 @@ const AdminFlashSaleForm = () => {
                 <style>{`
     .sub-title-neon { display: block; color: var(--accent-red) !important; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
     .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
-    
+
     .card-cinematic { background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 30px; margin-bottom: 30px; border-radius: 12px; }
     .card-section-title { font-family: 'Oswald'; color: #000; font-size: 20px; font-weight: 800; letter-spacing: 1px; margin-bottom: 25px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; display: inline-block; text-transform: uppercase; }
     .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
 
     .form-grid-cinematic { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
     .form-label { display: block; color: #000; font-size: 13px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; font-family: 'Oswald'; }
-    .form-input-cinematic { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 12px; color: #3c4043; outline: none; transition: 0.2s; font-size: 14px; font-weight: 500; box-shadow: none; border-radius: 8px; }
-    .form-input-cinematic:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
+    .form-input-cinematic { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 12px; color: #3c4043; outline: none; transition: 0.2s; font-size: 14px; font-weight: 500; box-shadow: none; border-radius: 8px; box-sizing: border-box; }
+    .form-input-cinematic:focus { border-color: #e50914; box-shadow: 0 0 0 3px rgba(229,9,20,0.08); }
     .input-error { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229,9,20,0.1) !important; }
     .field-error { color: #e50914; font-size: 12.5px; margin-top: 6px; display: block; font-weight: 500; }
+    .flex-1 { flex: 1; }
 
-    .btn-red-skew { 
-        background: #fff; color: #000; border: none; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+    .btn-red-skew {
+        background: #fff; color: #000; border: none; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase;
         transition: 0.3s; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px;
     }
-    .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
+    .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-2px); }
 
     .product-list-container-alt { border: 1px solid #e2e8f0; overflow: hidden; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
     .product-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 60px; gap: 15px; padding: 15px 20px; border-bottom: 1px solid #f1f5f9; align-items: center; }
     .product-row.header { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-    .product-row.header { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-    
     .action-btn-icon { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; }
     .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); background: #000; color: #fff; }
     .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 0 4px 12px rgba(229,9,20,0.2); }
+
+    /* ===== SCHEDULE SECTION ===== */
+    .schedule-section {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fff;
+    }
+    .schedule-section-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 20px;
+        background: #f8fafc;
+        border-bottom: 1.5px solid #e2e8f0;
+    }
+    .schedule-section-label {
+        font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 800;
+        letter-spacing: 1.5px; color: #000; text-transform: uppercase;
+    }
+    .schedule-past-badge {
+        font-size: 11px; font-weight: 600; color: #6b7280;
+        background: #f1f5f9; border: 1px solid #e2e8f0;
+        padding: 4px 10px; border-radius: 20px;
+    }
+    .schedule-body {
+        display: grid; grid-template-columns: 1fr 60px 1fr;
+        padding: 24px 20px; gap: 0;
+    }
+    .schedule-col { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Shift quick-pick pills */
+    .shift-hint-text { font-size: 11.5px; color: #6b7280; font-weight: 600; margin-bottom: 6px; margin-top: 0; }
+    .shift-pill {
+        flex: 1; min-width: 80px;
+        background: #f8fafc; border: 1.5px solid #dadce0;
+        color: #3c4043; padding: 8px 12px; border-radius: 8px;
+        font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 700;
+        cursor: pointer; transition: all 0.18s; letter-spacing: 0.5px; text-align: center;
+    }
+    .shift-pill:hover { background: #fff0f0; border-color: #e50914; color: #e50914; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(229,9,20,0.12); }
+    .shift-pill-active { background: #e50914 !important; border-color: #e50914 !important; color: #fff !important; box-shadow: 0 4px 12px rgba(229,9,20,0.3); }
+
+    /* Start date input */
+    .schedule-input-row { display: flex; gap: 8px; align-items: stretch; }
+    .now-pill {
+        display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+        background: #f8fafc; border: 1.5px solid #dadce0;
+        color: #3c4043; padding: 0 14px; border-radius: 8px;
+        font-family: 'Oswald', sans-serif; font-size: 12px; font-weight: 700;
+        cursor: pointer; transition: 0.18s; white-space: nowrap; letter-spacing: 0.5px;
+    }
+    .now-pill:hover { background: #fff0f0; border-color: #e50914; color: #e50914; }
+
+    /* Preview chips */
+    .schedule-preview-chip {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px; border-radius: 8px;
+        font-size: 12.5px; font-weight: 500;
+    }
+    .schedule-preview-green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .schedule-preview-red   { background: #fff5f5; border: 1px solid #fecaca; color: #991b1b; }
+    .schedule-preview-red strong { color: #e50914; font-weight: 700; }
+
+    /* Timeline divider */
+    .schedule-divider {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 0 16px; gap: 4px;
+    }
+    .schedule-divider-line { flex: 1; width: 1px; background: linear-gradient(to bottom, transparent, #dadce0, transparent); min-height: 20px; }
+    .schedule-divider-pill {
+        display: flex; flex-direction: column; align-items: center; gap: 2px;
+        background: #fff0f0; border: 1.5px solid #fecaca;
+        color: #e50914; border-radius: 20px; padding: 6px 10px;
+        font-family: 'Oswald', sans-serif; font-size: 11px; font-weight: 800;
+        letter-spacing: 0.5px;
+    }
+
+    /* Duration slider */
+    .duration-block { padding: 4px 0; }
+    .dur-tick { font-size: 10px; color: #9ca3af; font-weight: 600; font-family: 'Oswald'; }
+    .dur-slider {
+        width: 100%; -webkit-appearance: none; appearance: none;
+        height: 5px; border-radius: 5px; outline: none; cursor: pointer;
+        background: linear-gradient(to right, #e50914 var(--pct, 0%), #e2e8f0 var(--pct, 0%));
+        transition: background 0.1s;
+    }
+    .dur-slider::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none;
+        width: 18px; height: 18px; border-radius: 50%;
+        background: #e50914; cursor: pointer;
+        box-shadow: 0 0 0 3px rgba(229,9,20,0.15), 0 2px 6px rgba(229,9,20,0.3);
+        transition: 0.15s;
+    }
+    .dur-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .dur-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #e50914; border: none; cursor: pointer; }
+
+    /* Duration stepper */
+    .dur-stepper {
+        display: flex; align-items: center; gap: 0;
+        border: 1.5px solid #dadce0; border-radius: 8px; overflow: hidden; background: #fff;
+    }
+    .dur-step-btn {
+        background: #f8fafc; border: none; color: #3c4043;
+        width: 36px; height: 36px; font-size: 16px;
+        cursor: pointer; transition: 0.15s;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .dur-step-btn:hover { background: #e50914; color: #fff; }
+    .dur-number {
+        width: 52px; border: none;
+        border-left: 1.5px solid #dadce0; border-right: 1.5px solid #dadce0;
+        color: #000; font-size: 16px; font-weight: 800; text-align: center;
+        outline: none; padding: 6px 4px; font-family: 'Oswald', sans-serif;
+        background: #fff;
+    }
+    .dur-number::-webkit-inner-spin-button, .dur-number::-webkit-outer-spin-button { display: none; }
+    .dur-unit { font-size: 11px; font-weight: 800; color: #9ca3af; font-family: 'Oswald'; letter-spacing: 1px; padding: 0 10px; }
+    .dur-range-note { font-size: 11px; color: #9ca3af; font-style: italic; }
+
+    @media (max-width: 640px) {
+        .schedule-body { grid-template-columns: 1fr; }
+        .schedule-divider { flex-direction: row; padding: 10px 0; }
+        .schedule-divider-line { flex: 1; width: auto; height: 1px; min-height: unset; }
+    }
 `}</style>
             </AdminLayout>
         );

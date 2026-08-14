@@ -32,7 +32,7 @@ public class ProfileApiController {
             String sql = "SELECT a.id, a.user_code, a.full_name, a.email, a.phone, a.status, a.role, a.points, a.membership_rank_id, r.rank_name, r.free_shipping "
                     + "FROM accounts a "
                     + "LEFT JOIN membership_ranks r ON a.membership_rank_id = r.id "
-                    + "WHERE a.email = ?";
+                    + "WHERE LOWER(a.email) = LOWER(?)";
             Map<String, Object> freshAccount = jdbc.queryForMap(sql, email);
 
             // Xử lý giá trị null thành chuỗi rỗng

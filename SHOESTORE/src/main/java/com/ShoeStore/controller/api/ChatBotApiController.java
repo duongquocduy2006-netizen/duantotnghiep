@@ -8,7 +8,10 @@ import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/chatbot")
+<<<<<<< Updated upstream
 @CrossOrigin(originPatterns = "*")
+=======
+>>>>>>> Stashed changes
 public class ChatBotApiController {
 
     @Autowired

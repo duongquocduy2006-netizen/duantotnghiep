@@ -52,6 +52,11 @@ const Login = () => {
             
             if (response.data.success) {
                 sessionStorage.setItem('toast_message', 'Đăng nhập thành công!');
+                if (response.data.account) {
+                    localStorage.setItem('account', JSON.stringify(response.data.account));
+                }
+                // Thông báo Header cập nhật trạng thái đăng nhập
+                window.dispatchEvent(new Event('auth-changed'));
                 navigate('/');
             }
         } catch (err) {
@@ -59,7 +64,7 @@ const Login = () => {
             if (err.message === 'Network Error') {
                 setError('Lỗi kết nối đến Server! Hãy kiểm tra xem Backend đã chạy chưa hoặc lỗi CORS.');
             } else if (err.response && err.response.data && err.response.data.message) {
-                setError('Đăng nhập thất bại: ' + err.response.data.message);
+                setError(err.response.data.message);
             } else {
                 setError('Sai email hoặc mật khẩu!');
             }
@@ -155,7 +160,7 @@ const Login = () => {
 
                     <button 
                         className="btn-google"
-                        onClick={() => window.location.href = 'http://localhost:8080/oauth2/authorization/google'}
+                        onClick={() => window.location.href = '/oauth2/authorization/google'}
                         type="button"
                     >
                         <i className="fa-brands fa-google"></i> &nbsp; TÀI KHOẢN GOOGLE

@@ -22,8 +22,8 @@ public class CustomerService {
                 +
                 "FROM accounts a " +
                 "LEFT JOIN membership_ranks mr ON a.membership_rank_id = mr.id " +
-                "WHERE a.role IN ('USER', 'ADMIN', 'SHIPPER') " +
-                "ORDER BY a.created_at DESC";
+                "WHERE UPPER(ISNULL(a.role, 'USER')) IN ('USER', 'ADMIN', 'SHIPPER') " +
+                "ORDER BY a.id DESC";
 
         return jdbc.query(sql, (rs, rowNum) -> {
             CustomerDTO dto = new CustomerDTO();
