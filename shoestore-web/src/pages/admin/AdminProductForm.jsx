@@ -35,7 +35,6 @@ const translateColorToVietnamese = (name) => {
 };
 
 // ─── Validation ──────────────────────────────────────────────────────────────
-// Giày trẻ em (từ ~16) đến người lớn cỡ lớn (đến 50)
 const SIZE_MIN = 16;
 const SIZE_MAX = 50;
 
@@ -43,10 +42,10 @@ const validateSize = (val) => {
     const trimmed = val.trim();
     if (!trimmed) return "Vui lòng nhập size.";
     if (!/^\d+(\.\d+)?$/.test(trimmed))
-        return "Size phải là số nguyên (VD: 38, 39…). Không được nhập chữ.";
+        return "Size phải là số (VD: 38, 39…). Không được nhập chữ.";
     const num = parseFloat(trimmed);
     if (num < SIZE_MIN || num > SIZE_MAX)
-        return `Size hợp lệ từ ${SIZE_MIN} (trẻ em nhỏ) đến ${SIZE_MAX} (người lớn cỡ lớn).`;
+        return `Size hợp lệ từ ${SIZE_MIN} đến ${SIZE_MAX}.`;
     return null;
 };
 
@@ -131,31 +130,17 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholde
 
     return (
         <div className="tag-input-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                <label className="tag-input-label" style={{ margin: 0 }}>
+            <div className="tag-input-header">
+                <label className="tag-input-label">
                     {icon && <i className={`bi ${icon}`}></i>} {label}
                 </label>
-                <div style={{ display: 'flex', gap: '6px' }}>
+                <div className="tag-action-btns">
                     {presets.length > 0 && (
                         <button
                             type="button"
-                            className="btn-tag-add-all"
+                            className="btn-tag-action btn-add-all"
                             onClick={handleAddAllPresets}
-                            title="Thêm tất cả các tùy chọn nhanh có sẵn"
-                            style={{
-                                background: '#f3e8ff',
-                                color: '#7c3aed',
-                                border: '1px solid #d8b4fe',
-                                borderRadius: '6px',
-                                padding: '3px 10px',
-                                fontSize: '11px',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.15s ease'
-                            }}
+                            title="Thêm tất cả tùy chọn"
                         >
                             <i className="bi bi-check-all"></i> THÊM TẤT CẢ
                         </button>
@@ -163,23 +148,9 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholde
                     {tags.length > 0 && onClearAll && (
                         <button
                             type="button"
-                            className="btn-tag-clear-all"
+                            className="btn-tag-action btn-clear-all"
                             onClick={onClearAll}
-                            title="Xóa toàn bộ các tùy chọn đã chọn"
-                            style={{
-                                background: '#fef2f2',
-                                color: '#ef4444',
-                                border: '1px solid #fca5a5',
-                                borderRadius: '6px',
-                                padding: '3px 10px',
-                                fontSize: '11px',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.15s ease'
-                            }}
+                            title="Xóa tất cả tùy chọn"
                         >
                             <i className="bi bi-trash"></i> XÓA TẤT CẢ
                         </button>
@@ -187,10 +158,8 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholde
                 </div>
             </div>
 
-            {/* Hint text */}
             {hint && <p className="tag-hint">{hint}</p>}
 
-            {/* Preset quick-add chips */}
             {presets.length > 0 && (
                 <div className="preset-chips">
                     {presets.map((p) => {
@@ -201,7 +170,7 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholde
                                 type="button"
                                 className={`preset-chip ${selected ? "selected" : ""}`}
                                 onClick={() => !selected && handleAdd(p)}
-                                title={selected ? "Đã thêm" : `Thêm "${p}"`}
+                                title={selected ? "Đã chọn" : `Thêm "${p}"`}
                             >
                                 {selected ? <i className="bi bi-check2"></i> : <i className="bi bi-plus"></i>}
                                 {p}
@@ -211,7 +180,6 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholde
                 </div>
             )}
 
-            {/* Input bar */}
             <div className={`tag-input-bar ${error ? "has-error" : ""}`}>
                 <input
                     ref={inputRef}
@@ -227,14 +195,12 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholde
                 </button>
             </div>
 
-            {/* Validation error */}
             {error && (
                 <div className="tag-error">
                     <i className="bi bi-exclamation-triangle-fill"></i> {error}
                 </div>
             )}
 
-            {/* Selected tags */}
             {tags.length > 0 && (
                 <div className="tag-list">
                     {tags.map((tag, idx) => (
@@ -292,12 +258,19 @@ const AdminProductForm = () => {
         categoryId: ''
     });
 
+    // Default bulk variant input
     const [variant, setVariant] = useState({
         sizeId: '',
         colorId: '',
         price: '',
         quantity: ''
     });
+
+    // Per-variant custom price & quantity overrides for Create Mode: { [size-color]: { price, quantity } }
+    const [variantOverrides, setVariantOverrides] = useState({});
+
+    // Existing variants loaded for Edit Mode: [{ id, sizeId, sizeName, colorId, colorName, price, quantity, isModified }]
+    const [existingVariants, setExistingVariants] = useState([]);
 
     // Dropdowns metadata
     const [categories, setCategories] = useState([]);
@@ -306,7 +279,7 @@ const AdminProductForm = () => {
     const [colors, setColors] = useState([]);
 
     const [images, setImages] = useState([]); // List of { id, url, isPrimary }
-    const [tempImages, setTempImages] = useState([]); // Local temporary images for create mode
+    const [tempImages, setTempImages] = useState([]); // Local temporary images
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [errors, setErrors] = useState({});
     const [savedId, setSavedId] = useState(null);
@@ -317,6 +290,10 @@ const AdminProductForm = () => {
     const [aiSuccessMsg, setAiSuccessMsg] = useState('');
     const [aiImageBase64, setAiImageBase64] = useState('');
     const [aiImagesBase64List, setAiImagesBase64List] = useState([]);
+
+    // Tag-input: selected size/color names
+    const [selectedSizes, setSelectedSizes] = useState([]);
+    const [selectedColors, setSelectedColors] = useState([]);
 
     const handleGenerateAiDescription = async () => {
         let firstBase64 = aiImageBase64;
@@ -345,8 +322,6 @@ const AdminProductForm = () => {
             if (response.data && response.data.success) {
                 const data = response.data;
                 const rawDesc = data.description || '';
-                const wordCount = rawDesc ? rawDesc.trim().split(/\s+/).filter(Boolean).length : 0;
-                const pName = trimmedName || data.productName || 'Sản phẩm';
                 const finalDesc = data.description || rawDesc;
 
                 setProduct(prev => ({
@@ -391,16 +366,13 @@ const AdminProductForm = () => {
         }
     };
 
-    // Tag-input: selected size/color names
-    const [selectedSizes, setSelectedSizes] = useState([]);
-    const [selectedColors, setSelectedColors] = useState([]);
-
     const handleResetAiForm = () => {
         if (window.confirm("Bạn có chắc chắn muốn HỦY & XÓA TOÀN BỘ dữ liệu do AI điền tự động để làm mới không?")) {
             setProduct({ productName: '', description: '', status: 1, brandName: '', categoryId: '' });
             setVariant({ sizeId: '', colorId: '', price: '', quantity: '' });
             setSelectedSizes([]);
             setSelectedColors([]);
+            setVariantOverrides({});
             setAiImageBase64('');
             setAiImagesBase64List([]);
             setImages([]);
@@ -430,7 +402,6 @@ const AdminProductForm = () => {
             setAiImageBase64(firstBase64);
             setAiImagesBase64List(prev => [...prev, ...base64List]);
 
-            // Append gallery images preview so they display in 'HÌNH ẢNH HIỆN TẠI'
             setImages(prev => {
                 const hasPrimary = prev.some(img => img.isPrimary);
                 const newImgObjs = base64List.map((url, idx) => ({
@@ -440,7 +411,6 @@ const AdminProductForm = () => {
                 return [...prev, ...newImgObjs];
             });
 
-            // If editing an existing product, automatically persist newly uploaded images to the server
             if (isEdit && id) {
                 try {
                     for (let i = 0; i < base64List.length; i++) {
@@ -455,7 +425,6 @@ const AdminProductForm = () => {
                 }
             }
 
-            // Send first image to AI Vision for product extraction
             const response = await api.post('/api/products/ai-extract', { imageBase64: firstBase64 });
             if (response.data && response.data.success) {
                 const data = response.data;
@@ -467,7 +436,6 @@ const AdminProductForm = () => {
                     categoryId: data.categoryId || prev.categoryId
                 }));
 
-                // Dynamic Brand Option insertion if missing in dropdown
                 if (data.brandName) {
                     setBrands(prevBrands => {
                         const exists = prevBrands.some(b => b.brandName && b.brandName.toLowerCase() === data.brandName.toLowerCase());
@@ -478,9 +446,7 @@ const AdminProductForm = () => {
                     });
                 }
 
-
-                const countMsg = files.length > 1 ? ` Đã nạp ${files.length} ảnh (Ảnh 1 tự động chọn làm Ảnh chính).` : '';
-                setAiSuccessMsg(`AI đã trích xuất & tự động điền 100% dữ liệu: Tên sản phẩm, Thương hiệu (${data.brandName}), Danh mục (${data.categoryName || 'Tự động'}), Mô tả, Tất cả Sizes, Màu sắc, Giá bán & Số lượng!`);
+                setAiSuccessMsg(`AI Vision đã trích xuất thành công: Tên sản phẩm, Thương hiệu (${data.brandName || ''}), Danh mục, Màu sắc & Mô tả!`);
             } else {
                 alert(response.data?.message || "Không thể phân tích ảnh bằng AI.");
             }
@@ -493,19 +459,17 @@ const AdminProductForm = () => {
         }
     };
 
-    // Fetch form metadata (and edit details if relevant)
+    // Load form metadata and details if editing
     const loadFormData = async () => {
         try {
             setLoading(true);
             setError(null);
 
-            // Fetch categories/brands/sizes/colors list
             const metaResponse = await api.get('/api/products/metadata');
             if (metaResponse.data && metaResponse.data.success) {
                 setCategories(metaResponse.data.categories || []);
                 setBrands(metaResponse.data.brands || []);
 
-                // Deduplicate sizes by sizeName
                 const uniqueSizesMap = new Map();
                 (metaResponse.data.sizes || []).forEach(s => {
                     if (s.sizeName && !uniqueSizesMap.has(s.sizeName.trim())) {
@@ -518,7 +482,6 @@ const AdminProductForm = () => {
                 });
                 setSizes(cleanSizes);
 
-                // Deduplicate colors & translate English names to Vietnamese
                 const uniqueColorsMap = new Map();
                 (metaResponse.data.colors || []).forEach(c => {
                     const vnName = translateColorToVietnamese(c.colorName);
@@ -530,7 +493,6 @@ const AdminProductForm = () => {
             }
 
             if (isEdit) {
-                // If editing, load the existing product details
                 const detailResponse = await api.get(`/api/products/${id}`);
                 if (detailResponse.data && detailResponse.data.success) {
                     const p = detailResponse.data.product;
@@ -542,9 +504,28 @@ const AdminProductForm = () => {
                         categoryId: p.categoryId || ''
                     });
 
-                    // Set gallery images
                     if (detailResponse.data.images && detailResponse.data.images.length > 0) {
                         setImages(detailResponse.data.images);
+                    }
+
+                    if (detailResponse.data.variants && detailResponse.data.variants.length > 0) {
+                        const vars = detailResponse.data.variants.map(v => ({
+                            id: v.id,
+                            sizeId: v.sizeId,
+                            sizeName: v.sizeName || '',
+                            colorId: v.colorId,
+                            colorName: translateColorToVietnamese(v.colorName || ''),
+                            price: v.price !== null && v.price !== undefined ? v.price.toString() : '',
+                            quantity: v.quantity !== null && v.quantity !== undefined ? v.quantity.toString() : '',
+                            isModified: false
+                        }));
+                        setExistingVariants(vars);
+
+                        // Collect unique size & color names for tag displays
+                        const existingSizes = [...new Set(vars.map(v => v.sizeName).filter(Boolean))];
+                        const existingColors = [...new Set(vars.map(v => v.colorName).filter(Boolean))];
+                        setSelectedSizes(existingSizes);
+                        setSelectedColors(existingColors);
                     }
                 } else {
                     setError("Không thể tải thông tin sản phẩm cần chỉnh sửa.");
@@ -607,7 +588,6 @@ const AdminProductForm = () => {
         };
 
         if (!id) {
-            // Cho phép nhập thủ công: Nạp trực tiếp Base64 vào bộ nhớ xem trước
             const base64List = await Promise.all(files.map(readFileAsDataUrl));
             setAiImagesBase64List(prev => [...prev, ...base64List]);
             if (!aiImageBase64 && base64List.length > 0) {
@@ -622,63 +602,6 @@ const AdminProductForm = () => {
                 }));
                 return [...prev, ...newImgObjs];
             });
-
-            // Tự động phân loại danh mục, thương hiệu, màu sắc, tên và mô tả từ ảnh thủ công
-            if (base64List.length > 0) {
-                try {
-                    setAiAnalyzing(true);
-                    const response = await api.post('/api/products/ai-extract', { imageBase64: base64List[0] });
-                    if (response.data && response.data.success) {
-                        const data = response.data;
-                        const rawDesc = data.description || '';
-                        const wordCount = rawDesc ? rawDesc.trim().split(/\s+/).filter(Boolean).length : 0;
-                        const pName = data.productName || 'Sản phẩm';
-                        const finalDesc = wordCount >= 100
-                            ? rawDesc
-                            : (rawDesc ? rawDesc.trim() + '\n\n' : '') + `${pName} là biểu tượng thời trang mang phong cách hiện đại và đẳng cấp, được thiết kế tỉ mỉ để đáp ứng nhu cầu thời trang đỉnh cao của giới trẻ năng động. Đôi giày sở hữu phom dáng chuẩn ôm chân tinh tế, kết hợp cùng chất liệu da cao cấp mềm mại mang lại độ bền vượt trội và khả năng chống bám bẩn hiệu quả. Hệ thống đế cao su tự nhiên nguyên khối được trang bị công nghệ đệm khí tiên tiến, giúp giảm chấn tối đa, mang lại cảm giác êm ái, nhẹ nhàng và tự tin trong từng bước di chuyển. Bên cạnh đó, các rãnh bám thông minh dưới mặt đế giúp tăng cường độ ma sát và chống trượt vượt trội trên mọi địa hình. Dễ dàng phối hợp với nhiều kiểu trang phục từ quần Jeans, Jogger năng động cho đến những bộ Outfit đường phố cá tính, ${pName} chắc chắn sẽ là điểm nhấn hoàn hảo khẳng định gu thời trang thời thượng của bạn.`;
-
-                        setProduct(prev => ({
-                            ...prev,
-                            productName: prev.productName || data.productName || '',
-                            description: prev.description || finalDesc,
-                            brandName: prev.brandName || data.brandName || '',
-                            categoryId: prev.categoryId || data.categoryId || ''
-                        }));
-
-                        if (data.brandName) {
-                            setBrands(prevBrands => {
-                                const exists = prevBrands.some(b => b.brandName && b.brandName.toLowerCase() === data.brandName.toLowerCase());
-                                if (!exists) {
-                                    return [{ id: Date.now(), brandName: data.brandName }, ...prevBrands];
-                                }
-                                return prevBrands;
-                            });
-                        }
-
-                        if (data.colorName) {
-                            const vnColor = translateColorToVietnamese(data.colorName);
-                            setSelectedColors(prev => {
-                                if (!prev.some(c => c.toLowerCase() === vnColor.toLowerCase())) {
-                                    return [...prev, vnColor];
-                                }
-                                return prev;
-                            });
-                        }
-
-                        if (selectedSizes.length === 0 && sizes.length > 0) {
-                            setSelectedSizes(sizes.map(s => s.sizeName));
-                        }
-
-                        window.dispatchEvent(new CustomEvent('show-toast', {
-                            detail: `✨ AI Vision đã tự động phân loại Danh mục (${data.categoryName || 'Giày'}), Thương hiệu (${data.brandName || ''}) và Màu sắc từ ảnh tải lên!`
-                        }));
-                    }
-                } catch (err) {
-                    console.error("Lỗi AI tự phân loại từ ảnh tải thủ công:", err);
-                } finally {
-                    setAiAnalyzing(false);
-                }
-            }
             return;
         }
 
@@ -687,7 +610,7 @@ const AdminProductForm = () => {
             for (const base64String of base64List) {
                 await api.post(`/api/products/${id}/image`, { imageBase64: base64String });
             }
-            loadFormData(); // Refresh
+            loadFormData();
         } catch (err) {
             console.error("Lỗi upload ảnh:", err);
             window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể tải ảnh lên.' }));
@@ -706,11 +629,100 @@ const AdminProductForm = () => {
         try {
             const response = await api.post(`/api/products/image/${imageId}/set-primary`);
             if (response.data && response.data.success) {
-                loadFormData(); // Refresh to update badge
+                loadFormData();
             }
         } catch (err) {
             console.error("Lỗi đặt ảnh chính:", err);
             window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Không thể đặt ảnh chính.' }));
+        }
+    };
+
+    // Helper: find size/color ID from name
+    const getSizeId = (name) => { const s = sizes.find(s => s.sizeName.trim().toLowerCase() === name.trim().toLowerCase()); return s ? s.id : null; };
+    const getColorId = (name) => { const c = colors.find(c => translateColorToVietnamese(c.colorName).toLowerCase() === name.trim().toLowerCase()); return c ? c.id : null; };
+
+    // Direct cell change handler for Create mode: overrides specific combo price or quantity
+    const handleOverrideChange = (size, color, field, value) => {
+        const key = `${size}-${color}`;
+        setVariantOverrides(prev => ({
+            ...prev,
+            [key]: {
+                price: field === 'price' ? value : (prev[key]?.price ?? variant.price),
+                quantity: field === 'quantity' ? value : (prev[key]?.quantity ?? variant.quantity)
+            }
+        }));
+    };
+
+    // Direct cell change handler for Edit mode: existing variant row
+    const handleExistingVariantChange = (index, field, value) => {
+        setExistingVariants(prev => prev.map((item, idx) => {
+            if (idx === index) {
+                return { ...item, [field]: value, isModified: true };
+            }
+            return item;
+        }));
+    };
+
+    // Save individual variant directly to backend
+    const handleSaveSingleVariant = async (vItem, productId = id) => {
+        if (!productId) return;
+        if (!vItem.price || parseFloat(vItem.price) <= 5000) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Giá bán phải lớn hơn 5,000 VNĐ.' }));
+            return;
+        }
+        if (!vItem.quantity || parseInt(vItem.quantity) < 1) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Số lượng tồn kho phải lớn hơn 0.' }));
+            return;
+        }
+
+        try {
+            const sizeId = vItem.sizeId || getSizeId(vItem.sizeName);
+            const colorId = vItem.colorId || getColorId(vItem.colorName);
+
+            const payload = {
+                productId: parseInt(productId),
+                variantId: vItem.id || null,
+                sizeId,
+                colorId,
+                newSizeName: sizeId ? '' : vItem.sizeName,
+                newColorName: colorId ? '' : vItem.colorName,
+                price: parseFloat(vItem.price),
+                quantity: parseInt(vItem.quantity)
+            };
+
+            const res = await api.post('/api/products/variant/save', payload);
+            if (res.data && res.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.message || 'Đã cập nhật biến thể thành công!' }));
+                if (isEdit) loadFormData();
+            }
+        } catch (vErr) {
+            console.error('Lỗi cập nhật biến thể:', vErr);
+            const msg = vErr.response?.data?.message || 'Không thể lưu biến thể này.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: `Lỗi: ${msg}` }));
+        }
+    };
+
+    // Delete existing variant in Edit mode
+    const handleDeleteExistingVariant = async (variantId, index) => {
+        if (window.confirm("Bạn có chắc chắn muốn xóa biến thể này khỏi sản phẩm?")) {
+            if (!variantId) {
+                setExistingVariants(prev => prev.filter((_, idx) => idx !== index));
+                return;
+            }
+
+            try {
+                const response = await api.delete(`/api/products/variant/${variantId}`);
+                if (response.data && response.data.success) {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Xóa biến thể thành công!" }));
+                    setExistingVariants(prev => prev.filter(v => v.id !== variantId));
+                } else {
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data?.message || "Không thể xóa biến thể này." }));
+                }
+            } catch (err) {
+                console.error("Lỗi xóa biến thể:", err);
+                const errMsg = err.response?.data?.message || "Có lỗi xảy ra khi xóa biến thể.";
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Lỗi: ${errMsg}` }));
+            }
         }
     };
 
@@ -730,8 +742,15 @@ const AdminProductForm = () => {
         if (!isEdit) {
             if (selectedSizes.length === 0) newErrors.sizeId = 'Vui lòng thêm ít nhất 1 kích cỡ.';
             if (selectedColors.length === 0) newErrors.colorId = 'Vui lòng thêm ít nhất 1 màu sắc.';
-            if (!variant.price || parseFloat(variant.price) <= 0) newErrors.price = 'Giá bán phải lớn hơn 0.';
-            if (!variant.quantity || parseInt(variant.quantity) <= 0) newErrors.quantity = 'Số lượng phải lớn hơn 0.';
+            if (!variant.price || parseFloat(variant.price) <= 0) {
+                // Check if overrides filled
+                const hasValidOverride = Object.values(variantOverrides).some(o => o.price && parseFloat(o.price) > 0);
+                if (!hasValidOverride) newErrors.price = 'Vui lòng nhập giá bán cho sản phẩm hoặc nhập ở từng dòng.';
+            }
+            if (!variant.quantity || parseInt(variant.quantity) <= 0) {
+                const hasValidQtyOverride = Object.values(variantOverrides).some(o => o.quantity && parseInt(o.quantity) > 0);
+                if (!hasValidQtyOverride) newErrors.quantity = 'Vui lòng nhập số lượng nhập kho.';
+            }
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -742,10 +761,6 @@ const AdminProductForm = () => {
 
         setErrors({});
         setSaving(true);
-
-        // Helper: find size/color ID from name
-        const getSizeId = (name) => { const s = sizes.find(s => s.sizeName.trim().toLowerCase() === name.trim().toLowerCase()); return s ? s.id : null; };
-        const getColorId = (name) => { const c = colors.find(c => translateColorToVietnamese(c.colorName).toLowerCase() === name.trim().toLowerCase()); return c ? c.id : null; };
 
         const allBase64Images = images
             .map(img => typeof img === 'string' ? img : img?.url)
@@ -768,40 +783,63 @@ const AdminProductForm = () => {
             if (prodResponse.data && prodResponse.data.success) {
                 const savedProductId = prodResponse.data.productId;
 
-                // 2. CREATE mode: seed variants for ALL selected sizes × colors
-                if (!isEdit && selectedSizes.length > 0 && selectedColors.length > 0 && variant.price && variant.quantity) {
+                // 2. CREATE mode: seed variants for ALL selected sizes × colors (supporting per-variant overrides)
+                if (!isEdit && selectedSizes.length > 0 && selectedColors.length > 0) {
                     for (const sz of selectedSizes) {
                         for (const cl of selectedColors) {
                             const sizeId = getSizeId(sz);
                             const colorId = getColorId(cl);
-                            const variantPayload = {
-                                productId: savedProductId,
-                                variantId: null,
-                                sizeId,
-                                colorId,
-                                newSizeName: sizeId ? '' : sz,
-                                newColorName: colorId ? '' : cl,
-                                price: parseFloat(variant.price),
-                                quantity: parseInt(variant.quantity)
-                            };
-                            try {
-                                await api.post('/api/products/variant/save', variantPayload);
-                            } catch (vErr) {
-                                console.error('Lỗi lưu biến thể', sz, cl, vErr);
+                            const key = `${sz}-${cl}`;
+                            const custom = variantOverrides[key];
+                            const priceVal = custom?.price !== undefined && custom?.price !== ''
+                                ? parseFloat(custom.price)
+                                : parseFloat(variant.price || 0);
+                            const qtyVal = custom?.quantity !== undefined && custom?.quantity !== ''
+                                ? parseInt(custom.quantity)
+                                : parseInt(variant.quantity || 0);
+
+                            if (priceVal > 0 && qtyVal > 0) {
+                                const variantPayload = {
+                                    productId: savedProductId,
+                                    variantId: null,
+                                    sizeId,
+                                    colorId,
+                                    newSizeName: sizeId ? '' : sz,
+                                    newColorName: colorId ? '' : cl,
+                                    price: priceVal,
+                                    quantity: qtyVal
+                                };
+                                try {
+                                    await api.post('/api/products/variant/save', variantPayload);
+                                } catch (vErr) {
+                                    console.error('Lỗi lưu biến thể', sz, cl, vErr);
+                                }
                             }
                         }
                     }
                 }
 
-                // 3. Upload temporary images if any (only in create mode)
+                // 3. EDIT mode: save modified existing variants
+                if (isEdit && existingVariants.length > 0) {
+                    for (const ev of existingVariants) {
+                        if (ev.isModified && ev.price && ev.quantity) {
+                            try {
+                                await handleSaveSingleVariant(ev, savedProductId);
+                            } catch (vErr) {
+                                console.error('Lỗi lưu sửa biến thể', ev, vErr);
+                            }
+                        }
+                    }
+                }
+
+                // 4. Upload temporary images if any (create mode)
                 if (!isEdit && tempImages.length > 0) {
                     for (const tempImg of tempImages) {
-                        await api.post(`/api/products/${savedProductId}/image`, { 
-                            imageBase64: tempImg.imageBase64 
+                        await api.post(`/api/products/${savedProductId}/image`, {
+                            imageBase64: tempImg.imageBase64
                         });
                     }
-                    
-                    // Set primary image
+
                     const detailRes = await api.get(`/api/products/${savedProductId}`);
                     if (detailRes.data && detailRes.data.success && detailRes.data.images && detailRes.data.images.length > 0) {
                         const primaryIndex = tempImages.findIndex(img => img.isPrimary);
@@ -816,9 +854,7 @@ const AdminProductForm = () => {
             }
         } catch (err) {
             console.error("Lỗi lưu sản phẩm:", err);
-            const errMsg = err.response && err.response.data && err.response.data.message
-                ? err.response.data.message
-                : "Không thể lưu sản phẩm. Vui lòng kiểm tra lại.";
+            const errMsg = err.response?.data?.message || "Không thể lưu sản phẩm. Vui lòng kiểm tra lại.";
             window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
             setSaving(false);
@@ -828,11 +864,11 @@ const AdminProductForm = () => {
     if (loading) {
         return (
             <AdminLayout>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', color: '#fff' }}>
-                    <div className="spinner-border text-cyan" role="status" style={{ width: '3rem', height: '3rem', color: 'var(--accent-cyan)' }}>
+                <div className="form-loading-container">
+                    <div className="spinner-border text-cyan" role="status" style={{ width: '3rem', height: '3rem', color: 'var(--accent-red)' }}>
                         <span className="visually-hidden">Loading...</span>
                     </div>
-                    <p style={{ marginTop: '20px', letterSpacing: '1px', fontSize: '13px' }}>ĐANG TẢI THÔNG TIN FORM...</p>
+                    <p style={{ marginTop: '20px', letterSpacing: '1px', fontSize: '13px', fontWeight: '700' }}>ĐANG TẢI THÔNG TIN FORM SẢN PHẨM...</p>
                 </div>
             </AdminLayout>
         );
@@ -857,31 +893,37 @@ const AdminProductForm = () => {
         <AdminLayout>
             <div className="admin-product-form-page">
                 <form onSubmit={handleSubmit} noValidate>
-                    <div className="page-header">
-                        <div>
+                    {/* STICKY TOP ACTION BAR */}
+                    <div className="sticky-page-header">
+                        <div className="header-info">
                             <span className="sub-title font-oswald">QUẢN LÝ SẢN PHẨM</span>
                             <h1 className="page-title font-oswald">{isEdit ? 'CẬP NHẬT SẢN PHẨM' : 'THÊM SẢN PHẨM MỚI'}</h1>
                         </div>
                         <div className="btn-group">
                             <Link to="/admin/products" className="btn-cancel">HỦY BỎ</Link>
                             {!isEdit && (
-                                <button type="button" className="btn-cancel" style={{ background: '#334155', color: '#f1f5f9', border: '1.5px solid #475569' }} onClick={() => {
-                                    if (window.confirm("Bạn có chắc chắn muốn làm mới toàn bộ form?")) {
-                                        setProduct({ productName: '', description: '', status: 1, brandName: '', categoryId: '' });
-                                        setVariant({ sizeId: '', colorId: '', price: '', quantity: '' });
-                                        setSelectedSizes([]);
-                                        setSelectedColors([]);
-                                        setAiImageBase64('');
-                                        setAiImagesBase64List([]);
-                                        setImages([]);
-                                        setTempImages([]);
-                                        setAiSuccessMsg('');
-                                        setErrors({});
-                                        setError(null);
-                                        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã làm mới form thành công!' }));
-                                    }
-                                }}>
-                                    <i className="fa-solid fa-rotate-right" style={{ marginRight: '6px' }}></i>LÀM MỚI
+                                <button
+                                    type="button"
+                                    className="btn-cancel btn-refresh-form"
+                                    onClick={() => {
+                                        if (window.confirm("Bạn có chắc chắn muốn làm mới toàn bộ form?")) {
+                                            setProduct({ productName: '', description: '', status: 1, brandName: '', categoryId: '' });
+                                            setVariant({ sizeId: '', colorId: '', price: '', quantity: '' });
+                                            setSelectedSizes([]);
+                                            setSelectedColors([]);
+                                            setVariantOverrides({});
+                                            setAiImageBase64('');
+                                            setAiImagesBase64List([]);
+                                            setImages([]);
+                                            setTempImages([]);
+                                            setAiSuccessMsg('');
+                                            setErrors({});
+                                            setError(null);
+                                            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã làm mới form thành công!' }));
+                                        }
+                                    }}
+                                >
+                                    <i className="bi bi-arrow-clockwise" style={{ marginRight: '6px' }}></i>LÀM MỚI
                                 </button>
                             )}
                             <button type="submit" className="btn-save" disabled={saving}>
@@ -890,21 +932,25 @@ const AdminProductForm = () => {
                                         <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" style={{ marginRight: '8px' }}></span>
                                         ĐANG LƯU...
                                     </>
-                                ) : 'LƯU SẢN PHẨM'}
+                                ) : (
+                                    <>
+                                        <i className="bi bi-floppy2-fill" style={{ marginRight: '8px' }}></i>LƯU SẢN PHẨM
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
 
-                    {/* AI Vision Feature Banner */}
+                    {/* AI Vision Banner */}
                     <div className="ai-banner-card">
                         <div className="ai-banner-header">
                             <div>
                                 <h3 className="ai-title">
                                     <i className="bi bi-cpu-fill" style={{ color: '#8b5cf6' }}></i> ĐIỀN THÔNG TIN TỰ ĐỘNG BẰNG AI VISION
-                                    <span className="ai-badge">100%</span>
+                                    <span className="ai-badge">SMART AI</span>
                                 </h3>
                                 <p className="ai-subtitle">
-                                    Chỉ cần tải 1 hoặc nhiều ảnh sản phẩm — AI tự động điền Tên, Thương hiệu, Danh mục, Màu sắc, Sizes, Mô tả & lưu trọn bộ thư viện ảnh.
+                                    Tải ảnh sản phẩm để AI tự động điền Tên, Thương hiệu, Danh mục, Màu sắc, Size & Mô tả sản phẩm.
                                 </p>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -941,131 +987,203 @@ const AdminProductForm = () => {
                         )}
                     </div>
 
-                    <div className="form-grid">
-                        <div className="left-col">
-                            <div className="card-custom">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
-                                    <h3 className="card-custom-title font-oswald" style={{ margin: 0 }}>
-                                        <i className="bi bi-info-circle"></i> THÔNG TIN CƠ BẢN
-                                    </h3>
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {/* FORM MAIN GRID */}
+                    <div className="form-main-layout">
+                        <div className="form-top-row">
+                            {/* LEFT COLUMN: BASIC INFO + CLASSIFICATION */}
+                            <div className="left-col">
+                                {/* CARD: THÔNG TIN CƠ BẢN */}
+                                <div className="card-custom">
+                                    <div className="card-header-flex">
+                                        <h3 className="card-custom-title font-oswald mb-0">
+                                            <i className="bi bi-info-circle-fill"></i> THÔNG TIN CƠ BẢN
+                                        </h3>
                                         <button
                                             type="button"
-                                            className="btn-ai-clear-info"
+                                            className="btn-clear-ai-info"
                                             onClick={handleClearAiBasicInfo}
-                                            title="Bấm để xóa sạch Tên sản phẩm và Mô tả chi tiết vừa tạo"
-                                            style={{
-                                                background: '#fef2f2',
-                                                color: '#ef4444',
-                                                border: '1px solid #fca5a5',
-                                                borderRadius: '8px',
-                                                padding: '6px 14px',
-                                                fontSize: '12px',
-                                                fontWeight: '700',
-                                                cursor: 'pointer',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                transition: 'all 0.2s ease'
-                                            }}
+                                            title="Xóa Tên sản phẩm và Mô tả do AI vừa tạo"
                                         >
                                             <i className="bi bi-trash3"></i> XÓA THÔNG TIN AI
                                         </button>
                                     </div>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Tên sản phẩm *</label>
-                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                        <input
-                                            type="text"
+
+                                    <div className="form-group">
+                                        <label className="form-label">Tên sản phẩm *</label>
+                                        <div className="input-with-btn">
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="VD: Nike Air Force 1 '07 LV8"
+                                                required
+                                                value={product.productName}
+                                                onChange={(e) => setProduct({ ...product, productName: e.target.value })}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="btn-ai-gen-desc"
+                                                onClick={handleGenerateAiDescription}
+                                                disabled={generatingDesc}
+                                                title="Tự động tạo mô tả sản phẩm bằng AI Vision"
+                                            >
+                                                {generatingDesc ? (
+                                                    <>
+                                                        <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                        ĐANG TẠO...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <i className="bi bi-stars" style={{ color: '#fef08a' }}></i> TẠO MÔ TẢ AI
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                        {errors.productName && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.productName}</div>}
+                                    </div>
+
+                                    <div className="form-group">
+                                        <div className="label-with-action">
+                                            <label className="form-label mb-0">Mô tả chi tiết</label>
+                                            <button
+                                                type="button"
+                                                className="btn-link-ai"
+                                                onClick={handleGenerateAiDescription}
+                                                disabled={generatingDesc}
+                                            >
+                                                <i className="bi bi-magic"></i> {generatingDesc ? "Đang tạo..." : "Tạo bằng AI Vision"}
+                                            </button>
+                                        </div>
+                                        <textarea
                                             className="form-control"
-                                            placeholder="VD: Nike Air Force 1"
-                                            required
-                                            value={product.productName}
-                                            onChange={(e) => setProduct({ ...product, productName: e.target.value })}
-                                            style={{ flex: 1 }}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="btn-ai-gen-desc"
-                                            onClick={handleGenerateAiDescription}
-                                            disabled={generatingDesc}
-                                            title="Bấm để tự động tạo mô tả sản phẩm bằng AI Vision"
-                                            style={{
-                                                background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                                                color: '#ffffff',
-                                                border: 'none',
-                                                borderRadius: '12px',
-                                                padding: '0 18px',
-                                                height: '46px',
-                                                fontWeight: '700',
-                                                fontSize: '13px',
-                                                whiteSpace: 'nowrap',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
-                                                cursor: 'pointer',
-                                                boxShadow: '0 4px 14px rgba(139, 92, 246, 0.35)',
-                                                transition: 'all 0.25s ease'
-                                            }}
-                                        >
-                                            {generatingDesc ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                                    ĐANG TẠO MÔ TẢ...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <i className="bi bi-stars" style={{ fontSize: '16px', color: '#fef08a' }}></i> TỰ ĐỘNG TẠO MÔ TẢ AI
-                                                </>
-                                            )}
-                                        </button>
+                                            placeholder="Chất liệu da cao cấp, công nghệ đệm khí tiên tiến, kiểu dáng thời trang đường phố..."
+                                            style={{ minHeight: '140px' }}
+                                            value={product.description}
+                                            onChange={(e) => setProduct({ ...product, description: e.target.value })}
+                                        ></textarea>
                                     </div>
-                                    {errors.productName && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.productName}</div>}
                                 </div>
-                                <div className="form-group">
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                        <label className="form-label mb-0">Mô tả chi tiết</label>
-                                        <button
-                                            type="button"
-                                            onClick={handleGenerateAiDescription}
-                                            disabled={generatingDesc}
-                                            style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                color: '#8b5cf6',
-                                                fontWeight: '700',
-                                                fontSize: '12px',
-                                                cursor: 'pointer',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '5px'
-                                            }}
-                                        >
-                                            <i className="bi bi-magic"></i> {generatingDesc ? "Đang tạo..." : "Tạo bằng AI Vision"}
-                                        </button>
+
+                                {/* CARD: PHÂN LOẠI & TRẠNG THÁI */}
+                                <div className="card-custom">
+                                    <h3 className="card-custom-title font-oswald"><i className="bi bi-tags-fill"></i> PHÂN LOẠI & TRẠNG THÁI</h3>
+                                    <div className="form-grid-2col">
+                                        <div className="form-group">
+                                            <label className="form-label">Danh mục *</label>
+                                            <select
+                                                className="form-control"
+                                                required
+                                                value={product.categoryId}
+                                                onChange={(e) => setProduct({ ...product, categoryId: e.target.value })}
+                                            >
+                                                <option value="">-- Chọn danh mục --</option>
+                                                {categories.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                            {errors.categoryId && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.categoryId}</div>}
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label className="form-label">Thương hiệu *</label>
+                                            <select
+                                                className="form-control"
+                                                required
+                                                value={product.brandName}
+                                                onChange={(e) => setProduct({ ...product, brandName: e.target.value })}
+                                            >
+                                                <option value="">-- Chọn thương hiệu --</option>
+                                                {brands.map(b => (
+                                                    <option key={b.id} value={b.brandName}>{b.brandName}</option>
+                                                ))}
+                                            </select>
+                                            {errors.brandName && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.brandName}</div>}
+                                        </div>
                                     </div>
-                                    <textarea
-                                        className="form-control"
-                                        placeholder="Chất liệu, công nghệ, thiết kế..."
-                                        style={{ minHeight: '150px' }}
-                                        value={product.description}
-                                        onChange={(e) => setProduct({ ...product, description: e.target.value })}
-                                    ></textarea>
+
+                                    <div className="form-group mb-0">
+                                        <label className="form-label">Trạng thái kinh doanh</label>
+                                        <select
+                                            className="form-control"
+                                            value={product.status}
+                                            onChange={(e) => setProduct({ ...product, status: parseInt(e.target.value) })}
+                                        >
+                                            <option value="1">Đang bán (Hiển thị công khai)</option>
+                                            <option value="0">Tạm ẩn (Ẩn khỏi cửa hàng)</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Show only in CREATE mode */}
+                            {/* RIGHT COLUMN: IMAGES & UPLOAD */}
+                            <div className="right-col">
+                                <div className="card-custom h-100">
+                                    <h3 className="card-custom-title font-oswald"><i className="bi bi-images"></i> ẢNH SẢN PHẨM & THƯ VIỆN</h3>
+
+                                    <div className="gallery-section">
+                                        <label className="form-label-header">Hình ảnh hiện tại ({images.length})</label>
+                                        {images.length === 0 ? (
+                                            <div className="empty-gallery-box">
+                                                <i className="bi bi-image" style={{ fontSize: '32px', color: '#cbd5e1' }}></i>
+                                                <p style={{ color: '#64748b', fontSize: '13px', margin: '8px 0 0' }}>Chưa có hình ảnh nào cho sản phẩm này.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="gallery-grid">
+                                                {images.map((img, idx) => (
+                                                    <div key={img.id || idx} className="gallery-item">
+                                                        <button
+                                                            type="button"
+                                                            className="btn-delete-x"
+                                                            onClick={() => handleDeleteImage(img.id, idx)}
+                                                            title="Xóa ảnh"
+                                                        >
+                                                            <i className="bi bi-x-lg"></i>
+                                                        </button>
+                                                        {img.isPrimary && <span className="badge-primary">ẢNH CHÍNH</span>}
+                                                        <img src={getImageUrl(img)} alt="Product" className="img-fluid" />
+                                                        <div className="img-footer">
+                                                            <button
+                                                                type="button"
+                                                                className={`set-primary-trigger ${img.isPrimary ? 'active' : ''}`}
+                                                                onClick={() => handleSetPrimary(img.id, idx)}
+                                                                disabled={img.isPrimary}
+                                                            >
+                                                                <i className={`bi ${img.isPrimary ? 'bi-star-fill' : 'bi-star'}`}></i> {img.isPrimary ? 'Chính' : 'Đặt chính'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="upload-section" style={{ marginTop: '20px' }}>
+                                        <label className="form-label-header" style={{ marginBottom: '10px', display: 'block' }}>Tải thêm ảnh mới</label>
+                                        <label className="upload-placeholder-large">
+                                            <input type="file" multiple onChange={handleImageUpload} hidden accept="image/*" />
+                                            <div className="upload-content">
+                                                <i className="bi bi-cloud-arrow-up-fill"></i>
+                                                <span>BẤM VÀO ĐỂ TẢI ẢNH LÊN</span>
+                                                <small style={{ color: '#94a3b8', fontSize: '11px' }}>Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB)</small>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* FULL WIDTH BOTTOM CARD: CẤU HÌNH BIẾN THỂ & BẢNG SỬA BIẾN THỂ TRỰC TIẾP */}
+                        <div className="card-custom full-width-card">
+                            <h3 className="card-custom-title font-oswald"><i className="bi bi-box-seam-fill"></i> CẤU HÌNH BIẾN THỂ & BẢNG SỬA TRỰC TIẾP</h3>
+                            
                             {!isEdit && (
-                                <div className="card-custom">
-                                    <h3 className="card-custom-title font-oswald"><i className="bi bi-box-seam"></i> CẤU HÌNH BIẾN THỂ BAN ĐẦU</h3>
+                                <>
                                     <p className="form-label" style={{ marginBottom: '18px', color: '#64748b', fontSize: '13px' }}>
-                                        Thêm Size và Màu sắc bên dưới — hệ thống sẽ tự động tạo toàn bộ biến thể (size × màu) cho sản phẩm.
+                                        Thêm Size và Màu sắc bên dưới — hệ thống sẽ tự động tạo danh sách biến thể (size × màu). Bạn có thể **chỉnh sửa giá bán & tồn kho trực tiếp tại bảng** bên dưới!
                                     </p>
 
                                     {/* SIZE TAG INPUT */}
                                     <TagInput
-                                        label={`KÍCH CỠ (SIZE) * — ${selectedSizes.length} đã chọn`}
+                                        label={`KÍCH CỠ (SIZE) * — ${selectedSizes.length} ĐÃ CHỌN`}
                                         tags={selectedSizes}
                                         onAdd={v => setSelectedSizes(p => [...p, v])}
                                         onRemove={i => setSelectedSizes(p => p.filter((_, idx) => idx !== i))}
@@ -1075,13 +1193,13 @@ const AdminProductForm = () => {
                                         icon="bi-rulers"
                                         presets={['36','37','38','39','40','41','42','43','44','45']}
                                         validate={validateSize}
-                                        hint={`Hợp lệ từ ${SIZE_MIN} (trẻ em) đến ${SIZE_MAX} (người lớn). Chỉ nhập số.`}
+                                        hint={`Hợp lệ từ ${SIZE_MIN} đến ${SIZE_MAX}. Chỉ nhập số.`}
                                     />
-                                    {errors.sizeId && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.sizeId}</div>}
+                                    {errors.sizeId && <div className="text-danger small mt-1 mb-2" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.sizeId}</div>}
 
                                     {/* COLOR TAG INPUT */}
                                     <TagInput
-                                        label={`MÀU SẮC * — ${selectedColors.length} đã chọn`}
+                                        label={`MÀU SẮC * — ${selectedColors.length} ĐÃ CHỌN`}
                                         tags={selectedColors}
                                         onAdd={v => setSelectedColors(p => [...p, v])}
                                         onRemove={i => setSelectedColors(p => p.filter((_, idx) => idx !== i))}
@@ -1093,206 +1211,192 @@ const AdminProductForm = () => {
                                         validate={validateColor}
                                         hint="Chỉ nhập tên màu bằng chữ, không nhập số."
                                     />
-                                    {errors.colorId && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.colorId}</div>}
+                                    {errors.colorId && <div className="text-danger small mt-1 mb-2" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.colorId}</div>}
 
                                     <div className="variant-row" style={{ marginTop: '20px' }}>
-                                        <div className="form-group">
-                                            <label className="form-label">Giá bán (VNĐ) *</label>
+                                        <div className="form-group mb-0">
+                                            <label className="form-label">Giá bán hàng loạt (VNĐ) *</label>
                                             <input
                                                 type="number" min="5000" className="form-control"
-                                                placeholder="VD: 1500000" required
+                                                placeholder="VD: 1500000 (Áp dụng nhanh cho tất cả)"
                                                 value={variant.price}
                                                 onChange={(e) => setVariant({ ...variant, price: e.target.value })}
                                             />
                                             {errors.price && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.price}</div>}
                                         </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Số lượng nhập kho (Mỗi màu & size) *</label>
+                                        <div className="form-group mb-0">
+                                            <label className="form-label">Số lượng tồn kho hàng loạt *</label>
                                             <input
                                                 type="number" min="1" max="10000" className="form-control"
-                                                placeholder="VD: 100" required
+                                                placeholder="VD: 100 (Áp dụng nhanh cho tất cả)"
                                                 value={variant.quantity}
                                                 onChange={(e) => setVariant({ ...variant, quantity: e.target.value })}
                                             />
                                             {errors.quantity && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.quantity}</div>}
                                         </div>
                                     </div>
+                                </>
+                            )}
 
-                                    {/* LIVE VARIANTS MATRIX PREVIEW TABLE */}
-                                    {selectedSizes.length > 0 && selectedColors.length > 0 && (
-                                        <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px dotted #cbd5e1' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-                                                <h4 className="font-oswald" style={{ margin: 0, fontSize: '16px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <i className="bi bi-box-seam" style={{ color: '#8b5cf6' }}></i>
-                                                    DANH SÁCH BIẾN THỂ ({selectedSizes.length * selectedColors.length})
-                                                </h4>
-                                                <span style={{ fontSize: '12px', color: '#64748b' }}>
-                                                    Tự động cập nhật từ <b>{selectedSizes.length} size</b> × <b>{selectedColors.length} màu</b>
-                                                </span>
-                                            </div>
+                            {/* ─── LIVE EDITABLE VARIANTS MATRIX TABLE ─── */}
+                            {((!isEdit && selectedSizes.length > 0 && selectedColors.length > 0) || (isEdit && existingVariants.length > 0)) && (
+                                <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1.5px dashed #cbd5e1' }}>
+                                    <div className="variant-table-header">
+                                        <h4 className="font-oswald variant-table-title">
+                                            <i className="bi bi-pencil-square" style={{ color: '#8b5cf6' }}></i>
+                                            DANH SÁCH & SỬA BIẾN THỂ TRỰC TIẾP ({isEdit ? existingVariants.length : selectedSizes.length * selectedColors.length})
+                                        </h4>
+                                        <span className="variant-table-hint">
+                                            <i className="bi bi-info-circle me-1"></i> Bạn có thể **sửa trực tiếp Giá & Tồn kho** của từng dòng sản phẩm tại bảng dưới đây
+                                        </span>
+                                    </div>
 
-                                            <div className="table-responsive" style={{ background: '#ffffff', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-                                                <table className="table table-hover align-middle mb-0" style={{ fontSize: '13px' }}>
-                                                    <thead style={{ background: '#f8fafc', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px' }}>
-                                                        <tr>
-                                                            <th style={{ padding: '12px 16px' }}>KÍCH CỠ</th>
-                                                            <th style={{ padding: '12px 16px' }}>MÀU SẮC</th>
-                                                            <th style={{ padding: '12px 16px' }}>GIÁ BÁN</th>
-                                                            <th style={{ padding: '12px 16px' }}>KHO</th>
-                                                            <th style={{ padding: '12px 16px', textAlign: 'center' }}>HÀNH ĐỘNG</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {selectedSizes.map((size) =>
-                                                            selectedColors.map((color) => {
-                                                                const key = `${size}-${color}`;
-                                                                const displayPrice = variant.price ? `${parseInt(variant.price).toLocaleString('vi-VN')} đ` : 'Chưa nhập';
-                                                                const displayQty = variant.quantity ? `${variant.quantity} đôi` : 'Chưa nhập';
-                                                                return (
-                                                                    <tr key={key}>
-                                                                        <td style={{ padding: '12px 16px', fontWeight: '700', color: '#0f172a' }}>
-                                                                            Size {size}
-                                                                        </td>
-                                                                        <td style={{ padding: '12px 16px', color: '#334155' }}>
-                                                                            {color}
-                                                                        </td>
-                                                                        <td style={{ padding: '12px 16px', fontWeight: '700', color: '#2563eb' }}>
-                                                                            {displayPrice}
-                                                                        </td>
-                                                                        <td style={{ padding: '12px 16px' }}>
-                                                                            <span className="badge" style={{ background: '#dcfce7', color: '#15803d', padding: '6px 12px', borderRadius: '20px', fontWeight: '700', fontSize: '12px' }}>
-                                                                                {displayQty}
-                                                                            </span>
-                                                                        </td>
-                                                                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                    <div className="table-responsive variant-matrix-wrapper">
+                                        <table className="table table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ width: '15%' }}>KÍCH CỠ</th>
+                                                    <th style={{ width: '20%' }}>MÀU SẮC</th>
+                                                    <th style={{ width: '30%' }}>GIÁ BÁN (VNĐ)</th>
+                                                    <th style={{ width: '25%' }}>SỐ LƯỢNG KHO</th>
+                                                    <th style={{ width: '10%', textAlign: 'center' }}>HÀNH ĐỘNG</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {isEdit ? (
+                                                    // EDIT MODE ROWS
+                                                    existingVariants.map((vItem, index) => {
+                                                        return (
+                                                            <tr key={vItem.id || index} className={vItem.isModified ? 'row-modified' : ''}>
+                                                                <td>
+                                                                    <span className="variant-badge-size">Size {vItem.sizeName}</span>
+                                                                </td>
+                                                                <td>
+                                                                    <span className="variant-chip-color">{vItem.colorName}</span>
+                                                                </td>
+                                                                <td>
+                                                                    <div className="inline-input-group">
+                                                                        <input
+                                                                            type="number"
+                                                                            min="5000"
+                                                                            className="form-control variant-inline-input"
+                                                                            value={vItem.price}
+                                                                            onChange={(e) => handleExistingVariantChange(index, 'price', e.target.value)}
+                                                                            placeholder="Nhập giá..."
+                                                                        />
+                                                                        <span className="currency-unit">đ</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <div className="inline-input-group">
+                                                                        <input
+                                                                            type="number"
+                                                                            min="0"
+                                                                            className="form-control variant-inline-input"
+                                                                            value={vItem.quantity}
+                                                                            onChange={(e) => handleExistingVariantChange(index, 'quantity', e.target.value)}
+                                                                            placeholder="Nhập kho..."
+                                                                        />
+                                                                        <span className="currency-unit">đôi</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td style={{ textAlign: 'center' }}>
+                                                                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                                                        {vItem.isModified && (
                                                                             <button
                                                                                 type="button"
-                                                                                className="btn btn-sm btn-outline-danger"
-                                                                                title="Xóa biến thể này"
-                                                                                onClick={() => {
-                                                                                    // Remove size if it's the only one, or clear combo
-                                                                                    if (selectedSizes.length > 1) {
-                                                                                        setSelectedSizes(p => p.filter(s => s !== size));
-                                                                                    } else {
-                                                                                        setSelectedColors(p => p.filter(c => c !== color));
-                                                                                    }
-                                                                                }}
-                                                                                style={{ borderRadius: '8px', padding: '4px 10px' }}
+                                                                                className="btn btn-sm btn-success"
+                                                                                title="Lưu ngay biến thể này"
+                                                                                onClick={() => handleSaveSingleVariant(vItem)}
+                                                                                style={{ borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
                                                                             >
-                                                                                <i className="bi bi-trash"></i>
+                                                                                <i className="bi bi-check-lg"></i>
                                                                             </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            })
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    )}
+                                                                        )}
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn btn-sm btn-outline-danger"
+                                                                            title="Xóa biến thể này khỏi sản phẩm"
+                                                                            onClick={() => handleDeleteExistingVariant(vItem.id, index)}
+                                                                            style={{ borderRadius: '8px', padding: '4px 8px', fontSize: '12px' }}
+                                                                        >
+                                                                            <i className="bi bi-trash"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    // CREATE MODE ROWS
+                                                    selectedSizes.map((size) =>
+                                                        selectedColors.map((color) => {
+                                                            const key = `${size}-${color}`;
+                                                            const custom = variantOverrides[key] || {};
+                                                            const currentPrice = custom.price !== undefined ? custom.price : variant.price;
+                                                            const currentQty = custom.quantity !== undefined ? custom.quantity : variant.quantity;
+
+                                                            return (
+                                                                <tr key={key}>
+                                                                    <td>
+                                                                        <span className="variant-badge-size">Size {size}</span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <span className="variant-chip-color">{color}</span>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div className="inline-input-group">
+                                                                            <input
+                                                                                type="number"
+                                                                                min="5000"
+                                                                                className="form-control variant-inline-input"
+                                                                                value={currentPrice}
+                                                                                onChange={(e) => handleOverrideChange(size, color, 'price', e.target.value)}
+                                                                                placeholder="Nhập giá bán..."
+                                                                            />
+                                                                            <span className="currency-unit">đ</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div className="inline-input-group">
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                className="form-control variant-inline-input"
+                                                                                value={currentQty}
+                                                                                onChange={(e) => handleOverrideChange(size, color, 'quantity', e.target.value)}
+                                                                                placeholder="Số lượng..."
+                                                                            />
+                                                                            <span className="currency-unit">đôi</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td style={{ textAlign: 'center' }}>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn btn-sm btn-outline-danger"
+                                                                            title="Xóa biến thể này"
+                                                                            onClick={() => {
+                                                                                if (selectedSizes.length > 1) {
+                                                                                    setSelectedSizes(p => p.filter(s => s !== size));
+                                                                                } else {
+                                                                                    setSelectedColors(p => p.filter(c => c !== color));
+                                                                                }
+                                                                            }}
+                                                                            style={{ borderRadius: '8px', padding: '4px 10px' }}
+                                                                        >
+                                                                            <i className="bi bi-trash"></i>
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })
+                                                    )
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             )}
-                        </div>
-
-                        <div className="right-col">
-                            <div className="card-custom">
-                                <h3 className="card-custom-title font-oswald"><i className="bi bi-images"></i> ẢNH SẢN PHẨM</h3>
-
-                                <div className="gallery-section">
-                                    <label className="form-label-header">Hình ảnh hiện tại</label>
-                                    {images.length === 0 ? (
-                                        <p style={{ color: '#555', fontSize: '12px', fontStyle: 'italic', marginBottom: '20px' }}>Chưa có hình ảnh nào cho sản phẩm này.</p>
-                                    ) : (
-                                        <div className="gallery-grid">
-                                            {images.map((img, idx) => (
-                                                <div key={img.id || idx} className="gallery-item" style={{ position: 'relative' }}>
-                                                    <button
-                                                        type="button"
-                                                        className="btn-delete-x"
-                                                        onClick={() => handleDeleteImage(img.id, idx)}
-                                                        title="Xóa ảnh này"
-                                                        style={{
-                                                            position: 'absolute',
-                                                            top: '6px',
-                                                            right: '6px',
-                                                            width: '24px',
-                                                            height: '24px',
-                                                            borderRadius: '50%',
-                                                            background: 'rgba(239, 68, 68, 0.9)',
-                                                            color: '#ffffff',
-                                                            border: 'none',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            cursor: 'pointer',
-                                                            fontSize: '12px',
-                                                            fontWeight: 'bold',
-                                                            zIndex: 10,
-                                                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-                                                            transition: 'all 0.15s ease'
-                                                        }}
-                                                    >
-                                                        <i className="bi bi-x-lg"></i>
-                                                    </button>
-                                                    {img.isPrimary && <span className="badge-primary">ẢNH CHÍNH</span>}
-                                                    <img src={getImageUrl(img)} alt="Product" className="img-fluid" />
-                                                    <div className="img-footer">
-                                                        <button type="button" className={`set-primary-trigger ${img.isPrimary ? 'active' : ''}`} onClick={() => handleSetPrimary(img.id, idx)} disabled={img.isPrimary}>
-                                                            <i className={`bi ${img.isPrimary ? 'bi-star-fill' : 'bi-star'}`}></i> Đặt chính
-                                                        </button>
-                                                        <button type="button" className="delete-trigger" onClick={() => handleDeleteImage(img.id, idx)}>
-                                                            <i className="bi bi-trash"></i> Xóa
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="upload-section" style={{ marginTop: '25px' }}>
-                                    <label className="form-label-header" style={{ marginBottom: '10px', display: 'block' }}>Tải thêm ảnh mới</label>
-                                    <label className="upload-placeholder-large">
-                                        <input type="file" multiple onChange={handleImageUpload} hidden accept="image/*" />
-                                        <div className="upload-content">
-                                            <i className="bi bi-cloud-arrow-up"></i>
-                                            <span>BẤM VÀO ĐỂ TẢI ẢNH LÊN</span>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="card-custom">
-                                <h3 className="card-custom-title font-oswald"><i className="bi bi-tags"></i> PHÂN LOẠI & TRẠNG THÁI</h3>
-                                <div className="form-group">
-                                    <label className="form-label">Danh mục *</label>
-                                    <select className="form-control" required value={product.categoryId} onChange={(e) => setProduct({ ...product, categoryId: e.target.value })}>
-                                        <option value="">-- Chọn danh mục --</option>
-                                        {categories.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                    {errors.categoryId && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.categoryId}</div>}
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Thương hiệu *</label>
-                                    <select className="form-control" required value={product.brandName} onChange={(e) => setProduct({ ...product, brandName: e.target.value })}>
-                                        <option value="">-- Chọn thương hiệu --</option>
-                                        {brands.map(b => (
-                                            <option key={b.id} value={b.brandName}>{b.brandName}</option>
-                                        ))}
-                                    </select>
-                                    {errors.brandName && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.brandName}</div>}
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Trạng thái</label>
-                                    <select className="form-control" value={product.status} onChange={(e) => setProduct({ ...product, status: parseInt(e.target.value) })}>
-                                        <option value="1">Đang bán</option>
-                                        <option value="0">Tạm ẩn</option>
-                                    </select>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </form>
@@ -1308,7 +1412,7 @@ const AdminProductForm = () => {
                             {isEdit ? 'Cập nhật thành công!' : 'Tạo mới thành công!'}
                         </h4>
                         <p className="admin-confirm-message">
-                            {isEdit ? 'Sản phẩm đã được cập nhật thành công vào hệ thống!' : 'Sản phẩm mới đã được tạo thành công!'}
+                            {isEdit ? 'Sản phẩm và các biến thể đã được lưu thành công vào hệ thống!' : 'Sản phẩm mới đã được tạo thành công!'}
                         </p>
                         <div className="admin-confirm-actions">
                             <button type="button" className="admin-btn-confirm-ok" onClick={() => {
