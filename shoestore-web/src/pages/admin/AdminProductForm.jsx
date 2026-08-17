@@ -4,6 +4,61 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
 import './AdminProductForm.css';
 
+// ─── LocalStorage helpers for custom Sizes & Colors ──────────────────────────
+const getStoredCustomSizes = () => {
+    try {
+        const raw = localStorage.getItem('shoestore_custom_sizes');
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+};
+
+const getStoredCustomColors = () => {
+    try {
+        const raw = localStorage.getItem('shoestore_custom_colors');
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+};
+
+const saveCustomSizeToStorage = (newSize) => {
+    if (!newSize) return;
+    try {
+        const existing = getStoredCustomSizes();
+        if (!existing.some(s => s.toLowerCase() === newSize.trim().toLowerCase())) {
+            const updated = [...existing, newSize.trim()];
+            localStorage.setItem('shoestore_custom_sizes', JSON.stringify(updated));
+        }
+    } catch {}
+};
+
+const saveCustomColorToStorage = (newColor) => {
+    if (!newColor) return;
+    try {
+        const existing = getStoredCustomColors();
+        if (!existing.some(c => c.toLowerCase() === newColor.trim().toLowerCase())) {
+            const updated = [...existing, newColor.trim()];
+            localStorage.setItem('shoestore_custom_colors', JSON.stringify(updated));
+        }
+    } catch {}
+};
+
+const removeCustomSizeFromStorage = (sizeName) => {
+    if (!sizeName) return;
+    try {
+        const existing = getStoredCustomSizes();
+        const updated = existing.filter(s => s.toLowerCase() !== sizeName.trim().toLowerCase());
+        localStorage.setItem('shoestore_custom_sizes', JSON.stringify(updated));
+    } catch {}
+};
+
+const removeCustomColorFromStorage = (colorName) => {
+    if (!colorName) return;
+    try {
+        const existing = getStoredCustomColors();
+        const updated = existing.filter(c => c.toLowerCase() !== colorName.trim().toLowerCase());
+        localStorage.setItem('shoestore_custom_colors', JSON.stringify(updated));
+    } catch {}
+};
+
 const translateColorToVietnamese = (name) => {
     if (!name) return "";
     let clean = name.trim();
@@ -61,7 +116,7 @@ const validateColor = (val) => {
 };
 
 // ─── TagInput Component ──────────────────────────────────────────────────────
-const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholder, icon, presets = [], validate, hint }) => {
+const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, onDeletePreset, placeholder, icon, presets = [], validate, hint }) => {
     const [inputVal, setInputVal] = useState("");
     const [editingIdx, setEditingIdx] = useState(null);
     const [editVal, setEditVal] = useState("");
@@ -165,16 +220,30 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, placeholde
                     {presets.map((p) => {
                         const selected = tags.some(t => t.toLowerCase() === p.toLowerCase());
                         return (
-                            <button
-                                key={p}
-                                type="button"
-                                className={`preset-chip ${selected ? "selected" : ""}`}
-                                onClick={() => !selected && handleAdd(p)}
-                                title={selected ? "Đã chọn" : `Thêm "${p}"`}
-                            >
-                                {selected ? <i className="bi bi-check2"></i> : <i className="bi bi-plus"></i>}
-                                {p}
-                            </button>
+                            <div key={p} className={`preset-chip-wrapper ${selected ? "selected" : ""}`}>
+                                <button
+                                    type="button"
+                                    className={`preset-chip ${selected ? "selected" : ""}`}
+                                    onClick={() => !selected && handleAdd(p)}
+                                    title={selected ? "Đã chọn" : `Thêm "${p}"`}
+                                >
+                                    {selected ? <i className="bi bi-check2"></i> : <i className="bi bi-plus"></i>}
+                                    {p}
+                                </button>
+                                {onDeletePreset && (
+                                    <button
+                                        type="button"
+                                        className="preset-chip-delete-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDeletePreset(p);
+                                        }}
+                                        title={`Xóa tùy chọn "${p}"`}
+                                    >
+                                        <i className="bi bi-x-lg"></i>
+                                    </button>
+                                )}
+                            </div>
                         );
                     })}
                 </div>
@@ -278,6 +347,35 @@ const AdminProductForm = () => {
     const [sizes, setSizes] = useState([]);
     const [colors, setColors] = useState([]);
 
+    // Extra deleted presets state to hide deleted chips immediately
+    const [deletedSizePresets, setDeletedSizePresets] = useState([]);
+    const [deletedColorPresets, setDeletedColorPresets] = useState([]);
+
+    // Preset Chip Deletion Handlers
+    const handleDeleteSizePreset = async (sizeName) => {
+        if (!sizeName) return;
+        removeCustomSizeFromStorage(sizeName);
+        setSelectedSizes(prev => prev.filter(s => s.toLowerCase() !== sizeName.toLowerCase()));
+        setSizes(prev => prev.filter(s => s.sizeName.trim().toLowerCase() !== sizeName.toLowerCase()));
+        setDeletedSizePresets(prev => [...prev, sizeName.toLowerCase()]);
+        try {
+            await api.post("/api/products/size/delete-name", { sizeName });
+        } catch {}
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã xóa tùy chọn Size ${sizeName}` }));
+    };
+
+    const handleDeleteColorPreset = async (colorName) => {
+        if (!colorName) return;
+        removeCustomColorFromStorage(colorName);
+        setSelectedColors(prev => prev.filter(c => c.toLowerCase() !== colorName.toLowerCase()));
+        setColors(prev => prev.filter(c => translateColorToVietnamese(c.colorName).toLowerCase() !== colorName.toLowerCase()));
+        setDeletedColorPresets(prev => [...prev, colorName.toLowerCase()]);
+        try {
+            await api.post("/api/products/color/delete-name", { colorName });
+        } catch {}
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã xóa tùy chọn Màu ${colorName}` }));
+    };
+
     const [images, setImages] = useState([]); // List of { id, url, isPrimary }
     const [tempImages, setTempImages] = useState([]); // Local temporary images
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -314,19 +412,25 @@ const AdminProductForm = () => {
 
         try {
             setGeneratingDesc(true);
+            const selectedCat = categories.find(c => String(c.id) === String(product.categoryId));
+            const selectedCatName = selectedCat ? selectedCat.name : null;
+
             const response = await api.post('/api/products/ai-extract', {
                 imageBase64: firstBase64 || null,
-                productName: trimmedName || null
+                productName: trimmedName || null,
+                brandName: product.brandName || null,
+                categoryName: selectedCatName || null
             });
 
             if (response.data && response.data.success) {
                 const data = response.data;
-                const rawDesc = data.description || '';
-                const finalDesc = data.description || rawDesc;
+                const finalDesc = data.description || '';
+
+                const cleanName = (str) => str ? str.replace(/^(giày|giay)\s+/i, '').trim() : '';
 
                 setProduct(prev => ({
                     ...prev,
-                    productName: prev.productName || data.productName || '',
+                    productName: (prev.productName && prev.productName.trim()) ? cleanName(prev.productName) : (cleanName(data.productName) || ''),
                     description: finalDesc,
                     brandName: prev.brandName || data.brandName || '',
                     categoryId: prev.categoryId || data.categoryId || ''
@@ -342,7 +446,7 @@ const AdminProductForm = () => {
                     });
                 }
 
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: '✨ AI Vision đã tự động tạo mô tả sản phẩm thành công!' }));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'AI Vision đã tự động tạo mô tả sản phẩm thành công!' }));
             } else {
                 alert(response.data?.message || "Không thể tạo mô tả bằng AI.");
             }
@@ -355,14 +459,13 @@ const AdminProductForm = () => {
         }
     };
 
-    const handleClearAiBasicInfo = () => {
-        if (window.confirm("Bạn có chắc chắn muốn xóa Tên sản phẩm và Mô tả chi tiết do AI vừa tạo ra không?")) {
+    const handleClearDescription = () => {
+        if (window.confirm("Bạn có chắc chắn muốn xóa Mô tả chi tiết sản phẩm không?")) {
             setProduct(prev => ({
                 ...prev,
-                productName: '',
                 description: ''
             }));
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xóa thông tin Tên & Mô tả sản phẩm.' }));
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xóa mô tả chi tiết sản phẩm.' }));
         }
     };
 
@@ -425,12 +528,24 @@ const AdminProductForm = () => {
                 }
             }
 
-            const response = await api.post('/api/products/ai-extract', { imageBase64: firstBase64 });
+            const selectedCat = categories.find(c => String(c.id) === String(product.categoryId));
+            const selectedCatName = selectedCat ? selectedCat.name : null;
+
+            const response = await api.post('/api/products/ai-extract', {
+                imageBase64: firstBase64,
+                fileName: files[0]?.name || null,
+                productName: product.productName || null,
+                brandName: product.brandName || null,
+                categoryName: selectedCatName || null
+            });
+
             if (response.data && response.data.success) {
                 const data = response.data;
+                const cleanName = (str) => str ? str.replace(/^(giày|giay)\s+/i, '').trim() : '';
+
                 setProduct(prev => ({
                     ...prev,
-                    productName: data.productName || prev.productName,
+                    productName: cleanName(data.productName) || prev.productName,
                     description: data.description || prev.description,
                     brandName: data.brandName || prev.brandName,
                     categoryId: data.categoryId || prev.categoryId
@@ -904,7 +1019,7 @@ const AdminProductForm = () => {
                             {!isEdit && (
                                 <button
                                     type="button"
-                                    className="btn-cancel btn-refresh-form"
+                                    className="btn-refresh"
                                     onClick={() => {
                                         if (window.confirm("Bạn có chắc chắn muốn làm mới toàn bộ form?")) {
                                             setProduct({ productName: '', description: '', status: 1, brandName: '', categoryId: '' });
@@ -941,52 +1056,6 @@ const AdminProductForm = () => {
                         </div>
                     </div>
 
-                    {/* AI Vision Banner */}
-                    <div className="ai-banner-card">
-                        <div className="ai-banner-header">
-                            <div>
-                                <h3 className="ai-title">
-                                    <i className="bi bi-cpu-fill" style={{ color: '#8b5cf6' }}></i> ĐIỀN THÔNG TIN TỰ ĐỘNG BẰNG AI VISION
-                                    <span className="ai-badge">SMART AI</span>
-                                </h3>
-                                <p className="ai-subtitle">
-                                    Tải ảnh sản phẩm để AI tự động điền Tên, Thương hiệu, Danh mục, Màu sắc, Size & Mô tả sản phẩm.
-                                </p>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <label className="btn-ai-upload">
-                                    <input type="file" accept="image/*" multiple onChange={handleAiAutoFill} hidden disabled={aiAnalyzing} />
-                                    {aiAnalyzing ? (
-                                        <>
-                                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                            AI ĐANG PHÂN TÍCH...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="bi bi-cloud-arrow-up-fill"></i> {aiSuccessMsg ? 'TẠO MỚI (TẢI LẠI ẢNH)' : 'TẢI ẢNH ĐỂ ĐIỀN TỰ ĐỘNG'}
-                                        </>
-                                    )}
-                                </label>
-
-                                {aiSuccessMsg && (
-                                    <button
-                                        type="button"
-                                        className="btn-ai-reset"
-                                        onClick={handleResetAiForm}
-                                        title="Hủy dữ liệu AI vừa điền"
-                                    >
-                                        <i className="bi bi-trash-fill"></i> HỦY DỮ LIỆU AI
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        {aiSuccessMsg && (
-                            <div className="ai-alert-success">
-                                <i className="bi bi-check-circle-fill" style={{ fontSize: '18px' }}></i> {aiSuccessMsg}
-                            </div>
-                        )}
-                    </div>
-
                     {/* FORM MAIN GRID */}
                     <div className="form-main-layout">
                         <div className="form-top-row">
@@ -1001,10 +1070,10 @@ const AdminProductForm = () => {
                                         <button
                                             type="button"
                                             className="btn-clear-ai-info"
-                                            onClick={handleClearAiBasicInfo}
-                                            title="Xóa Tên sản phẩm và Mô tả do AI vừa tạo"
+                                            onClick={handleClearDescription}
+                                            title="Xóa Mô tả chi tiết sản phẩm"
                                         >
-                                            <i className="bi bi-trash3"></i> XÓA THÔNG TIN AI
+                                            <i className="bi bi-trash3"></i> XÓA MÔ TẢ
                                         </button>
                                     </div>
 
@@ -1033,7 +1102,7 @@ const AdminProductForm = () => {
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <i className="bi bi-stars" style={{ color: '#fef08a' }}></i> TẠO MÔ TẢ AI
+                                                        <i className="bi bi-stars" style={{ color: '#ffffff' }}></i> TẠO MÔ TẢ AI
                                                     </>
                                                 )}
                                             </button>
@@ -1042,17 +1111,7 @@ const AdminProductForm = () => {
                                     </div>
 
                                     <div className="form-group">
-                                        <div className="label-with-action">
-                                            <label className="form-label mb-0">Mô tả chi tiết</label>
-                                            <button
-                                                type="button"
-                                                className="btn-link-ai"
-                                                onClick={handleGenerateAiDescription}
-                                                disabled={generatingDesc}
-                                            >
-                                                <i className="bi bi-magic"></i> {generatingDesc ? "Đang tạo..." : "Tạo bằng AI Vision"}
-                                            </button>
-                                        </div>
+                                        <label className="form-label">Mô tả chi tiết</label>
                                         <textarea
                                             className="form-control"
                                             placeholder="Chất liệu da cao cấp, công nghệ đệm khí tiên tiến, kiểu dáng thời trang đường phố..."
@@ -1117,7 +1176,14 @@ const AdminProductForm = () => {
                             {/* RIGHT COLUMN: IMAGES & UPLOAD */}
                             <div className="right-col">
                                 <div className="card-custom h-100">
-                                    <h3 className="card-custom-title font-oswald"><i className="bi bi-images"></i> ẢNH SẢN PHẨM & THƯ VIỆN</h3>
+                                    <div className="card-header-flex mb-3">
+                                        <h3 className="card-custom-title font-oswald mb-0" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                                            <i className="bi bi-images"></i> ẢNH SẢN PHẨM & THƯ VIỆN
+                                        </h3>
+                                        <span className="ai-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                            <i className="bi bi-cpu-fill" style={{ color: '#ef4444' }}></i> SMART AI VISION
+                                        </span>
+                                    </div>
 
                                     <div className="gallery-section">
                                         <label className="form-label-header">Hình ảnh hiện tại ({images.length})</label>
@@ -1156,16 +1222,71 @@ const AdminProductForm = () => {
                                         )}
                                     </div>
 
-                                    <div className="upload-section" style={{ marginTop: '20px' }}>
-                                        <label className="form-label-header" style={{ marginBottom: '10px', display: 'block' }}>Tải thêm ảnh mới</label>
-                                        <label className="upload-placeholder-large">
-                                            <input type="file" multiple onChange={handleImageUpload} hidden accept="image/*" />
-                                            <div className="upload-content">
-                                                <i className="bi bi-cloud-arrow-up-fill"></i>
-                                                <span>BẤM VÀO ĐỂ TẢI ẢNH LÊN</span>
-                                                <small style={{ color: '#94a3b8', fontSize: '11px' }}>Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB)</small>
+                                    {/* SECTION 2: UPLOAD BOXES (NORMAL FIRST, AI SECOND AT BOTTOM) */}
+                                    <div className="upload-boxes-container" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                        
+                                        {/* BOX 1 (TOP): STANDARD GALLERY UPLOAD BOX */}
+                                        <div className="normal-upload-box-card">
+                                            <span className="box-title-label font-oswald mb-2" style={{ display: 'block' }}>
+                                                <i className="bi bi-cloud-arrow-up-fill" style={{ color: '#0f172a' }}></i> TẢI THÊM ẢNH VÀO THƯ VIỆN (TẢI THƯỜNG)
+                                            </span>
+
+                                            <label className="upload-box-normal-dropzone">
+                                                <input type="file" multiple onChange={handleImageUpload} hidden accept="image/*" />
+                                                <div className="dropzone-inner-content">
+                                                    <div className="dropzone-icon-title">
+                                                        <i className="bi bi-images" style={{ color: '#0f172a', fontSize: '18px' }}></i>
+                                                        <span className="btn-text-normal">CHỌN ẢNH TẢI VÀO THƯ VIỆN</span>
+                                                    </div>
+                                                    <small className="dropzone-hint">Hỗ trợ JPG, PNG, WEBP (Tối đa 10MB per file)</small>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        {/* BOX 2 (BOTTOM): AI AUTO-FILL UPLOAD BOX */}
+                                        <div className="ai-upload-box-card">
+                                            <div className="box-header-flex">
+                                                <span className="box-title-label font-oswald">
+                                                    <i className="bi bi-cpu-fill" style={{ color: '#e50914' }}></i> TẢI ẢNH & ĐIỀN TỰ ĐỘNG BẰNG AI
+                                                </span>
+                                                {aiSuccessMsg && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn-link-ai"
+                                                        style={{ color: '#e50914', fontSize: '11.5px' }}
+                                                        onClick={handleResetAiForm}
+                                                        title="Hủy dữ liệu AI vừa điền"
+                                                    >
+                                                        <i className="bi bi-trash-fill"></i> HỦY DỮ LIỆU AI
+                                                    </button>
+                                                )}
                                             </div>
-                                        </label>
+
+                                            {aiSuccessMsg && (
+                                                <div className="ai-alert-success mb-2" style={{ fontSize: '12px', padding: '6px 10px' }}>
+                                                    <i className="bi bi-check-circle-fill me-1"></i> {aiSuccessMsg}
+                                                </div>
+                                            )}
+
+                                            <label className="upload-box-ai-dropzone">
+                                                <input type="file" accept="image/*" multiple onChange={handleAiAutoFill} hidden disabled={aiAnalyzing} />
+                                                {aiAnalyzing ? (
+                                                    <div className="dropzone-inner-loading">
+                                                        <span className="spinner-border spinner-border-sm text-danger" role="status" aria-hidden="true" style={{ width: '20px', height: '20px' }}></span>
+                                                        <span style={{ color: '#e50914' }}>AI VISION ĐANG ĐỌC ẢNH & TỰ ĐỘNG ĐIỀN FORM...</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="dropzone-inner-content">
+                                                        <div className="dropzone-icon-title" style={{ color: '#e50914' }}>
+                                                            <i className="bi bi-stars" style={{ color: '#e50914', fontSize: '18px' }}></i>
+                                                            <span className="btn-text-ai" style={{ color: '#e50914', fontWeight: 800 }}>BẤM ĐỂ AI TỰ ĐỘNG ĐIỀN SẢN PHẨM</span>
+                                                        </div>
+                                                        <small className="dropzone-hint" style={{ color: '#64748b' }}>AI sẽ đọc Tên, Thương hiệu, Mô tả, Màu sắc & Size từ ảnh</small>
+                                                    </div>
+                                                )}
+                                            </label>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -1185,15 +1306,31 @@ const AdminProductForm = () => {
                                     <TagInput
                                         label={`KÍCH CỠ (SIZE) * — ${selectedSizes.length} ĐÃ CHỌN`}
                                         tags={selectedSizes}
-                                        onAdd={v => setSelectedSizes(p => [...p, v])}
+                                        onAdd={v => {
+                                            saveCustomSizeToStorage(v);
+                                            setSelectedSizes(p => [...p, v]);
+                                            setDeletedSizePresets(p => p.filter(s => s.toLowerCase() !== v.toLowerCase()));
+                                        }}
                                         onRemove={i => setSelectedSizes(p => p.filter((_, idx) => idx !== i))}
-                                        onEdit={(i, v) => setSelectedSizes(p => p.map((s, idx) => idx === i ? v : s))}
+                                        onEdit={(i, v) => { saveCustomSizeToStorage(v); setSelectedSizes(p => p.map((s, idx) => idx === i ? v : s)); }}
                                         onClearAll={() => setSelectedSizes([])}
+                                        onDeletePreset={handleDeleteSizePreset}
                                         placeholder="Hoặc nhập size thủ công rồi Enter…"
                                         icon="bi-rulers"
-                                        presets={['36','37','38','39','40','41','42','43','44','45']}
+                                        presets={Array.from(new Set([
+                                            '18','20','22','24','26','28','30','32','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48',
+                                            ...(sizes || []).map(s => s.sizeName ? s.sizeName.trim() : ''),
+                                            ...getStoredCustomSizes(),
+                                            ...selectedSizes
+                                        ]))
+                                            .filter(Boolean)
+                                            .filter(s => !deletedSizePresets.includes(s.toLowerCase()))
+                                            .sort((a, b) => {
+                                                const nA = parseFloat(a), nB = parseFloat(b);
+                                                return (!isNaN(nA) && !isNaN(nB)) ? nA - nB : a.localeCompare(b);
+                                            })}
                                         validate={validateSize}
-                                        hint={`Hợp lệ từ ${SIZE_MIN} đến ${SIZE_MAX}. Chỉ nhập số.`}
+                                        hint={`Hợp lệ từ ${SIZE_MIN} đến ${SIZE_MAX}. Chỉ nhập số. Rê chuột vào chip để xóa.`}
                                     />
                                     {errors.sizeId && <div className="text-danger small mt-1 mb-2" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.sizeId}</div>}
 
@@ -1201,15 +1338,27 @@ const AdminProductForm = () => {
                                     <TagInput
                                         label={`MÀU SẮC * — ${selectedColors.length} ĐÃ CHỌN`}
                                         tags={selectedColors}
-                                        onAdd={v => setSelectedColors(p => [...p, v])}
+                                        onAdd={v => {
+                                            saveCustomColorToStorage(v);
+                                            setSelectedColors(p => [...p, v]);
+                                            setDeletedColorPresets(p => p.filter(c => c.toLowerCase() !== v.toLowerCase()));
+                                        }}
                                         onRemove={i => setSelectedColors(p => p.filter((_, idx) => idx !== i))}
-                                        onEdit={(i, v) => setSelectedColors(p => p.map((c, idx) => idx === i ? v : c))}
+                                        onEdit={(i, v) => { saveCustomColorToStorage(v); setSelectedColors(p => p.map((c, idx) => idx === i ? v : c)); }}
                                         onClearAll={() => setSelectedColors([])}
+                                        onDeletePreset={handleDeleteColorPreset}
                                         placeholder="Hoặc nhập tên màu thủ công rồi Enter…"
                                         icon="bi-palette"
-                                        presets={['Đen','Trắng','Đỏ','Xanh dương','Xanh lá','Vàng','Hồng','Xám','Nâu','Cam','Tím','Kem','Be']}
+                                        presets={Array.from(new Set([
+                                            'Đen','Trắng','Đỏ','Xanh dương','Xanh lá','Vàng','Hồng','Xám','Nâu','Cam','Tím','Kem','Be',
+                                            ...(colors || []).map(c => translateColorToVietnamese(c.colorName)),
+                                            ...getStoredCustomColors(),
+                                            ...selectedColors
+                                        ]))
+                                            .filter(Boolean)
+                                            .filter(c => !deletedColorPresets.includes(c.toLowerCase()))}
                                         validate={validateColor}
-                                        hint="Chỉ nhập tên màu bằng chữ, không nhập số."
+                                        hint="Chỉ nhập tên màu bằng chữ, không nhập số. Rê chuột vào chip để xóa."
                                     />
                                     {errors.colorId && <div className="text-danger small mt-1 mb-2" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.colorId}</div>}
 
@@ -1243,7 +1392,7 @@ const AdminProductForm = () => {
                                 <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1.5px dashed #cbd5e1' }}>
                                     <div className="variant-table-header">
                                         <h4 className="font-oswald variant-table-title">
-                                            <i className="bi bi-pencil-square" style={{ color: '#8b5cf6' }}></i>
+                                            <i className="bi bi-pencil-square" style={{ color: '#e50914' }}></i>
                                             DANH SÁCH & SỬA BIẾN THỂ TRỰC TIẾP ({isEdit ? existingVariants.length : selectedSizes.length * selectedColors.length})
                                         </h4>
                                         <span className="variant-table-hint">

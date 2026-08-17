@@ -42,21 +42,31 @@ const QuickCartModal = ({ productId, isOpen = true, onClose }) => {
     };
 
     const handleAddToCart = async () => {
-        if (!selectedVariantId) { alert("Vui lòng chọn phân loại!"); return; }
+        if (!selectedVariantId) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng chọn Kích cỡ & Màu sắc!' }));
+            return;
+        }
         const variant = variants.find(v => v.id === selectedVariantId);
-        if (!variant || variant.quantity <= 0) { alert("Sản phẩm này đã hết hàng!"); return; }
+        if (!variant || variant.quantity <= 0) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Sản phẩm này đã hết hàng!' }));
+            return;
+        }
         
         try {
             const response = await api.post('/api/cart/add', { variantId: selectedVariantId, quantity: qty });
             if (response.data && response.data.success) {
                 onClose();
                 window.dispatchEvent(new Event('cartUpdated'));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã thêm ${qty} sản phẩm vào giỏ hàng thành công!` }));
             } else {
-                alert(response.data.message || 'Lỗi thêm vào giỏ hàng.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || 'Lỗi thêm vào giỏ hàng.' }));
             }
         } catch (err) {
-            if (err.response && err.response.status === 401) alert('Vui lòng đăng nhập!');
-            else alert('Lỗi xử lý giỏ hàng.');
+            if (err.response && err.response.status === 401) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập để thêm vào giỏ hàng!' }));
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi xử lý giỏ hàng.' }));
+            }
         }
     };
 

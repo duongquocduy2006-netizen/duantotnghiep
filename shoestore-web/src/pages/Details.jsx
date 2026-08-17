@@ -278,7 +278,6 @@ const Details = () => {
     };
 
     const handleDeleteReview = async (id) => {
-        if (!window.confirm("Bạn có chắc muốn xóa bình luận này?")) return;
         try {
             const fd = new FormData();
             fd.append("id", id);
@@ -393,28 +392,38 @@ const Details = () => {
     const handleAddToCart = async () => {
         setCartError('');
         setCartSuccess('');
-        if (!selectedVariantId) { setCartError("Vui lòng chọn Size & Màu sắc!"); return; }
-        if (currentStock <= 0) { setCartError("Sản phẩm này hết hàng!"); return; }
+        if (!selectedVariantId) {
+            setCartError("Vui lòng chọn Size & Màu sắc!");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng chọn Size & Màu sắc!' }));
+            return;
+        }
+        if (currentStock <= 0) {
+            setCartError("Sản phẩm này hết hàng!");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Sản phẩm này đã hết hàng!' }));
+            return;
+        }
         try {
             const response = await api.post('/api/cart/add', { variantId: selectedVariantId, quantity: qty });
             if (response.data && response.data.success) {
                 setCartSuccess(`Đã thêm ${qty} sản phẩm vào giỏ hàng!`);
-                // Clear success message after 3 seconds
                 setTimeout(() => setCartSuccess(''), 3000);
-                
-                // Optionally dispatch an event or trigger a fetch for the minicart here, 
-                // but since reload was used before, we can leave it to the user or trigger a custom event.
-                // For better UX, let's just trigger a custom event that header can listen to, or reload if needed.
-                // Since removing alert, auto-reload can be abrupt. Let's stick with success msg for now.
                 window.dispatchEvent(new Event("cartUpdated"));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã thêm ${qty} sản phẩm vào giỏ hàng thành công!` }));
             } else {
                 setCartError(response.data.message || 'Lỗi thêm vào giỏ hàng.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || 'Lỗi thêm vào giỏ hàng.' }));
             }
         } catch (err) {
-            if (err.response && err.response.status === 401) setCartError('Vui lòng đăng nhập!');
-            else if (err.response && err.response.data && err.response.data.message) {
+            if (err.response && err.response.status === 401) {
+                setCartError('Vui lòng đăng nhập!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập để thêm vào giỏ hàng!' }));
+            } else if (err.response && err.response.data && err.response.data.message) {
                 setCartError(err.response.data.message);
-            } else setCartError('Lỗi xử lý giỏ hàng.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: err.response.data.message }));
+            } else {
+                setCartError('Lỗi xử lý giỏ hàng.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi xử lý giỏ hàng.' }));
+            }
         }
     };
 
@@ -613,9 +622,17 @@ const Details = () => {
                                         </div>
                                     )}
 
-                                    <p className="det-short-desc">
-                                        {product.description || "Chưa có mô tả chi tiết cho sản phẩm này."}
-                                    </p>
+                                    <div className="det-short-desc">
+                                        {product.description ? (
+                                            product.description.includes('<') ? (
+                                                <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                                            ) : (
+                                                <p>{product.description}</p>
+                                            )
+                                        ) : (
+                                            <p>Chưa có mô tả chi tiết cho sản phẩm này.</p>
+                                        )}
+                                    </div>
 
                                     <div className="det-variants-section">
                                         <div className="det-section-label">
@@ -717,20 +734,16 @@ const Details = () => {
                         <div className="det-tab-content">
                             {activeTab === 'desc' && (
                                 <div className="det-desc-body">
-                                    <div className="det-desc-highlight">
-                                        <i className="fa-solid fa-star"></i>
-                                        <div className="det-desc-highlight-text">
-                                            Đặc điểm nổi bật: Sản phẩm sở hữu thiết kế trẻ trung, chất liệu cao cấp cùng đường may tỉ mỉ, mang lại trải nghiệm êm ái và thoải mái tối đa cho người sử dụng.
-                                        </div>
-                                    </div>
-                                    <p style={{ fontSize: '15px', color: '#4b5563', lineHeight: '1.8' }}>
-                                        {product.description || "Sản phẩm chính hãng với chất lượng hoàn thiện tuyệt đối. Mang lại cảm giác thoải mái và tự tin trên từng bước chân."}
-                                    </p>
-                                    <div className="det-desc-features">
-                                        <div className="det-desc-feature-item"><i className="fa-solid fa-circle-check"></i> Chính hãng 100%</div>
-                                        <div className="det-desc-feature-item"><i className="fa-solid fa-circle-check"></i> Đổi size dễ dàng</div>
-                                        <div className="det-desc-feature-item"><i className="fa-solid fa-circle-check"></i> Hỗ trợ trả góp 0%</div>
-                                        <div className="det-desc-feature-item"><i className="fa-solid fa-circle-check"></i> Bảo hành keo 6 tháng</div>
+                                    <div style={{ fontSize: '15px', color: '#4b5563', lineHeight: '1.8' }}>
+                                        {product.description ? (
+                                            product.description.includes('<') ? (
+                                                <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                                            ) : (
+                                                <p style={{ whiteSpace: 'pre-line' }}>{product.description}</p>
+                                            )
+                                        ) : (
+                                            <p>Sản phẩm chất lượng mang lại cảm giác thoải mái và tự tin trên từng bước chân.</p>
+                                        )}
                                     </div>
                                 </div>
                             )}

@@ -92,7 +92,7 @@ public class CheckoutController {
                     "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                     "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
                     "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as effective_price " +
+                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as effective_price " +
                     "FROM product_variants v WHERE v.id = ?";
             Map<String, Object> item = jdbc.queryForMap(quickPriceSql, quickInfo.get("variantId"));
             return ((Number) item.get("effective_price")).doubleValue()
@@ -103,7 +103,7 @@ public class CheckoutController {
                     "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                     "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
                     "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as effective_price " +
+                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as effective_price " +
                     "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id WHERE ci.user_id = ?";
             List<Map<String, Object>> items = jdbc.queryForList(cartTotalSql, accountId);
             return items.stream()
@@ -206,7 +206,7 @@ public class CheckoutController {
                 "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                 "WHERE fsp.product_id = p.id AND fs.status = 1 " +
                 "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price, " +
+                "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price, " +
                 "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url "
                 +
                 "FROM product_variants v " +
@@ -233,7 +233,7 @@ public class CheckoutController {
                 "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                 "WHERE fsp.product_id = p.id AND fs.status = 1 " +
                 "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price, " +
+                "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price, " +
                 "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url "
                 +
                 "FROM cart_items ci " +
@@ -283,7 +283,7 @@ public class CheckoutController {
                     "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                     "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
                     "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price " +
+                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
                     "FROM product_variants v WHERE v.id = ?";
             Map<String, Object> item = jdbc.queryForMap(quickSql, quickInfo.get("variantId"));
             item.put("quantity", quickInfo.get("quantity"));
@@ -294,7 +294,7 @@ public class CheckoutController {
                     "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                     "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
                     "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price " +
+                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
                     "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " +
                     "WHERE ci.user_id = ?";
             items = jdbc.queryForList(cartSql, accountId);
@@ -309,9 +309,7 @@ public class CheckoutController {
                 .sum();
 
         double shipping = 30000;
-        if (shippingFee != null) {
-            shipping = shippingFee;
-        } else {
+        if (shippingFee == null) {
             Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class,
                     accountId);
             if (rankId != null) {

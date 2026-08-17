@@ -43,7 +43,7 @@ public class ProductController {
                         " JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                         " WHERE fsp.product_id = p.id AND fs.status = 1 " +
                         " AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        " AND fsp.sold_quantity < fsp.quantity_limit) as sale_price " +
+                        " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                         "FROM products p " +
                         "LEFT JOIN categories c ON p.category_id = c.id " +
                         "WHERE 1=1 ");
@@ -171,7 +171,7 @@ public class ProductController {
                     " JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                     " WHERE fsp.product_id = p.id AND fs.status = 1 " +
                     " AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    " AND fsp.sold_quantity < fsp.quantity_limit) as sale_price " +
+                    " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
                     "WHERE p.category_id = ? AND p.id <> ? AND p.status = 1 AND c.status = 1 " +
@@ -269,7 +269,7 @@ public class ProductController {
                     "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                     "WHERE fsp.product_id = ? AND fs.status = 1 " +
                     "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND fsp.sold_quantity < fsp.quantity_limit";
+                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)";
             List<Map<String, Object>> flashSaleResult = jdbc.queryForList(sqlFlashSale, id);
             if (!flashSaleResult.isEmpty()) {
                 model.addAttribute("flashSale", flashSaleResult.get(0));
@@ -294,7 +294,7 @@ public class ProductController {
                 " JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                 " WHERE fsp.product_id = p.id AND fs.status = 1 " +
                 " AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                " AND fsp.sold_quantity < fsp.quantity_limit) as sale_price " +
+                " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                 "FROM products p " +
                 "LEFT JOIN categories c ON p.category_id = c.id " +
                 "WHERE p.status = 1 AND c.status = 1 " +

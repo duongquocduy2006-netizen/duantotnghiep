@@ -259,6 +259,9 @@ const Orders = () => {
                                     <Link to="/profile" className="menu-link">
                                         <i className="fa-regular fa-id-badge"></i> Thông tin cá nhân
                                     </Link>
+                                    <Link to="/notifications" className="menu-link">
+                                        <i className="fa-solid fa-bell"></i> Thông báo
+                                    </Link>
                                     <Link to="/orders" className="menu-link active">
                                         <i className="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng
                                     </Link>

@@ -9,21 +9,62 @@ const NewArrivals = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [newProducts, setNewProducts] = useState([]);
+    const [flashSaleData, setFlashSaleData] = useState(null);
     const [wishlistIds, setWishlistIds] = useState([]);
     const [activeBrand, setActiveBrand] = useState('All');
     const [sortBy, setSortBy] = useState('newest');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 8;
     const observerRef = useRef(null);
+
+    const getFlashSaleInfo = (productId, defaultOldPrice = 0) => {
+        if (!flashSaleData || !flashSaleData.campaign) return null;
+        const campaign = flashSaleData.campaign;
+        
+        let isLive = campaign.isLive;
+        if (isLive === undefined) {
+            const now = new Date();
+            const start = new Date(campaign.startDate);
+            const end = new Date(campaign.endDate);
+            isLive = now >= start && now <= end;
+        }
+        if (isLive === false) return null; 
+        
+        const fsProduct = (flashSaleData.products || []).find(fsp => 
+            (fsp.product && String(fsp.product.id) === String(productId)) || 
+            String(fsp.productId) === String(productId)
+        );
+        if (fsProduct) {
+            const salePrice = Number(fsProduct.salePrice);
+            let oldPrice = Number(fsProduct.product?.oldPrice || fsProduct.oldPrice || defaultOldPrice || 0);
+            if (oldPrice <= salePrice) {
+                oldPrice = defaultOldPrice > salePrice ? defaultOldPrice : 0;
+            }
+            const pct = oldPrice > 0 && salePrice < oldPrice ? Math.round(((oldPrice - salePrice) * 100) / oldPrice) : 0;
+            return { salePrice: salePrice, oldPrice: oldPrice, pct: pct };
+        }
+        return null;
+    };
 
     const fetchNewArrivals = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/api/products/search?sort=newest');
+            const [response, flashRes] = await Promise.all([
+                api.get('/api/products/search?sort=newest'),
+                api.get('/api/flash-sales/active').catch(() => ({ data: {} }))
+            ]);
             if (response.data && response.data.success) {
-                const productsWithIndex = (response.data.products || []).slice(0, 12).map((p, idx) => ({
+                const productsWithIndex = (response.data.products || []).map((p, idx) => ({
                     ...p,
                     _originalIndex: idx
                 }));
                 setNewProducts(productsWithIndex);
+            }
+            if (flashRes.data?.success && flashRes.data?.hasActiveCampaign) {
+                setFlashSaleData({
+                    campaign: flashRes.data.campaign,
+                    products: flashRes.data.products || []
+                });
             }
         } catch (error) {
             console.error("Lỗi lấy dữ liệu hàng mới:", error);
@@ -80,21 +121,21 @@ const NewArrivals = () => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('animate__animated', 'animate__fadeInUp', 'opacity-100');
-                    observerRef.current.unobserve(entry.target);
+                    if (observerRef.current) observerRef.current.unobserve(entry.target);
                 }
             });
         }, { threshold: 0.1 });
 
         setTimeout(() => {
             document.querySelectorAll('.reveal-item').forEach((el) => {
-                observerRef.current.observe(el);
+                if (observerRef.current) observerRef.current.observe(el);
             });
         }, 100);
 
         return () => {
             if (observerRef.current) observerRef.current.disconnect();
         };
-    }, [loading, newProducts, activeBrand, sortBy]);
+    }, [loading, newProducts, activeBrand, sortBy, currentPage]);
 
     const formatCurrency = (amount) => {
         const num = Number(amount) || 0;
@@ -134,7 +175,12 @@ const NewArrivals = () => {
 
     // Extract spotlight and grid from sorted & filtered list
     const spotlightProduct = filteredAll[0];
-    const filteredProducts = filteredAll.slice(1);
+    const filteredProductsAll = filteredAll.slice(1);
+    const totalPages = Math.ceil(filteredProductsAll.length / ITEMS_PER_PAGE);
+    const paginatedProducts = filteredProductsAll.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
 
     const getRating = (id) => {
         if (!id) return '4.5';
@@ -200,9 +246,32 @@ const NewArrivals = () => {
                                                     </div>
                                                 </div>
 
-                                                <div className="na-spotlight-price mb-4">
-                                                    {spotlightProduct.min_price != null ? formatCurrency(spotlightProduct.min_price) : 'Liên hệ'}
-                                                </div>
+                                                {(() => {
+                                                    const fsInfo = spotlightProduct ? getFlashSaleInfo(spotlightProduct.id, spotlightProduct.min_price || spotlightProduct.price) : null;
+                                                    const salePrice = fsInfo?.salePrice;
+                                                    const originalPrice = fsInfo?.oldPrice || spotlightProduct?.min_price;
+                                                    const hasSale = fsInfo && salePrice < originalPrice;
+                                                    if (hasSale) {
+                                                        return (
+                                                            <div className="na-spotlight-price mb-4 d-flex align-items-baseline gap-3 flex-wrap">
+                                                                <span className="text-danger fw-bold fs-3" style={{ color: '#e50914' }}>
+                                                                    {formatCurrency(salePrice)}
+                                                                </span>
+                                                                <span className="text-decoration-line-through text-muted fs-5">
+                                                                    {formatCurrency(originalPrice)}
+                                                                </span>
+                                                                <span className="badge bg-danger ms-2 px-2 py-1 fs-6">
+                                                                    <i className="bi bi-fire me-1"></i> -{fsInfo.pct}%
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <div className="na-spotlight-price mb-4">
+                                                            {spotlightProduct.min_price != null ? formatCurrency(spotlightProduct.min_price) : 'Liên hệ'}
+                                                        </div>
+                                                    );
+                                                })()}
 
                                                 <div className="na-spotlight-actions d-flex gap-3">
                                                     <button 
@@ -262,64 +331,128 @@ const NewArrivals = () => {
                             </div>
 
                             {/* Live Counter */}
-                            <div className="na-counter-text">
-                                Hiển thị <strong>{filteredAll.length}</strong> sản phẩm mới
-                            </div>
+                                   {paginatedProducts.length > 0 ? (
+                                <>
+                                    <div className="row g-4">
+                                         {paginatedProducts.map((p, idx) => {
+                                             const fsInfo = getFlashSaleInfo(p.id, p.min_price || p.price);
+                                             const salePrice = fsInfo?.salePrice;
+                                             const originalPrice = fsInfo?.oldPrice || p.min_price;
+                                             const hasSale = fsInfo && salePrice < originalPrice;
+                                             const discountPct = fsInfo?.pct || (hasSale ? Math.round(((originalPrice - salePrice) * 100) / originalPrice) : 0);
 
-                            {filteredProducts.length > 0 ? (
-                                <div className="row g-4">
-                                    {filteredProducts.map((p, idx) => (
-                                        <div key={p.id} className="col-lg-3 col-md-4 col-6 reveal-item opacity-0" style={{ animationDelay: `${(idx % 4) * 0.1}s` }}>
-                                            <div className="na-card">
-                                                <Link to={`/details?id=${p.id}`} className="stretched-link" style={{ zIndex: 1 }}></Link>
+                                             return (
+                                                 <div key={p.id} className="col-lg-3 col-md-4 col-6 reveal-item" style={{ animationDelay: `${(idx % 4) * 0.1}s` }}>
+                                                     <div className="na-card">
+                                                         <Link to={`/details?id=${p.id}`} className="stretched-link" style={{ zIndex: 1 }}></Link>
 
-                                                <div className="na-img-box">
-                                                    <span className="na-badge">MỚI</span>
-                                                    <img src={getImageUrl(p.image_url)} alt={p.product_name} />
-                                                    <button 
-                                                        className={`na-wish-btn ${wishlistIds.includes(p.id) ? 'active' : ''}`}
-                                                        onClick={(e) => toggleWishlist(e, p.id)}
-                                                        style={{ zIndex: 10 }}
-                                                    >
-                                                        <i className={wishlistIds.includes(p.id) ? "fa-solid fa-heart" : "fa-regular fa-heart"}></i>
-                                                    </button>
-                                                </div>
-                                                
-                                                <div className="na-info">
-                                                    <div className="na-brand-row">
-                                                        <span className="na-brand">{p.brand_name}</span>
-                                                        <span className="badge bg-secondary" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>NEW</span>
-                                                    </div>
-                                                    <h5 className="na-name">
-                                                        {p.product_name}
-                                                    </h5>
-                                                    <div className="na-sizes-list">
-                                                        <span>{getSizesText(p.id)}</span>
-                                                    </div>
-                                                    <div className="na-price">
-                                                        {p.min_price != null ? formatCurrency(p.min_price) : 'Liên hệ'}
-                                                    </div>
-                                                </div>
+                                                         <div className="na-img-box">
+                                                             {hasSale ? (
+                                                                 <span className="flat-badge bg-danger text-white position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold d-flex align-items-center" style={{ zIndex: 5, borderRadius: '4px', fontSize: '11.5px', boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)' }}>
+                                                                     <i className="bi bi-fire me-1"></i> -{discountPct}%
+                                                                 </span>
+                                                             ) : (
+                                                                 <span className="na-badge">MỚI</span>
+                                                             )}
+                                                             <img src={getImageUrl(p.image_url)} alt={p.product_name} />
+                                                             <button 
+                                                                 className={`na-wish-btn ${wishlistIds.includes(p.id) ? 'active' : ''}`}
+                                                                 onClick={(e) => toggleWishlist(e, p.id)}
+                                                                 style={{ zIndex: 10 }}
+                                                             >
+                                                                 <i className={wishlistIds.includes(p.id) ? "fa-solid fa-heart" : "fa-regular fa-heart"}></i>
+                                                             </button>
+                                                         </div>
+                                                         
+                                                         <div className="na-info">
+                                                             <div className="na-brand-row">
+                                                                 <span className="na-brand">{p.brand_name}</span>
+                                                                 <span className="badge bg-secondary" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>NEW</span>
+                                                             </div>
+                                                             <h5 className="na-name">
+                                                                 {p.product_name}
+                                                             </h5>
+                                                             <div className="na-sizes-list">
+                                                                 <span>{getSizesText(p.id)}</span>
+                                                             </div>
+                                                             <div className="na-price">
+                                                                 {hasSale ? (
+                                                                     <div className="d-flex flex-column gap-1">
+                                                                         <div className="d-flex align-items-center gap-1">
+                                                                             <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-1 py-0" style={{ fontSize: '10px', fontWeight: '700' }}>
+                                                                                 <i className="bi bi-lightning-charge-fill me-1"></i>FLASH SALE
+                                                                             </span>
+                                                                         </div>
+                                                                         <div className="d-flex align-items-baseline gap-2 flex-wrap">
+                                                                             <span className="price-new text-danger fw-bold" style={{ fontSize: 18, color: '#e50914', letterSpacing: '-0.5px' }}>
+                                                                                 {formatCurrency(salePrice)}
+                                                                             </span>
+                                                                             <span className="price-old text-decoration-line-through text-muted" style={{ fontSize: 12, color: '#94a3b8' }}>
+                                                                                 {formatCurrency(originalPrice)}
+                                                                             </span>
+                                                                         </div>
+                                                                     </div>
+                                                                 ) : (
+                                                                     p.min_price != null ? formatCurrency(p.min_price) : 'Liên hệ'
+                                                                 )}
+                                                             </div>
+                                                         </div>
 
-                                                <div className="na-card-footer" style={{ position: 'relative', zIndex: 10 }}>
-                                                    <button 
-                                                        onClick={(e) => { e.preventDefault(); navigate(`/details?id=${p.id}`); }} 
-                                                        className="na-btn-cart"
-                                                        title="Thêm vào giỏ"
-                                                    >
-                                                        <i className="fa-solid fa-cart-plus"></i>
-                                                    </button>
-                                                    <button 
-                                                        onClick={(e) => { e.preventDefault(); navigate(`/details?id=${p.id}`); }} 
-                                                        className="na-btn-buy"
-                                                    >
-                                                        MUA NGAY
-                                                    </button>
-                                                </div>
-                                            </div>
+                                                     <div className="na-card-footer" style={{ position: 'relative', zIndex: 10 }}>
+                                                         <button 
+                                                             onClick={(e) => { e.preventDefault(); navigate(`/details?id=${p.id}`); }} 
+                                                             className="na-btn-cart"
+                                                             title="Thêm vào giỏ"
+                                                         >
+                                                             <i className="fa-solid fa-cart-plus"></i>
+                                                         </button>
+                                                         <button 
+                                                             onClick={(e) => { e.preventDefault(); navigate(`/details?id=${p.id}`); }} 
+                                                             className="na-btn-buy"
+                                                         >
+                                                             MUA NGAY
+                                                         </button>
+                                                     </div>
+                                                  </div>
+                                              </div>
+                                          );
+                                      })}
+                                    </div>
+
+                                    {/* PAGINATION CONTROLS */}
+                                    {totalPages > 1 && (
+                                        <div className="d-flex justify-content-center align-items-center gap-2 mt-5 pt-3 flex-wrap">
+                                            <button 
+                                                className="btn btn-outline-danger px-3 py-2 font-oswald text-uppercase fw-bold rounded-2"
+                                                style={{ fontSize: '13px', letterSpacing: '1px' }}
+                                                disabled={currentPage === 1}
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                            >
+                                                <i className="bi bi-chevron-left me-1"></i> Trang trước
+                                            </button>
+
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                <button
+                                                    key={page}
+                                                    className={`btn px-3 py-2 font-oswald fw-bold rounded-2 ${currentPage === page ? 'btn-danger text-white' : 'btn-outline-secondary text-dark'}`}
+                                                    style={{ fontSize: '13px' }}
+                                                    onClick={() => setCurrentPage(page)}
+                                                >
+                                                    {page}
+                                                </button>
+                                            ))}
+
+                                            <button 
+                                                className="btn btn-outline-danger px-3 py-2 font-oswald text-uppercase fw-bold rounded-2"
+                                                style={{ fontSize: '13px', letterSpacing: '1px' }}
+                                                disabled={currentPage === totalPages}
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                            >
+                                                Trang sau <i className="bi bi-chevron-right ms-1"></i>
+                                            </button>
                                         </div>
-                                    ))}
-                                </div>
+                                    )}
+                                </>
                             ) : (
                                 <div className="na-empty py-4 text-center my-4">
                                     <p className="text-muted">Không còn sản phẩm khác cho thương hiệu này.</p>

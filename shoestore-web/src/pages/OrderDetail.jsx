@@ -207,6 +207,18 @@ const OrderDetail = () => {
     if (order.status >= 5 && order.status !== 4) progressWidth = '50%';
     if (order.status === 3) progressWidth = '100%';
 
+    const rawShippingFee = Number(order.shipping_fee ?? order.shippingFee ?? 0);
+    const itemsSubtotal = items.reduce((acc, item) => acc + (Number(item.price) * Number(item.quantity)), 0);
+    const subtotal = Number(order.total_amount) > 0 ? Number(order.total_amount) : itemsSubtotal;
+    const finalAmount = Number(order.final_amount) || 0;
+
+    let effectiveShippingFee = rawShippingFee;
+    if (effectiveShippingFee === 0 && finalAmount > subtotal) {
+        effectiveShippingFee = finalAmount - subtotal;
+    }
+    const displayShippingFee = effectiveShippingFee > 0 ? effectiveShippingFee : (order.free_ship ? 0 : 30000);
+    const discountAmount = Math.max(0, (subtotal + displayShippingFee) - finalAmount);
+
     return (
         <Layout>
             <div className="home-god-tier position-relative" style={{minHeight: '100vh', background: '#f8fafc', paddingBottom: '80px'}}>
@@ -256,6 +268,9 @@ const OrderDetail = () => {
                                     <div style={{height: '1px', background: '#f1f5f9', margin: '0 16px 8px'}}></div>
                                     <Link to="/profile" className="menu-link">
                                         <i className="fa-regular fa-id-badge"></i> Thông tin cá nhân
+                                    </Link>
+                                    <Link to="/notifications" className="menu-link">
+                                        <i className="fa-solid fa-bell"></i> Thông báo
                                     </Link>
                                     <Link to="/orders" className="menu-link active">
                                         <i className="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng
@@ -374,7 +389,7 @@ const OrderDetail = () => {
                                             <div className="od-info-content">
                                                 <p className="mb-2"><strong>Giao hàng tiêu chuẩn (GHN Express)</strong></p>
                                                 <p className="mb-0 text-muted">
-                                                    <i className="fa-solid fa-money-bill-wave me-1"></i> Phí ship: {Number(order.shipping_fee) > 0 ? formatCurrency(order.shipping_fee) : '0 ₫ (Miễn phí)'}
+                                                    <i className="fa-solid fa-money-bill-wave me-1"></i> Phí ship: {displayShippingFee > 0 ? formatCurrency(displayShippingFee) : '0 ₫ (Miễn phí)'}
                                                 </p>
                                             </div>
                                         </div>
@@ -424,25 +439,25 @@ const OrderDetail = () => {
                                             <div className="od-summary-box p-3" style={{background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0'}}>
                                                 <div className="od-summary-row d-flex justify-content-between mb-2" style={{fontSize: '14px'}}>
                                                     <span className="text-muted">Tạm tính</span>
-                                                    <span className="fw-semibold text-dark">{formatCurrency(order.total_amount)}</span>
+                                                    <span className="fw-semibold text-dark">{formatCurrency(subtotal)}</span>
                                                 </div>
                                                 <div className="od-summary-row d-flex justify-content-between mb-2" style={{fontSize: '14px'}}>
                                                     <span className="text-muted">Phí vận chuyển</span>
                                                     <span className="fw-semibold text-dark">
-                                                        {Number(order.shipping_fee) > 0 ? formatCurrency(order.shipping_fee) : '0 ₫ (MIỄN PHÍ)'}
+                                                        {displayShippingFee > 0 ? formatCurrency(displayShippingFee) : '0 ₫ (MIỄN PHÍ)'}
                                                     </span>
                                                 </div>
-                                                {((Number(order.total_amount) || 0) + (Number(order.shipping_fee) || 0) - (Number(order.final_amount) || 0)) > 0 && (
+                                                {discountAmount > 0 && (
                                                     <div className="od-summary-row d-flex justify-content-between mb-2" style={{fontSize: '14px', color: '#16a34a'}}>
                                                         <span style={{color: '#16a34a'}}>Giảm giá</span>
                                                         <span className="fw-bold" style={{color: '#16a34a'}}>
-                                                            -{formatCurrency((Number(order.total_amount) || 0) + (Number(order.shipping_fee) || 0) - (Number(order.final_amount) || 0))}
+                                                            -{formatCurrency(discountAmount)}
                                                         </span>
                                                     </div>
                                                 )}
                                                 <div className="od-summary-row d-flex justify-content-between align-items-center mt-3 pt-2" style={{borderTop: '1px dashed #e2e8f0'}}>
                                                     <span className="fw-bold text-dark" style={{fontSize: '15px'}}>Tổng thanh toán</span>
-                                                    <span className="val fw-bold text-danger" style={{fontSize: '18px'}}>{formatCurrency(order.final_amount)}</span>
+                                                    <span className="val fw-bold text-danger" style={{fontSize: '18px'}}>{formatCurrency(finalAmount)}</span>
                                                 </div>
                                             </div>
                                         </div>

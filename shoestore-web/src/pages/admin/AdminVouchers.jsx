@@ -148,19 +148,14 @@ const AdminVouchers = () => {
 
         const discountVal = parseFloat(formDiscountValue);
         if (isNaN(discountVal) || discountVal <= 0) {
-            errors.discountValue = "Vui lòng nhập giá trị giảm lớn hơn 0!";
-        } else if (formDiscountType === "PERCENT" && discountVal > 100) {
-            errors.discountValue = "Giá trị % không được vượt quá 100!";
+            errors.discountValue = "Vui lòng nhập phần trăm giảm lớn hơn 0%!";
+        } else if (discountVal > 50) {
+            errors.discountValue = "Mức giảm giá tối đa chỉ được 50%!";
         }
 
         const qty = parseInt(formQuantity);
         if (isNaN(qty) || qty <= 0) {
             errors.quantity = "Số lượng phát hành phải lớn hơn 0!";
-        }
-
-        const limit = parseInt(formUserLimit);
-        if (isNaN(limit) || limit <= 0) {
-            errors.userLimit = "Giới hạn dùng / user phải lớn hơn 0!";
         }
 
         if (formStartDate && formEndDate) {
@@ -180,12 +175,12 @@ const AdminVouchers = () => {
         const payload = {
             id: editingVoucher ? editingVoucher.id : null,
             code: formCode,
-            discountType: formDiscountType,
+            discountType: "PERCENT",
             discountValue: discountVal,
             minOrderValue: formMinOrderValue ? parseFloat(formMinOrderValue) : 0,
             maxDiscount: formMaxDiscount ? parseFloat(formMaxDiscount) : 0,
             quantity: qty,
-            userUsageLimit: limit,
+            userUsageLimit: 1, // Mỗi user mặc định chỉ được sử dụng 1 lần duy nhất
             startDate: formStartDate || null,
             endDate: formEndDate || null,
             rankIds: selectedRankIds,
@@ -312,26 +307,94 @@ const AdminVouchers = () => {
                                     {formErrors.code && <span className="field-error">{formErrors.code}</span>}
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Loại Giảm Giá *</label>
-                                    <select 
-                                        className="form-input" 
-                                        value={formDiscountType}
-                                        onChange={(e) => setFormDiscountType(e.target.value)}
-                                    >
-                                        <option value="PERCENT">Giảm theo %</option>
-                                        <option value="FIXED">Giảm số tiền cố định</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Giá trị giảm *</label>
+                                    <label className="form-label">Loại Giảm Giá</label>
                                     <input 
-                                        type="number" 
-                                        min="1"
-                                        className={`form-input ${formErrors.discountValue ? 'input-error' : ''}`}
-                                        value={formDiscountValue}
-                                        onChange={(e) => { setFormDiscountValue(e.target.value); if (formErrors.discountValue) setFormErrors(p => ({...p, discountValue: ''})); }}
+                                        type="text" 
+                                        className="form-input" 
+                                        style={{ backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: '700', cursor: 'not-allowed', border: '1px solid #cbd5e1' }}
+                                        value="Giảm theo phần trăm (%)" 
+                                        disabled 
+                                        readOnly 
                                     />
-                                    {formErrors.discountValue && <span className="field-error">{formErrors.discountValue}</span>}
+                                </div>
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <div className="d-flex justify-content-between align-items-center mb-1">
+                                        <label className="form-label mb-0">Mức Giảm Giá (%) * <span className="text-danger fw-bold">(Tối đa 50%)</span></label>
+                                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style={{ fontSize: '11px', borderRadius: '6px' }}>
+                                            <i className="bi bi-fire me-1"></i>
+                                            {formDiscountValue ? `Đang giảm ${formDiscountValue}%` : 'Chưa chọn mức giảm'}
+                                        </span>
+                                    </div>
+
+                                    {/* Positioned % suffix inside input */}
+                                    <div style={{ position: 'relative', width: '100%' }}>
+                                        <input 
+                                            type="number" 
+                                            min="1"
+                                            max="50"
+                                            className={`form-input ${formErrors.discountValue ? 'input-error' : ''}`}
+                                            placeholder="Nhập phần trăm giảm (1% - 50%)"
+                                            style={{ paddingRight: '45px' }}
+                                            value={formDiscountValue}
+                                            onChange={(e) => { 
+                                                let val = e.target.value;
+                                                if (val !== '' && Number(val) > 50) val = '50';
+                                                setFormDiscountValue(val); 
+                                                if (formErrors.discountValue) setFormErrors(p => ({...p, discountValue: ''})); 
+                                            }}
+                                        />
+                                        <span 
+                                            style={{ 
+                                                position: 'absolute', 
+                                                right: '15px', 
+                                                top: '50%', 
+                                                transform: 'translateY(-50%)', 
+                                                fontWeight: '700', 
+                                                color: '#64748b', 
+                                                fontSize: '15px', 
+                                                pointerEvents: 'none' 
+                                            }}
+                                        >
+                                            %
+                                        </span>
+                                    </div>
+
+                                    {/* Quick Preset Buttons & Range Slider */}
+                                    <div className="d-flex align-items-center gap-1 mt-2 flex-wrap">
+                                        <span style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600 }}>Gợi ý:</span>
+                                        {[10, 15, 20, 25, 30, 50].map(pct => (
+                                            <button
+                                                key={pct}
+                                                type="button"
+                                                className={`btn btn-sm ${Number(formDiscountValue) === pct ? 'btn-danger fw-bold' : 'btn-outline-secondary'}`}
+                                                style={{ fontSize: '11.5px', padding: '2px 10px', borderRadius: '20px', transition: 'all 0.2s' }}
+                                                onClick={() => {
+                                                    setFormDiscountValue(String(pct));
+                                                    if (formErrors.discountValue) setFormErrors(p => ({...p, discountValue: ''}));
+                                                }}
+                                            >
+                                                {pct}% {pct === 50 ? <span style={{ fontSize: '10px' }}>(Tối đa)</span> : ''}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-2 d-flex align-items-center gap-2">
+                                        <input 
+                                            type="range" 
+                                            className="form-range" 
+                                            min="1" 
+                                            max="50" 
+                                            step="1"
+                                            style={{ accentColor: '#e50914' }}
+                                            value={formDiscountValue || 1}
+                                            onChange={(e) => {
+                                                setFormDiscountValue(e.target.value);
+                                                if (formErrors.discountValue) setFormErrors(p => ({...p, discountValue: ''}));
+                                            }}
+                                        />
+                                    </div>
+
+                                    {formErrors.discountValue && <span className="field-error mt-1">{formErrors.discountValue}</span>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Đơn tối thiểu (đ) *</label>
@@ -344,7 +407,7 @@ const AdminVouchers = () => {
                                     />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Giảm tối đa (đ) (Chỉ cho %)</label>
+                                    <label className="form-label">Giảm tối đa (đ)</label>
                                     <input 
                                         type="number" 
                                         min="0"
@@ -364,17 +427,6 @@ const AdminVouchers = () => {
                                         onChange={(e) => { setFormQuantity(e.target.value); if (formErrors.quantity) setFormErrors(p => ({...p, quantity: ''})); }}
                                     />
                                     {formErrors.quantity && <span className="field-error">{formErrors.quantity}</span>}
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Giới hạn số lần dùng / 1 User *</label>
-                                    <input 
-                                        type="number" 
-                                        min="1"
-                                        className={`form-input ${formErrors.userLimit ? 'input-error' : ''}`}
-                                        value={formUserLimit}
-                                        onChange={(e) => { setFormUserLimit(e.target.value); if (formErrors.userLimit) setFormErrors(p => ({...p, userLimit: ''})); }}
-                                    />
-                                    {formErrors.userLimit && <span className="field-error">{formErrors.userLimit}</span>}
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Trạng thái</label>

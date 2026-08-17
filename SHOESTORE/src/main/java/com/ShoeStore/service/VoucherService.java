@@ -133,18 +133,24 @@ public class VoucherService {
     }
 
     public Double calculateDiscount(Voucher v, Double orderTotal) {
+        return calculateDiscount(v, orderTotal, null);
+    }
+
+    public Double calculateDiscount(Voucher v, Double orderTotal, Double eligibleSubtotal) {
         if (v.getDiscountValue() == null)
             return 0.0;
 
-        if ("PERCENT".equalsIgnoreCase(v.getDiscountType())) {
-            Double discount = orderTotal * (v.getDiscountValue() / 100.0);
+        double baseAmount = (eligibleSubtotal != null && eligibleSubtotal >= 0) ? eligibleSubtotal : orderTotal;
+
+        if ("PERCENT".equalsIgnoreCase(v.getDiscountType()) || v.getDiscountType() == null) {
+            double pct = Math.min(v.getDiscountValue(), 50.0); // Tối đa 50%
+            Double discount = baseAmount * (pct / 100.0);
             if (v.getMaxDiscount() != null && v.getMaxDiscount() > 0) {
                 discount = Math.min(discount, v.getMaxDiscount());
             }
             return discount;
         } else {
-            // Mặc định các trường hợp còn lại (FIXED, AMOUNT, VALUE, vv.) là giảm giá số tiền cố định
-            return Math.min(v.getDiscountValue(), orderTotal);
+            return Math.min(v.getDiscountValue(), baseAmount);
         }
     }
 }

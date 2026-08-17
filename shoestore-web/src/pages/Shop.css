@@ -1,10 +1,5 @@
-/* --- GLOBAL THEME FOR SHOP (CLEAN, FLAT & PROFESSIONAL) --- */
 .shop-epic-theme {
-    background-color: #ffffff;
-    background-image: 
-        linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
-    background-size: 40px 40px;
+    background-color: #f8fafc;
     color: #333;
     font-family: 'Inter', sans-serif;
     min-height: 80vh;

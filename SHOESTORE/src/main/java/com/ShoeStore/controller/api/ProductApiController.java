@@ -57,7 +57,10 @@ public class ProductApiController {
     public ResponseEntity<?> extractProductInfoFromImage(@RequestBody Map<String, String> payload) {
         try {
             String imageBase64 = payload.get("imageBase64");
+            String fileName = payload.get("fileName");
             String productName = payload.get("productName");
+            String brandName = payload.get("brandName");
+            String categoryName = payload.get("categoryName");
 
             if ((imageBase64 == null || imageBase64.trim().isEmpty()) && (productName == null || productName.trim().isEmpty())) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Vui lòng cung cấp ảnh hoặc tên sản phẩm để AI nhận diện!"));
@@ -65,9 +68,9 @@ public class ProductApiController {
 
             Map<String, Object> result;
             if (imageBase64 != null && !imageBase64.trim().isEmpty()) {
-                result = geminiVisionService.extractProductInfoFromImage(imageBase64);
+                result = geminiVisionService.extractProductInfoFromImage(imageBase64, fileName, productName, brandName, categoryName);
             } else {
-                result = geminiVisionService.extractProductInfoFromText(productName);
+                result = geminiVisionService.extractProductInfoFromText(productName, brandName, categoryName);
             }
 
             if (Boolean.TRUE.equals(result.get("success"))) {
@@ -767,6 +770,56 @@ public class ProductApiController {
         }
     }
 
+    // 5.2.1 XÓA SIZE THEO TÊN (Nếu không còn biến thể nào dùng)
+    @PostMapping("/size/delete-name")
+    @Transactional
+    public ResponseEntity<?> deleteSizeByName(@RequestBody Map<String, String> payload) {
+        try {
+            String sizeName = payload.get("sizeName");
+            if (sizeName != null && !sizeName.trim().isEmpty()) {
+                String cleanName = sizeName.trim();
+                java.util.Optional<Size> sOpt = sizeRepository.findBySizeName(cleanName);
+                if (sOpt.isPresent()) {
+                    Size s = sOpt.get();
+                    long usageCount = productVariantRepository.findAll().stream()
+                            .filter(v -> v.getSize() != null && v.getSize().getId().equals(s.getId()))
+                            .count();
+                    if (usageCount == 0) {
+                        sizeRepository.delete(s);
+                    }
+                }
+            }
+            return ResponseEntity.ok(Map.of("success", true, "message", "Đã xóa size thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("success", true));
+        }
+    }
+
+    // 5.2.2 XÓA MÀU THEO TÊN (Nếu không còn biến thể nào dùng)
+    @PostMapping("/color/delete-name")
+    @Transactional
+    public ResponseEntity<?> deleteColorByName(@RequestBody Map<String, String> payload) {
+        try {
+            String colorName = payload.get("colorName");
+            if (colorName != null && !colorName.trim().isEmpty()) {
+                String cleanName = colorName.trim();
+                java.util.Optional<Color> cOpt = colorRepository.findByColorName(cleanName);
+                if (cOpt.isPresent()) {
+                    Color c = cOpt.get();
+                    long usageCount = productVariantRepository.findAll().stream()
+                            .filter(v -> v.getColor() != null && v.getColor().getId().equals(c.getId()))
+                            .count();
+                    if (usageCount == 0) {
+                        colorRepository.delete(c);
+                    }
+                }
+            }
+            return ResponseEntity.ok(Map.of("success", true, "message", "Đã xóa màu thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("success", true));
+        }
+    }
+
     // 5.2 THÊM ẢNH SẢN PHẨM
     @PostMapping("/{productId}/image")
     @Transactional
@@ -892,7 +945,7 @@ public class ProductApiController {
                     " JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                     " WHERE fsp.product_id = p.id AND fs.status = 1 " +
                     " AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    " AND fsp.sold_quantity < fsp.quantity_limit) as sale_price " +
+                    " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
                     "WHERE p.status = 1 " +

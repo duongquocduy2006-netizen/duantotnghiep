@@ -8,6 +8,7 @@ const Login = () => {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [errors, setErrors] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
@@ -127,17 +128,28 @@ const Login = () => {
 
                         <div className="mb-3">
                             <label className="form-label">Mật khẩu</label>
-                            <input 
-                                type="password" 
-                                className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
-                                style={errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
-                                placeholder="NHẬP MẬT KHẨU"
-                                value={password}
-                                onChange={(e) => {
-                                    setPassword(e.target.value);
-                                    if(errors.password) setErrors({...errors, password: ''});
-                                }}
-                            />
+                            <div className="position-relative">
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
+                                    style={{ paddingRight: '45px', ...(errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}) }}
+                                    placeholder="NHẬP MẬT KHẨU"
+                                    value={password}
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        if(errors.password) setErrors({...errors, password: ''});
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn position-absolute top-50 end-0 translate-middle-y border-0 text-secondary pe-3"
+                                    style={{ background: 'none', zIndex: 5, cursor: 'pointer' }}
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    tabIndex="-1"
+                                >
+                                    <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                </button>
+                            </div>
                             {errors.password && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.password}</div>}
                         </div>
 
@@ -160,7 +172,7 @@ const Login = () => {
 
                     <button 
                         className="btn-google"
-                        onClick={() => window.location.href = '/oauth2/authorization/google'}
+                        onClick={() => window.location.href = 'http://localhost:8080/oauth2/authorization/google'}
                         type="button"
                     >
                         <i className="fa-brands fa-google"></i> &nbsp; TÀI KHOẢN GOOGLE

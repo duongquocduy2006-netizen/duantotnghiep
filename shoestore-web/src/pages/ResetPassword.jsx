@@ -12,6 +12,8 @@ const ResetPassword = () => {
 
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
@@ -85,37 +87,59 @@ const ResetPassword = () => {
                     <form onSubmit={handleSubmit} noValidate>
                         <div className="mb-3">
                             <label className="form-label">Mật khẩu mới</label>
-                            <input 
-                                type="password" 
-                                className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
-                                style={errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
-                                placeholder="NHẬP MẬT KHẨU MỚI"
-                                value={password}
-                                onChange={(e) => {
-                                    setPassword(e.target.value);
-                                    if(errors.password) setErrors({...errors, password: ''});
-                                    setError('');
-                                }}
-                                disabled={loading}
-                            />
+                            <div className="position-relative">
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
+                                    style={{ paddingRight: '45px', ...(errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}) }}
+                                    placeholder="NHẬP MẬT KHẨU MỚI"
+                                    value={password}
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        if(errors.password) setErrors({...errors, password: ''});
+                                        setError('');
+                                    }}
+                                    disabled={loading}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn position-absolute top-50 end-0 translate-middle-y border-0 text-secondary pe-3"
+                                    style={{ background: 'none', zIndex: 5, cursor: 'pointer' }}
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    tabIndex="-1"
+                                >
+                                    <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                </button>
+                            </div>
                             {errors.password && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.password}</div>}
                         </div>
 
                         <div className="mb-3">
                             <label className="form-label">Xác nhận mật khẩu</label>
-                            <input 
-                                type="password" 
-                                className={`form-control custom-input ${errors.confirmPassword ? 'is-invalid border-danger' : ''}`}
-                                style={errors.confirmPassword ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
-                                placeholder="XÁC NHẬN MẬT KHẨU MỚI"
-                                value={confirmPassword}
-                                onChange={(e) => {
-                                    setConfirmPassword(e.target.value);
-                                    if(errors.confirmPassword) setErrors({...errors, confirmPassword: ''});
-                                    setError('');
-                                }}
-                                disabled={loading}
-                            />
+                            <div className="position-relative">
+                                <input 
+                                    type={showConfirmPassword ? "text" : "password"} 
+                                    className={`form-control custom-input ${errors.confirmPassword ? 'is-invalid border-danger' : ''}`}
+                                    style={{ paddingRight: '45px', ...(errors.confirmPassword ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}) }}
+                                    placeholder="XÁC NHẬN MẬT KHẨU MỚI"
+                                    value={confirmPassword}
+                                    onChange={(e) => {
+                                        setConfirmPassword(e.target.value);
+                                        if(errors.confirmPassword) setErrors({...errors, confirmPassword: ''});
+                                        setError('');
+                                    }}
+                                    disabled={loading}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn position-absolute top-50 end-0 translate-middle-y border-0 text-secondary pe-3"
+                                    style={{ background: 'none', zIndex: 5, cursor: 'pointer' }}
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    tabIndex="-1"
+                                >
+                                    <i className={`fa-solid ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                </button>
+                            </div>
                             {errors.confirmPassword && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.confirmPassword}</div>}
                         </div>
 

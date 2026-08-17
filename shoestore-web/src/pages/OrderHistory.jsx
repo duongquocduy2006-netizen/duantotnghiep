@@ -11,7 +11,6 @@ const STATUS_LIST = [
     { value: 'all', label: 'Tất cả' },
     { value: '1',   label: 'Chờ duyệt' },
     { value: '2',   label: 'Đang giao' },
-    { value: '5',   label: 'Chờ hoàn tất' },
     { value: '3',   label: 'Thành công' },
     { value: '4',   label: 'Đã hủy' },
 ];
@@ -290,6 +289,7 @@ const OrderHistory = () => {
                                     <div className="pb-3">
                                         <div style={{ height: '1px', background: '#f1f5f9', margin: '0 16px 8px' }}></div>
                                         <Link to="/profile" className="menu-link"><i className="fa-regular fa-id-badge"></i> Thông tin cá nhân</Link>
+                                        <Link to="/notifications" className="menu-link"><i className="fa-solid fa-bell"></i> Thông báo</Link>
                                         <Link to="/orders" className="menu-link active"><i className="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng</Link>
                                         <Link to="/change-password" className="menu-link"><i className="fa-solid fa-shield-halved"></i> Đổi mật khẩu</Link>
                                         <div style={{ height: '1px', background: '#f1f5f9', margin: '8px 16px' }}></div>

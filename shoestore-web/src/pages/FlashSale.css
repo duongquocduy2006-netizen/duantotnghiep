@@ -22,22 +22,21 @@
     transform: translateY(0);
 }
 
-/* --- CREATIVE NEON FLASH SALE HEADER --- */
+/* --- CREATIVE FLASH SALE HEADER --- */
 .fs-creative-header {
-    background: #0a0a0c;
-    padding: 100px 0 80px;
-    text-align: center;
+    background: #0f1115;
+    padding: 56px 0 46px;
     position: relative;
     overflow: hidden;
-    border-bottom: 2px solid rgba(255, 77, 77, 0.3);
+    border-bottom: 2px solid rgba(229, 9, 20, 0.2);
 }
 
 .fs-electric-bg {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background: 
-        radial-gradient(circle at 20% 50%, rgba(255, 69, 0, 0.15) 0%, transparent 50%),
-        radial-gradient(circle at 80% 50%, rgba(255, 215, 0, 0.1) 0%, transparent 50%);
+        radial-gradient(circle at 50% 30%, rgba(229, 9, 20, 0.22) 0%, transparent 65%),
+        radial-gradient(circle at 80% 80%, rgba(185, 28, 28, 0.12) 0%, transparent 50%);
     z-index: 0;
 }
 
@@ -45,23 +44,23 @@
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-image: linear-gradient(45deg, transparent 45%, rgba(255, 77, 77, 0.05) 50%, transparent 55%);
-    background-size: 10px 10px;
+    background-image: linear-gradient(45deg, transparent 45%, rgba(229, 9, 20, 0.04) 50%, transparent 55%);
+    background-size: 12px 12px;
     z-index: 1;
 }
 
 .fs-neon-tag {
     display: inline-block;
-    background: transparent;
-    color: #ffca28;
-    border: 1px solid #ffca28;
-    padding: 8px 24px;
-    border-radius: 4px;
-    font-size: 12px;
+    background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 7px 22px;
+    border-radius: 20px;
+    font-size: 13px;
     font-weight: 800;
-    letter-spacing: 4px;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    box-shadow: 0 0 10px rgba(255, 202, 40, 0.2), inset 0 0 10px rgba(255, 202, 40, 0.2);
+    box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
     position: relative;
     overflow: hidden;
 }
@@ -70,7 +69,7 @@
     content: '';
     position: absolute;
     top: 0; left: -100%; width: 100%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 202, 40, 0.5), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
     animation: neon-scan 2.5s infinite linear;
 }
 
@@ -80,23 +79,20 @@
 }
 
 .fs-glitch-title {
-    font-size: 64px;
+    font-size: 52px;
     font-weight: 900;
-    color: #fff;
+    color: #ffffff;
     text-transform: uppercase;
-    letter-spacing: -2px;
-    margin-top: 20px;
-    margin-bottom: 30px;
-    font-family: 'Inter', sans-serif;
-    text-shadow: 4px 4px 0 rgba(229, 9, 20, 0.5);
+    letter-spacing: 1px;
+    margin-top: 18px;
+    margin-bottom: 24px;
+    font-family: 'Oswald', 'Inter', sans-serif;
 }
 
 .text-flash {
-    background: linear-gradient(to right, #ff4d4d, #ffca28);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #e50914;
     display: inline-block;
-    filter: drop-shadow(0 0 15px rgba(255, 77, 77, 0.6));
+    filter: drop-shadow(0 0 12px rgba(229, 9, 20, 0.5));
 }
 
 /* --- COUNTDOWN --- */
@@ -831,11 +827,19 @@
 }
 
 .fs-guide-num {
-    font-size: 40px;
+    font-size: 28px;
     font-weight: 900;
-    color: rgba(229, 9, 20, 0.08);
+    color: #e50914;
     line-height: 1;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff1f2;
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid #ffe4e6;
+    letter-spacing: -0.5px;
 }
 
 .fs-guide-card h5 {

@@ -78,13 +78,20 @@ const Checkout = () => {
                 }
 
                 if (cartRes.data && cartRes.data.success) {
-                    const items = cartRes.data.cartItems || [];
+                    let items = cartRes.data.cartItems || [];
+
+                    // Lọc danh sách sản phẩm theo các sản phẩm người dùng đã tích chọn từ giỏ hàng
+                    const savedSelectedIds = location.state?.selectedItemIds || JSON.parse(sessionStorage.getItem('selectedCartItemIds') || 'null');
+                    if (!buyNowVariantId && savedSelectedIds && Array.isArray(savedSelectedIds) && savedSelectedIds.length > 0) {
+                        items = items.filter(item => savedSelectedIds.includes(item.id));
+                    }
+
                     setCartItems(items);
-                    cartTotal = cartRes.data.totalPrice || 0;
+                    cartTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                     setTotalPrice(cartTotal);
                     
                     if (items.length === 0) {
-                        alert('Giỏ hàng của bạn đang trống!');
+                        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Chưa có sản phẩm nào được chọn để thanh toán!' }));
                         navigate('/cart');
                         return;
                     }
@@ -619,16 +626,23 @@ const Checkout = () => {
         try {
             setVoucherError('');
             setVoucherSuccess('');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const buyNowVariantId = urlParams.get('buyNowVariantId');
+            const buyNowQty = urlParams.get('buyNowQty');
+
             const response = await api.post('/api/vouchers/apply', {
                 voucherCode: code.trim().toUpperCase(),
-                cartTotal: totalPrice
+                cartTotal: totalPrice,
+                buyNowVariantId: buyNowVariantId ? parseInt(buyNowVariantId) : null,
+                buyNowQty: buyNowQty ? parseInt(buyNowQty) : null
             });
             if (response.data && response.data.success) {
                 const discountValue = response.data.discount || 0;
                 const v = response.data.voucher;
                 setAppliedVoucher({
                     code: response.data.code,
-                    discountType: v.discountType || v.discount_type,
+                    discountType: 'PERCENT',
                     discountValue: v.discountValue || v.discount_value
                 });
                 setDiscount(discountValue);

@@ -235,40 +235,16 @@ public class FlashSaleApiController {
             java.time.LocalDateTime start = java.time.LocalDateTime.parse(startDateStr);
             java.time.LocalDateTime end = java.time.LocalDateTime.parse(endDateStr);
 
-            int startHour = start.getHour();
-            int startMinute = start.getMinute();
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
 
-            boolean isValidShift = false;
-            java.time.LocalDateTime maxEnd = start;
-
-            if (startHour == 9 && startMinute == 0) {
-                isValidShift = true;
-                maxEnd = start.withHour(14).withMinute(0).withSecond(0).withNano(0);
-            } else if (startHour == 14 && startMinute == 0) {
-                isValidShift = true;
-                maxEnd = start.withHour(20).withMinute(0).withSecond(0).withNano(0);
-            } else if (startHour == 20 && startMinute == 0) {
-                isValidShift = true;
-                maxEnd = start.plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0);
-            }
-
-            if (!isValidShift) {
+            if (id == null && start.isBefore(now.minusMinutes(5))) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Flash Sale chỉ được phép bắt đầu vào các khung giờ cố định (09:00, 14:00, 20:00) và mỗi khung giờ chỉ được có 1 chiến dịch hoạt động. Vui lòng chỉnh sửa lại thời gian."));
+                        .body(Map.of("success", false, "message", "Thời gian bắt đầu không được nằm trong quá khứ!"));
             }
 
-            if (end.isAfter(maxEnd)) {
-                String nextShift = startHour == 9 ? "14:00" : (startHour == 14 ? "20:00" : "09:00 ngày hôm sau");
+            if (!end.isAfter(start)) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Ca " + String.format("%02d:00", startHour) + " phải kết thúc trước " + nextShift + "!"));
-            }
-
-            if (status == 1) {
-                long count = flashSaleRepository.countActiveCampaignsInShift(start, id);
-                if (count > 0) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of("success", false, "message", "Flash Sale chỉ được phép bắt đầu vào các khung giờ cố định (09:00, 14:00, 20:00) và mỗi khung giờ chỉ được có 1 chiến dịch hoạt động. Vui lòng chỉnh sửa lại thời gian."));
-                }
+                        .body(Map.of("success", false, "message", "Thời gian kết thúc phải sau thời gian bắt đầu!"));
             }
 
             flashSale.setStartDate(start);

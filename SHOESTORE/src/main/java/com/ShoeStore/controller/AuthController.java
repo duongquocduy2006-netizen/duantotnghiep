@@ -40,6 +40,11 @@ public class AuthController {
         return "login";
     }
 
+    @GetMapping("/oauth2/redirect")
+    public void handleOAuth2Redirect(jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+        response.sendRedirect("http://localhost:5173/oauth2/redirect");
+    }
+
     @GetMapping("/register")
     public String register(Model model) {
         model.addAttribute("registerRequest", new RegisterRequest());

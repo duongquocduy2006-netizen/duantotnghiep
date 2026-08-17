@@ -22,6 +22,10 @@ const Home = () => {
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
 
+    const [newArrivalsPage, setNewArrivalsPage] = useState(1);
+    const [topSellingPage, setTopSellingPage] = useState(1);
+    const HOME_ITEMS_PER_PAGE = 8;
+
     const checkBrandScroll = () => {
         const container = brandContainerRef.current;
         if (container) {
@@ -73,12 +77,12 @@ const Home = () => {
             }
 
             if (newRes.data?.success) {
-                setNewArrivals((newRes.data.products || []).slice(0, 8));
+                setNewArrivals(newRes.data.products || []);
             }
 
             if (topRes.data?.success) {
                 const shuffled = (topRes.data.products || []).sort(() => 0.5 - Math.random());
-                setTopSelling(shuffled.slice(0, 8));
+                setTopSelling(shuffled);
             }
 
             if (brandRes.data?.success) {
@@ -174,7 +178,7 @@ const Home = () => {
         }, 120);
 
         return () => { clearTimeout(timer); observerRef.current?.disconnect(); };
-    }, [loading, newArrivals, topSelling, brands]);
+    }, [loading, newArrivals, topSelling, brands, newArrivalsPage, topSellingPage]);
 
     /* ── HELPERS ── */
     const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
@@ -194,18 +198,31 @@ const Home = () => {
         return true;
     };
 
-    const getFlashSaleInfo = (productId) => {
+    const getFlashSaleInfo = (productId, defaultOldPrice = 0) => {
         if (!flashSaleData || !flashSaleData.campaign) return null;
-        const now = new Date();
-        const start = new Date(flashSaleData.campaign.startDate);
-        const end = new Date(flashSaleData.campaign.endDate);
-        if (now < start || now > end) return null; 
+        const campaign = flashSaleData.campaign;
         
-        const fsProduct = flashSaleData.products.find(fsp => fsp.product && fsp.product.id === productId);
+        let isLive = campaign.isLive;
+        if (isLive === undefined) {
+            const now = new Date();
+            const start = new Date(campaign.startDate);
+            const end = new Date(campaign.endDate);
+            isLive = now >= start && now <= end;
+        }
+        if (isLive === false) return null; 
+        
+        const fsProduct = (flashSaleData.products || []).find(fsp => 
+            (fsp.product && String(fsp.product.id) === String(productId)) || 
+            String(fsp.productId) === String(productId)
+        );
         if (fsProduct) {
-            const oldPrice = fsProduct.product.oldPrice || 0;
-            const pct = oldPrice > 0 ? Math.round(((oldPrice - fsProduct.salePrice) * 100) / oldPrice) : 0;
-            return { salePrice: fsProduct.salePrice, oldPrice: oldPrice, pct };
+            const salePrice = Number(fsProduct.salePrice);
+            let oldPrice = Number(fsProduct.product?.oldPrice || fsProduct.oldPrice || defaultOldPrice || 0);
+            if (oldPrice <= salePrice) {
+                oldPrice = defaultOldPrice > salePrice ? defaultOldPrice : 0;
+            }
+            const pct = oldPrice > 0 && salePrice < oldPrice ? Math.round(((oldPrice - salePrice) * 100) / oldPrice) : 0;
+            return { salePrice: salePrice, oldPrice: oldPrice, pct: pct };
         }
         return null;
     };
@@ -391,13 +408,12 @@ const Home = () => {
                     FLASH SALE — above brands
                 ══════════════════════════════════════════ */}
                 {flashSaleData && flashSaleData.products.length > 0 && (
-                    <div className="bg-black text-white position-relative overflow-hidden">
-                        <div className="god-neon-glow position-absolute top-50 start-50 translate-middle" />
-                        <div className="god-watermark-bg text-white opacity-10">SALE</div>
+                    <div className="bg-white text-dark position-relative overflow-hidden border-bottom border-light-subtle py-2">
+                        <div className="god-watermark-bg text-dark opacity-10">SALE</div>
 
                         <div className="container py-5 position-relative" style={{ zIndex: 1 }}>
-                            {/* Section Header — premium redesign */}
-                            <div className="d-flex justify-content-between align-items-center mb-5 reveal-item god-hidden flex-wrap gap-4">
+                            {/* Section Header — clean white theme redesign */}
+                            <div className="d-flex justify-content-between align-items-center mb-5 reveal-item flex-wrap gap-4">
                                 {/* LEFT: icon + title + tagline */}
                                 <div className="d-flex align-items-center gap-4">
                                     {/* Icon badge */}
@@ -405,31 +421,31 @@ const Home = () => {
                                          style={{
                                              width: 72, height: 72,
                                              borderRadius: 16,
-                                             background: 'linear-gradient(135deg, #e50914 0%, #8b0000 100%)',
-                                             border: '1px solid rgba(255,77,77,0.3)'
+                                             background: 'linear-gradient(135deg, #e50914 0%, #b91c1c 100%)',
+                                             boxShadow: '0 6px 20px rgba(229,9,20,0.3)'
                                          }}>
-                                        <i className="fa-solid fa-bolt-lightning text-white" style={{ fontSize: 30 }} />
+                                        <i className="bi bi-fire text-white" style={{ fontSize: 32 }} />
                                     </div>
                                     {/* Text block */}
                                     <div>
                                         <div className="d-flex align-items-center gap-2 mb-1">
                                             {flashSaleData.campaign && new Date(flashSaleData.campaign.startDate) > new Date() ? (
-                                                <span className="badge-live-neon" style={{ background: 'rgba(255, 193, 7, 0.2)', color: '#ffc107', borderColor: 'rgba(255, 193, 7, 0.5)' }}>
-                                                    <span className="neon-dot" style={{ background: '#ffc107', boxShadow: '0 0 8px #ffc107' }} /> SẮP DIỄN RA
+                                                <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 fw-bold d-flex align-items-center gap-1" style={{ fontSize: '11px' }}>
+                                                    <i className="bi bi-clock-history me-1"></i> SẮP DIỄN RA
                                                 </span>
                                             ) : (
-                                                <span className="badge-live-neon">
-                                                    <span className="neon-dot" /> ĐANG DIỄN RA
+                                                <span className="badge bg-danger text-white px-2 py-1 fw-bold d-flex align-items-center gap-1" style={{ fontSize: '11px', boxShadow: '0 2px 8px rgba(229,9,20,0.3)' }}>
+                                                    <i className="bi bi-lightning-charge-fill me-1"></i> ĐANG DIỄN RA
                                                 </span>
                                             )}
-                                            <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, letterSpacing: 1 }}>
+                                            <span style={{ color: '#64748b', fontSize: 12, letterSpacing: 1, fontWeight: 600 }}>
                                                 {flashSaleData.products.length} SẢN PHẨM
                                             </span>
                                         </div>
-                                        <h2 className="god-section-title text-uppercase text-white m-0" style={{ letterSpacing: -1 }}>
+                                        <h2 className="god-section-title text-uppercase text-dark m-0" style={{ letterSpacing: -1 }}>
                                             {flashSaleData.campaign?.name || 'SĂN DEAL GIỜ VÀNG'}
                                         </h2>
-                                        <p className="m-0 mt-1" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, letterSpacing: 1 }}>
+                                        <p className="m-0 mt-1" style={{ color: '#64748b', fontSize: 13, letterSpacing: 0.5 }}>
                                             FLASH SALE — Ưu đãi có thời hạn, số lượng có hạn
                                         </p>
                                     </div>
@@ -437,10 +453,10 @@ const Home = () => {
 
                                 {/* RIGHT: Countdown */}
                                 <div className="d-flex flex-column align-items-end gap-2">
-                                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
+                                    <span style={{ color: '#64748b', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600 }}>
                                         {flashSaleData.campaign && new Date(flashSaleData.campaign.startDate) > new Date() ? 'Bắt đầu sau' : 'Kết thúc sau'}
                                     </span>
-                                    <div className="god-countdown">
+                                    <div className="god-countdown-light">
                                         <div className="cd-block">
                                             <span className="cd-num">{timeLeft.days}</span>
                                             <span className="cd-txt">NGÀY</span>
@@ -457,7 +473,7 @@ const Home = () => {
                                         </div>
                                         <span className="cd-colon text-danger">:</span>
                                         <div className="cd-block border-danger"
-                                             style={{ boxShadow: '0 0 16px rgba(229,9,20,0.35)' }}>
+                                             style={{ background: '#fff5f5', boxShadow: '0 0 16px rgba(229,9,20,0.2)' }}>
                                             <span className="cd-num text-danger">{timeLeft.seconds}</span>
                                             <span className="cd-txt text-danger">GIÂY</span>
                                         </div>
@@ -473,22 +489,24 @@ const Home = () => {
                                         ? Math.round(((p.product.oldPrice - p.salePrice) * 100) / p.product.oldPrice)
                                         : 0;
                                     return (
-                                        <div key={p.id} className="col-lg-3 col-md-6 col-12 reveal-item god-hidden"
+                                        <div key={p.id} className="col-lg-3 col-md-6 col-12 reveal-item"
                                              style={{ animationDelay: `${idx * 0.1}s` }}>
-                                            <div className="flat-product-card dark h-100 d-flex flex-column position-relative">
+                                            <div className="flat-product-card h-100 bg-white d-flex flex-column position-relative shadow-sm border border-light-subtle rounded-3">
                                                 <Link to={`/details?id=${p.product.id}`}
                                                       className="stretched-link" style={{ zIndex: 1 }} />
-                                                <div className="flat-card-img-box position-relative overflow-hidden"
-                                                     style={{ aspectRatio: '4/3', padding: 0 }}>
-                                                    {pct > 0 && (
-                                                        <span className="flat-badge bg-danger text-white position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold" style={{ zIndex: 5 }}>
-                                                            GIẢM {pct}%
+                                                <div className="flat-card-img-box position-relative overflow-hidden d-flex align-items-center justify-content-center"
+                                                     style={{ aspectRatio: '1', padding: 16, background: '#f8f9fa' }}>
+                                                    {pct > 0 ? (
+                                                        <span className="flat-badge bg-danger text-white position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold d-flex align-items-center" style={{ zIndex: 5, borderRadius: '4px', fontSize: '11.5px', boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)' }}>
+                                                            <i className="bi bi-fire me-1"></i> -{pct}%
                                                         </span>
+                                                    ) : (
+                                                        <span className="flat-badge bg-danger text-white position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold" style={{ zIndex: 5, borderRadius: '4px', fontSize: '11px' }}>SALE</span>
                                                     )}
                                                     <img src={imgUrl(p.product.imageUrl) || imgUrl(p.product.image_url)}
                                                          alt={p.product.productName || p.product.product_name}
                                                          className="product-card-img w-100 h-100"
-                                                         style={{ objectFit: 'cover', objectPosition: 'center' }} />
+                                                         style={{ objectFit: 'contain' }} />
                                                     <div className="position-absolute" style={{ top: 10, right: 10, zIndex: 10 }}>
                                                         <button className="wishlist-btn btn"
                                                                 onClick={(e) => toggleWishlist(e, p.product.id)}
@@ -498,21 +516,34 @@ const Home = () => {
                                                         </button>
                                                     </div>
                                                 </div>
-                                                <div className="flat-card-info p-3 d-flex flex-column flex-grow-1">
+                                                <div className="flat-card-info p-3 d-flex flex-column flex-grow-1" style={{ background: '#fff' }}>
                                                     <div className="flat-brand mb-1">{p.product.brandName || p.product.brand_name}</div>
-                                                    <h5 className="flat-name text-white mb-2"
+                                                    <h5 className="flat-name text-dark mb-2"
                                                         style={{ fontSize: 15, WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                                                         {p.product.productName || p.product.product_name}
                                                     </h5>
-                                                    <div className="d-flex align-items-baseline gap-2 mb-3">
-                                                        <span className="price-new text-white" style={{ fontSize: 20 }}>{fmt(p.salePrice)}</span>
-                                                        {p.product.oldPrice > 0 && (
-                                                            <span className="price-old" style={{ fontSize: 13 }}>{fmt(p.product.oldPrice)}</span>
-                                                        )}
+                                                    <div className="mb-3">
+                                                        <div className="d-flex flex-column gap-1">
+                                                            <div className="d-flex align-items-center gap-1">
+                                                                <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-1 py-0" style={{ fontSize: '10px', fontWeight: '700' }}>
+                                                                    <i className="bi bi-lightning-charge-fill me-1"></i>FLASH SALE
+                                                                </span>
+                                                            </div>
+                                                            <div className="d-flex align-items-baseline gap-2 flex-wrap">
+                                                                <span className="price-new text-danger fw-bold" style={{ fontSize: 20, color: '#e50914', letterSpacing: '-0.5px' }}>
+                                                                    {fmt(p.salePrice)}
+                                                                </span>
+                                                                {p.product.oldPrice > 0 && (
+                                                                    <span className="price-old text-decoration-line-through text-muted" style={{ fontSize: 13, color: '#94a3b8' }}>
+                                                                        {fmt(p.product.oldPrice)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     <div className="d-flex gap-2 mt-auto" style={{ position: 'relative', zIndex: 10 }}>
                                                         <button onClick={(e) => { e.preventDefault(); setQuickAddProductId(p.product.id); }}
-                                                                className="btn flat-btn-cart-dark d-flex align-items-center justify-content-center"
+                                                                className="btn flat-btn-cart d-flex align-items-center justify-content-center"
                                                                 style={{ width: 46, height: 44, flexShrink: 0 }}>
                                                             <i className="fa-solid fa-cart-plus" style={{ fontSize: 16 }} />
                                                         </button>
@@ -530,9 +561,30 @@ const Home = () => {
                             </div>
 
                             {/* View all button */}
-                            <div className="text-center mt-5 reveal-item god-hidden">
-                                <Link to="/flash-sale" className="btn-god-tier light">
+                            <div className="text-center mt-5 reveal-item">
+                                <Link 
+                                    to="/flash-sale" 
+                                    className="btn px-4 py-3 font-oswald text-uppercase fw-bold text-white d-inline-flex align-items-center gap-2 rounded-3 shadow-lg"
+                                    style={{
+                                        background: 'linear-gradient(135deg, #e50914 0%, #b91c1c 100%)',
+                                        fontSize: '15px',
+                                        letterSpacing: '1.5px',
+                                        boxShadow: '0 8px 25px rgba(229, 9, 20, 0.4)',
+                                        border: 'none',
+                                        transition: 'all 0.25s ease-in-out'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-3px)';
+                                        e.currentTarget.style.boxShadow = '0 12px 30px rgba(229, 9, 20, 0.6)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(229, 9, 20, 0.4)';
+                                    }}
+                                >
+                                    <i className="bi bi-fire fs-5"></i>
                                     <span>XEM TẤT CẢ FLASH SALE ({flashSaleData.products.length} SẢN PHẨM)</span>
+                                    <i className="bi bi-arrow-right ms-1"></i>
                                 </Link>
                             </div>
                         </div>
@@ -609,8 +661,8 @@ const Home = () => {
                         </div>
 
                         <div className="row g-4">
-                            {newArrivals.slice(0, 8).map((p, idx) => {
-                                const fsInfo = getFlashSaleInfo(p.id);
+                            {newArrivals.slice((newArrivalsPage - 1) * HOME_ITEMS_PER_PAGE, newArrivalsPage * HOME_ITEMS_PER_PAGE).map((p, idx) => {
+                                const fsInfo = getFlashSaleInfo(p.id, p.min_price || p.price);
                                 return (
                                 <div key={p.id} className="col-lg-3 col-md-6 col-12 reveal-item god-hidden"
                                      style={{ animationDelay: `${idx * 0.07}s` }}>
@@ -621,9 +673,11 @@ const Home = () => {
                                         <div className="flat-card-img-box position-relative overflow-hidden d-flex align-items-center justify-content-center"
                                              style={{ aspectRatio: '1', padding: 16, background: '#f8f8f8' }}>
                                             {fsInfo ? (
-                                                <span className="flat-badge bg-danger text-white position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold">GIẢM {fsInfo.pct}%</span>
+                                                <span className="flat-badge bg-danger text-white position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold d-flex align-items-center" style={{ zIndex: 5, borderRadius: '4px', fontSize: '11.5px', boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)' }}>
+                                                    <i className="bi bi-fire me-1"></i> -{fsInfo.pct}%
+                                                </span>
                                             ) : (
-                                                <span className="flat-badge bg-danger text-white position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold">MỚI</span>
+                                                <span className="flat-badge bg-danger text-white position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold" style={{ zIndex: 5, borderRadius: '4px', fontSize: '11px' }}>MỚI</span>
                                             )}
                                             <img src={imgUrl(p.image_url || p.imageUrl)}
                                                  alt={p.product_name || p.productName}
@@ -647,13 +701,20 @@ const Home = () => {
                                             </h5>
                                             <div className="mb-3">
                                                 {fsInfo ? (
-                                                    <div className="d-flex align-items-baseline gap-2">
-                                                        <span className="price-new text-danger fw-bold" style={{ fontSize: 19 }}>
-                                                            {fmt(fsInfo.salePrice)}
-                                                        </span>
-                                                        <span className="price-old text-decoration-line-through text-muted" style={{ fontSize: 13 }}>
-                                                            {fmt(fsInfo.oldPrice || p.min_price)}
-                                                        </span>
+                                                    <div className="d-flex flex-column gap-1">
+                                                        <div className="d-flex align-items-center gap-1">
+                                                            <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-1 py-0" style={{ fontSize: '10px', fontWeight: '700' }}>
+                                                                <i className="bi bi-lightning-charge-fill me-1"></i>FLASH SALE
+                                                            </span>
+                                                        </div>
+                                                        <div className="d-flex align-items-baseline gap-2 flex-wrap">
+                                                            <span className="price-new text-danger fw-bold" style={{ fontSize: 20, color: '#e50914', letterSpacing: '-0.5px' }}>
+                                                                {fmt(fsInfo.salePrice)}
+                                                            </span>
+                                                            <span className="price-old text-decoration-line-through text-muted" style={{ fontSize: 13, color: '#94a3b8' }}>
+                                                                {fmt(fsInfo.oldPrice || p.min_price)}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 ) : (
                                                     <span className="price-new text-dark fw-bold" style={{ fontSize: 19 }}>
@@ -679,7 +740,41 @@ const Home = () => {
                             )})}
                         </div>
 
-                        <div className="text-center mt-5 reveal-item god-hidden">
+                        {/* PAGINATION CONTROLS */}
+                        {Math.ceil(newArrivals.length / HOME_ITEMS_PER_PAGE) > 1 && (
+                            <div className="d-flex justify-content-center align-items-center gap-2 mt-4 pt-3 flex-wrap">
+                                <button 
+                                    className="btn btn-outline-danger px-3 py-2 font-oswald text-uppercase fw-bold rounded-2"
+                                    style={{ fontSize: '13px', letterSpacing: '1px' }}
+                                    disabled={newArrivalsPage === 1}
+                                    onClick={() => setNewArrivalsPage(prev => Math.max(prev - 1, 1))}
+                                >
+                                    <i className="bi bi-chevron-left me-1"></i> Trang trước
+                                </button>
+
+                                {Array.from({ length: Math.ceil(newArrivals.length / HOME_ITEMS_PER_PAGE) }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        className={`btn px-3 py-2 font-oswald fw-bold rounded-2 ${newArrivalsPage === page ? 'btn-danger text-white' : 'btn-outline-secondary text-dark'}`}
+                                        style={{ fontSize: '13px' }}
+                                        onClick={() => setNewArrivalsPage(page)}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+
+                                <button 
+                                    className="btn btn-outline-danger px-3 py-2 font-oswald text-uppercase fw-bold rounded-2"
+                                    style={{ fontSize: '13px', letterSpacing: '1px' }}
+                                    disabled={newArrivalsPage === Math.ceil(newArrivals.length / HOME_ITEMS_PER_PAGE)}
+                                    onClick={() => setNewArrivalsPage(prev => Math.min(prev + 1, Math.ceil(newArrivals.length / HOME_ITEMS_PER_PAGE)))}
+                                >
+                                    Trang sau <i className="bi bi-chevron-right ms-1"></i>
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="text-center mt-4 reveal-item god-hidden">
                             <Link to="/new-arrivals" className="btn-god-tier">
                                 <span>XEM TẤT CẢ HÀNG MỚI</span>
                             </Link>
@@ -728,8 +823,8 @@ const Home = () => {
                         </div>
 
                         <div className="row g-4">
-                            {topSelling.slice(0, 8).map((p, idx) => {
-                                const fsInfo = getFlashSaleInfo(p.id);
+                            {topSelling.slice((topSellingPage - 1) * HOME_ITEMS_PER_PAGE, topSellingPage * HOME_ITEMS_PER_PAGE).map((p, idx) => {
+                                const fsInfo = getFlashSaleInfo(p.id, p.min_price || p.price);
                                 return (
                                 <div key={p.id} className="col-lg-3 col-md-6 col-12 reveal-item god-hidden"
                                      style={{ animationDelay: `${idx * 0.07}s` }}>
@@ -740,14 +835,13 @@ const Home = () => {
                                         <div className="flat-card-img-box position-relative overflow-hidden d-flex align-items-center justify-content-center"
                                              style={{ aspectRatio: '1', padding: 16, background: '#f8f8f8' }}>
                                             {fsInfo ? (
-                                                <span className="flat-badge position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold text-white bg-danger"
-                                                      style={{ borderRadius: 6, fontSize: 12, letterSpacing: 1 }}>
-                                                    GIẢM {fsInfo.pct}%
+                                                <span className="flat-badge bg-danger text-white position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold d-flex align-items-center" style={{ zIndex: 5, borderRadius: '4px', fontSize: '11.5px', boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)' }}>
+                                                    <i className="bi bi-fire me-1"></i> -{fsInfo.pct}%
                                                 </span>
                                             ) : (
-                                                <span className="flat-badge position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold text-white"
-                                                      style={{ background: '#111', borderRadius: 6, fontSize: 12, letterSpacing: 1 }}>
-                                                    🔥 HOT
+                                                <span className="flat-badge position-absolute top-0 start-0 m-2 px-2 py-1 fw-bold text-white d-flex align-items-center"
+                                                      style={{ background: '#111', borderRadius: 4, fontSize: '11.5px', letterSpacing: 1 }}>
+                                                    <i className="bi bi-fire me-1 text-warning"></i> HOT
                                                 </span>
                                             )}
                                             <img src={imgUrl(p.image_url || p.imageUrl)}
@@ -772,13 +866,20 @@ const Home = () => {
                                             </h5>
                                             <div className="mb-3">
                                                 {fsInfo ? (
-                                                    <div className="d-flex align-items-baseline gap-2">
-                                                        <span className="price-new text-danger fw-bold" style={{ fontSize: 19 }}>
-                                                            {fmt(fsInfo.salePrice)}
-                                                        </span>
-                                                        <span className="price-old text-decoration-line-through text-muted" style={{ fontSize: 13 }}>
-                                                            {fmt(fsInfo.oldPrice || p.min_price)}
-                                                        </span>
+                                                    <div className="d-flex flex-column gap-1">
+                                                        <div className="d-flex align-items-center gap-1">
+                                                            <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-1 py-0" style={{ fontSize: '10px', fontWeight: '700' }}>
+                                                                <i className="bi bi-lightning-charge-fill me-1"></i>FLASH SALE
+                                                            </span>
+                                                        </div>
+                                                        <div className="d-flex align-items-baseline gap-2 flex-wrap">
+                                                            <span className="price-new text-danger fw-bold" style={{ fontSize: 20, color: '#e50914', letterSpacing: '-0.5px' }}>
+                                                                {fmt(fsInfo.salePrice)}
+                                                            </span>
+                                                            <span className="price-old text-decoration-line-through text-muted" style={{ fontSize: 13, color: '#94a3b8' }}>
+                                                                {fmt(fsInfo.oldPrice || p.min_price)}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 ) : (
                                                     <span className="price-new text-dark fw-bold" style={{ fontSize: 19 }}>
@@ -803,6 +904,40 @@ const Home = () => {
                                 </div>
                             )})}
                         </div>
+
+                        {/* PAGINATION CONTROLS */}
+                        {Math.ceil(topSelling.length / HOME_ITEMS_PER_PAGE) > 1 && (
+                            <div className="d-flex justify-content-center align-items-center gap-2 mt-4 pt-3 flex-wrap">
+                                <button 
+                                    className="btn btn-outline-danger px-3 py-2 font-oswald text-uppercase fw-bold rounded-2"
+                                    style={{ fontSize: '13px', letterSpacing: '1px' }}
+                                    disabled={topSellingPage === 1}
+                                    onClick={() => setTopSellingPage(prev => Math.max(prev - 1, 1))}
+                                >
+                                    <i className="bi bi-chevron-left me-1"></i> Trang trước
+                                </button>
+
+                                {Array.from({ length: Math.ceil(topSelling.length / HOME_ITEMS_PER_PAGE) }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        className={`btn px-3 py-2 font-oswald fw-bold rounded-2 ${topSellingPage === page ? 'btn-danger text-white' : 'btn-outline-secondary text-dark'}`}
+                                        style={{ fontSize: '13px' }}
+                                        onClick={() => setTopSellingPage(page)}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+
+                                <button 
+                                    className="btn btn-outline-danger px-3 py-2 font-oswald text-uppercase fw-bold rounded-2"
+                                    style={{ fontSize: '13px', letterSpacing: '1px' }}
+                                    disabled={topSellingPage === Math.ceil(topSelling.length / HOME_ITEMS_PER_PAGE)}
+                                    onClick={() => setTopSellingPage(prev => Math.min(prev + 1, Math.ceil(topSelling.length / HOME_ITEMS_PER_PAGE)))}
+                                >
+                                    Trang sau <i className="bi bi-chevron-right ms-1"></i>
+                                </button>
+                            </div>
+                        )}
 
                         <div className="text-center mt-5 reveal-item god-hidden">
                             <Link to="/shop" className="btn-god-tier">

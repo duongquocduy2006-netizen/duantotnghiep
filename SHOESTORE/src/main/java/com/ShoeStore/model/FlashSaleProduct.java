@@ -37,10 +37,9 @@ public class FlashSaleProduct {
     @Column(name = "sale_price", nullable = false)
     private BigDecimal salePrice;
 
-    @NotNull(message = "Giới hạn số lượng không được để trống")
-    @Min(value = 1, message = "Giới hạn số lượng phải ít nhất là 1")
-    @Column(name = "quantity_limit", nullable = false)
-    private Integer quantityLimit;
+    @Min(value = 0, message = "Giới hạn số lượng không được nhỏ hơn 0")
+    @Column(name = "quantity_limit", nullable = true)
+    private Integer quantityLimit = 0;
 
     @Column(name = "sold_quantity", nullable = false)
     private Integer soldQuantity = 0;
