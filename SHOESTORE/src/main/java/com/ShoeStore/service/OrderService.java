@@ -293,15 +293,15 @@ public class OrderService {
     }
 
     public List<java.util.Map<String, Object>> getOrderItems(String orderCode) {
-        String sql = "SELECT oi.quantity, oi.price, p.product_name, p.id as product_id, s.size_name, col.color_name, pv.id as product_variant_id, " +
+        String sql = "SELECT oi.quantity, oi.price, p.product_name, p.brand_name, p.id as product_id, s.size_name, col.color_name, pv.id as product_variant_id, " +
                 "(SELECT TOP 1 pi.image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.is_primary DESC, pi.id ASC) as image_url "
                 +
                 "FROM order_items oi " +
                 "JOIN orders o ON oi.order_id = o.id " +
                 "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
                 "JOIN products p ON pv.product_id = p.id " +
-                "JOIN sizes s ON pv.size_id = s.id " +
-                "JOIN colors col ON pv.color_id = col.id " +
+                "LEFT JOIN sizes s ON pv.size_id = s.id " +
+                "LEFT JOIN colors col ON pv.color_id = col.id " +
                 "WHERE o.order_code = ?";
         return jdbc.queryForList(sql, orderCode);
     }

@@ -214,8 +214,8 @@ public class CheckoutController {
                 +
                 "FROM product_variants v " +
                 "JOIN products p ON v.product_id = p.id " +
-                "JOIN sizes s ON v.size_id = s.id " +
-                "JOIN colors col ON v.color_id = col.id " +
+                "LEFT JOIN sizes s ON v.size_id = s.id " +
+                "LEFT JOIN colors col ON v.color_id = col.id " +
                 "WHERE v.id = ?";
 
         Map<String, Object> item = jdbc.queryForMap(sql, variantId);
@@ -242,8 +242,8 @@ public class CheckoutController {
                 "FROM cart_items ci " +
                 "JOIN product_variants v ON ci.product_variant_id = v.id " +
                 "JOIN products p ON v.product_id = p.id " +
-                "JOIN sizes s ON v.size_id = s.id " +
-                "JOIN colors col ON v.color_id = col.id " +
+                "LEFT JOIN sizes s ON v.size_id = s.id " +
+                "LEFT JOIN colors col ON v.color_id = col.id " +
                 "WHERE ci.user_id = ?";
 
         List<Map<String, Object>> cartItems = jdbc.queryForList(sql, accountId);

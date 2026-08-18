@@ -41,8 +41,8 @@ public class CartApiController {
                 "FROM cart_items ci " +
                 "JOIN product_variants v ON ci.product_variant_id = v.id " +
                 "JOIN products p ON v.product_id = p.id " +
-                "JOIN sizes s ON v.size_id = s.id " +
-                "JOIN colors col ON v.color_id = col.id " +
+                "LEFT JOIN sizes s ON v.size_id = s.id " +
+                "LEFT JOIN colors col ON v.color_id = col.id " +
                 "WHERE ci.user_id = ?";
 
         List<Map<String, Object>> cartItems = jdbc.queryForList(sql, accountId);
@@ -288,8 +288,8 @@ public class CartApiController {
                     "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url " +
                     "FROM product_variants v " +
                     "JOIN products p ON v.product_id = p.id " +
-                    "JOIN sizes s ON v.size_id = s.id " +
-                    "JOIN colors col ON v.color_id = col.id " +
+                    "LEFT JOIN sizes s ON v.size_id = s.id " +
+                    "LEFT JOIN colors col ON v.color_id = col.id " +
                     "WHERE v.id = ?";
                     
             List<Map<String, Object>> variants = jdbc.queryForList(sql, variantId);
