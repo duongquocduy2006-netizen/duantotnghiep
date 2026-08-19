@@ -276,10 +276,13 @@ const AdminFlashSaleForm = () => {
         const uniqueProductKeys = new Set();
         for (let i = 0; i < form.flashSaleProducts.length; i++) {
             const fsp = form.flashSaleProducts[i];
+            const origInfo = getOriginalPriceInfo(fsp);
             
             const sPrice = Number(fsp.salePrice);
             if (fsp.salePrice === '' || fsp.salePrice === null || isNaN(sPrice) || sPrice <= 0) {
                 errors[`products.${i}.salePrice`] = "Vui lòng nhập giá sale lớn hơn 0đ!";
+            } else if (origInfo && sPrice >= origInfo.minPrice) {
+                errors[`products.${i}.salePrice`] = `Giá sale (${new Intl.NumberFormat('vi-VN').format(sPrice)}đ) không được lớn hơn hoặc bằng giá gốc (${origInfo.displayText})!`;
             }
 
             if (!fsp.isUnlimited) {
@@ -334,6 +337,8 @@ const AdminFlashSaleForm = () => {
                 setFormErrors(prev => ({ ...prev, startDate: errMsg }));
             } else if (errMsg.includes("kết thúc")) {
                 setFormErrors(prev => ({ ...prev, endDate: errMsg }));
+            } else if (errMsg.includes("trùng") || errMsg.includes("hai chương trình") || errMsg.includes("thời điểm")) {
+                setFormErrors(prev => ({ ...prev, startDate: errMsg, endDate: errMsg }));
             }
             
             window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
@@ -587,7 +592,7 @@ const AdminFlashSaleForm = () => {
                                                 <input 
                                                     type="text" 
                                                     inputMode="numeric"
-                                                    className={`form-input-cinematic ${formErrors[`products.${idx}.salePrice`] ? 'input-error' : ''}`} 
+                                                    className={`form-input-cinematic ${formErrors[`products.${idx}.salePrice`] || isHigherThanOrig ? 'input-error' : ''}`} 
                                                     placeholder="Nhập giá sale..."
                                                     value={fsp.salePrice === null || fsp.salePrice === undefined ? '' : fsp.salePrice}
                                                     onFocus={(e) => e.target.select()}

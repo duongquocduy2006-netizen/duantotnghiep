@@ -29,4 +29,7 @@ public interface FlashSaleRepository extends JpaRepository<FlashSale, Integer> {
 
     @Query("SELECT f FROM FlashSale f WHERE f.status = 1 AND f.endDate > :now ORDER BY f.startDate ASC")
     List<FlashSale> findActiveOrUpcomingFlashSales(@Param("now") LocalDateTime now);
+
+    @Query("SELECT f FROM FlashSale f WHERE f.status = 1 AND f.startDate < :endDate AND f.endDate > :startDate AND (:id IS NULL OR f.id != :id)")
+    List<FlashSale> findOverlappingFlashSales(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, @Param("id") Integer id);
 }
