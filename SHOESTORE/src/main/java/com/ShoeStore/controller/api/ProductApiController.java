@@ -179,9 +179,12 @@ public class ProductApiController {
         }
     }
 
-    // 2. LẤY CHI TIẾT SẢN PHẨM DÀNH CHO ADMIN
+    // 2. LẤY CHI TIẾT SẢN PHẨM DÀNH CHO ADMIN HOẶC CLIENT
     @GetMapping("/{id}")
-    public ResponseEntity<?> getProductDetail(@PathVariable Integer id, jakarta.servlet.http.HttpSession session) {
+    public ResponseEntity<?> getProductDetail(
+            @PathVariable Integer id,
+            @RequestParam(value = "admin", required = false, defaultValue = "false") boolean isAdmin,
+            jakarta.servlet.http.HttpSession session) {
         java.util.Optional<Product> productOpt = productRepository.findById(id);
         if (productOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -189,6 +192,32 @@ public class ProductApiController {
         }
 
         Product product = productOpt.get();
+
+        if (!isAdmin) {
+            // 1. Kiểm tra trạng thái sản phẩm
+            if (product.getStatus() != null && product.getStatus() == 0) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Sản phẩm hiện đang bị ẩn!"));
+            }
+
+            // 2. Kiểm tra trạng thái danh mục
+            if (product.getCategory() != null && !product.getCategory().isActive()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Danh mục của sản phẩm này đã bị ẩn!"));
+            }
+
+            // 3. Kiểm tra trạng thái thương hiệu
+            if (product.getBrandName() != null && !product.getBrandName().trim().isEmpty()) {
+                String bNameTrim = product.getBrandName().trim();
+                List<Brand> allBrands = brandRepository.findAll();
+                boolean brandActive = allBrands.stream()
+                        .anyMatch(b -> b.getName() != null && b.getName().equalsIgnoreCase(bNameTrim) && b.isActive());
+                if (!brandActive) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(Map.of("success", false, "message", "Thương hiệu của sản phẩm này đã bị ẩn!"));
+                }
+            }
+        }
 
         // Map product details
         Map<String, Object> prodMap = new HashMap<>();
@@ -948,7 +977,10 @@ public class ProductApiController {
                     " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
+                    "LEFT JOIN brands b ON LOWER(p.brand_name) = LOWER(b.brand_name) " +
                     "WHERE p.status = 1 " +
+                    "AND (c.status IS NULL OR c.status = 1) " +
+                    "AND (b.status IS NULL OR b.status = 1) " +
                     "AND p.created_at >= DATEADD(day, -3, GETDATE()) " +
                     "ORDER BY p.created_at DESC";
 
@@ -979,11 +1011,12 @@ public class ProductApiController {
             List<Map<String, Object>> activeCategories = jdbc.queryForList(
                     "SELECT id, category_name FROM categories WHERE status = 1 ORDER BY category_name ASC");
 
+            java.util.Set<String> activeBrandNamesLower = activeBrands.stream()
+                    .map(b -> b.get("name") != null ? b.get("name").toString().trim().toLowerCase() : "")
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
+
             List<Product> allProducts = productRepository.findAll();
-            System.out.println("=== SEARCH API ALL PRODUCTS SIZE: " + allProducts.size());
-            for (Product p : allProducts) {
-                System.out.println("   DB Product ID: " + p.getId() + " | Name: " + p.getProductName() + " | Status: " + p.getStatus() + " | Category: " + (p.getCategory() != null ? p.getCategory().getName() : "NULL"));
-            }
 
             String searchTerm = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim().toLowerCase() : ((q != null && !q.trim().isEmpty()) ? q.trim().toLowerCase() : null);
 
@@ -1000,6 +1033,12 @@ public class ProductApiController {
                     .filter(p -> p != null)
                     .filter(p -> p.getStatus() == null || p.getStatus() == 1)
                     .filter(p -> p.getCategory() == null || p.getCategory().isActive())
+                    .filter(p -> {
+                        if (p.getBrandName() != null && !p.getBrandName().trim().isEmpty()) {
+                            return activeBrandNamesLower.contains(p.getBrandName().trim().toLowerCase());
+                        }
+                        return true;
+                    })
                     .filter(p -> {
                         if (searchTerm == null) return true;
                         String pName = p.getProductName() != null ? p.getProductName().toLowerCase() : "";

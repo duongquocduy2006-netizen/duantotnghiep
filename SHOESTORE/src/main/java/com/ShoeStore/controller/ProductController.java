@@ -46,7 +46,8 @@ public class ProductController {
                         " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                         "FROM products p " +
                         "LEFT JOIN categories c ON p.category_id = c.id " +
-                        "WHERE 1=1 ");
+                        "LEFT JOIN brands b ON LOWER(p.brand_name) = LOWER(b.brand_name) " +
+                        "WHERE (p.status IS NULL OR p.status = 1) AND (c.status IS NULL OR c.status = 1) AND (b.status IS NULL OR b.status = 1) ");
 
         // --- FILTER LOGIC ---
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -130,7 +131,8 @@ public class ProductController {
             // 1. Thông tin cơ bản sản phẩm
             String sqlInfo = "SELECT p.*, c.category_name FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
-                    "WHERE p.id = ? AND c.status = 1 AND EXISTS (SELECT 1 FROM brands b WHERE b.brand_name = p.brand_name AND b.status = 1)";
+                    "LEFT JOIN brands b ON LOWER(p.brand_name) = LOWER(b.brand_name) " +
+                    "WHERE p.id = ? AND (p.status IS NULL OR p.status = 1) AND (c.status IS NULL OR c.status = 1) AND (b.status IS NULL OR b.status = 1)";
             Map<String, Object> product = jdbc.queryForMap(sqlInfo, id);
             System.out.println("DEBUG Product: " + product);
             model.addAttribute("p", product);

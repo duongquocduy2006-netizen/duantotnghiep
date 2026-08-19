@@ -43,6 +43,13 @@ public class HomeApiController {
                     .map(img -> "/images/" + img.getImageUrl())
                     .collect(Collectors.toList());
 
+            // Lấy danh sách thương hiệu hoạt động (status = 1)
+            List<Map<String, Object>> activeBrandRows = jdbc.queryForList("SELECT brand_name as name FROM brands WHERE status = 1");
+            java.util.Set<String> activeBrandNamesLower = activeBrandRows.stream()
+                    .map(b -> b.get("name") != null ? b.get("name").toString().trim().toLowerCase() : "")
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
+
             // 2. Active Flash Sale & Flash Products
             Map<String, Object> flashSaleMap = new HashMap<>();
             List<Map<String, Object>> flashProductsMap = new java.util.ArrayList<>();
@@ -56,7 +63,18 @@ public class HomeApiController {
                 flashSaleMap.put("endDate", fs.getEndDate());
 
                 List<FlashSaleProduct> flashProducts = flashSaleService.getProductsByFlashSaleId(fs.getId());
-                flashProductsMap = flashProducts.stream().map(fsp -> {
+                flashProductsMap = flashProducts.stream()
+                        .filter(fsp -> {
+                            var p = fsp.getProduct();
+                            if (p == null) return false;
+                            if (p.getStatus() != null && p.getStatus() == 0) return false;
+                            if (p.getCategory() != null && !p.getCategory().isActive()) return false;
+                            if (p.getBrandName() != null && !p.getBrandName().trim().isEmpty()) {
+                                return activeBrandNamesLower.contains(p.getBrandName().trim().toLowerCase());
+                            }
+                            return true;
+                        })
+                        .map(fsp -> {
                     Map<String, Object> fMap = new HashMap<>();
                     fMap.put("id", fsp.getId());
                     fMap.put("salePrice", fsp.getSalePrice());
@@ -96,7 +114,8 @@ public class HomeApiController {
                     "(SELECT MIN(price) FROM product_variants WHERE product_id = p.id) as min_price " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
-                    "WHERE p.status = 1 AND (c.status IS NULL OR c.status = 1) " +
+                    "LEFT JOIN brands b ON LOWER(p.brand_name) = LOWER(b.brand_name) " +
+                    "WHERE p.status = 1 AND (c.status IS NULL OR c.status = 1) AND (b.status IS NULL OR b.status = 1) " +
                     "ORDER BY p.created_at DESC";
 
             List<Map<String, Object>> latestProducts = jdbc.queryForList(sql);

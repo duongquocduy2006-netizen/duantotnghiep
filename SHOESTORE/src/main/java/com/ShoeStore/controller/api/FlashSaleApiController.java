@@ -35,6 +35,9 @@ public class FlashSaleApiController {
     @Autowired
     private com.ShoeStore.repository.FlashSaleRepository flashSaleRepository;
 
+    @Autowired
+    private com.ShoeStore.repository.BrandRepository brandRepository;
+
     // 1. GET ACTIVE CAMPAIGN FOR CLIENT FRONTEND
     @GetMapping("/active")
     public ResponseEntity<?> getActiveFlashSale() {
@@ -49,6 +52,12 @@ public class FlashSaleApiController {
                         "campaigns", List.of(),
                         "message", "Hiện tại không có chương trình Flash Sale nào đang diễn ra."));
             }
+
+            java.util.Set<String> activeBrandNamesLower = brandRepository.findAll().stream()
+                    .filter(com.ShoeStore.model.Brand::isActive)
+                    .map(b -> b.getName() != null ? b.getName().trim().toLowerCase() : "")
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
 
             List<Map<String, Object>> campaignsMapList = new ArrayList<>();
 
@@ -65,7 +74,18 @@ public class FlashSaleApiController {
                 campaignMap.put("isUpcoming", isUpcoming);
 
                 List<FlashSaleProduct> flashProducts = flashSaleService.getProductsByFlashSaleId(fs.getId());
-                List<Map<String, Object>> productsMap = flashProducts.stream().map(fsp -> {
+                List<Map<String, Object>> productsMap = flashProducts.stream()
+                        .filter(fsp -> {
+                            var p = fsp.getProduct();
+                            if (p == null) return false;
+                            if (p.getStatus() != null && p.getStatus() == 0) return false;
+                            if (p.getCategory() != null && !p.getCategory().isActive()) return false;
+                            if (p.getBrandName() != null && !p.getBrandName().trim().isEmpty()) {
+                                return activeBrandNamesLower.contains(p.getBrandName().trim().toLowerCase());
+                            }
+                            return true;
+                        })
+                        .map(fsp -> {
                     Map<String, Object> fMap = new HashMap<>();
                     fMap.put("id", fsp.getId());
                     fMap.put("salePrice", fsp.getSalePrice());
