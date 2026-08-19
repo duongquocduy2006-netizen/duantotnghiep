@@ -250,20 +250,59 @@ const DateTimePicker24h = ({ value, onChange, min, placeholder = "Chọn ngày &
 
     return (
         <div className="dtp-24h-container" style={{ position: 'relative', width: '100%' }}>
-            {/* Input Trigger Field */}
-            <div className="dtp-input-wrapper" style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setIsOpen(true)}>
-                <input
-                    type="text"
-                    readOnly
-                    className={`form-input-cinematic ${error ? 'input-error' : ''} ${className}`}
-                    style={{ paddingRight: '40px', cursor: 'pointer', background: '#fff', userSelect: 'none', fontWeight: 600, fontSize: '14px' }}
-                    placeholder={placeholder}
-                    value={getFormattedDisplay()}
-                />
-                <i 
-                    className="bi bi-calendar-event-fill" 
-                    style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: '#e50914', fontSize: '1.2rem', pointerEvents: 'none' }}
-                ></i>
+            {/* Modern Styled Trigger Box */}
+            <div 
+                className={`dtp-input-wrapper ${className}`}
+                style={{ position: 'relative', cursor: 'pointer', width: '100%' }} 
+                onClick={() => setIsOpen(true)}
+            >
+                <div 
+                    className="dtp-trigger-box"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: error ? '#fff5f5' : '#ffffff',
+                        border: error ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1',
+                        borderRadius: '10px',
+                        padding: '9px 14px',
+                        transition: 'all 0.2s ease',
+                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        minHeight: '42px'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '9px', overflow: 'hidden' }}>
+                        <i className="bi bi-clock-history" style={{ color: '#0070f3', fontSize: '15px' }}></i>
+                        <span style={{ 
+                            fontSize: '14px', 
+                            fontWeight: getFormattedDisplay() ? '700' : '400',
+                            color: getFormattedDisplay() ? '#0f172a' : '#94a3b8',
+                            letterSpacing: '0.2px',
+                            whiteSpace: 'nowrap',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden'
+                        }}>
+                            {getFormattedDisplay() || placeholder}
+                        </span>
+                    </div>
+                    <div style={{
+                        background: 'linear-gradient(135deg, #e50914 0%, #b91c1c 100%)',
+                        color: '#ffffff',
+                        borderRadius: '7px',
+                        width: '28px',
+                        height: '28px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        boxShadow: '0 2px 4px rgba(229, 9, 20, 0.25)',
+                        marginLeft: '8px'
+                    }}>
+                        <i className="bi bi-calendar-event" style={{ fontSize: '13px' }}></i>
+                    </div>
+                </div>
             </div>
 
             {/* 24-Hour Floating Modal Popup */}
@@ -573,6 +612,10 @@ const DateTimePicker24h = ({ value, onChange, min, placeholder = "Chọn ngày &
                 @keyframes dtpFadeIn {
                     from { opacity: 0; transform: scale(0.96); }
                     to { opacity: 1; transform: scale(1); }
+                }
+                .dtp-trigger-box:hover {
+                    border-color: #0070f3 !important;
+                    box-shadow: 0 4px 12px rgba(0, 112, 243, 0.15) !important;
                 }
             `}</style>
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import DateTimePicker24h from '../../components/DateTimePicker24h';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import './AdminFormModern.css';
@@ -186,45 +187,47 @@ const AdminBannerForm = () => {
                                 </div>
 
                                 <div className="row">
-                                     <div className="col-md-6 mb-3">
-                                         <div className="d-flex justify-content-between align-items-center mb-1">
-                                             <label className="form-label-modern mb-0">Ngày bắt đầu</label>
-                                             <button 
-                                                 type="button" 
-                                                 className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
-                                                 style={{ fontSize: '11px', letterSpacing: '0.5px' }}
-                                                 onClick={() => setStartDate(getCurrentDateTimeString())}
-                                             >
-                                                 <i className="bi bi-clock-history me-1"></i> Ngay lúc này
-                                             </button>
-                                         </div>
-                                         <input
-                                             type="datetime-local"
-                                             className="form-input-modern"
-                                             value={startDate}
-                                             onChange={(e) => setStartDate(e.target.value)}
-                                         />
-                                     </div>
-                                     <div className="col-md-6 mb-3">
-                                         <div className="d-flex justify-content-between align-items-center mb-1">
-                                             <label className="form-label-modern mb-0">Ngày kết thúc</label>
-                                             <button 
-                                                 type="button" 
-                                                 className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
-                                                 style={{ fontSize: '11px', letterSpacing: '0.5px' }}
-                                                 onClick={() => setEndDate(getCurrentDateTimeString())}
-                                             >
-                                                 <i className="bi bi-clock-history me-1"></i> Ngay lúc này
-                                             </button>
-                                         </div>
-                                         <input
-                                             type="datetime-local"
-                                             className="form-input-modern"
-                                             value={endDate}
-                                             onChange={(e) => setEndDate(e.target.value)}
-                                         />
-                                     </div>
-                                 </div>
+                                    <div className="col-md-6 mb-3">
+                                        <div className="d-flex justify-content-between align-items-center mb-1">
+                                            <label className="form-label-modern mb-0">Ngày bắt đầu</label>
+                                            <button 
+                                                type="button" 
+                                                className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                                style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                                onClick={() => setStartDate(getCurrentDateTimeString())}
+                                            >
+                                                <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                            </button>
+                                        </div>
+                                        <DateTimePicker24h
+                                            title="CHỌN NGÀY BẮT ĐẦU BANNER (24H)"
+                                            value={startDate}
+                                            placeholder="Bấm chọn ngày & giờ bắt đầu..."
+                                            min={getCurrentDateTimeString()}
+                                            onChange={(val) => setStartDate(val)}
+                                        />
+                                    </div>
+                                    <div className="col-md-6 mb-3">
+                                        <div className="d-flex justify-content-between align-items-center mb-1">
+                                            <label className="form-label-modern mb-0">Ngày kết thúc</label>
+                                            <button 
+                                                type="button" 
+                                                className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                                style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                                onClick={() => setEndDate(getCurrentDateTimeString())}
+                                            >
+                                                <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                            </button>
+                                        </div>
+                                        <DateTimePicker24h
+                                            title="CHỌN NGÀY KẾT THÚC BANNER (24H)"
+                                            value={endDate}
+                                            placeholder="Bấm chọn ngày & giờ kết thúc..."
+                                            min={startDate || getCurrentDateTimeString()}
+                                            onChange={(val) => setEndDate(val)}
+                                        />
+                                    </div>
+                                </div>
 
                                 <div className="mb-3">
                                     <label className="form-label-modern">Mô tả thêm</label>

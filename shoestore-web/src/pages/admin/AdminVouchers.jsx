@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import AdminLayout from "../../components/AdminLayout";
+import DateTimePicker24h from "../../components/DateTimePicker24h";
 import api from "../../services/api";
 
 const AdminVouchers = () => {
@@ -454,11 +455,16 @@ const AdminVouchers = () => {
                                             <i className="bi bi-clock-history me-1"></i> Ngay lúc này
                                         </button>
                                     </div>
-                                    <input 
-                                        type="datetime-local" 
-                                        className="form-input" 
+                                    <DateTimePicker24h
+                                        title="CHỌN NGÀY BẮT ĐẦU VOUCHER (24H)"
                                         value={formStartDate}
-                                        onChange={(e) => { setFormStartDate(e.target.value); if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''})); }}
+                                        placeholder="Bấm chọn ngày & giờ bắt đầu..."
+                                        error={!!formErrors.endDate}
+                                        min={getCurrentDateTimeString()}
+                                        onChange={(val) => {
+                                            setFormStartDate(val);
+                                            if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
+                                        }}
                                     />
                                 </div>
                                 <div className="form-group">
@@ -476,11 +482,16 @@ const AdminVouchers = () => {
                                             <i className="bi bi-clock-history me-1"></i> Ngay lúc này
                                         </button>
                                     </div>
-                                    <input 
-                                        type="datetime-local" 
-                                        className={`form-input ${formErrors.endDate ? 'input-error' : ''}`}
+                                    <DateTimePicker24h
+                                        title="CHỌN NGÀY KẾT THÚC VOUCHER (24H)"
                                         value={formEndDate}
-                                        onChange={(e) => { setFormEndDate(e.target.value); if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''})); }}
+                                        placeholder="Bấm chọn ngày & giờ kết thúc..."
+                                        error={!!formErrors.endDate}
+                                        min={formStartDate || getCurrentDateTimeString()}
+                                        onChange={(val) => {
+                                            setFormEndDate(val);
+                                            if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
+                                        }}
                                     />
                                     {formErrors.endDate && <span className="field-error">{formErrors.endDate}</span>}
                                 </div>
