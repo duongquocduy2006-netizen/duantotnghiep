@@ -273,7 +273,7 @@ public class ProductApiController {
         
         if (account != null) {
             Integer currentUserId = (Integer) account.get("id");
-            sqlAllReviews = "SELECT r.*, a.full_name as user_name, a.role, r.like_count, " +
+            sqlAllReviews = "SELECT r.*, COALESCE(r.is_hidden, 0) as is_hidden, a.full_name as user_name, a.role, r.like_count, " +
                     "(SELECT COUNT(*) FROM product_review_likes prl WHERE prl.review_id = r.id AND prl.user_id = ?) as user_liked " +
                     "FROM product_reviews r " +
                     "JOIN accounts a ON r.user_id = a.id " +
@@ -281,7 +281,7 @@ public class ProductApiController {
                     "ORDER BY r.created_at ASC";
             allEntries = jdbc.queryForList(sqlAllReviews, currentUserId, id);
         } else {
-            sqlAllReviews = "SELECT r.*, a.full_name as user_name, a.role, r.like_count, 0 as user_liked " +
+            sqlAllReviews = "SELECT r.*, COALESCE(r.is_hidden, 0) as is_hidden, a.full_name as user_name, a.role, r.like_count, 0 as user_liked " +
                     "FROM product_reviews r " +
                     "JOIN accounts a ON r.user_id = a.id " +
                     "WHERE r.product_id = ? " +
@@ -312,7 +312,7 @@ public class ProductApiController {
         parents.sort((a, b) -> ((java.util.Date) b.get("created_at")).compareTo((java.util.Date) a.get("created_at")));
 
         String sqlRatingStats = "SELECT COUNT(*) as count, AVG(CAST(rating AS FLOAT)) as avg_rating " +
-                "FROM product_reviews WHERE product_id = ? AND parent_id IS NULL";
+                "FROM product_reviews WHERE product_id = ? AND parent_id IS NULL AND (is_hidden IS NULL OR is_hidden = 0)";
         Map<String, Object> stats = jdbc.queryForMap(sqlRatingStats, id);
         
         boolean hasPurchased = false;

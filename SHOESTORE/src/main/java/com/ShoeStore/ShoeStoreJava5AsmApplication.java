@@ -36,6 +36,10 @@ public class ShoeStoreJava5AsmApplication {
                 jdbcTemplate.execute("ALTER TABLE product_reviews ADD like_count INT DEFAULT 0");
             } catch (Exception e) {}
 
+            try {
+                jdbcTemplate.execute("ALTER TABLE product_reviews ADD is_hidden BIT DEFAULT 0");
+            } catch (Exception e) {}
+
             // 3. Tạo bảng lưu trữ Like
             try {
                 jdbcTemplate.execute("CREATE TABLE product_review_likes (" +
