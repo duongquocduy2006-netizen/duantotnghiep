@@ -84,6 +84,13 @@ const AdminLayout = ({ children }) => {
     const toastBgShadow = isToastError ? 'rgba(220, 38, 38, 0.2)' : 'rgba(25, 135, 84, 0.2)';
     const toastIconClass = isToastError ? 'bi bi-exclamation-circle-fill' : 'bi bi-check-circle-fill';
 
+    const isPathActive = (path) => {
+        if (path === '/admin/dashboard' || path === '/admin') {
+            return location.pathname === '/admin' || location.pathname === '/admin/dashboard' || location.pathname === '/admin/';
+        }
+        return location.pathname === path || location.pathname.startsWith(path + '/');
+    };
+
     return (
         <div className="admin-wrapper">
             {/* SIDEBAR */}
@@ -109,9 +116,10 @@ const AdminLayout = ({ children }) => {
                         if (item.type === 'label') {
                             return <div key={index} className="nav-label">{item.label}</div>;
                         }
+                        const active = isPathActive(item.path);
                         return (
                             <li key={item.path} style={{ listStyle: 'none' }}>
-                                <Link to={item.path} className={`nav-link ${location.pathname === item.path || (item.path === '/admin/products' && location.pathname.startsWith('/admin/products/detail')) ? 'active' : ''}`}>
+                                <Link to={item.path} className={`nav-link ${active ? 'active' : ''}`}>
                                     <i className={`bi ${item.icon}`}></i>
                                     <span>{item.label}</span>
                                 </Link>

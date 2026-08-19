@@ -616,10 +616,14 @@ const Header = () => {
                         <div className="collapse navbar-collapse justify-content-center" id="navbarNav">
                             <ul className="navbar-nav gap-3">
                                 <li className="nav-item">
-                                    <Link className="nav-link nav-link-custom" to="/">TRANG CHỦ</Link>
+                                    <Link className={`nav-link nav-link-custom ${location.pathname === '/' ? 'active' : ''}`} to="/">
+                                        <i className="fa-solid fa-house me-1"></i>TRANG CHỦ
+                                    </Link>
                                 </li>
                                 <li className="nav-item">
-                                    <a className="nav-link nav-link-custom" href="#">DANH MỤC <i className="fa fa-angle-down ms-1" style={{ fontSize: '10px' }}></i></a>
+                                    <a className={`nav-link nav-link-custom ${location.pathname.startsWith('/shop') ? 'active' : ''}`} href="#">
+                                        <i className="fa-solid fa-layer-group me-1"></i>DANH MỤC <i className="fa fa-angle-down ms-1" style={{ fontSize: '10px' }}></i>
+                                    </a>
                                     <div className="mega-menu">
                                         <div className="container">
                                             <div className="mega-content d-flex flex-wrap justify-content-center gap-5 py-3">
@@ -655,21 +659,23 @@ const Header = () => {
                                 </li>
                                 <li className="nav-item">
                                     <Link className={`nav-link nav-link-custom ${location.pathname === '/new-arrivals' ? 'active' : ''}`} to="/new-arrivals">
-                                        <i className="fa fa-star me-1"></i>HÀNG MỚI
+                                        <i className="fa-solid fa-star me-1 text-warning"></i>HÀNG MỚI
                                     </Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className={`nav-link nav-link-custom ${location.pathname === '/membership' ? 'active' : ''}`} to="/membership">
-                                        <i className="fa-solid fa-crown me-1"></i>HẠNG THÀNH VIÊN
+                                        <i className="fa-solid fa-crown me-1 text-warning"></i>HẠNG THÀNH VIÊN
                                     </Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className={`nav-link nav-link-custom ${location.pathname === '/flash-sale' ? 'active' : ''}`} to="/flash-sale">
-                                        <i className="fa-solid fa-fire me-1"></i>SALE SỐC
+                                        <i className="fa-solid fa-fire me-1 text-danger"></i>SALE SỐC
                                     </Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className={`nav-link nav-link-custom ${location.pathname === '/shop' ? 'active' : ''}`} to="/shop">CỬA HÀNG</Link>
+                                    <Link className={`nav-link nav-link-custom ${location.pathname === '/shop' ? 'active' : ''}`} to="/shop">
+                                        <i className="fa-solid fa-bag-shopping me-1"></i>CỬA HÀNG
+                                    </Link>
                                 </li>
                             </ul>
                         </div>
