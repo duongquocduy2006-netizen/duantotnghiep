@@ -390,6 +390,9 @@ public class ProductApiController {
                         flashSaleInfo.put("originalPrice", origPrice);
                         if (origPrice > 0 && fsp.getSalePrice() != null) {
                             int discountPercent = (int) Math.round((1.0 - fsp.getSalePrice().doubleValue() / origPrice) * 100);
+                            if (discountPercent < 0) {
+                                discountPercent = 0;
+                            }
                             flashSaleInfo.put("discountPercent", discountPercent);
                         }
                         break;
@@ -648,6 +651,30 @@ public class ProductApiController {
             if (price == null || price.compareTo(new BigDecimal(5000)) <= 0) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("success", false, "message", "Giá bán phải lớn hơn 5,000 VNĐ!"));
+            }
+
+            // CHECK FLASH SALE VALIDATION: Chặn đổi giá sản phẩm nhỏ hơn hoặc bằng giá Flash Sale đang/sắp chạy
+            try {
+                String checkFsSql = "SELECT fsp.sale_price, fs.name FROM flash_sale_products fsp " +
+                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                        "WHERE fsp.product_id = ? AND fs.end_date >= GETDATE()";
+                java.util.List<java.util.Map<String, Object>> activeFsList = jdbc.queryForList(checkFsSql, product.getId());
+                for (java.util.Map<String, Object> fsRow : activeFsList) {
+                    BigDecimal fsSalePrice = fsRow.get("sale_price") != null ? new BigDecimal(fsRow.get("sale_price").toString()) : null;
+                    String fsName = (String) fsRow.get("name");
+                    if (fsSalePrice != null) {
+                        int cmp = price.compareTo(fsSalePrice);
+                        if (cmp < 0) {
+                            return ResponseEntity.badRequest().body(Map.of("success", false, "message", 
+                                    "Lỗi: Giá gốc (" + String.format("%,.0f", price.doubleValue()) + "đ) không được THẤP HƠN giá Flash Sale (" + String.format("%,.0f", fsSalePrice.doubleValue()) + "đ) của chiến dịch '" + fsName + "'!"));
+                        } else if (cmp == 0) {
+                            return ResponseEntity.badRequest().body(Map.of("success", false, "message", 
+                                    "Lỗi: Giá gốc (" + String.format("%,.0f", price.doubleValue()) + "đ) không được BẰNG giá Flash Sale (" + String.format("%,.0f", fsSalePrice.doubleValue()) + "đ) của chiến dịch '" + fsName + "'!"));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore query error
             }
 
             if (quantity == null || quantity < 1) {

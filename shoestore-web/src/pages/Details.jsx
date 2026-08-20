@@ -592,27 +592,27 @@ const Details = () => {
                                                 const saleVal = flashSale.salePrice !== undefined && flashSale.salePrice !== null ? flashSale.salePrice : flashSale.upcomingSalePrice;
                                                 return (
                                                     <>
-                                                        <div className="det-flash-sale-banner" style={{ background: 'linear-gradient(135deg, #ff4d4f 0%, #dc2626 100%)', border: '1px solid #ef4444' }}>
-                                                            <div className="det-flash-sale-icon" style={{ background: 'rgba(255, 255, 255, 0.2)', color: '#ffffff' }}>
+                                                        <div className="det-flash-sale-banner" style={{ background: 'linear-gradient(135deg, #e50914 0%, #dc2626 100%)', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px 18px', marginBottom: '12px', boxShadow: '0 4px 14px rgba(229, 9, 20, 0.15)' }}>
+                                                            <div className="det-flash-sale-icon" style={{ background: 'rgba(255, 255, 255, 0.2)', color: '#ffffff', borderRadius: '50%', width: '36px', height: '36px', fontSize: '15px' }}>
                                                                 <i className="fa-solid fa-clock"></i>
                                                             </div>
                                                             <div className="det-flash-sale-info">
-                                                                <span className="det-flash-sale-tag" style={{ background: '#ffffff', color: '#dc2626', fontWeight: 'bold' }}>SẮP DIỄN RA FLASH SALE</span>
-                                                                <span className="det-flash-sale-name" style={{ color: '#ffffff' }}>{flashSale.campaignName}</span>
+                                                                <span className="det-flash-sale-tag" style={{ color: '#ffffff', fontSize: '13px', fontWeight: '800', letterSpacing: '0.6px', background: 'transparent', display: 'inline-block' }}>SẮP DIỄN RA FLASH SALE</span>
+                                                                <span className="det-flash-sale-name" style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '11px', marginTop: '1px' }}>{flashSale.campaignName}</span>
                                                             </div>
-                                                            <div className="det-flash-sale-discount-badge" style={{ background: '#ffffff', color: '#dc2626', fontWeight: 'bold' }}>
-                                                                SẮP GIẢM -{flashSale.discountPercent}%
+                                                            <div className="det-flash-sale-discount-badge" style={{ background: '#ffffff', color: '#e50914', fontSize: '12px', fontWeight: '900', padding: '5px 14px', borderRadius: '20px', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)' }}>
+                                                                {flashSale.discountPercent > 0 ? `SẮP GIẢM -${flashSale.discountPercent}%` : 'SẮP DIỄN RA'}
                                                             </div>
                                                         </div>
-                                                        <div className="det-price-block" style={{ background: '#ffffff', border: '2px solid #fee2e2', borderRadius: '16px' }}>
+                                                        <div className="det-price-block" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px 20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)' }}>
                                                             <div>
-                                                                <div className="det-price-label text-muted">Giá bán hiện tại (Chưa đến giờ Sale)</div>
-                                                                <div className="det-price-value text-danger fw-bold">{formatCurrency(displayPrice)}</div>
-                                                                <div className="mt-2 text-danger fw-bold font-oswald d-flex align-items-center gap-1" style={{ fontSize: '15px' }}>
-                                                                    <i className="fa-solid fa-clock text-danger me-1"></i> Giá Flash Sale sắp tới: {formatCurrency(saleVal)}
+                                                                <div className="det-price-label text-muted" style={{ fontSize: '13px', fontWeight: '500' }}>Giá bán hiện tại (Chưa đến giờ Sale)</div>
+                                                                <div className="det-price-value text-dark fw-bold" style={{ fontSize: '26px', margin: '2px 0' }}>{formatCurrency(displayPrice)}</div>
+                                                                <div className="mt-1 fw-bold font-oswald d-flex align-items-center gap-1" style={{ fontSize: '14px', color: '#e50914' }}>
+                                                                    <i className="fa-solid fa-fire me-1" style={{ color: '#e50914' }}></i> Giá Flash Sale sắp tới: {formatCurrency(saleVal)}
                                                                 </div>
                                                             </div>
-                                                            <div className="det-price-badge" style={{ background: '#ef4444', color: '#ffffff' }}>Sắp Sale</div>
+                                                            <div className="det-price-badge" style={{ background: '#e50914', color: '#ffffff', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: '700' }}>Sắp Sale</div>
                                                         </div>
                                                     </>
                                                 );
