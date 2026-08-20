@@ -212,11 +212,10 @@ const OrderDetail = () => {
     const subtotal = Number(order.total_amount) > 0 ? Number(order.total_amount) : itemsSubtotal;
     const finalAmount = Number(order.final_amount) || 0;
 
-    let effectiveShippingFee = rawShippingFee;
-    if (effectiveShippingFee === 0 && finalAmount > subtotal) {
-        effectiveShippingFee = finalAmount - subtotal;
+    let displayShippingFee = rawShippingFee;
+    if (displayShippingFee === 0 && finalAmount > subtotal) {
+        displayShippingFee = finalAmount - subtotal;
     }
-    const displayShippingFee = effectiveShippingFee > 0 ? effectiveShippingFee : (order.free_ship ? 0 : 30000);
     const discountAmount = Math.max(0, (subtotal + displayShippingFee) - finalAmount);
 
     return (
@@ -443,8 +442,8 @@ const OrderDetail = () => {
                                                 </div>
                                                 <div className="od-summary-row d-flex justify-content-between mb-2" style={{fontSize: '14px'}}>
                                                     <span className="text-muted">Phí vận chuyển</span>
-                                                    <span className="fw-semibold text-dark">
-                                                        {displayShippingFee > 0 ? formatCurrency(displayShippingFee) : '0 ₫ (MIỄN PHÍ)'}
+                                                    <span className={displayShippingFee > 0 ? "fw-semibold text-dark" : "fw-bold text-success"}>
+                                                        {displayShippingFee > 0 ? formatCurrency(displayShippingFee) : 'MIỄN PHÍ'}
                                                     </span>
                                                 </div>
                                                 {discountAmount > 0 && (

@@ -189,17 +189,22 @@ public class OrderApiController {
                     .mapToDouble(item -> ((Number) item.get("price")).doubleValue() * ((Number) item.get("quantity")).intValue())
                     .sum();
 
-            double tempShipping = 30000;
-            if (shippingFee != null) {
-                tempShipping = shippingFee;
-            } else {
-                Integer userRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
-                if (userRankId != null) {
-                    Boolean freeShip = jdbc.queryForObject(
-                            "SELECT COALESCE(free_shipping, 0) FROM membership_ranks WHERE id = ?", Boolean.class, userRankId);
-                    if (Boolean.TRUE.equals(freeShip)) {
-                        tempShipping = 0;
-                    }
+            double tempShipping = shippingFee != null ? shippingFee : 30000;
+            Integer userRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
+            if (userRankId == null) {
+                Integer points = jdbc.queryForObject("SELECT COALESCE(points, 0) FROM accounts WHERE id = ?", Integer.class, accountId);
+                int pts = points != null ? points : 0;
+                java.util.List<Integer> rankIds = jdbc.queryForList("SELECT id FROM membership_ranks WHERE min_points <= ? ORDER BY min_points DESC", Integer.class, pts);
+                if (!rankIds.isEmpty()) {
+                    userRankId = rankIds.get(0);
+                    jdbc.update("UPDATE accounts SET membership_rank_id = ? WHERE id = ?", userRankId, accountId);
+                }
+            }
+            if (userRankId != null) {
+                Boolean freeShip = jdbc.queryForObject(
+                        "SELECT COALESCE(free_shipping, 0) FROM membership_ranks WHERE id = ?", Boolean.class, userRankId);
+                if (Boolean.TRUE.equals(freeShip)) {
+                    tempShipping = 0;
                 }
             }
             final double shipping = tempShipping;

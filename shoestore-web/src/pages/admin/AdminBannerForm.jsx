@@ -90,7 +90,7 @@ const AdminBannerForm = () => {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: "Đã xóa ảnh khỏi database." }));
             } catch (error) {
                 console.error("Lỗi khi xóa ảnh:", error);
-                alert("Không thể xóa ảnh. Vui lòng thử lại.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể xóa ảnh. Vui lòng thử lại." }));
             }
         }
     };

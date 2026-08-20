@@ -362,7 +362,7 @@ const Membership = () => {
                                                 <p className="fw-bold text-muted small mb-3">Đơn từ {formatCurrency(v.minOrderValue || v.min_order_value)}</p>
                                                 <button className="btn-brutal-outline w-100 py-2 fs-6" onClick={() => {
                                                     navigator.clipboard.writeText(v.code);
-                                                    alert('Đã copy mã: ' + v.code);
+                                                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã sao chép mã: ' + v.code }));
                                                 }}>COPY MÃ</button>
                                             </div>
                                         </div>

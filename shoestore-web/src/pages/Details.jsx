@@ -462,12 +462,13 @@ const Details = () => {
             const response = await api.post('/api/favourites/toggle', { productId });
             if (response.data && response.data.success) {
                 setIsWishlist(response.data.action === 'added');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.action === 'added' ? 'Đã thêm sản phẩm vào danh sách yêu thích!' : 'Đã xóa sản phẩm khỏi danh sách yêu thích!' }));
             } else {
-                alert(response.data.message || 'Vui lòng đăng nhập!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || 'Vui lòng đăng nhập!' }));
             }
         } catch (err) {
-            if (err.response && err.response.status === 401) alert('Vui lòng đăng nhập!');
-            else alert('Lỗi xử lý yêu thích.');
+            if (err.response && err.response.status === 401) window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập!' }));
+            else window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi xử lý yêu thích.' }));
         }
     };
 

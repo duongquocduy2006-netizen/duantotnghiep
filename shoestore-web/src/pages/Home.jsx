@@ -120,14 +120,19 @@ const Home = () => {
         try {
             const res = await api.post('/api/favourites/toggle', { productId });
             if (res.data?.success) {
-                if (res.data.action === 'added') setWishlistIds(p => [...p, productId]);
-                else setWishlistIds(p => p.filter(id => id !== productId));
+                if (res.data.action === 'added') {
+                    setWishlistIds(p => [...p, productId]);
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã thêm sản phẩm vào danh sách yêu thích!' }));
+                } else {
+                    setWishlistIds(p => p.filter(id => id !== productId));
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xóa sản phẩm khỏi danh sách yêu thích!' }));
+                }
             } else {
-                alert(res.data?.message || 'Vui lòng đăng nhập!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Vui lòng đăng nhập!' }));
             }
         } catch (err) {
             if (err.response?.status === 401) {
-                alert('Vui lòng đăng nhập!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập!' }));
                 navigate('/login');
             }
         }

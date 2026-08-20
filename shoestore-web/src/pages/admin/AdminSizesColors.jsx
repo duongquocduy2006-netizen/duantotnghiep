@@ -99,11 +99,12 @@ const AdminSizesColors = () => {
             if (res.data && res.data.success) {
                 if (type === 'size') setSizes(prev => prev.filter(s => s.id !== item.id));
                 else setColors(prev => prev.filter(c => c.id !== item.id));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Xóa thành công!' }));
             } else {
-                alert(res.data?.message || 'Không thể xóa!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Không thể xóa!' }));
             }
         } catch (err) {
-            alert('Lỗi kết nối: ' + (err.response?.data?.message || err.message));
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi kết nối: ' + (err.response?.data?.message || err.message) }));
         }
     };
 

@@ -63,23 +63,10 @@ public class CustomerApiController {
         }
     }
 
-    // 3. CẬP NHẬT HẠNG KHÁCH HÀNG
+    // 3. CẬP NHẬT HẠNG KHÁCH HÀNG (BỊ KHÓA: HẠNG THÀNH VIÊN ĐƯỢC HỆ THỐNG TÍNH TỰ ĐỘNG)
     @PostMapping("/update-rank")
     public ResponseEntity<?> updateRank(@RequestBody Map<String, Object> payload) {
-        try {
-            Integer userId = (Integer) payload.get("userId");
-            Integer rankId = (Integer) payload.get("rankId");
-
-            if (userId == null || rankId == null) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu userId hoặc rankId!"));
-            }
-
-            customerService.updateCustomerRank(userId, rankId);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Cập nhật hạng khách hàng thành công!"));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", "Lỗi cập nhật hạng khách hàng: " + e.getMessage()));
-        }
+        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Hạng thành viên được hệ thống tự động tính toán dựa trên tổng chi tiêu của khách hàng, không được phép điều chỉnh thủ công!"));
     }
 
     // 4. KHÓA / MỞ KHÓA TÀI KHOẢN KHÁCH HÀNG

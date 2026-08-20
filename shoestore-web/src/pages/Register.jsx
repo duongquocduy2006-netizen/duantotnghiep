@@ -14,6 +14,7 @@ const Register = () => {
     const [agreeTerms, setAgreeTerms] = useState(false);
     const [error, setError] = useState('');
     const [errors, setErrors] = useState({});
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -51,8 +52,8 @@ const Register = () => {
             });
 
             if (response.data.success) {
-                alert('Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
-                navigate('/login');
+                sessionStorage.setItem('toast_message', 'Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
+                setShowSuccessModal(true);
             }
         } catch (err) {
             console.error('Lỗi đăng ký:', err);
@@ -209,6 +210,96 @@ const Register = () => {
                     </div>
                 </div>
             </div>
+
+            {/* CUSTOM SUCCESS MODAL DIALOG */}
+            {showSuccessModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    backdropFilter: 'blur(6px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 999999,
+                    padding: '20px'
+                }}>
+                    <div className="animate__animated animate__zoomIn" style={{
+                        background: '#ffffff',
+                        borderRadius: '24px',
+                        padding: '36px 32px',
+                        maxWidth: '440px',
+                        width: '100%',
+                        textAlign: 'center',
+                        boxShadow: '0 25px 60px rgba(0, 0, 0, 0.4)',
+                        border: '1px solid rgba(255, 255, 255, 0.9)'
+                    }}>
+                        <div style={{
+                            width: '76px',
+                            height: '76px',
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '38px',
+                            margin: '0 auto 20px auto',
+                            boxShadow: '0 12px 28px rgba(16, 185, 129, 0.4)'
+                        }}>
+                            <i className="fa-solid fa-check"></i>
+                        </div>
+                        
+                        <h3 style={{
+                            fontFamily: "'Oswald', sans-serif",
+                            fontWeight: '700',
+                            textTransform: 'uppercase',
+                            color: '#111827',
+                            fontSize: '24px',
+                            marginBottom: '10px',
+                            letterSpacing: '0.5px'
+                        }}>
+                            ĐĂNG KÝ THÀNH CÔNG!
+                        </h3>
+
+                        <p style={{
+                            fontFamily: "'Inter', sans-serif",
+                            color: '#4b5563',
+                            fontSize: '15px',
+                            lineHeight: '1.6',
+                            marginBottom: '28px'
+                        }}>
+                            Chúc mừng bạn đã tạo thành công tài khoản <strong>{email}</strong>! Vui lòng đăng nhập để bắt đầu trải nghiệm dịch vụ.
+                        </p>
+
+                        <button
+                            type="button"
+                            onClick={() => navigate('/login')}
+                            style={{
+                                width: '100%',
+                                background: 'linear-gradient(135deg, #e50914 0%, #b91c1c 100%)',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '14px',
+                                padding: '14px 24px',
+                                fontFamily: "'Oswald', sans-serif",
+                                fontWeight: '700',
+                                fontSize: '16px',
+                                letterSpacing: '1px',
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                                boxShadow: '0 8px 20px rgba(229, 9, 20, 0.35)',
+                                transition: 'all 0.25s ease'
+                            }}
+                        >
+                            <i className="fa-solid fa-right-to-bracket me-2"></i> ĐĂNG NHẬP NGAY
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

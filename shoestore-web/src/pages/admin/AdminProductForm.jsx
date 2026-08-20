@@ -448,12 +448,12 @@ const AdminProductForm = () => {
 
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'AI Vision đã tự động tạo mô tả sản phẩm thành công!' }));
             } else {
-                alert(response.data?.message || "Không thể tạo mô tả bằng AI.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data?.message || "Không thể tạo mô tả bằng AI." }));
             }
         } catch (err) {
             console.error("Lỗi tạo mô tả AI:", err);
             const errMsg = err.response?.data?.message || err.message || "Lỗi khi kết nối với AI Vision.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
             setGeneratingDesc(false);
         }
@@ -563,12 +563,12 @@ const AdminProductForm = () => {
 
                 setAiSuccessMsg(`AI Vision đã trích xuất thành công: Tên sản phẩm, Thương hiệu (${data.brandName || ''}), Danh mục, Màu sắc & Mô tả!`);
             } else {
-                alert(response.data?.message || "Không thể phân tích ảnh bằng AI.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data?.message || "Không thể phân tích ảnh bằng AI." }));
             }
         } catch (err) {
             console.error("Lỗi AI Auto-fill:", err);
             const errMsg = err.response?.data?.message || err.message || "Lỗi khi kết nối với AI Vision.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
             setAiAnalyzing(false);
         }

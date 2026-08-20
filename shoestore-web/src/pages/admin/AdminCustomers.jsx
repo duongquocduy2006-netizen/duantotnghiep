@@ -16,8 +16,6 @@ const AdminCustomers = () => {
     const [statusFilter, setStatusFilter] = useState("");
 
     // Modals control
-    const [modalRankOpen, setModalRankOpen] = useState(false);
-
     const [selectedCustomer, setSelectedCustomer] = useState(null);
 
     // Custom Confirm Modal State
@@ -27,9 +25,6 @@ const AdminCustomers = () => {
         currentStatus: null,
         message: ""
     });
-
-    // Selected options for modals
-    const [selectedRankId, setSelectedRankId] = useState("");
 
 
     const fetchCustomers = async () => {
@@ -43,8 +38,8 @@ const AdminCustomers = () => {
                 setError("Có lỗi xảy ra khi tải danh sách khách hàng.");
             }
         } catch (err) {
-            console.error("Lỗi tải danh sách khách hàng:", err);
-            setError("Không thể kết nối đến máy chủ để lấy thông tin khách hàng.");
+            console.error("Lỗi lấy danh sách khách hàng:", err);
+            setError("Lỗi kết nối máy chủ.");
         } finally {
             setLoading(false);
         }
@@ -53,14 +48,6 @@ const AdminCustomers = () => {
     useEffect(() => {
         fetchCustomers();
     }, []);
-
-    const openRankModal = (customer) => {
-        setSelectedCustomer(customer);
-        setSelectedRankId(customer.rankId || "");
-        setModalRankOpen(true);
-    };
-
-
 
     const toggleStatus = (userId, currentStatus) => {
         const action = currentStatus === 1 ? "khóa" : "mở khóa";
@@ -100,30 +87,6 @@ const AdminCustomers = () => {
             window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể thay đổi trạng thái tài khoản." }));
         } finally {
             cancelStatusChange();
-        }
-    };
-
-    const handleRankUpdate = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await api.post("/api/admin/customers/update-rank", {
-                userId: selectedCustomer.id,
-                rankId: parseInt(selectedRankId)
-            });
-            if (response.data && response.data.success) {
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message }));
-                setModalRankOpen(false);
-                const newRankObj = ranks.find(r => r.id === parseInt(selectedRankId));
-                setCustomers(customers.map(c => c.id === selectedCustomer.id ? {
-                    ...c,
-                    rankId: newRankObj.id,
-                    rankName: newRankObj.rankName,
-                    rankColor: newRankObj.colorCode || '#94a3b8'
-                } : c));
-            }
-        } catch (err) {
-            console.error("Lỗi cập nhật hạng thành viên:", err);
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể cập nhật hạng thành viên." }));
         }
     };
 
@@ -305,9 +268,6 @@ const AdminCustomers = () => {
                                                 <Link to={`/admin/customers/detail/${cust.id}`} className="btn-icon-action" title="Xem chi tiết">
                                                     <i className="bi bi-eye"></i>
                                                 </Link>
-                                                <button className="btn-icon-action" title="Chỉnh sửa Rank" onClick={() => openRankModal(cust)}>
-                                                    <i className="bi bi-star-fill"></i>
-                                                </button>
 
                                                 {cust.role !== 'ADMIN' && (
                                                     <button
@@ -332,39 +292,6 @@ const AdminCustomers = () => {
                     </div>
                 </div>
             </div>
-
-            {/* MODAL RANK */}
-            {modalRankOpen && (
-                <div className="modal-overlay" style={{ display: 'flex' }}>
-                    <div className="modal-box" style={{ width: '400px', borderTop: '4px solid #facc15' }}>
-                        <h3 className="modal-title font-oswald"><i className="bi bi-star-half"></i> CẬP NHẬT HẠNG THÀNH VIÊN</h3>
-                        <form onSubmit={handleRankUpdate}>
-                            <div className="form-group">
-                                <label className="form-label">Khách hàng</label>
-                                <input type="text" value={selectedCustomer?.fullName || ""} className="form-input" readOnly style={{ background: '#f4f4f4', cursor: 'not-allowed', color: '#555' }} />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Chọn Hạng Mới</label>
-                                <select
-                                    className="form-input"
-                                    value={selectedRankId}
-                                    onChange={(e) => setSelectedRankId(e.target.value)}
-                                    required
-                                >
-                                    <option value="">-- Chọn thứ hạng --</option>
-                                    {ranks.map(r => (
-                                        <option key={r.id} value={r.id}>{r.rankName}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="modal-actions" style={{ display: 'flex', gap: '15px', marginTop: '25px' }}>
-                                <button type="button" className="btn-cancel" onClick={() => setModalRankOpen(false)}>HỦY BỎ</button>
-                                <button type="submit" className="btn-neon" style={{ flex: 1, justifyContent: 'center', border: '1px solid #000', background: '#facc15', color: '#000', fontFamily: 'Oswald', fontWeight: 'bold' }}>CẬP NHẬT</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
 
 

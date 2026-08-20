@@ -337,7 +337,7 @@ const Header = () => {
     const startListening = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
-            alert("Trình duyệt của bạn không hỗ trợ tìm kiếm bằng giọng nói.");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Trình duyệt của bạn không hỗ trợ tìm kiếm bằng giọng nói." }));
             return;
         }
 

@@ -118,7 +118,7 @@ const AdminOrders = () => {
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể cập nhật trạng thái đơn hàng. Vui lòng kiểm tra lại.";
-            alert(errMsg);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
             // Re-fetch to sync state with server
             fetchOrders(keyword);
         }
@@ -142,12 +142,12 @@ const AdminOrders = () => {
             if (response.data && response.data.success) {
                 setOrderDetail(response.data);
             } else {
-                alert("Không thể tải chi tiết đơn hàng.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể tải chi tiết đơn hàng." }));
                 setIsModalOpen(false);
             }
         } catch (err) {
             console.error("Lỗi tải chi tiết đơn hàng:", err);
-            alert("Lỗi kết nối khi lấy chi tiết đơn hàng.");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối khi lấy chi tiết đơn hàng." }));
             setIsModalOpen(false);
         } finally {
             setModalLoading(false);

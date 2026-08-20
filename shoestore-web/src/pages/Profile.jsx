@@ -65,14 +65,14 @@ const Profile = () => {
                 phone: phone
             });
             if (response.data && response.data.success) {
-                alert('Cập nhật hồ sơ thành công!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Cập nhật hồ sơ thành công!' }));
                 fetchProfile();
             } else {
-                alert('Có lỗi xảy ra: ' + response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Có lỗi xảy ra: ' + response.data.message }));
             }
         } catch (err) {
             console.error("Lỗi cập nhật hồ sơ:", err);
-            alert('Lỗi kết nối khi cập nhật hồ sơ.');
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi kết nối khi cập nhật hồ sơ.' }));
         }
     };
 
@@ -191,7 +191,7 @@ const Profile = () => {
                                     <p className="mb-0 ms-3">Quản lý thông tin cá nhân và bảo mật tài khoản</p>
                                 </div>
 
-                                <form onSubmit={handleSave}>
+                                <form onSubmit={handleSave} noValidate>
                                     <div className="row g-4">
                                         {/* Email */}
                                         <div className="col-md-6">
@@ -212,7 +212,7 @@ const Profile = () => {
                                         {/* Full Name */}
                                         <div className="col-md-6">
                                             <div className="float-input-group">
-                                                <input type="text" className="float-input" id="fullname" name="fullName" value={fullName} onChange={e => setFullName(e.target.value)} placeholder=" " required />
+                                                <input type="text" className="float-input" id="fullname" name="fullName" value={fullName} onChange={e => setFullName(e.target.value)} placeholder=" " />
                                                 <label htmlFor="fullname" className="float-label">Họ và tên</label>
                                             </div>
                                         </div>

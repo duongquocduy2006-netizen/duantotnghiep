@@ -67,7 +67,7 @@ const AdminLookbookForm = () => {
             navigate('/admin/lookbooks');
         } catch (error) {
             console.error('Lỗi khi lưu lookbook:', error);
-            alert('Có lỗi xảy ra khi lưu Lookbook. Vui lòng thử lại.');
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Có lỗi xảy ra khi lưu Lookbook. Vui lòng thử lại.' }));
         }
     };
 

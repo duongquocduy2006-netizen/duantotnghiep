@@ -24,6 +24,7 @@ const Checkout = () => {
     const [voucherError, setVoucherError] = useState('');
     const [voucherSuccess, setVoucherSuccess] = useState('');
     const [submitError, setSubmitError] = useState('');
+    const [formErrors, setFormErrors] = useState({});
     
     // Address & GHN state
     const [provinces, setProvinces] = useState([]);
@@ -99,7 +100,7 @@ const Checkout = () => {
             } catch (err) {
                 console.error('Lỗi cart:', err);
                 const msg = err.response?.data?.message || err.message;
-                alert('Không thể lấy thông tin sản phẩm hoặc giỏ hàng! Chi tiết: ' + msg);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể lấy thông tin sản phẩm hoặc giỏ hàng! Chi tiết: ' + msg }));
                 return;
             }
 
@@ -311,11 +312,11 @@ const Checkout = () => {
                 },
                 (err) => {
                     console.error('Lỗi lấy định vị GPS:', err);
-                    alert("Không thể định vị vị trí hiện tại. Vui lòng cấp quyền định vị GPS trên trình duyệt của bạn!");
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể định vị vị trí hiện tại. Vui lòng cấp quyền định vị GPS trên trình duyệt của bạn!" }));
                 }
             );
         } else {
-            alert("Trình duyệt không hỗ trợ dịch vụ định vị GPS!");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Trình duyệt không hỗ trợ dịch vụ định vị GPS!" }));
         }
     };
 
@@ -581,22 +582,27 @@ const Checkout = () => {
         }
     };
 
-    const isRankFreeShip = account?.free_shipping === true || account?.free_shipping === 1 || account?.freeShipping === true || account?.freeShipping === 1;
+    const isRankFreeShip = Boolean(
+        account?.free_shipping === true || account?.free_shipping === 1 || String(account?.free_shipping) === 'true' || String(account?.free_shipping) === '1' ||
+        account?.freeShipping === true || account?.freeShipping === 1 || String(account?.freeShipping) === 'true' || String(account?.freeShipping) === '1'
+    );
 
     const calculateGHNFee = async (dId, wCode, customTotal = null, customRankId = null) => {
-        const currentTotal = customTotal !== null ? customTotal : totalPrice;
-        
-        const hasFreeShip = isRankFreeShip || (customRankId && account?.membership_rank_id === customRankId && isRankFreeShip);
-        if (hasFreeShip) {
+        if (isRankFreeShip) {
             setShippingFee(0);
             return;
         }
+        const currentTotal = customTotal !== null ? customTotal : totalPrice;
         try {
             const response = await api.post('/api/ghn/calculate-fee', {
                 toDistrictId: parseInt(dId),
                 toWardCode: wCode || "",
                 totalAmount: Math.round(currentTotal)
             });
+            if (isRankFreeShip) {
+                setShippingFee(0);
+                return;
+            }
             if (response.data && response.data.code === 200) {
                 setShippingFee(response.data.data.total || 30000);
             } else {
@@ -604,7 +610,11 @@ const Checkout = () => {
             }
         } catch (err) {
             console.error('Lỗi tính phí ship GHN:', err);
-            setShippingFee(30000);
+            if (isRankFreeShip) {
+                setShippingFee(0);
+            } else {
+                setShippingFee(30000);
+            }
         }
     };
 
@@ -682,9 +692,33 @@ const Checkout = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitError('');
-        
-        if (!selectedProvince || !selectedDistrict || !selectedWard || !streetDetail.trim()) {
-            setSubmitError('Vui lòng điền đầy đủ địa chỉ nhận hàng!');
+        setFormErrors({});
+
+        let newErrors = {};
+        if (!account?.full_name || !account.full_name.trim()) {
+            newErrors.fullName = 'Vui lòng nhập họ và tên người nhận!';
+        }
+        if (!account?.phone || !account.phone.trim()) {
+            newErrors.phone = 'Vui lòng nhập số điện thoại người nhận!';
+        } else if (!/^[0-9]{10,11}$/.test(account.phone.trim())) {
+            newErrors.phone = 'Số điện thoại phải từ 10 - 11 chữ số!';
+        }
+        if (!selectedProvince) {
+            newErrors.selectedProvince = 'Vui lòng chọn Tỉnh / Thành phố!';
+        }
+        if (!selectedDistrict) {
+            newErrors.selectedDistrict = 'Vui lòng chọn Quận / Huyện!';
+        }
+        if (!selectedWard) {
+            newErrors.selectedWard = 'Vui lòng chọn Phường / Xã!';
+        }
+        if (!streetDetail || !streetDetail.trim()) {
+            newErrors.streetDetail = 'Vui lòng nhập địa chỉ chi tiết!';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setFormErrors(newErrors);
+            setSubmitError('Vui lòng kiểm tra lại các trường thông tin giao hàng còn thiếu bên dưới!');
             return;
         }
 
@@ -777,25 +811,39 @@ const Checkout = () => {
                     </div>
                 </div>
                 <div className="container checkout-container py-5 position-relative z-1">
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSubmit} noValidate>
                     <div className="row g-5">
                         <div className="col-lg-7 animate__animated animate__fadeInLeft">
                             <h3 className="section-title">THÔNG TIN GIAO HÀNG</h3>
                             <div className="checkout-card">
                                 <div className="row g-3">
                                     <div className="col-12">
-                                        <label className="form-label">Họ và tên người nhận</label>
-                                        <input type="text" name="fullName" className="form-control" 
+                                        <label className="form-label">Họ và tên người nhận <span className="text-danger">*</span></label>
+                                        <input type="text" name="fullName" className={`form-control ${formErrors.fullName ? 'is-invalid border-danger' : ''}`}
                                             value={account.full_name || ''} 
-                                            onChange={e => setAccount({ ...account, full_name: e.target.value })} 
-                                            required />
+                                            onChange={e => {
+                                                setAccount({ ...account, full_name: e.target.value });
+                                                if (formErrors.fullName) setFormErrors({ ...formErrors, fullName: null });
+                                            }} />
+                                        {formErrors.fullName && (
+                                            <div className="text-danger small mt-1 font-oswald fw-bold">
+                                                <i className="bi bi-exclamation-circle me-1"></i>{formErrors.fullName}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="col-md-6">
-                                        <label className="form-label">Số điện thoại</label>
-                                        <input type="text" name="phone" className="form-control" 
+                                        <label className="form-label">Số điện thoại <span className="text-danger">*</span></label>
+                                        <input type="text" name="phone" className={`form-control ${formErrors.phone ? 'is-invalid border-danger' : ''}`}
                                             value={account.phone || ''} 
-                                            onChange={e => setAccount({ ...account, phone: e.target.value })} 
-                                            required />
+                                            onChange={e => {
+                                                setAccount({ ...account, phone: e.target.value });
+                                                if (formErrors.phone) setFormErrors({ ...formErrors, phone: null });
+                                            }} />
+                                        {formErrors.phone && (
+                                            <div className="text-danger small mt-1 font-oswald fw-bold">
+                                                <i className="bi bi-exclamation-circle me-1"></i>{formErrors.phone}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="col-md-6">
                                         <label className="form-label">Email</label>
@@ -803,31 +851,55 @@ const Checkout = () => {
                                     </div>
                                     
                                     <div className="col-md-4">
-                                        <label className="form-label">Tỉnh / Thành phố</label>
-                                        <select className="form-select form-control" value={selectedProvince} onChange={handleProvinceChange} required>
+                                        <label className="form-label">Tỉnh / Thành phố <span className="text-danger">*</span></label>
+                                        <select className={`form-select form-control ${formErrors.selectedProvince ? 'is-invalid border-danger' : ''}`} value={selectedProvince} onChange={e => {
+                                            handleProvinceChange(e);
+                                            if (formErrors.selectedProvince) setFormErrors({ ...formErrors, selectedProvince: null });
+                                        }}>
                                             <option value="">Chọn Tỉnh/Thành</option>
                                             {provinces.map(p => (
                                                 <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>
                                             ))}
                                         </select>
+                                        {formErrors.selectedProvince && (
+                                            <div className="text-danger small mt-1 font-oswald fw-bold">
+                                                <i className="bi bi-exclamation-circle me-1"></i>{formErrors.selectedProvince}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="col-md-4">
-                                        <label className="form-label">Quận / Huyện</label>
-                                        <select className="form-select form-control" value={selectedDistrict} onChange={handleDistrictChange} disabled={!selectedProvince} required style={{ opacity: !selectedProvince ? 0.5 : 1, filter: !selectedProvince ? 'blur(1px)' : 'none', transition: '0.3s' }}>
+                                        <label className="form-label">Quận / Huyện <span className="text-danger">*</span></label>
+                                        <select className={`form-select form-control ${formErrors.selectedDistrict ? 'is-invalid border-danger' : ''}`} value={selectedDistrict} onChange={e => {
+                                            handleDistrictChange(e);
+                                            if (formErrors.selectedDistrict) setFormErrors({ ...formErrors, selectedDistrict: null });
+                                        }} disabled={!selectedProvince} style={{ opacity: !selectedProvince ? 0.5 : 1, filter: !selectedProvince ? 'blur(1px)' : 'none', transition: '0.3s' }}>
                                             <option value="">Chọn Quận/Huyện</option>
                                             {districts.map(d => (
                                                 <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>
                                             ))}
                                         </select>
+                                        {formErrors.selectedDistrict && (
+                                            <div className="text-danger small mt-1 font-oswald fw-bold">
+                                                <i className="bi bi-exclamation-circle me-1"></i>{formErrors.selectedDistrict}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="col-md-4">
-                                        <label className="form-label">Phường / Xã</label>
-                                        <select className="form-select form-control" value={selectedWard} onChange={handleWardChange} disabled={!selectedDistrict} required style={{ opacity: !selectedDistrict ? 0.5 : 1, filter: !selectedDistrict ? 'blur(1px)' : 'none', transition: '0.3s' }}>
+                                        <label className="form-label">Phường / Xã <span className="text-danger">*</span></label>
+                                        <select className={`form-select form-control ${formErrors.selectedWard ? 'is-invalid border-danger' : ''}`} value={selectedWard} onChange={e => {
+                                            handleWardChange(e);
+                                            if (formErrors.selectedWard) setFormErrors({ ...formErrors, selectedWard: null });
+                                        }} disabled={!selectedDistrict} style={{ opacity: !selectedDistrict ? 0.5 : 1, filter: !selectedDistrict ? 'blur(1px)' : 'none', transition: '0.3s' }}>
                                             <option value="">Chọn Phường/Xã</option>
                                             {wards.map(w => (
                                                 <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>
                                             ))}
                                         </select>
+                                        {formErrors.selectedWard && (
+                                            <div className="text-danger small mt-1 font-oswald fw-bold">
+                                                <i className="bi bi-exclamation-circle me-1"></i>{formErrors.selectedWard}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="col-12 mt-2">
                                          <button type="button" className="btn btn-outline-danger w-100 font-orbitron fw-bold py-2 d-flex align-items-center justify-content-center gap-2" onClick={openMapModal} style={{ borderRadius: '8px', border: '1px dashed #e50914', background: 'rgba(229, 9, 20, 0.03)', color: '#e50914', transition: 'all 0.2s' }}>
@@ -836,12 +908,19 @@ const Checkout = () => {
                                      </div>
                                     
                                     <div className="col-12">
-                                        <label className="form-label">Địa chỉ chi tiết</label>
-                                        <input type="text" className="form-control" 
+                                        <label className="form-label">Địa chỉ chi tiết <span className="text-danger">*</span></label>
+                                        <input type="text" className={`form-control ${formErrors.streetDetail ? 'is-invalid border-danger' : ''}`} 
                                             placeholder="Số nhà, tên đường..." 
                                             value={streetDetail}
-                                            onChange={e => setStreetDetail(e.target.value)}
-                                            required />
+                                            onChange={e => {
+                                                setStreetDetail(e.target.value);
+                                                if (formErrors.streetDetail) setFormErrors({ ...formErrors, streetDetail: null });
+                                            }} />
+                                        {formErrors.streetDetail && (
+                                            <div className="text-danger small mt-1 font-oswald fw-bold">
+                                                <i className="bi bi-exclamation-circle me-1"></i>{formErrors.streetDetail}
+                                            </div>
+                                        )}
                                     </div>
                                     
                                     <div className="col-12">
@@ -908,10 +987,12 @@ const Checkout = () => {
                                         <span>Tạm tính</span>
                                         <span>{formatCurrency(totalPrice)}</span>
                                     </div>
-                                    <div className="summary-row">
-                                        <span>Phí vận chuyển</span>
-                                        <span>{shippingFee > 0 ? formatCurrency(shippingFee) : 'MIỄN PHÍ'}</span>
-                                    </div>
+                                     <div className="summary-row">
+                                         <span>Phí vận chuyển</span>
+                                         <span className={shippingFee === 0 ? 'text-success fw-bold' : ''}>
+                                             {shippingFee > 0 ? formatCurrency(shippingFee) : 'MIỄN PHÍ'}
+                                         </span>
+                                     </div>
 
                                     {discount > 0 && appliedVoucher && (
                                         <div className="summary-row text-success fw-bold" style={{ alignItems: 'center' }}>

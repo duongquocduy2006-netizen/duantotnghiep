@@ -141,7 +141,7 @@ const FlashSale = () => {
             }
         } catch (error) {
             if (error.response && error.response.status === 401) {
-                alert("Vui lòng đăng nhập để sử dụng tính năng này!");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Vui lòng đăng nhập để sử dụng tính năng này!" }));
                 navigate('/login');
             } else {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: "Đã xảy ra lỗi khi xử lý yêu thích." }));
