@@ -49,6 +49,7 @@ export default function ProfileScreen({ navigation }) {
   const [vouchersModalVisible, setVouchersModalVisible] = useState(false);
 
   // Info Modal states
+  const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -67,6 +68,13 @@ export default function ProfileScreen({ navigation }) {
   // Order Details Modal states
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Review Modal State
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // Vouchers State (Fetches directly from database)
   const [vouchers, setVouchers] = useState([]);
@@ -147,7 +155,8 @@ export default function ProfileScreen({ navigation }) {
         setUserPoints(user.points || 0);
         setIsLoggedIn(true);
 
-        // Pre-fill edit phone
+        // Pre-fill edit fields
+        setEditName(user.full_name || '');
         setEditPhone(user.phone || '');
 
         // Fetch Orders from backend
@@ -191,8 +200,11 @@ export default function ProfileScreen({ navigation }) {
                 quantity: Number(item.quantity) || 1,
                 size: item.size_name || 'Default',
                 color: item.color_name || 'Default',
-                imageUrl: item.image_url || ''
+                imageUrl: item.image_url || '',
+                productId: item.product_id || o.first_product_id
               })),
+              firstProductId: o.first_product_id,
+              isReviewed: (o.is_reviewed || 0) > 0,
               totalAmount: Number(o.final_amount) || 0,
               recipientName: o.receiving_name || '',
               recipientPhone: o.phone_number || '',
@@ -272,8 +284,11 @@ export default function ProfileScreen({ navigation }) {
             quantity: Number(item.quantity) || 1,
             size: item.size_name || 'Default',
             color: item.color_name || 'Default',
-            imageUrl: item.image_url || ''
+            imageUrl: item.image_url || '',
+            productId: item.product_id || o.first_product_id
           })),
+          firstProductId: o.first_product_id,
+          isReviewed: (o.is_reviewed || 0) > 0,
           totalAmount: Number(o.final_amount) || 0,
           recipientName: o.receiving_name || '',
           recipientPhone: o.phone_number || '',
@@ -335,7 +350,11 @@ export default function ProfileScreen({ navigation }) {
       if (!storedUser) return;
       const user = JSON.parse(storedUser);
 
-      // Validate phone number
+      // Validate inputs
+      if (!editName.trim()) {
+        showToast("Họ và tên không được để trống!");
+        return;
+      }
       if (!editPhone.trim()) {
         showToast("Số điện thoại không được để trống!");
         return;
@@ -385,8 +404,8 @@ export default function ProfileScreen({ navigation }) {
           'Accept': 'application/json'
         },
         body: JSON.stringify({
-          fullName: user.full_name || userName,
-          phone: editPhone
+          fullName: editName.trim(),
+          phone: editPhone.trim()
         })
       });
       
@@ -400,7 +419,8 @@ export default function ProfileScreen({ navigation }) {
       if (updateData.account) {
         await AsyncStorage.setItem('userAccount', JSON.stringify(updateData.account));
       } else {
-        user.phone = editPhone;
+        user.full_name = editName.trim();
+        user.phone = editPhone.trim();
         await AsyncStorage.setItem('userAccount', JSON.stringify(user));
       }
       
@@ -498,7 +518,73 @@ export default function ProfileScreen({ navigation }) {
 
   const handleOpenOrderDetail = (order) => {
     setSelectedOrder(order);
-    setDetailModalVisible(true);
+    setOrdersModalVisible(false);
+    setTimeout(() => {
+      setDetailModalVisible(true);
+    }, Platform.OS === 'ios' ? 400 : 100);
+  };
+
+  const handleCloseOrderDetail = () => {
+    setDetailModalVisible(false);
+    setTimeout(() => {
+      setOrdersModalVisible(true);
+    }, Platform.OS === 'ios' ? 400 : 100);
+  };
+
+  const handleOpenReviewModal = (order) => {
+    if (detailModalVisible) {
+      setDetailModalVisible(false);
+    } else {
+      setOrdersModalVisible(false);
+    }
+    setTimeout(() => {
+      setReviewTarget({ orderId: order.id, productId: order.firstProductId });
+      setReviewRating(5);
+      setReviewContent('');
+      setReviewModalVisible(true);
+    }, Platform.OS === 'ios' ? 400 : 100);
+  };
+
+  const handleCloseReviewModal = () => {
+    setReviewModalVisible(false);
+    setTimeout(() => {
+      setOrdersModalVisible(true);
+    }, Platform.OS === 'ios' ? 400 : 100);
+  };
+
+  const submitReview = async () => {
+    if (!reviewContent.trim()) {
+      showToast("Vui lòng nhập nội dung đánh giá!");
+      return;
+    }
+    setIsSubmittingReview(true);
+    try {
+      const bodyParams = `productId=${reviewTarget.productId}&rating=${reviewRating}&content=${encodeURIComponent(reviewContent)}`;
+      const response = await fetch(`${API_BASE_URL}/api/reviews/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        },
+        body: bodyParams
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast("Cảm ơn bạn đã đánh giá sản phẩm!");
+        setReviewModalVisible(false);
+        refreshOrders();
+        setTimeout(() => {
+          setOrdersModalVisible(true);
+        }, Platform.OS === 'ios' ? 400 : 100);
+      } else {
+        showToast(data.message || "Lỗi khi gửi đánh giá");
+      }
+    } catch (e) {
+      console.log(e);
+      showToast("Lỗi kết nối khi gửi đánh giá");
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const handleOpenCancelModal = (order) => {
@@ -597,15 +683,7 @@ export default function ProfileScreen({ navigation }) {
                 <Feather name="chevron-right" size={16} color="#8E8E9F" />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.menuItem} onPress={() => showToast("Đường dây nóng hỗ trợ khách hàng SHOE STORE: 1900 1234")}>
-                <View style={styles.menuItemLeft}>
-                  <View style={[styles.menuIconWrapper, { backgroundColor: '#F3E5F5' }]}>
-                    <Feather name="help-circle" size={18} color="#8E24AA" />
-                  </View>
-                  <Text style={styles.menuItemText}>Hỗ trợ khách hàng</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color="#8E8E9F" />
-              </TouchableOpacity>
+
             </View>
 
             {/* Logout Button */}
@@ -653,10 +731,14 @@ export default function ProfileScreen({ navigation }) {
             </View>
 
             <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-              {/* Display static details */}
               <View style={styles.infoGroup}>
                 <Text style={styles.infoLabel}>HỌ VÀ TÊN</Text>
-                <Text style={styles.infoStaticText}>{userName}</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Nhập họ và tên của bạn"
+                />
               </View>
 
               <View style={styles.infoGroup}>
@@ -856,6 +938,26 @@ export default function ProfileScreen({ navigation }) {
                           <Text style={styles.orderConfirmBtnText}>Đã nhận được hàng</Text>
                         </TouchableOpacity>
                       )}
+                      {item.status === 'Hoàn thành' && (
+                        <>
+                          <TouchableOpacity 
+                            style={[styles.orderDetailBtn, { backgroundColor: '#0f172a', borderColor: '#0f172a', marginLeft: 8 }]} 
+                            onPress={() => { setOrdersModalVisible(false); navigation.navigate('Shop'); }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.orderDetailBtnText, { color: '#fff' }]}>Mua lại</Text>
+                          </TouchableOpacity>
+                          {!item.isReviewed && (
+                            <TouchableOpacity 
+                              style={[styles.orderDetailBtn, { backgroundColor: '#e50914', borderColor: '#e50914', marginLeft: 8 }]} 
+                              onPress={() => handleOpenReviewModal(item)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.orderDetailBtnText, { color: '#fff' }]}>Đánh giá</Text>
+                            </TouchableOpacity>
+                          )}
+                        </>
+                      )}
                     </View>
                   </View>
                 )}
@@ -944,12 +1046,12 @@ export default function ProfileScreen({ navigation }) {
         visible={detailModalVisible}
         animationType="slide"
         transparent={false}
-        onRequestClose={() => setDetailModalVisible(false)}
+        onRequestClose={handleCloseOrderDetail}
       >
         <SafeAreaProvider>
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setDetailModalVisible(false)} style={styles.modalCloseBtn}>
+              <TouchableOpacity onPress={handleCloseOrderDetail} style={styles.modalCloseBtn}>
                 <Ionicons name="arrow-back" size={24} color="#000000" />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Chi Tiết Đơn Hàng</Text>
@@ -1068,7 +1170,7 @@ export default function ProfileScreen({ navigation }) {
                 {selectedOrder.status === 'Đang xử lý' && (
                   <TouchableOpacity 
                     style={[styles.orderCancelBtn, { marginTop: 20, height: 48, justifyContent: 'center', alignItems: 'center', marginLeft: 0 }]} 
-                    onPress={() => { setDetailModalVisible(false); handleOpenCancelModal(selectedOrder); }}
+                    onPress={() => { setDetailModalVisible(false); setTimeout(() => handleOpenCancelModal(selectedOrder), Platform.OS === 'ios' ? 400 : 100); }}
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.orderCancelBtnText, { fontSize: 13 }]}>HỦY ĐƠN HÀNG NÀY</Text>
@@ -1077,17 +1179,38 @@ export default function ProfileScreen({ navigation }) {
                 {selectedOrder.status === 'Đã giao hàng' && (
                   <TouchableOpacity 
                     style={[styles.orderConfirmBtn, { marginTop: 20, height: 48, justifyContent: 'center', alignItems: 'center', marginLeft: 0 }]} 
-                    onPress={() => { setDetailModalVisible(false); handleConfirmReceived(selectedOrder); }}
+                    onPress={() => { setDetailModalVisible(false); setTimeout(() => handleConfirmReceived(selectedOrder), Platform.OS === 'ios' ? 400 : 100); }}
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.orderConfirmBtnText, { fontSize: 13 }]}>ĐÃ NHẬN ĐƯỢC HÀNG</Text>
                   </TouchableOpacity>
                 )}
 
+                {selectedOrder.status === 'Hoàn thành' && (
+                  <View style={{ flexDirection: 'row', marginTop: 20, justifyContent: 'space-between' }}>
+                    <TouchableOpacity 
+                      style={[styles.orderDetailBtn, { flex: 1, height: 48, backgroundColor: '#0f172a', borderColor: '#0f172a', justifyContent: 'center', alignItems: 'center', marginRight: !selectedOrder.isReviewed ? 4 : 0 }]} 
+                      onPress={() => { setDetailModalVisible(false); navigation.navigate('Shop'); }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.orderDetailBtnText, { color: '#fff', fontSize: 13 }]}>Mua lại</Text>
+                    </TouchableOpacity>
+                    {!selectedOrder.isReviewed && (
+                      <TouchableOpacity 
+                        style={[styles.orderDetailBtn, { flex: 1, height: 48, backgroundColor: '#e50914', borderColor: '#e50914', justifyContent: 'center', alignItems: 'center', marginLeft: 4 }]} 
+                        onPress={() => handleOpenReviewModal(selectedOrder)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.orderDetailBtnText, { color: '#fff', fontSize: 13 }]}>Đánh giá đơn hàng</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+
                 {/* Close Button */}
                 <TouchableOpacity 
                   style={[styles.detailCloseBtn, { marginTop: 12 }]} 
-                  onPress={() => setDetailModalVisible(false)}
+                  onPress={handleCloseOrderDetail}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.detailCloseBtnText}>ĐÓNG CHI TIẾT</Text>
@@ -1234,6 +1357,65 @@ export default function ProfileScreen({ navigation }) {
         </SafeAreaProvider>
       </Modal>
 
+
+      {/* ==================== MODAL 6: ĐÁNH GIÁ SẢN PHẨM ==================== */}
+      <Modal
+        visible={reviewModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={handleCloseReviewModal}
+      >
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={handleCloseReviewModal} style={styles.modalCloseBtn}>
+                <Ionicons name="arrow-back" size={24} color="#000000" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Đánh Giá Sản Phẩm</Text>
+              <View style={{ width: 44 }} />
+            </View>
+            <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <View style={{ alignItems: 'center', marginVertical: 30 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 15 }}>Bạn cảm thấy sản phẩm này thế nào?</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity key={star} onPress={() => setReviewRating(star)} style={{ padding: 5 }}>
+                      <Ionicons
+                        name={star <= reviewRating ? "star" : "star-outline"}
+                        size={40}
+                        color={star <= reviewRating ? "#FFD700" : "#C0C0C0"}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <View style={styles.infoGroup}>
+                <Text style={styles.infoLabel}>NỘI DUNG ĐÁNH GIÁ</Text>
+                <TextInput
+                  style={[styles.modalInput, { height: 120, textAlignVertical: 'top' }]}
+                  value={reviewContent}
+                  onChangeText={setReviewContent}
+                  placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm này nhé..."
+                  multiline={true}
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={submitReview}
+                disabled={isSubmittingReview}
+                activeOpacity={0.8}
+              >
+                {isSubmittingReview ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.saveBtnText}>GỬI ĐÁNH GIÁ</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+            <Toast message={toastMessage} visible={toastVisible} onDismiss={() => setToastVisible(false)} />
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </Modal>
 
       <Toast message={toastMessage} visible={toastVisible} onDismiss={() => setToastVisible(false)} />
     </SafeAreaView>

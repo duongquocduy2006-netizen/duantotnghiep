@@ -89,6 +89,7 @@ public class AccountStatusFilter extends OncePerRequestFilter {
             || path.startsWith("/images/")
             || path.startsWith("/assets/")
             || path.equals("/api/auth/login")
-            || path.equals("/api/auth/register");
+            || path.equals("/api/auth/register")
+            || path.equals("/api/auth/google-login-mobile");
     }
 }
