@@ -110,7 +110,6 @@ const AdminRanks = () => {
                                 <th style={{ width: '100px', whiteSpace: 'nowrap' }}>ID</th>
                                 <th style={{ whiteSpace: 'nowrap' }}>TÊN HẠNG</th>
                                 <th style={{ whiteSpace: 'nowrap' }}>ĐIỂM TỐI THIỂU</th>
-                                <th style={{ whiteSpace: 'nowrap' }}>CHIẾT KHẤU GIẢM</th>
                                 <th style={{ whiteSpace: 'nowrap' }}>FREE SHIP</th>
                                 <th style={{ whiteSpace: 'nowrap' }}>ƯU ĐÃI VOUCHER</th>
                                 <th style={{ textAlign: 'right', whiteSpace: 'nowrap', width: '150px' }}>HÀNH ĐỘNG</th>
@@ -119,13 +118,13 @@ const AdminRanks = () => {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', fontWeight: '800' }}>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px', fontWeight: '800' }}>
                                         ĐANG TẢI DỮ LIỆU...
                                     </td>
                                 </tr>
                             ) : filteredRanks.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#999', fontWeight: '700' }}>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#999', fontWeight: '700' }}>
                                         Chưa có hạng thành viên nào phù hợp.
                                     </td>
                                 </tr>
@@ -151,7 +150,6 @@ const AdminRanks = () => {
                                         </span>
                                     </td>
                                     <td style={{ fontWeight: 800, color: '#111', whiteSpace: 'nowrap' }}>{r.points} điểm</td>
-                                    <td style={{ fontWeight: 800, color: 'var(--accent-red)', whiteSpace: 'nowrap' }}>-{r.discount}%</td>
                                     <td style={{ whiteSpace: 'nowrap' }}>
                                         {r.freeShipping ? (
                                             <span className="badge-free-ship-modern">

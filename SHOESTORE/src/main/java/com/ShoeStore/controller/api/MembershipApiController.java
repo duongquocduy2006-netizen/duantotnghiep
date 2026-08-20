@@ -144,21 +144,36 @@ public class MembershipApiController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu thông tin bắt buộc (tên hạng, điểm tối thiểu)!"));
             }
 
+            // 1. Kiểm tra trùng Tên Hạng
+            String nameCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE LOWER(TRIM(rank_name)) = LOWER(TRIM(?))"
+                    + (id != null ? " AND id <> ?" : "");
+            Integer countName = id != null ? jdbc.queryForObject(nameCheckSql, Integer.class, rankName.trim(), id)
+                                           : jdbc.queryForObject(nameCheckSql, Integer.class, rankName.trim());
+            if (countName != null && countName > 0) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Tên hạng thành viên '" + rankName.trim() + "' đã tồn tại!"));
+            }
+
+            // 2. Kiểm tra trùng Ngưỡng Điểm Tối Thiểu
+            String pointsCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE min_points = ?"
+                    + (id != null ? " AND id <> ?" : "");
+            Integer countPoints = id != null ? jdbc.queryForObject(pointsCheckSql, Integer.class, minPoints, id)
+                                             : jdbc.queryForObject(pointsCheckSql, Integer.class, minPoints);
+            if (countPoints != null && countPoints > 0) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Ngưỡng điểm tối thiểu (" + minPoints + " điểm) đã tồn tại, vui lòng nhập số điểm khác!"));
+            }
+
             MembershipRank rank;
             if (id != null) {
                 rank = rankRepo.findById(id).orElse(new MembershipRank());
             } else {
                 rank = new MembershipRank();
-                if (discountPercent == null) discountPercent = 0.0;
                 if (status == null) status = 1;
             }
 
             rank.setRankName(rankName.trim());
             rank.setMinPoints(minPoints);
             rank.setColorCode(colorCode != null ? colorCode.trim() : "#94a3b8");
-            if (discountPercent != null) {
-                rank.setDiscountPercent(discountPercent);
-            }
+            rank.setDiscountPercent(discountPercent != null ? discountPercent : 0.0);
             if (description != null) {
                 rank.setDescription(description.trim());
             }
