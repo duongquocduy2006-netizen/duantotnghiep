@@ -16,13 +16,17 @@ public class ChatBotApiController {
     @Autowired
     private ChatGPTService chatGPTService;
 
-    // Track spam per unique (IP + Session + Client Token)
     private static class SpamTracker {
         String lastMessage = "";
         int repeatCount = 0;
         long lockUntil = 0;
     }
 
+    // IP Lock Map (Persists even if user logs out or session changes)
+    private final Map<String, Long> ipLockMap = new ConcurrentHashMap<>();
+    // User ID Lock Map
+    private final Map<Integer, Long> userIdLockMap = new ConcurrentHashMap<>();
+    // Per-session spam tracker
     private final Map<String, SpamTracker> userSpamMap = new ConcurrentHashMap<>();
 
     @PostMapping("/ask")
@@ -59,23 +63,33 @@ public class ChatBotApiController {
                     ? request.get("clientToken").trim()
                     : "GUEST";
 
-            // COMBINE BOTH IP AND SESSION ID FOR 100% RELIABLE TRACKING
-            String trackingKey = String.format("IP:%s_SESS:%s_TOK:%s%s",
-                    clientIp,
-                    sessionId,
-                    clientToken,
-                    userId != null ? "_USER:" + userId : ""
-            );
-
             long now = System.currentTimeMillis();
+
+            // 1. CHECK IP LOCK & USER ID LOCK FIRST (Cannot be bypassed by logging out or clearing session)
+            Long ipLockUntil = ipLockMap.get(clientIp);
+            Long userLockUntil = userId != null ? userIdLockMap.get(userId) : null;
+
+            long maxLockUntil = 0;
+            if (ipLockUntil != null && now < ipLockUntil) {
+                maxLockUntil = Math.max(maxLockUntil, ipLockUntil);
+            }
+            if (userLockUntil != null && now < userLockUntil) {
+                maxLockUntil = Math.max(maxLockUntil, userLockUntil);
+            }
+
+            String trackingKey = String.format("IP:%s_SESS:%s_TOK:%s%s", clientIp, sessionId, clientToken, userId != null ? "_USER:" + userId : "");
             SpamTracker tracker = userSpamMap.computeIfAbsent(trackingKey, k -> new SpamTracker());
 
-            // 1. Check if this specific client (IP + Session) is currently locked on server
-            if (now < tracker.lockUntil) {
-                long remainingMin = Math.max(1, (tracker.lockUntil - now) / 60000);
+            if (tracker.lockUntil > 0 && now < tracker.lockUntil) {
+                maxLockUntil = Math.max(maxLockUntil, tracker.lockUntil);
+            }
+
+            if (maxLockUntil > now) {
+                long remainingMin = Math.max(1, (maxLockUntil - now) / 60000);
                 response.put("success", false);
                 response.put("isBlocked", true);
-                response.put("reply", "TÀI KHOẢN TẠM KHÓA: Bạn đã bị tạm khóa gửi tin nhắn trong 10 phút do gửi trùng lặp 1 nội dung 3 lần liên tiếp! Vui lòng quay lại sau " + remainingMin + " phút.");
+                response.put("lockUntil", maxLockUntil);
+                response.put("reply", "TÀI KHOẢN / THIẾT BỊ TẠM KHÓA: Thiết bị/IP của bạn đã bị tạm khóa gửi tin nhắn trong 10 phút do gửi trùng lặp 1 nội dung 3 lần liên tiếp! Vui lòng quay lại sau " + remainingMin + " phút.");
                 return response;
             }
 
@@ -107,7 +121,7 @@ public class ChatBotApiController {
                 }
             }
 
-            // 3. Repeat Message Anti-Spam (3 consecutive identical messages -> Block THIS client 10 min)
+            // 3. Repeat Message Anti-Spam (3 consecutive identical messages -> Block IP & Account for 10 min)
             if (cleanText.equalsIgnoreCase(tracker.lastMessage)) {
                 tracker.repeatCount++;
             } else {
@@ -116,10 +130,17 @@ public class ChatBotApiController {
             }
 
             if (tracker.repeatCount >= 3) {
-                tracker.lockUntil = now + (10 * 60 * 1000); // Lock THIS specific client for 10 minutes
+                long lockEndTime = now + (10 * 60 * 1000); // 10 minutes lock
+                tracker.lockUntil = lockEndTime;
+                ipLockMap.put(clientIp, lockEndTime);
+                if (userId != null) {
+                    userIdLockMap.put(userId, lockEndTime);
+                }
+
                 response.put("success", false);
                 response.put("isBlocked", true);
-                response.put("reply", "HỆ THỐNG CẢNH BÁO SPAM: Bạn đã gửi trùng lặp 1 nội dung 3 lần liên tiếp! Tài khoản của bạn bị tạm khóa chức năng Trợ lý AI trong 10 phút.");
+                response.put("lockUntil", lockEndTime);
+                response.put("reply", "HỆ THỐNG CẢNH BÁO SPAM: Bạn đã gửi trùng lặp 1 nội dung 3 lần liên tiếp! Thiết bị/Tài khoản của bạn bị tạm khóa chức năng Trợ lý AI trong 10 phút.");
                 return response;
             }
 

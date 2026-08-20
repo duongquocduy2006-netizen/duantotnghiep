@@ -31,6 +31,9 @@ const getClientToken = () => {
     return guestToken;
 };
 
+// Global device lock storage key (persists across login/logout)
+const DEVICE_LOCK_KEY = 'shoestore_chat_device_lock_until';
+
 const Chatbox = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
@@ -39,15 +42,16 @@ const Chatbox = () => {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // --- ANTI-SPAM PER CLIENT STATES ---
     const clientToken = getClientToken();
-    const getLockStorageKey = () => `shoestore_chat_lock_until_${clientToken}`;
 
     const [lastMsg, setLastMsg] = useState('');
     const [repeatCount, setRepeatCount] = useState(0);
+
     const [lockUntil, setLockUntil] = useState(() => {
-        const saved = localStorage.getItem(getLockStorageKey());
-        return saved ? parseInt(saved, 10) : 0;
+        const savedGlobal = localStorage.getItem(DEVICE_LOCK_KEY);
+        const savedUser = localStorage.getItem(`shoestore_chat_lock_until_${clientToken}`);
+        const maxSaved = Math.max(savedGlobal ? parseInt(savedGlobal, 10) : 0, savedUser ? parseInt(savedUser, 10) : 0);
+        return maxSaved;
     });
     const [remainingMinutes, setRemainingMinutes] = useState(0);
 
@@ -61,7 +65,7 @@ const Chatbox = () => {
         scrollToBottom();
     }, [messages]);
 
-    // Timer check for 10-minute lock status for THIS specific client
+    // Timer check for lock status
     useEffect(() => {
         const checkLockStatus = () => {
             const now = Date.now();
@@ -72,7 +76,8 @@ const Chatbox = () => {
                 setRemainingMinutes(0);
                 if (lockUntil !== 0) {
                     setLockUntil(0);
-                    localStorage.removeItem(getLockStorageKey());
+                    localStorage.removeItem(DEVICE_LOCK_KEY);
+                    localStorage.removeItem(`shoestore_chat_lock_until_${clientToken}`);
                 }
             }
         };
@@ -81,6 +86,13 @@ const Chatbox = () => {
         const interval = setInterval(checkLockStatus, 5000);
         return () => clearInterval(interval);
     }, [lockUntil, clientToken]);
+
+    // Apply lock from backend or frontend
+    const applyLock = (targetLockUntil) => {
+        setLockUntil(targetLockUntil);
+        localStorage.setItem(DEVICE_LOCK_KEY, targetLockUntil.toString());
+        localStorage.setItem(`shoestore_chat_lock_until_${clientToken}`, targetLockUntil.toString());
+    };
 
     // --- TEXT SANITIZATION & PROFANITY FILTER ---
     const sanitizeAndFilterInput = (text) => {
@@ -110,7 +122,7 @@ const Chatbox = () => {
             const mins = Math.ceil((lockUntil - now) / 60000);
             setMessages(prev => [...prev, {
                 role: 'ai',
-                content: `TÀI KHOẢN TẠM KHÓA: Bạn đang bị tạm khóa gửi tin nhắn trong ${mins} phút do gửi lặp lại 1 nội dung 3 lần liên tiếp!`
+                content: `TÀI KHOẢN / THIẾT BỊ TẠM KHÓA: Bạn đang bị tạm khóa gửi tin nhắn trong ${mins} phút do gửi lặp lại 1 nội dung 3 lần liên tiếp!`
             }]);
             return;
         }
@@ -123,7 +135,7 @@ const Chatbox = () => {
 
         const userMsg = filterResult.cleaned;
 
-        // Anti-spam check: 3 consecutive identical messages -> Block THIS client 10 mins
+        // Anti-spam check: 3 consecutive identical messages -> Block 10 mins
         const normalizedMsg = userMsg.toLowerCase().trim();
         let newCount = 1;
         if (normalizedMsg === lastMsg) {
@@ -134,14 +146,13 @@ const Chatbox = () => {
         setRepeatCount(newCount);
 
         if (newCount >= 3) {
-            const newLockUntil = Date.now() + (10 * 60 * 1000); // 10 minutes lock for THIS client
-            setLockUntil(newLockUntil);
-            localStorage.setItem(getLockStorageKey(), newLockUntil.toString());
+            const newLockUntil = Date.now() + (10 * 60 * 1000); // 10 minutes lock
+            applyLock(newLockUntil);
 
             setMessages(prev => [
                 ...prev,
                 { role: 'user', content: userMsg },
-                { role: 'ai', content: 'HỆ THỐNG CẢNH BÁO SPAM: Bạn đã gửi trùng lặp 1 nội dung 3 lần liên tiếp! Tài khoản của bạn đã bị tạm khóa gửi tin nhắn trong 10 phút. Vui lòng thử lại sau.' }
+                { role: 'ai', content: 'HỆ THỐNG CẢNH BÁO SPAM: Bạn đã gửi trùng lặp 1 nội dung 3 lần liên tiếp! Thiết bị/Tài khoản của bạn đã bị tạm khóa gửi tin nhắn trong 10 phút. Vui lòng thử lại sau.' }
             ]);
             setInput('');
             return;
@@ -155,9 +166,8 @@ const Chatbox = () => {
             const response = await api.post('/api/chatbot/ask', { message: userMsg, clientToken });
 
             if (response.data?.isBlocked) {
-                const newLockUntil = Date.now() + (10 * 60 * 1000);
-                setLockUntil(newLockUntil);
-                localStorage.setItem(getLockStorageKey(), newLockUntil.toString());
+                const bLockUntil = response.data?.lockUntil || (Date.now() + (10 * 60 * 1000));
+                applyLock(bLockUntil);
             }
 
             setMessages(prev => [...prev, { role: 'ai', content: response.data?.reply || 'Xin lỗi, không có phản hồi.' }]);
@@ -245,7 +255,7 @@ const Chatbox = () => {
         }
 
         // Render warnings with Bootstrap icons cleanly
-        if (msg.content && (msg.content.startsWith('TÀI KHOẢN TẠM KHÓA') || msg.content.startsWith('HỆ THỐNG CẢNH BÁO SPAM'))) {
+        if (msg.content && (msg.content.startsWith('TÀI KHOẢN') || msg.content.startsWith('HỆ THỐNG CẢNH BÁO SPAM'))) {
             return (
                 <span>
                     <i className="bi bi-shield-lock-fill text-danger me-1"></i>
@@ -343,7 +353,7 @@ const Chatbox = () => {
                     {isLocked && (
                         <div className="chatbox-blocked-banner">
                             <i className="bi bi-shield-lock-fill" style={{ fontSize: '16px', flexShrink: 0 }}></i>
-                            <div>Tài khoản bị tạm khóa gửi tin nhắn trong <strong>{remainingMinutes} phút</strong> do gửi lặp lại 1 nội dung 3 lần liên tiếp.</div>
+                            <div>Tài khoản/Thiết bị bị tạm khóa gửi tin nhắn trong <strong>{remainingMinutes} phút</strong> do gửi lặp lại 1 nội dung 3 lần liên tiếp.</div>
                         </div>
                     )}
 
