@@ -4191,14 +4191,14 @@ table tr:hover td {
 /* --- MODERN ROUNDED IMAGE & BUTTONS --- */
 .table-img-box {
     border: 1px solid rgba(0, 0, 0, 0.08) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
     background: #ffffff !important;
     overflow: hidden !important;
 }
 .table-img-box img {
-    object-fit: contain !important;
-    padding: 4px !important;
+    object-fit: cover !important;
+    padding: 0 !important;
     width: 100% !important;
     height: 100% !important;
 }

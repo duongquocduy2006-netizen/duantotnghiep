@@ -50,7 +50,7 @@
 
 .chatbox-window {
     width: 380px;
-    height: 550px;
+    height: 560px;
     background: #0f0f0f;
     border: 1px solid #222;
     border-radius: 20px;
@@ -74,7 +74,7 @@
 }
 
 .chatbox-header {
-    padding: 20px;
+    padding: 16px 20px;
     background: #1a1a1a;
     border-bottom: 1px solid #333;
     display: flex;
@@ -135,11 +135,11 @@
 
 .chatbox-messages {
     flex: 1;
-    padding: 20px;
+    padding: 18px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 14px;
     scrollbar-width: thin;
     scrollbar-color: #333 transparent;
 }
@@ -176,6 +176,79 @@
     border-bottom-left-radius: 2px;
 }
 
+/* --- SUGGESTED QUESTIONS CHIPS --- */
+.chatbox-suggestions-wrapper {
+    padding: 10px 14px;
+    background: #141414;
+    border-top: 1px solid #262626;
+}
+
+.chatbox-suggestions-header {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.chatbox-suggestions-chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none; /* Firefox */
+}
+
+.chatbox-suggestions-chips::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+.suggestion-chip {
+    white-space: nowrap;
+    background: #222222;
+    color: #e2e8f0;
+    border: 1px solid #333333;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+}
+
+.suggestion-chip:hover:not(:disabled) {
+    background: #e50914;
+    color: #ffffff;
+    border-color: #e50914;
+    transform: translateY(-1px);
+}
+
+.suggestion-chip:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* --- BLOCKED SPAM BANNER --- */
+.chatbox-blocked-banner {
+    padding: 10px 14px;
+    background: rgba(229, 9, 20, 0.15);
+    border-top: 1px solid rgba(229, 9, 20, 0.4);
+    color: #ff4d4d;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.4;
+}
+
 .chatbox-input {
     padding: 15px;
     background: #1a1a1a;
@@ -197,6 +270,12 @@
 
 .chatbox-input input:focus {
     border-color: #e50914;
+}
+
+.chatbox-input input:disabled {
+    background: #181818;
+    color: #666;
+    cursor: not-allowed;
 }
 
 .chatbox-input button {
@@ -249,15 +328,23 @@
 /* Product Card in Chat */
 .ai-product-card {
     background: #1a1a1a;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
     margin-top: 10px;
     border: 1px solid #333;
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.ai-product-card:hover {
+    border-color: #e50914;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(229, 9, 20, 0.2);
 }
 
 .ai-product-card img {
     width: 100%;
-    height: 120px;
+    height: 130px;
     object-fit: cover;
 }
 
@@ -272,10 +359,11 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-weight: 600;
 }
 
 .ai-product-card p {
-    margin: 5px 0 10px;
+    margin: 4px 0 10px;
     color: #e50914;
     font-weight: 700;
     font-size: 14px;
@@ -284,15 +372,16 @@
 .ai-product-card button {
     width: 100%;
     padding: 8px;
-    background: #333;
+    background: #e50914;
     border: none;
     color: white;
-    border-radius: 5px;
+    border-radius: 6px;
     font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
     transition: 0.3s;
 }
 
 .ai-product-card button:hover {
-    background: #444;
+    background: #dc2626;
 }

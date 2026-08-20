@@ -183,10 +183,11 @@ const AdminProducts = () => {
                                     <tr key={p.id}>
                                         <td>
                                             <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                                <div className="table-img-box" style={{ width: '60px', height: '70px', flexShrink: 0 }}>
+                                                <div className="table-img-box" style={{ width: '56px', height: '56px', flexShrink: 0 }}>
                                                     <img
                                                         src={getImageUrl(p.imageUrl)}
                                                         alt={p.productName}
+                                                        style={{ objectFit: 'cover', padding: 0 }}
                                                         onError={(e) => {
                                                             e.target.onerror = null;
                                                             e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.productName)}&background=fff&color=000&bold=true`;
