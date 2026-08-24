@@ -145,6 +145,12 @@ const AdminVouchers = () => {
 
         if (!formCode || !formCode.trim()) {
             errors.code = "Vui lòng nhập mã Voucher!";
+        } else {
+            const cleanCode = formCode.trim().toUpperCase();
+            const dup = vouchers.find(v => v.code && v.code.toUpperCase() === cleanCode && (!editingVoucher || v.id !== editingVoucher.id));
+            if (dup) {
+                errors.code = `Mã Voucher "${cleanCode}" đã tồn tại trong hệ thống! Vui lòng nhập mã khác.`;
+            }
         }
 
         const discountVal = parseFloat(formDiscountValue);

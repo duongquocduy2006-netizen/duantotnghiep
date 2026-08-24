@@ -38,46 +38,57 @@ public class VoucherService {
         voucherRepo.deleteById(id);
     }
 
+    public static class VoucherValidationResult {
+        private boolean valid;
+        private String message;
+        private Voucher voucher;
+
+        public VoucherValidationResult(boolean valid, String message, Voucher voucher) {
+            this.valid = valid;
+            this.message = message;
+            this.voucher = voucher;
+        }
+
+        public boolean isValid() { return valid; }
+        public String getMessage() { return message; }
+        public Voucher getVoucher() { return voucher; }
+    }
+
     @Transactional
-    public Optional<Voucher> validateVoucher(String code, Integer userRankId, Double orderTotal, Long userId) {
+    public VoucherValidationResult validateVoucherDetailed(String code, Integer userRankId, Double orderTotal, Long userId) {
         Optional<Voucher> voucherOpt = voucherRepo.findByCode(code);
 
-        if (voucherOpt.isEmpty())
-            return Optional.empty();
+        if (voucherOpt.isEmpty()) {
+            return new VoucherValidationResult(false, "Mã giảm giá '" + code + "' không tồn tại trong hệ thống!", null);
+        }
 
         Voucher v = voucherOpt.get();
         LocalDateTime now = LocalDateTime.now();
 
-        // 1. Kiểm tra trạng thái (Mặc định null hoặc 1 là Active)
+        // 1. Kiểm tra trạng thái
         if (v.getStatus() != null && v.getStatus() == 0) {
-            System.out.println("DEBUG Voucher " + code + ": Disabled (status=0)");
-            return Optional.empty();
+            return new VoucherValidationResult(false, "Mã giảm giá '" + code + "' đã bị tạm dừng hoạt động!", null);
         }
 
-        // 2. Kiểm tra thời hạn
-        if (v.getStartDate() != null && now.isBefore(v.getStartDate())) {
-            System.out
-                    .println("DEBUG Voucher " + code + ": Too early. Current: " + now + ", Start: " + v.getStartDate());
-            return Optional.empty();
+        // 2. Kiểm tra thời hạn (buffer 5 phút cho mã vừa khởi tạo)
+        if (v.getStartDate() != null && now.plusMinutes(5).isBefore(v.getStartDate())) {
+            return new VoucherValidationResult(false, "Mã giảm giá '" + code + "' chưa đến thời gian bắt đầu áp dụng!", null);
         }
         if (v.getEndDate() != null && now.isAfter(v.getEndDate())) {
-            System.out.println("DEBUG Voucher " + code + ": Expired. Current: " + now + ", End: " + v.getEndDate());
-            return Optional.empty();
+            return new VoucherValidationResult(false, "Mã giảm giá '" + code + "' đã hết hạn sử dụng!", null);
         }
 
-        // 3. Kiểm tra số lượng
+        // 3. Kiểm tra số lượng phát hành
         if (v.getQuantity() != null && v.getQuantity() <= 0) {
-            System.out.println("DEBUG Voucher " + code + ": Out of quantity (" + v.getQuantity() + ")");
-            return Optional.empty();
+            return new VoucherValidationResult(false, "Mã giảm giá '" + code + "' đã hết lượt sử dụng!", null);
         }
 
         // 4. Kiểm tra giá trị đơn hàng tối thiểu
         if (v.getMinOrderValue() != null && orderTotal < v.getMinOrderValue()) {
-            System.out.println("DEBUG Voucher " + code + ": Total " + orderTotal + " < Min " + v.getMinOrderValue());
-            return Optional.empty();
+            return new VoucherValidationResult(false, "Giá trị đơn hàng chưa đạt mức tối thiểu " + String.format("%,.0f", v.getMinOrderValue()) + "đ để sử dụng mã này!", null);
         }
 
-        // 5. Kiểm tra Hạng thành viên (QUAN TRỌNG)
+        // 5. Kiểm tra Hạng thành viên
         if (v.getApplicableRanks() != null && !v.getApplicableRanks().isEmpty()) {
             Integer effectiveRankId = userRankId;
             if (userId != null) {
@@ -92,44 +103,40 @@ public class VoucherService {
                                 break;
                             }
                         }
-                        if (effectiveRankId != null && !effectiveRankId.equals(userRankId)) {
-                            jdbc.update("UPDATE accounts SET membership_rank_id = ? WHERE id = ?", effectiveRankId, userId);
-                        }
                     }
                 } catch (Exception e) {
-                    System.out.println("DEBUG Error fetching effective rank from points: " + e.getMessage());
+                    System.out.println("DEBUG Error fetching rank points: " + e.getMessage());
                 }
             }
             final Integer finalRankId = effectiveRankId != null ? effectiveRankId : 1;
-            System.out.println("DEBUG Voucher: " + v.getCode() + " requires ranks: " +
-                    v.getApplicableRanks().stream().map(r -> r.getId().toString()).reduce((a, b) -> a + "," + b)
-                            .orElse("none"));
-            System.out.println("DEBUG User Effective Rank: " + finalRankId);
-
             boolean isEligible = v.getApplicableRanks().stream()
                     .anyMatch(rank -> rank.getId().equals(finalRankId));
             if (!isEligible) {
-                System.out.println("DEBUG Result: Ineligible Rank");
-                return Optional.empty();
+                return new VoucherValidationResult(false, "Tài khoản của bạn chưa đạt hạng thành viên được phép dùng mã này!", null);
             }
         }
 
-        // 6. Kiểm tra User sử dụng bao nhiêu lần (nếu có giới hạn)
+        // 6. Kiểm tra giới hạn số lần dùng của từng User
         if (v.getUserUsageLimit() != null && v.getUserUsageLimit() > 0 && userId != null) {
-            System.out.println("DEBUG Voucher " + code + ": requires max usage per user = " + v.getUserUsageLimit());
             Integer currentUsage = jdbc.queryForObject(
                     "SELECT COUNT(*) FROM voucher_usages WHERE voucher_id = ? AND user_id = ?",
                     Integer.class, v.getId(), userId);
 
             if (currentUsage != null && currentUsage >= v.getUserUsageLimit()) {
-                System.out.println(
-                        "DEBUG Result: User reached max usage (" + currentUsage + "/" + v.getUserUsageLimit() + ")");
-                return Optional.empty();
+                return new VoucherValidationResult(false, "Bạn đã sử dụng tối đa " + v.getUserUsageLimit() + " lượt cho phép của mã giảm giá này!", null);
             }
         }
 
-        System.out.println("DEBUG Result: Validated successfully");
-        return Optional.of(v);
+        return new VoucherValidationResult(true, "Mã giảm giá hợp lệ!", v);
+    }
+
+    @Transactional
+    public Optional<Voucher> validateVoucher(String code, Integer userRankId, Double orderTotal, Long userId) {
+        VoucherValidationResult res = validateVoucherDetailed(code, userRankId, orderTotal, userId);
+        if (res.isValid()) {
+            return Optional.of(res.getVoucher());
+        }
+        return Optional.empty();
     }
 
     public Double calculateDiscount(Voucher v, Double orderTotal) {

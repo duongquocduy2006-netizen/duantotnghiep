@@ -79,7 +79,13 @@ const AdminLayout = ({ children }) => {
                          toastStr.toLowerCase().includes('thất bại') || 
                          toastStr.toLowerCase().includes('vui lòng') || 
                          toastStr.toLowerCase().includes('chưa') || 
-                         toastStr.toLowerCase().includes('không');
+                         toastStr.toLowerCase().includes('không') ||
+                         toastStr.toLowerCase().includes('violation') ||
+                         toastStr.toLowerCase().includes('could not') ||
+                         toastStr.toLowerCase().includes('failed') ||
+                         toastStr.toLowerCase().includes('cannot') ||
+                         toastStr.toLowerCase().includes('duplicate') ||
+                         toastStr.toLowerCase().includes('error');
     const toastBgColor = isToastError ? '#dc2626' : '#198754';
     const toastBgShadow = isToastError ? 'rgba(220, 38, 38, 0.2)' : 'rgba(25, 135, 84, 0.2)';
     const toastIconClass = isToastError ? 'bi bi-exclamation-circle-fill' : 'bi bi-check-circle-fill';

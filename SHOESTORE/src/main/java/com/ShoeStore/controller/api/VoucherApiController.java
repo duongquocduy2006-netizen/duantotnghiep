@@ -167,10 +167,10 @@ public class VoucherApiController {
             }
 
             Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
-            Optional<Voucher> voucherOpt = voucherService.validateVoucher(code, rankId, cartTotal, accountId);
+            com.ShoeStore.service.VoucherService.VoucherValidationResult vResult = voucherService.validateVoucherDetailed(code, rankId, cartTotal, accountId);
 
-            if (voucherOpt.isPresent()) {
-                Voucher voucher = voucherOpt.get();
+            if (vResult.isValid()) {
+                Voucher voucher = vResult.getVoucher();
                 if (eligibleSubtotal <= 0 && totalItemCount > 0) {
                     return ResponseEntity.ok(Map.of(
                             "success", true,
@@ -201,7 +201,7 @@ public class VoucherApiController {
             } else {
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
-                        "message", "Mã giảm giá không hợp lệ, hết hạn hoặc không đủ điều kiện!"
+                        "message", vResult.getMessage()
                 ));
             }
         } catch (Exception e) {
@@ -280,6 +280,20 @@ public class VoucherApiController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Loại giảm giá chỉ cho phép giảm theo % và mức giảm tối đa chỉ được 50%!"));
             }
 
+            String cleanCode = code.trim().toUpperCase();
+
+            // Check if voucher code already exists on ANOTHER voucher (prevents SQL UNIQUE KEY constraint error)
+            Optional<Voucher> existingCodeOpt = voucherService.getVoucherByCode(cleanCode);
+            if (existingCodeOpt.isPresent()) {
+                Voucher existingVoucher = existingCodeOpt.get();
+                if (id == null || !existingVoucher.getId().equals(id)) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Mã giảm giá '" + cleanCode + "' đã tồn tại trong hệ thống. Vui lòng đặt mã giảm giá khác!"
+                    ));
+                }
+            }
+
             Voucher voucher;
             if (id != null) {
                 voucher = voucherService.getVoucherById(id).orElse(new Voucher());
@@ -287,7 +301,7 @@ public class VoucherApiController {
                 voucher = new Voucher();
             }
 
-            voucher.setCode(code.trim().toUpperCase());
+            voucher.setCode(cleanCode);
             voucher.setDiscountType("PERCENT"); // Bắt buộc lưu PERCENT
             voucher.setDiscountValue(discountValue);
             voucher.setMaxDiscount(maxDiscount);
