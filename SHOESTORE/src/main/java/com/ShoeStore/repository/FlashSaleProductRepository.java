@@ -16,7 +16,7 @@ public interface FlashSaleProductRepository extends JpaRepository<FlashSaleProdu
            "LEFT JOIN FETCH p.images " +
            "WHERE fsp.flashSale.id = :flashSaleId " +
            "AND p.status = 1 " + // Chỉ lấy sản phẩm đang hoạt động
-           "AND fsp.soldQuantity < fsp.quantityLimit " + // Chưa bán hết suất Flash Sale
+           "AND (fsp.quantityLimit = 0 OR fsp.quantityLimit IS NULL OR fsp.soldQuantity < fsp.quantityLimit) " + // Chưa bán hết suất Flash Sale (0 = Không giới hạn)
            "AND EXISTS (SELECT pv FROM ProductVariant pv WHERE pv.product = p AND pv.quantity > 0 AND pv.status = 1)") // Còn hàng trong kho
     List<FlashSaleProduct> findByFlashSaleIdWithProductAndVariants(@Param("flashSaleId") Integer flashSaleId);
 

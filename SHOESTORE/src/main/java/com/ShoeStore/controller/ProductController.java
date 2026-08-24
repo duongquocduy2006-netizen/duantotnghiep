@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpSession;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 public class ProductController {
@@ -42,12 +43,11 @@ public class ProductController {
                         " JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                         " WHERE fsp.product_id = p.id AND fs.status = 1 " +
                         " AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        " AND fsp.sold_quantity < fsp.quantity_limit) as sale_price " +
+                        " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                         "FROM products p " +
                         "LEFT JOIN categories c ON p.category_id = c.id " +
-                        "WHERE p.status = 1 AND c.status = 1 " +
-                        "AND EXISTS (SELECT 1 FROM brands b WHERE b.brand_name = p.brand_name AND b.status = 1) " +
-                        "AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.quantity > 0) ");
+                        "LEFT JOIN brands b ON LOWER(p.brand_name) = LOWER(b.brand_name) " +
+                        "WHERE (p.status IS NULL OR p.status = 1) AND (c.status IS NULL OR c.status = 1) AND (b.status IS NULL OR b.status = 1) ");
 
         // --- FILTER LOGIC ---
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -58,13 +58,19 @@ public class ProductController {
         }
 
         if (brands != null && !brands.isEmpty()) {
-            sql.append(" AND p.brand_name IN (");
-            for (int i = 0; i < brands.size(); i++) {
-                sql.append("'").append(brands.get(i).replace("'", "''")).append("'");
-                if (i < brands.size() - 1)
-                    sql.append(",");
+            List<String> validBrands = brands.stream()
+                    .filter(b -> b != null && !b.trim().isEmpty())
+                    .map(b -> b.replace("'", "''").trim().toLowerCase())
+                    .collect(Collectors.toList());
+            if (!validBrands.isEmpty()) {
+                sql.append(" AND LOWER(p.brand_name) IN (");
+                for (int i = 0; i < validBrands.size(); i++) {
+                    sql.append("'").append(validBrands.get(i)).append("'");
+                    if (i < validBrands.size() - 1)
+                        sql.append(",");
+                }
+                sql.append(") ");
             }
-            sql.append(") ");
         }
 
         if (categories != null && !categories.isEmpty()) {
@@ -125,7 +131,8 @@ public class ProductController {
             // 1. Thông tin cơ bản sản phẩm
             String sqlInfo = "SELECT p.*, c.category_name FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
-                    "WHERE p.id = ? AND c.status = 1 AND EXISTS (SELECT 1 FROM brands b WHERE b.brand_name = p.brand_name AND b.status = 1)";
+                    "LEFT JOIN brands b ON LOWER(p.brand_name) = LOWER(b.brand_name) " +
+                    "WHERE p.id = ? AND (p.status IS NULL OR p.status = 1) AND (c.status IS NULL OR c.status = 1) AND (b.status IS NULL OR b.status = 1)";
             Map<String, Object> product = jdbc.queryForMap(sqlInfo, id);
             System.out.println("DEBUG Product: " + product);
             model.addAttribute("p", product);
@@ -166,7 +173,7 @@ public class ProductController {
                     " JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                     " WHERE fsp.product_id = p.id AND fs.status = 1 " +
                     " AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    " AND fsp.sold_quantity < fsp.quantity_limit) as sale_price " +
+                    " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
                     "WHERE p.category_id = ? AND p.id <> ? AND p.status = 1 AND c.status = 1 " +
@@ -264,7 +271,7 @@ public class ProductController {
                     "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                     "WHERE fsp.product_id = ? AND fs.status = 1 " +
                     "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND fsp.sold_quantity < fsp.quantity_limit";
+                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)";
             List<Map<String, Object>> flashSaleResult = jdbc.queryForList(sqlFlashSale, id);
             if (!flashSaleResult.isEmpty()) {
                 model.addAttribute("flashSale", flashSaleResult.get(0));
@@ -289,7 +296,7 @@ public class ProductController {
                 " JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                 " WHERE fsp.product_id = p.id AND fs.status = 1 " +
                 " AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                " AND fsp.sold_quantity < fsp.quantity_limit) as sale_price " +
+                " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                 "FROM products p " +
                 "LEFT JOIN categories c ON p.category_id = c.id " +
                 "WHERE p.status = 1 AND c.status = 1 " +

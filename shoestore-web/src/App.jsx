@@ -18,6 +18,7 @@ import FlashSale from './pages/FlashSale';
 import NewArrivals from './pages/NewArrivals';
 import Vouchers from './pages/Vouchers';
 import OrderDetail from './pages/OrderDetail';
+import Notifications from './pages/Notifications';
 import ShipperDashboard from './pages/shipper/ShipperDashboard';
 import ShipperWaitingOrders from './pages/shipper/ShipperWaitingOrders';
 import ShipperShippingOrders from './pages/shipper/ShipperShippingOrders';
@@ -89,6 +90,7 @@ function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/checkout-success" element={<CheckoutSuccess />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/order-history" element={<OrderHistory />} />
         <Route path="/orders/detail/:id" element={<OrderDetail />} />

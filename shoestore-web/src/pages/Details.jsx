@@ -43,7 +43,9 @@ const Details = () => {
     const [flashSale, setFlashSale] = useState(null);
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+        const val = Number(amount);
+        if (isNaN(val) || amount === null || amount === undefined) return '0 đ';
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
     };
 
     const getImageUrl = (url) => {
@@ -276,7 +278,6 @@ const Details = () => {
     };
 
     const handleDeleteReview = async (id) => {
-        if (!window.confirm("Bạn có chắc muốn xóa bình luận này?")) return;
         try {
             const fd = new FormData();
             fd.append("id", id);
@@ -290,6 +291,25 @@ const Details = () => {
         } catch (err) {
             console.error(err);
             window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối." }));
+        }
+    };
+
+    const handleToggleHideReview = async (id) => {
+        try {
+            const response = await api.post(`/api/reviews/toggle-hide?id=${id}`);
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message }));
+                fetchProductDetails(false);
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: (response.data && response.data.message) || "Không thể thực hiện thao tác." }));
+            }
+        } catch (err) {
+            console.error(err);
+            if (err.response && err.response.data && err.response.data.message) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: err.response.data.message }));
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối." }));
+            }
         }
     };
 
@@ -391,28 +411,38 @@ const Details = () => {
     const handleAddToCart = async () => {
         setCartError('');
         setCartSuccess('');
-        if (!selectedVariantId) { setCartError("Vui lòng chọn Size & Màu sắc!"); return; }
-        if (currentStock <= 0) { setCartError("Sản phẩm này hết hàng!"); return; }
+        if (!selectedVariantId) {
+            setCartError("Vui lòng chọn Size & Màu sắc!");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng chọn Size & Màu sắc!' }));
+            return;
+        }
+        if (currentStock <= 0) {
+            setCartError("Sản phẩm này hết hàng!");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Sản phẩm này đã hết hàng!' }));
+            return;
+        }
         try {
             const response = await api.post('/api/cart/add', { variantId: selectedVariantId, quantity: qty });
             if (response.data && response.data.success) {
                 setCartSuccess(`Đã thêm ${qty} sản phẩm vào giỏ hàng!`);
-                // Clear success message after 3 seconds
                 setTimeout(() => setCartSuccess(''), 3000);
-                
-                // Optionally dispatch an event or trigger a fetch for the minicart here, 
-                // but since reload was used before, we can leave it to the user or trigger a custom event.
-                // For better UX, let's just trigger a custom event that header can listen to, or reload if needed.
-                // Since removing alert, auto-reload can be abrupt. Let's stick with success msg for now.
                 window.dispatchEvent(new Event("cartUpdated"));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã thêm ${qty} sản phẩm vào giỏ hàng thành công!` }));
             } else {
                 setCartError(response.data.message || 'Lỗi thêm vào giỏ hàng.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || 'Lỗi thêm vào giỏ hàng.' }));
             }
         } catch (err) {
-            if (err.response && err.response.status === 401) setCartError('Vui lòng đăng nhập!');
-            else if (err.response && err.response.data && err.response.data.message) {
+            if (err.response && err.response.status === 401) {
+                setCartError('Vui lòng đăng nhập!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập để thêm vào giỏ hàng!' }));
+            } else if (err.response && err.response.data && err.response.data.message) {
                 setCartError(err.response.data.message);
-            } else setCartError('Lỗi xử lý giỏ hàng.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: err.response.data.message }));
+            } else {
+                setCartError('Lỗi xử lý giỏ hàng.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi xử lý giỏ hàng.' }));
+            }
         }
     };
 
@@ -432,12 +462,13 @@ const Details = () => {
             const response = await api.post('/api/favourites/toggle', { productId });
             if (response.data && response.data.success) {
                 setIsWishlist(response.data.action === 'added');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.action === 'added' ? 'Đã thêm sản phẩm vào danh sách yêu thích!' : 'Đã xóa sản phẩm khỏi danh sách yêu thích!' }));
             } else {
-                alert(response.data.message || 'Vui lòng đăng nhập!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || 'Vui lòng đăng nhập!' }));
             }
         } catch (err) {
-            if (err.response && err.response.status === 401) alert('Vui lòng đăng nhập!');
-            else alert('Lỗi xử lý yêu thích.');
+            if (err.response && err.response.status === 401) window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập!' }));
+            else window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi xử lý yêu thích.' }));
         }
     };
 
@@ -516,42 +547,77 @@ const Details = () => {
                                     </div>
                                     
                                     {flashSale ? (
-                                        <>
-                                            <div className="det-flash-sale-banner">
-                                                <div className="det-flash-sale-icon">
-                                                    <i className="fa-solid fa-bolt"></i>
-                                                </div>
-                                                <div className="det-flash-sale-info">
-                                                    <span className="det-flash-sale-tag">FLASH SALE</span>
-                                                    <span className="det-flash-sale-name">{flashSale.campaignName}</span>
-                                                </div>
-                                                <div className="det-flash-sale-discount-badge">
-                                                    -{flashSale.discountPercent}%
-                                                </div>
-                                            </div>
-                                            <div className="det-price-block det-price-block--sale">
-                                                <div>
-                                                    <div className="det-price-label">Giá Flash Sale</div>
-                                                    <div className="det-price-value det-price-value--sale">{formatCurrency(flashSale.salePrice)}</div>
-                                                    <div className="det-price-original">
-                                                        <span className="det-price-old">{formatCurrency(displayPrice)}</span>
-                                                        <span className="det-price-save">Tiết kiệm {formatCurrency(displayPrice - flashSale.salePrice)}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="det-price-badge det-price-badge--sale">Flash Sale</div>
-                                            </div>
-                                            {flashSale.quantityLimit > 0 && (
-                                                <div className="det-flash-sale-progress">
-                                                    <div className="det-flash-progress-text">
-                                                        <span>{(flashSale.soldQuantity / flashSale.quantityLimit * 100) >= 80 ? <><i className="fa-solid fa-fire text-danger me-1"></i>Sắp hết</> : 'Đang bán'}</span>
-                                                        <span>Đã bán {flashSale.soldQuantity}/{flashSale.quantityLimit}</span>
-                                                    </div>
-                                                    <div className="det-flash-progress-bar">
-                                                        <div className="det-flash-progress-fill" style={{ width: `${Math.min((flashSale.soldQuantity / flashSale.quantityLimit) * 100, 100)}%` }}></div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
+                                        (() => {
+                                            const isLiveSale = flashSale.isLive === true || (flashSale.salePrice && flashSale.isLive !== false && flashSale.isUpcoming !== true);
+                                            if (isLiveSale) {
+                                                return (
+                                                    <>
+                                                        <div className="det-flash-sale-banner">
+                                                            <div className="det-flash-sale-icon">
+                                                                <i className="fa-solid fa-bolt"></i>
+                                                            </div>
+                                                            <div className="det-flash-sale-info">
+                                                                <span className="det-flash-sale-tag">FLASH SALE ĐANG DIỄN RA</span>
+                                                                <span className="det-flash-sale-name">{flashSale.campaignName}</span>
+                                                            </div>
+                                                            <div className="det-flash-sale-discount-badge">
+                                                                -{flashSale.discountPercent}%
+                                                            </div>
+                                                        </div>
+                                                        <div className="det-price-block det-price-block--sale">
+                                                            <div>
+                                                                <div className="det-price-label">Giá Flash Sale</div>
+                                                                <div className="det-price-value det-price-value--sale">{formatCurrency(flashSale.salePrice)}</div>
+                                                                <div className="det-price-original">
+                                                                    <span className="det-price-old">{formatCurrency(displayPrice)}</span>
+                                                                    <span className="det-price-save">Tiết kiệm {formatCurrency((displayPrice || 0) - (flashSale.salePrice || 0))}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="det-price-badge det-price-badge--sale">Flash Sale</div>
+                                                        </div>
+                                                        {flashSale.quantityLimit > 0 && (
+                                                            <div className="det-flash-sale-progress">
+                                                                <div className="det-flash-progress-text">
+                                                                    <span>{(flashSale.soldQuantity / flashSale.quantityLimit * 100) >= 80 ? <><i className="fa-solid fa-fire text-danger me-1"></i>Sắp hết</> : 'Đang bán'}</span>
+                                                                    <span>Đã bán {flashSale.soldQuantity}/{flashSale.quantityLimit}</span>
+                                                                </div>
+                                                                <div className="det-flash-progress-bar">
+                                                                    <div className="det-flash-progress-fill" style={{ width: `${Math.min((flashSale.soldQuantity / flashSale.quantityLimit) * 100, 100)}%` }}></div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            } else {
+                                                const saleVal = flashSale.salePrice !== undefined && flashSale.salePrice !== null ? flashSale.salePrice : flashSale.upcomingSalePrice;
+                                                return (
+                                                    <>
+                                                        <div className="det-flash-sale-banner" style={{ background: 'linear-gradient(135deg, #e50914 0%, #dc2626 100%)', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px 18px', marginBottom: '12px', boxShadow: '0 4px 14px rgba(229, 9, 20, 0.15)' }}>
+                                                            <div className="det-flash-sale-icon" style={{ background: 'rgba(255, 255, 255, 0.2)', color: '#ffffff', borderRadius: '50%', width: '36px', height: '36px', fontSize: '15px' }}>
+                                                                <i className="fa-solid fa-clock"></i>
+                                                            </div>
+                                                            <div className="det-flash-sale-info">
+                                                                <span className="det-flash-sale-tag" style={{ color: '#ffffff', fontSize: '13px', fontWeight: '800', letterSpacing: '0.6px', background: 'transparent', display: 'inline-block' }}>SẮP DIỄN RA FLASH SALE</span>
+                                                                <span className="det-flash-sale-name" style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '11px', marginTop: '1px' }}>{flashSale.campaignName}</span>
+                                                            </div>
+                                                            <div className="det-flash-sale-discount-badge" style={{ background: '#ffffff', color: '#e50914', fontSize: '12px', fontWeight: '900', padding: '5px 14px', borderRadius: '20px', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)' }}>
+                                                                {flashSale.discountPercent > 0 ? `SẮP GIẢM -${flashSale.discountPercent}%` : 'SẮP DIỄN RA'}
+                                                            </div>
+                                                        </div>
+                                                        <div className="det-price-block" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px 20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)' }}>
+                                                            <div>
+                                                                <div className="det-price-label text-muted" style={{ fontSize: '13px', fontWeight: '500' }}>Giá bán hiện tại (Chưa đến giờ Sale)</div>
+                                                                <div className="det-price-value text-dark fw-bold" style={{ fontSize: '26px', margin: '2px 0' }}>{formatCurrency(displayPrice)}</div>
+                                                                <div className="mt-1 fw-bold font-oswald d-flex align-items-center gap-1" style={{ fontSize: '14px', color: '#e50914' }}>
+                                                                    <i className="fa-solid fa-fire me-1" style={{ color: '#e50914' }}></i> Giá Flash Sale sắp tới: {formatCurrency(saleVal)}
+                                                                </div>
+                                                            </div>
+                                                            <div className="det-price-badge" style={{ background: '#e50914', color: '#ffffff', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: '700' }}>Sắp Sale</div>
+                                                        </div>
+                                                    </>
+                                                );
+                                            }
+                                        })()
                                     ) : (
                                         <div className="det-price-block">
                                             <div>
@@ -576,9 +642,17 @@ const Details = () => {
                                         </div>
                                     )}
 
-                                    <p className="det-short-desc">
-                                        {product.description || "Chưa có mô tả chi tiết cho sản phẩm này."}
-                                    </p>
+                                    <div className="det-short-desc">
+                                        {product.description ? (
+                                            product.description.includes('<') ? (
+                                                <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                                            ) : (
+                                                <p>{product.description}</p>
+                                            )
+                                        ) : (
+                                            <p>Chưa có mô tả chi tiết cho sản phẩm này.</p>
+                                        )}
+                                    </div>
 
                                     <div className="det-variants-section">
                                         <div className="det-section-label">
@@ -680,20 +754,16 @@ const Details = () => {
                         <div className="det-tab-content">
                             {activeTab === 'desc' && (
                                 <div className="det-desc-body">
-                                    <div className="det-desc-highlight">
-                                        <i className="fa-solid fa-star"></i>
-                                        <div className="det-desc-highlight-text">
-                                            Đặc điểm nổi bật: Sản phẩm sở hữu thiết kế trẻ trung, chất liệu cao cấp cùng đường may tỉ mỉ, mang lại trải nghiệm êm ái và thoải mái tối đa cho người sử dụng.
-                                        </div>
-                                    </div>
-                                    <p style={{ fontSize: '15px', color: '#4b5563', lineHeight: '1.8' }}>
-                                        {product.description || "Sản phẩm chính hãng với chất lượng hoàn thiện tuyệt đối. Mang lại cảm giác thoải mái và tự tin trên từng bước chân."}
-                                    </p>
-                                    <div className="det-desc-features">
-                                        <div className="det-desc-feature-item"><i className="fa-solid fa-circle-check"></i> Chính hãng 100%</div>
-                                        <div className="det-desc-feature-item"><i className="fa-solid fa-circle-check"></i> Đổi size dễ dàng</div>
-                                        <div className="det-desc-feature-item"><i className="fa-solid fa-circle-check"></i> Hỗ trợ trả góp 0%</div>
-                                        <div className="det-desc-feature-item"><i className="fa-solid fa-circle-check"></i> Bảo hành keo 6 tháng</div>
+                                    <div style={{ fontSize: '15px', color: '#4b5563', lineHeight: '1.8' }}>
+                                        {product.description ? (
+                                            product.description.includes('<') ? (
+                                                <div dangerouslySetInnerHTML={{ __html: product.description }} />
+                                            ) : (
+                                                <p style={{ whiteSpace: 'pre-line' }}>{product.description}</p>
+                                            )
+                                        ) : (
+                                            <p>Sản phẩm chất lượng mang lại cảm giác thoải mái và tự tin trên từng bước chân.</p>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -760,17 +830,26 @@ const Details = () => {
 
                                     <div className="det-review-list mt-5">
                                         <h5 className="mb-4">Khách hàng nhận xét</h5>
-                                        {reviews.length === 0 ? (
-                                            <p className="text-muted">Chưa có đánh giá nào cho sản phẩm này.</p>
-                                        ) : (
-                                            reviews.map(r => {
+                                        {(() => {
+                                            const isAdminUser = currentUser && currentUser.role === 'ADMIN';
+                                            const visibleReviews = reviews.filter(r => isAdminUser || (Number(r.is_hidden) !== 1 && r.is_hidden !== true));
+
+                                            if (visibleReviews.length === 0) {
+                                                return <p className="text-muted">Chưa có đánh giá nào cho sản phẩm này.</p>;
+                                            }
+
+                                            return visibleReviews.map(r => {
                                                 const isAuthor = currentUser && currentUser.id === r.user_id;
                                                 const canDelete = currentUser && (currentUser.id === r.user_id || currentUser.role === 'ADMIN');
+                                                const canHide = isAdminUser;
+                                                const isHidden = Number(r.is_hidden) === 1 || r.is_hidden === true;
                                                 const isEditing = activeEditId === r.id;
                                                 const isReplying = activeReplyId === r.id;
 
+                                                const visibleReplies = (r.replies || []).filter(reply => isAdminUser || (Number(reply.is_hidden) !== 1 && reply.is_hidden !== true));
+
                                                 return (
-                                                    <div key={r.id} className="det-review-item-container mb-4 p-3 rounded" style={{ background: '#fff', border: '1px solid #f1f5f9' }}>
+                                                    <div key={r.id} className="det-review-item-container mb-4 p-3 rounded" style={{ background: isHidden ? '#fafafa' : '#fff', border: '1px solid #f1f5f9' }}>
                                                         {/* Parent Review Card */}
                                                         <div className="det-review-item">
                                                             <div className="d-flex align-items-center mb-2">
@@ -782,6 +861,9 @@ const Details = () => {
                                                                         <strong className="text-dark">{r.user_name}</strong>
                                                                         {r.role === 'ADMIN' && (
                                                                             <span className="badge bg-danger" style={{ fontSize: '10px' }}>QTV</span>
+                                                                        )}
+                                                                        {isHidden && (
+                                                                            <span className="badge bg-secondary opacity-75" style={{ fontSize: '10px' }}>Đã ẩn</span>
                                                                         )}
                                                                     </div>
                                                                     <div className="det-rating-stars" style={{ color: '#ffb800', fontSize: '0.85rem' }}>
@@ -817,13 +899,15 @@ const Details = () => {
                                                                     </div>
                                                                 </div>
                                                             ) : (
-                                                                <p className="mb-2 text-secondary" style={{ fontSize: '15px', lineHeight: '1.6' }}>{r.content}</p>
+                                                                <p className={`mb-2 ${isHidden ? 'text-muted text-decoration-line-through opacity-75' : 'text-secondary'}`} style={{ fontSize: '15px', lineHeight: '1.6' }}>
+                                                                    {r.content}
+                                                                </p>
                                                             )}
 
                                                             <div className="d-flex align-items-center justify-content-between">
                                                                 <small className="text-muted">{new Date(r.created_at).toLocaleString('vi-VN')}</small>
                                                                 
-                                                                {/* Action Buttons: Like, Reply, Edit, Delete */}
+                                                                {/* Action Buttons: Like, Reply, Edit, Hide/Unhide, Delete */}
                                                                 <div className="d-flex align-items-center gap-3">
                                                                     {/* Heart button (Like) */}
                                                                     <button 
@@ -861,6 +945,16 @@ const Details = () => {
                                                                         </button>
                                                                     )}
 
+                                                                    {/* Hide / Unhide button (Admin only) */}
+                                                                    {canHide && (
+                                                                        <button 
+                                                                            onClick={() => handleToggleHideReview(r.id)}
+                                                                            style={{ border: 'none', background: 'none', color: isHidden ? '#16a34a' : '#64748b', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                        >
+                                                                            {isHidden ? 'Hiện' : 'Ẩn'}
+                                                                        </button>
+                                                                    )}
+
                                                                     {/* Delete button */}
                                                                     {canDelete && (
                                                                         <button 
@@ -893,15 +987,17 @@ const Details = () => {
                                                         )}
 
                                                         {/* Replies list (Nested) */}
-                                                        {r.replies && r.replies.length > 0 && (
+                                                        {visibleReplies.length > 0 && (
                                                             <div className="det-replies-list mt-3" style={{ marginLeft: '2.5rem' }}>
-                                                                {r.replies.map(reply => {
+                                                                {visibleReplies.map(reply => {
                                                                     const isReplyAuthor = currentUser && currentUser.id === reply.user_id;
                                                                     const canDeleteReply = currentUser && (currentUser.id === reply.user_id || currentUser.role === 'ADMIN');
+                                                                    const canHideReply = isAdminUser;
+                                                                    const isReplyHidden = Number(reply.is_hidden) === 1 || reply.is_hidden === true;
                                                                     const isEditingReply = activeEditId === reply.id;
 
                                                                     return (
-                                                                        <div key={reply.id} className="p-3 mb-2 rounded position-relative" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                                                                        <div key={reply.id} className="p-3 mb-2 rounded position-relative" style={{ background: isReplyHidden ? '#f1f5f9' : '#f8fafc', border: '1px solid #e2e8f0' }}>
                                                                             <div className="d-flex align-items-center mb-2">
                                                                                 <div className="det-review-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#64748b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: '0.75rem', fontSize: '0.85rem' }}>
                                                                                     {reply.user_name ? reply.user_name.charAt(0).toUpperCase() : 'U'}
@@ -911,6 +1007,9 @@ const Details = () => {
                                                                                         <strong className="text-dark" style={{ fontSize: '0.9rem' }}>{reply.user_name}</strong>
                                                                                         {reply.role === 'ADMIN' && (
                                                                                             <span className="badge bg-danger" style={{ fontSize: '9px', padding: '2px 4px' }}>QTV</span>
+                                                                                        )}
+                                                                                        {isReplyHidden && (
+                                                                                            <span className="badge bg-secondary opacity-75" style={{ fontSize: '9px', padding: '2px 4px' }}>Đã ẩn</span>
                                                                                         )}
                                                                                     </div>
                                                                                 </div>
@@ -931,7 +1030,7 @@ const Details = () => {
                                                                                     </div>
                                                                                 </div>
                                                                             ) : (
-                                                                                <p className="mb-2 text-secondary" style={{ fontSize: '14px', lineHeight: '1.5' }}>{reply.content}</p>
+                                                                                <p className={`mb-2 ${isReplyHidden ? 'text-muted text-decoration-line-through opacity-75' : 'text-secondary'}`} style={{ fontSize: '14px', lineHeight: '1.5' }}>{reply.content}</p>
                                                                             )}
 
                                                                             <div className="d-flex align-items-center justify-content-between">
@@ -961,6 +1060,16 @@ const Details = () => {
                                                                                         </button>
                                                                                     )}
 
+                                                                                    {/* Reply Hide / Unhide button (Admin only) */}
+                                                                                    {canHideReply && (
+                                                                                        <button 
+                                                                                            onClick={() => handleToggleHideReview(reply.id)}
+                                                                                            style={{ border: 'none', background: 'none', color: isReplyHidden ? '#16a34a' : '#64748b', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                                        >
+                                                                                            {isReplyHidden ? 'Hiện' : 'Ẩn'}
+                                                                                        </button>
+                                                                                    )}
+
                                                                                     {/* Reply delete */}
                                                                                     {canDeleteReply && (
                                                                                         <button 
@@ -979,8 +1088,8 @@ const Details = () => {
                                                         )}
                                                     </div>
                                                 );
-                                            })
-                                        )}
+                                            });
+                                        })()}
                                     </div>
                                 </div>
                             )}

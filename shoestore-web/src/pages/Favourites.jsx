@@ -48,12 +48,13 @@ const Favourites = () => {
             const response = await api.post('/api/favourites/toggle', { productId: id });
             if (response.data && response.data.success) {
                 setProducts(products.filter(p => p.id !== id));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xóa sản phẩm khỏi danh sách yêu thích!' }));
             } else {
-                alert('Có lỗi xảy ra khi xóa sản phẩm yêu thích.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Có lỗi xảy ra khi xóa sản phẩm yêu thích.' }));
             }
         } catch (err) {
             console.error("Lỗi xóa sản phẩm yêu thích:", err);
-            alert('Lỗi kết nối khi xóa sản phẩm yêu thích.');
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi kết nối khi xóa sản phẩm yêu thích.' }));
         }
     };
 
@@ -168,7 +169,7 @@ const Favourites = () => {
                 </div>
             </div>
             {quickAddProductId && (
-                <QuickCartModal productId={quickAddProductId} onClose={() => setQuickAddProductId(null)} />
+                <QuickCartModal productId={quickAddProductId} isOpen={true} onClose={() => setQuickAddProductId(null)} />
             )}
         </Layout>
     );

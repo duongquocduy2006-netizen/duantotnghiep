@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import DateTimePicker24h from '../../components/DateTimePicker24h';
 import './AdminFlashSaleForm.css';
 
 const AdminFlashSaleForm = () => {
@@ -23,7 +24,8 @@ const AdminFlashSaleForm = () => {
     const [loading, setLoading] = useState(false);
     const [formErrors, setFormErrors] = useState({});
 
-    const getCurrentDateTimeString = () => {
+    // Returns current local datetime string in YYYY-MM-DDTHH:mm format for min attributes & default values
+    const getCurrentDateTimeLocal = () => {
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -33,6 +35,180 @@ const AdminFlashSaleForm = () => {
         return `${year}-${month}-${day}T${hours}:${minutes}`;
     };
 
+    // Helper to add hours to a datetime-local string (YYYY-MM-DDTHH:mm)
+    const addHoursToDateTime = (dateTimeStr, hoursToAdd) => {
+        if (!dateTimeStr) return '';
+        const d = new Date(dateTimeStr);
+        if (isNaN(d.getTime())) return '';
+        d.setHours(d.getHours() + hoursToAdd);
+        const y = d.getFullYear();
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const da = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const mi = String(d.getMinutes()).padStart(2, '0');
+        return `${y}-${mo}-${da}T${h}:${mi}`;
+    };
+
+    // Helper: Format ISO/backend string to datetime-local format (YYYY-MM-DDTHH:mm)
+    const formatToDateTimeLocal = (dateStr) => {
+        if (!dateStr) return '';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr.substring(0, 16);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        } catch (e) {
+            return dateStr.substring(0, 16);
+        }
+    };
+
+    // Helper: Format date string into 24-hour Vietnamese format with session tag (Sáng / Chiều / Tối)
+    const formatTo24hVietnamese = (dateStr) => {
+        if (!dateStr) return '';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+
+            const days = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+            const weekday = days[d.getDay()];
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+
+            const h = d.getHours();
+            let session = 'Sáng';
+            if (h >= 12 && h < 18) {
+                session = 'Chiều';
+            } else if (h >= 18) {
+                session = 'Tối';
+            }
+
+            return `${hours}:${minutes} (${session}) - ${weekday}, ${day}/${month}/${year}`;
+        } catch (e) {
+            return dateStr;
+        }
+    };
+
+    // Helper: Parse YYYY-MM-DDTHH:mm into parts
+    const parseDateTimeParts = (dtStr) => {
+        if (!dtStr || !dtStr.includes('T')) {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const h = String(now.getHours()).padStart(2, '0');
+            const min = String(Math.floor(now.getMinutes() / 5) * 5).padStart(2, '0');
+            return { date: `${y}-${m}-${d}`, hour: h, minute: min };
+        }
+        const [dPart, tPart] = dtStr.split('T');
+        const timeParts = (tPart || '').split(':');
+        return {
+            date: dPart || '',
+            hour: (timeParts[0] || '08').padStart(2, '0'),
+            minute: (timeParts[1] || '00').padStart(2, '0')
+        };
+    };
+
+    // Helper: Build YYYY-MM-DDTHH:mm string from parts
+    const buildDateTimeStr = (date, hour, minute) => {
+        if (!date) return '';
+        return `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    };
+
+    // 24 Hour Options list
+    const hour24Options = [
+        { value: '00', label: '00:00 (00h - Nửa đêm)' },
+        { value: '01', label: '01:00 (01h - Đêm)' },
+        { value: '02', label: '02:00 (02h - Đêm)' },
+        { value: '03', label: '03:00 (03h - Đêm)' },
+        { value: '04', label: '04:00 (04h - Sáng sớm)' },
+        { value: '05', label: '05:00 (05h - Sáng sớm)' },
+        { value: '06', label: '06:00 (06h - Sáng)' },
+        { value: '07', label: '07:00 (07h - Sáng)' },
+        { value: '08', label: '08:00 (08h - Sáng)' },
+        { value: '09', label: '09:00 (09h - Sáng)' },
+        { value: '10', label: '10:00 (10h - Sáng)' },
+        { value: '11', label: '11:00 (11h - Sáng)' },
+        { value: '12', label: '12:00 (12h - Trưa)' },
+        { value: '13', label: '13:00 (13h - Chiều)' },
+        { value: '14', label: '14:00 (14h - Chiều)' },
+        { value: '15', label: '15:00 (15h - Chiều)' },
+        { value: '16', label: '16:00 (16h - Chiều)' },
+        { value: '17', label: '17:00 (17h - Chiều)' },
+        { value: '18', label: '18:00 (18h - Tối)' },
+        { value: '19', label: '19:00 (19h - Tối)' },
+        { value: '20', label: '20:00 (20h - Tối)' },
+        { value: '21', label: '21:00 (21h - Tối)' },
+        { value: '22', label: '22:00 (22h - Tối)' },
+        { value: '23', label: '23:00 (23h - Tối)' },
+    ];
+
+    // Minute Options list (00 to 55)
+    const minuteOptions = Array.from({ length: 12 }, (_, i) => {
+        const m = String(i * 5).padStart(2, '0');
+        return { value: m, label: `:${m} phút` };
+    });
+
+    // Helper: get original price info for product / variant
+    const getOriginalPriceInfo = (fsp) => {
+        if (!fsp || !fsp.productId) return null;
+        
+        const vars = productVariants[fsp.productId] || [];
+        
+        if (fsp.variantId) {
+            const found = vars.find(v => String(v.id) === String(fsp.variantId));
+            if (found && found.price != null) {
+                return {
+                    minPrice: Number(found.price),
+                    maxPrice: Number(found.price),
+                    isSingle: true,
+                    displayText: new Intl.NumberFormat('vi-VN').format(found.price) + 'đ'
+                };
+            }
+        }
+        
+        if (vars.length > 0) {
+            const prices = vars.map(v => Number(v.price)).filter(p => !isNaN(p) && p > 0);
+            if (prices.length > 0) {
+                const minP = Math.min(...prices);
+                const maxP = Math.max(...prices);
+                if (minP === maxP) {
+                    return {
+                        minPrice: minP,
+                        maxPrice: maxP,
+                        isSingle: true,
+                        displayText: new Intl.NumberFormat('vi-VN').format(minP) + 'đ'
+                    };
+                } else {
+                    return {
+                        minPrice: minP,
+                        maxPrice: maxP,
+                        isSingle: false,
+                        displayText: `${new Intl.NumberFormat('vi-VN').format(minP)}đ - ${new Intl.NumberFormat('vi-VN').format(maxP)}đ`
+                    };
+                }
+            }
+        }
+        
+        const prod = products.find(p => String(p.id) === String(fsp.productId));
+        if (prod && prod.price != null) {
+            return {
+                minPrice: Number(prod.price),
+                maxPrice: Number(prod.price),
+                isSingle: true,
+                displayText: new Intl.NumberFormat('vi-VN').format(prod.price) + 'đ'
+            };
+        }
+        
+        return null;
+    };
+
     // 1. Fetch available products list for dropdown selection
     const fetchProducts = async () => {
         try {
@@ -40,7 +216,6 @@ const AdminFlashSaleForm = () => {
             const prods = response.data || [];
             setProducts(prods);
 
-            // Xử lý nạp variants cho từng sản phẩm (tránh lỗi khi backend chưa restart)
             const variantsMap = {};
             await Promise.all(prods.map(async (p) => {
                 if (p.variants && p.variants.length > 0) {
@@ -69,17 +244,20 @@ const AdminFlashSaleForm = () => {
             const response = await api.get(`/api/flash-sales/${id}`);
             if (response.data && response.data.success) {
                 const fs = response.data.flashSale;
-                // Format dates to datetime-local format (YYYY-MM-DDTHH:mm)
-                const startFormatted = fs.startDate ? fs.startDate.substring(0, 16) : '';
-                const endFormatted = fs.endDate ? fs.endDate.substring(0, 16) : '';
+                const loadedProducts = (fs.flashSaleProducts || []).map(fsp => ({
+                    ...fsp,
+                    salePrice: fsp.salePrice != null ? String(fsp.salePrice) : '',
+                    quantityLimit: fsp.quantityLimit === 0 || fsp.quantityLimit == null ? 0 : String(fsp.quantityLimit),
+                    isUnlimited: fsp.quantityLimit === 0 || fsp.quantityLimit == null
+                }));
 
                 setForm({
                     id: fs.id,
                     name: fs.name || '',
                     status: String(fs.status != null ? fs.status : 1),
-                    startDate: startFormatted,
-                    endDate: endFormatted,
-                    flashSaleProducts: fs.flashSaleProducts || []
+                    startDate: formatToDateTimeLocal(fs.startDate),
+                    endDate: formatToDateTimeLocal(fs.endDate),
+                    flashSaleProducts: loadedProducts
                 });
             }
         } catch (err) {
@@ -106,10 +284,9 @@ const AdminFlashSaleForm = () => {
             ...form,
             flashSaleProducts: [
                 ...form.flashSaleProducts,
-                { id: "temp." + Date.now(), productId: products[0].id, variantId: null, salePrice: 0, quantityLimit: 5, soldQuantity: 0 }
+                { id: "temp." + Date.now(), productId: products[0].id, variantId: null, salePrice: '', quantityLimit: '5', isUnlimited: false, soldQuantity: 0 }
             ]
         });
-        // Clear productsList error and any row errors to prevent mismatch
         setFormErrors(p => {
             const next = { ...p };
             delete next.productsList;
@@ -127,7 +304,6 @@ const AdminFlashSaleForm = () => {
         updated.splice(idx, 1);
         setForm({ ...form, flashSaleProducts: updated });
         
-        // Reset product row errors to prevent misalignment
         setFormErrors(p => {
             const next = { ...p };
             Object.keys(next).forEach(k => {
@@ -144,7 +320,6 @@ const AdminFlashSaleForm = () => {
         updated[idx] = { ...updated[idx], [field]: value };
         setForm({ ...form, flashSaleProducts: updated });
         
-        // Clear specific row error and duplicate error
         const errKey = `products.${idx}.${field}`;
         const prodErrKey = `products.${idx}.productId`;
         setFormErrors(p => {
@@ -158,7 +333,6 @@ const AdminFlashSaleForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Inline Validation - collect all errors
         const errors = {};
 
         if (!form.name || !form.name.trim()) {
@@ -166,44 +340,22 @@ const AdminFlashSaleForm = () => {
         }
 
         if (!form.startDate) {
-            errors.startDate = "Vui lòng chọn ngày bắt đầu chiến dịch!";
+            errors.startDate = "Vui lòng chọn thời gian bắt đầu!";
+        } else if (!isEdit) {
+            const startObj = new Date(form.startDate);
+            const nowObj = new Date();
+            if (startObj < new Date(nowObj.getTime() - 60000)) {
+                errors.startDate = "Thời gian bắt đầu không được nằm trong quá khứ!";
+            }
         }
 
         if (!form.endDate) {
-            errors.endDate = "Vui lòng chọn ngày kết thúc chiến dịch!";
-        }
-
-        if (form.startDate && form.endDate) {
-            const start = new Date(form.startDate);
-            const end = new Date(form.endDate);
-            
-            const startHour = start.getHours();
-            const startMinute = start.getMinutes();
-            
-            let isValidShift = false;
-            let maxEnd = new Date(start);
-            
-            if (startHour === 9 && startMinute === 0) {
-                isValidShift = true;
-                maxEnd.setHours(14, 0, 0, 0);
-            } else if (startHour === 14 && startMinute === 0) {
-                isValidShift = true;
-                maxEnd.setHours(20, 0, 0, 0);
-            } else if (startHour === 20 && startMinute === 0) {
-                isValidShift = true;
-                maxEnd.setDate(maxEnd.getDate() + 1);
-                maxEnd.setHours(9, 0, 0, 0);
-            }
-
-            if (!isValidShift) {
-                errors.startDate = "Flash Sale chỉ được phép bắt đầu vào các khung giờ cố định (09:00, 14:00, 20:00) và mỗi khung giờ chỉ được có 1 chiến dịch hoạt động. Vui lòng chỉnh sửa lại thời gian.";
-            } else {
-                if (start >= end) {
-                    errors.endDate = "Ngày kết thúc phải diễn ra sau ngày bắt đầu!";
-                } else if (end > maxEnd) {
-                    const nextShiftHour = startHour === 9 ? '14:00' : (startHour === 14 ? '20:00' : '09:00 ngày hôm sau');
-                    errors.endDate = `Ca ${startHour.toString().padStart(2, '0')}:00 phải kết thúc trước ${nextShiftHour}!`;
-                }
+            errors.endDate = "Vui lòng chọn thời gian kết thúc!";
+        } else if (form.startDate) {
+            const startObj = new Date(form.startDate);
+            const endObj = new Date(form.endDate);
+            if (endObj <= startObj) {
+                errors.endDate = "Thời gian kết thúc phải sau thời gian bắt đầu!";
             }
         }
 
@@ -211,22 +363,25 @@ const AdminFlashSaleForm = () => {
             errors.productsList = "Vui lòng chọn ít nhất 1 sản phẩm tham gia Flash Sale!";
         }
 
-        // Validate each product row
         const uniqueProductKeys = new Set();
         for (let i = 0; i < form.flashSaleProducts.length; i++) {
             const fsp = form.flashSaleProducts[i];
+            const origInfo = getOriginalPriceInfo(fsp);
             
-            // Check for valid sale price
-            if (fsp.salePrice === undefined || fsp.salePrice === null || fsp.salePrice <= 0) {
+            const sPrice = Number(fsp.salePrice);
+            if (fsp.salePrice === '' || fsp.salePrice === null || isNaN(sPrice) || sPrice <= 0) {
                 errors[`products.${i}.salePrice`] = "Vui lòng nhập giá sale lớn hơn 0đ!";
+            } else if (origInfo && sPrice >= origInfo.minPrice) {
+                errors[`products.${i}.salePrice`] = `Giá sale (${new Intl.NumberFormat('vi-VN').format(sPrice)}đ) không được lớn hơn hoặc bằng giá gốc (${origInfo.displayText})!`;
             }
 
-            // Check for valid quantity limit
-            if (fsp.quantityLimit === undefined || fsp.quantityLimit === null || fsp.quantityLimit <= 0) {
-                errors[`products.${i}.quantityLimit`] = "Vui lòng nhập số lượng giới hạn lớn hơn 0!";
+            if (!fsp.isUnlimited) {
+                const qLimit = Number(fsp.quantityLimit);
+                if (fsp.quantityLimit === '' || fsp.quantityLimit === null || isNaN(qLimit) || qLimit <= 0) {
+                    errors[`products.${i}.quantityLimit`] = "Vui lòng nhập số lượng giới hạn!";
+                }
             }
 
-            // Check duplicate product + variant combo
             const comboKey = `${fsp.productId}-${fsp.variantId || 'all'}`;
             if (uniqueProductKeys.has(comboKey)) {
                 errors[`products.${i}.productId`] = `Không được chọn trùng sản phẩm và biến thể ở dòng thứ ${i + 1}!`;
@@ -244,9 +399,16 @@ const AdminFlashSaleForm = () => {
 
         try {
             setLoading(true);
+            const submittedProducts = form.flashSaleProducts.map(fsp => ({
+                ...fsp,
+                salePrice: Number(fsp.salePrice),
+                quantityLimit: fsp.isUnlimited ? 0 : Number(fsp.quantityLimit || 0)
+            }));
+
             const payload = {
                 ...form,
-                status: parseInt(form.status)
+                status: parseInt(form.status),
+                flashSaleProducts: submittedProducts
             };
             const response = await api.post('/api/flash-sales/save', payload);
             if (response.data && response.data.success) {
@@ -261,10 +423,12 @@ const AdminFlashSaleForm = () => {
                 ? err.response.data.message
                 : "Không thể kết nối đến server để lưu chiến dịch.";
                 
-            if (errMsg.includes("chỉ được phép bắt đầu vào các khung giờ cố định") || errMsg.includes("một chiến dịch hoạt động")) {
+            if (errMsg.includes("quá khứ")) {
                 setFormErrors(prev => ({ ...prev, startDate: errMsg }));
-            } else if (errMsg.includes("phải kết thúc trước")) {
+            } else if (errMsg.includes("kết thúc")) {
                 setFormErrors(prev => ({ ...prev, endDate: errMsg }));
+            } else if (errMsg.includes("trùng") || errMsg.includes("hai chương trình") || errMsg.includes("thời điểm")) {
+                setFormErrors(prev => ({ ...prev, startDate: errMsg, endDate: errMsg }));
             }
             
             window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
@@ -313,59 +477,127 @@ const AdminFlashSaleForm = () => {
                                     <option value="0">TẠM DỪNG</option>
                                 </select>
                             </div>
-                            <div className="form-group">
-                                <div className="d-flex justify-content-between align-items-center mb-1">
-                                    <label className="form-label mb-0">Ngày bắt đầu *</label>
-                                    <button 
-                                        type="button" 
-                                        className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
-                                        style={{ fontSize: '11px', letterSpacing: '0.5px' }}
-                                        onClick={() => {
-                                            setForm({...form, startDate: getCurrentDateTimeString()});
-                                            if (formErrors.startDate) setFormErrors(p => ({...p, startDate: ''}));
-                                        }}
-                                    >
-                                        <i className="bi bi-clock-history me-1"></i> Ngay lúc này
-                                    </button>
+                            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                {/* ===== LỊCH TRÌNH CHIẾN DỊCH ===== */}
+                                <div className="schedule-section">
+                                    <div className="schedule-section-header">
+                                        <span className="schedule-section-label">
+                                            <i className="bi bi-calendar2-week me-2"></i>LỊCH TRÌNH CHIẾN DỊCH
+                                        </span>
+                                        <span className="schedule-past-badge">
+                                            <i className="bi bi-shield-check me-1"></i>Chỉ chọn thời gian từ hiện tại trở đi
+                                        </span>
+                                    </div>
+
+                                    <div className="schedule-body">
+                                        {/* ---- THỜI GIAN BẮT ĐẦU ---- */}
+                                        <div className="schedule-col">
+                                            <div className="d-flex justify-content-between align-items-center mb-1">
+                                                <label className="form-label mb-0">
+                                                    <i className="bi bi-play-circle-fill text-danger me-1"></i>
+                                                    THỜI GIAN BẮT ĐẦU *
+                                                </label>
+                                                <button 
+                                                    type="button" 
+                                                    className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                                    style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                                    onClick={() => {
+                                                        const nowStr = getCurrentDateTimeLocal();
+                                                        setForm(prev => ({
+                                                            ...prev,
+                                                            startDate: nowStr,
+                                                            endDate: prev.endDate && prev.endDate > nowStr ? prev.endDate : addHoursToDateTime(nowStr, 2)
+                                                        }));
+                                                        if (formErrors.startDate) setFormErrors(p => ({ ...p, startDate: '' }));
+                                                    }}
+                                                >
+                                                    <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                                </button>
+                                            </div>
+                                            <DateTimePicker24h
+                                                title="CHỌN THỜI GIAN BẮT ĐẦU (24H)"
+                                                min={getCurrentDateTimeLocal()}
+                                                value={form.startDate}
+                                                placeholder="Bấm chọn ngày & giờ bắt đầu..."
+                                                error={!!formErrors.startDate}
+                                                onChange={(newStart) => {
+                                                    setForm(prev => ({
+                                                        ...prev,
+                                                        startDate: newStart,
+                                                        endDate: prev.endDate && prev.endDate > newStart ? prev.endDate : addHoursToDateTime(newStart, 2)
+                                                    }));
+                                                    if (formErrors.startDate) setFormErrors(p => ({ ...p, startDate: '' }));
+                                                }}
+                                            />
+                                            {formErrors.startDate && <span className="field-error">{formErrors.startDate}</span>}
+                                            {form.startDate && (
+                                                <div className="schedule-preview-chip schedule-preview-green mt-2">
+                                                    <i className="bi bi-calendar-check me-1"></i>
+                                                    <span>{formatTo24hVietnamese(form.startDate)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* ---- DIVIDER ---- */}
+                                        <div className="schedule-divider">
+                                            <div className="schedule-divider-line"></div>
+                                            <div className="schedule-divider-pill">
+                                                <i className="bi bi-arrow-right"></i>
+                                            </div>
+                                            <div className="schedule-divider-line"></div>
+                                        </div>
+
+                                        {/* ---- THỜI GIAN KẾT THÚC ---- */}
+                                        <div className="schedule-col">
+                                            <div className="d-flex justify-content-between align-items-center mb-1">
+                                                <label className="form-label mb-0">
+                                                    <i className="bi bi-flag-fill text-danger me-1"></i>
+                                                    THỜI GIAN KẾT THÚC *
+                                                </label>
+                                                <div className="d-flex gap-1 align-items-center">
+                                                    <span className="text-muted" style={{ fontSize: '10px' }}>Gợi ý:</span>
+                                                    {[1, 3, 6, 12, 24].map(h => (
+                                                        <button
+                                                            key={h}
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-danger py-0 px-1 font-oswald"
+                                                            style={{ fontSize: '10px', borderRadius: '4px' }}
+                                                            onClick={() => {
+                                                                const baseStart = form.startDate || getCurrentDateTimeLocal();
+                                                                setForm(prev => ({
+                                                                    ...prev,
+                                                                    startDate: baseStart,
+                                                                    endDate: addHoursToDateTime(baseStart, h)
+                                                                }));
+                                                                if (formErrors.endDate) setFormErrors(p => ({ ...p, endDate: '' }));
+                                                            }}
+                                                        >
+                                                            +{h}h
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <DateTimePicker24h
+                                                title="CHỌN THỜI GIAN KẾT THÚC (24H)"
+                                                min={form.startDate || getCurrentDateTimeLocal()}
+                                                value={form.endDate}
+                                                placeholder="Bấm chọn ngày & giờ kết thúc..."
+                                                error={!!formErrors.endDate}
+                                                onChange={(newEnd) => {
+                                                    setForm(prev => ({ ...prev, endDate: newEnd }));
+                                                    if (formErrors.endDate) setFormErrors(p => ({ ...p, endDate: '' }));
+                                                }}
+                                            />
+                                            {formErrors.endDate && <span className="field-error">{formErrors.endDate}</span>}
+                                            {form.endDate && (
+                                                <div className="schedule-preview-chip schedule-preview-red mt-2">
+                                                    <i className="bi bi-flag-fill me-1"></i>
+                                                    <span>Kết thúc: {formatTo24hVietnamese(form.endDate)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                <input 
-                                    type="datetime-local" 
-                                    className={`form-input-cinematic ${formErrors.startDate ? 'input-error' : ''}`} 
-                                    value={form.startDate}
-                                    onChange={(e) => {
-                                        setForm({...form, startDate: e.target.value});
-                                        if (formErrors.startDate) setFormErrors(p => ({...p, startDate: ''}));
-                                    }}
-                                    required
-                                />
-                                {formErrors.startDate && <span className="field-error">{formErrors.startDate}</span>}
-                            </div>
-                            <div className="form-group">
-                                <div className="d-flex justify-content-between align-items-center mb-1">
-                                    <label className="form-label mb-0">Ngày kết thúc *</label>
-                                    <button 
-                                        type="button" 
-                                        className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
-                                        style={{ fontSize: '11px', letterSpacing: '0.5px' }}
-                                        onClick={() => {
-                                            setForm({...form, endDate: getCurrentDateTimeString()});
-                                            if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
-                                        }}
-                                    >
-                                        <i className="bi bi-clock-history me-1"></i> Ngay lúc này
-                                    </button>
-                                </div>
-                                <input 
-                                    type="datetime-local" 
-                                    className={`form-input-cinematic ${formErrors.endDate ? 'input-error' : ''}`} 
-                                    value={form.endDate}
-                                    onChange={(e) => {
-                                        setForm({...form, endDate: e.target.value});
-                                        if (formErrors.endDate) setFormErrors(p => ({...p, endDate: ''}));
-                                    }}
-                                    required
-                                />
-                                {formErrors.endDate && <span className="field-error">{formErrors.endDate}</span>}
                             </div>
                         </div>
                     </div>
@@ -387,65 +619,152 @@ const AdminFlashSaleForm = () => {
                                     <div className="form-label"></div>
                                 </div>
 
-                                {form.flashSaleProducts.map((fsp, idx) => (
-                                    <div key={fsp.id} className="product-row">
-                                        <div>
-                                            <select 
-                                                className={`form-input-cinematic ${formErrors[`products.${idx}.productId`] ? 'input-error' : ''}`}
-                                                value={fsp.productId}
-                                                onChange={(e) => {
-                                                    const updated = [...form.flashSaleProducts];
-                                                    updated[idx] = { ...updated[idx], productId: e.target.value, variantId: null };
-                                                    setForm({ ...form, flashSaleProducts: updated });
-                                                    setFormErrors(p => {
-                                                        const next = { ...p };
-                                                        delete next[`products.${idx}.productId`];
-                                                        delete next[`products.${idx}.variantId`];
-                                                        return next;
-                                                    });
-                                                }}
-                                            >
-                                                {products.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.productName}</option>
-                                                ))}
-                                            </select>
-                                            {formErrors[`products.${idx}.productId`] && <span className="field-error">{formErrors[`products.${idx}.productId`]}</span>}
+                                {form.flashSaleProducts.map((fsp, idx) => {
+                                    const origInfo = getOriginalPriceInfo(fsp);
+                                    const numericSale = Number(fsp.salePrice);
+                                    const isValidSale = fsp.salePrice !== '' && !isNaN(numericSale) && numericSale > 0;
+                                    
+                                    let discountPct = null;
+                                    let savingsAmount = null;
+                                    let isHigherThanOrig = false;
+
+                                    if (origInfo && isValidSale) {
+                                        if (numericSale >= origInfo.minPrice) {
+                                            isHigherThanOrig = true;
+                                        } else {
+                                            discountPct = Math.round(((origInfo.minPrice - numericSale) / origInfo.minPrice) * 100);
+                                            savingsAmount = origInfo.minPrice - numericSale;
+                                        }
+                                    }
+
+                                    return (
+                                        <div key={fsp.id} className="product-row align-items-start">
+                                            <div>
+                                                <select 
+                                                    className={`form-input-cinematic ${formErrors[`products.${idx}.productId`] ? 'input-error' : ''}`}
+                                                    value={fsp.productId}
+                                                    onChange={(e) => {
+                                                        const updated = [...form.flashSaleProducts];
+                                                        updated[idx] = { ...updated[idx], productId: e.target.value, variantId: null };
+                                                        setForm({ ...form, flashSaleProducts: updated });
+                                                        setFormErrors(p => {
+                                                            const next = { ...p };
+                                                            delete next[`products.${idx}.productId`];
+                                                            delete next[`products.${idx}.variantId`];
+                                                            return next;
+                                                        });
+                                                    }}
+                                                >
+                                                    {products.map(p => (
+                                                        <option key={p.id} value={p.id}>{p.productName}</option>
+                                                    ))}
+                                                </select>
+                                                {formErrors[`products.${idx}.productId`] && <span className="field-error">{formErrors[`products.${idx}.productId`]}</span>}
+                                            </div>
+
+                                            <div>
+                                                <select 
+                                                    className="form-input-cinematic"
+                                                    value={fsp.variantId || ''}
+                                                    onChange={(e) => handleRowChange(idx, 'variantId', e.target.value === '' ? null : parseInt(e.target.value))}
+                                                >
+                                                    <option value="">Tất cả biến thể</option>
+                                                    {(productVariants[fsp.productId] || []).map(v => (
+                                                        <option key={v.id} value={v.id}>
+                                                            {v.colorName} - {v.sizeName} ({new Intl.NumberFormat('vi-VN').format(v.price)}đ)
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <input 
+                                                    type="text" 
+                                                    inputMode="numeric"
+                                                    className={`form-input-cinematic ${formErrors[`products.${idx}.salePrice`] || isHigherThanOrig ? 'input-error' : ''}`} 
+                                                    placeholder="Nhập giá sale..."
+                                                    value={fsp.salePrice === null || fsp.salePrice === undefined ? '' : fsp.salePrice}
+                                                    onFocus={(e) => e.target.select()}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val === '' || /^\d*$/.test(val)) {
+                                                            handleRowChange(idx, 'salePrice', val);
+                                                        }
+                                                    }}
+                                                />
+
+                                                {/* Display Original Price (Giá Gốc) & Live Discount Percentage */}
+                                                {origInfo && (
+                                                    <div className="mt-1" style={{ fontSize: '11.5px', lineHeight: '1.4' }}>
+                                                        <div style={{ color: '#64748b', fontWeight: 600 }}>
+                                                            Giá gốc: <span style={{ textDecoration: isValidSale && !isHigherThanOrig ? 'line-through' : 'none', color: '#334155' }}>{origInfo.displayText}</span>
+                                                        </div>
+                                                        {isValidSale && !isHigherThanOrig && discountPct > 0 && (
+                                                            <div className="mt-1" style={{ color: '#e50914', fontWeight: 700 }}>
+                                                                <i className="bi bi-fire me-1"></i>
+                                                                Giảm {discountPct}% <span className="text-muted font-normal">(Tiết kiệm {new Intl.NumberFormat('vi-VN').format(savingsAmount)}đ)</span>
+                                                            </div>
+                                                        )}
+                                                        {isValidSale && isHigherThanOrig && (
+                                                            <div className="mt-1 text-danger font-bold" style={{ fontSize: '11px' }}>
+                                                                ⚠️ Giá sale ≥ giá gốc ({origInfo.displayText})
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {formErrors[`products.${idx}.salePrice`] && <span className="field-error">{formErrors[`products.${idx}.salePrice`]}</span>}
+                                            </div>
+
+                                            <div>
+                                                <input 
+                                                    type="text" 
+                                                    inputMode="numeric"
+                                                    disabled={!!fsp.isUnlimited}
+                                                    className={`form-input-cinematic ${formErrors[`products.${idx}.quantityLimit`] ? 'input-error' : ''}`} 
+                                                    placeholder={fsp.isUnlimited ? "∞ Không giới hạn" : "Nhập số lượng..."}
+                                                    value={fsp.isUnlimited ? '∞ Không giới hạn' : (fsp.quantityLimit === null || fsp.quantityLimit === undefined ? '' : fsp.quantityLimit)}
+                                                    onFocus={(e) => e.target.select()}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val === '' || /^\d*$/.test(val)) {
+                                                            handleRowChange(idx, 'quantityLimit', val);
+                                                        }
+                                                    }}
+                                                />
+                                                <label className="d-flex align-items-center gap-1 mt-1 cursor-pointer select-none" style={{ fontSize: '11.5px', color: '#475569', fontWeight: 600 }}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="form-check-input mt-0"
+                                                        style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+                                                        checked={!!fsp.isUnlimited}
+                                                        onChange={(e) => {
+                                                            const isChecked = e.target.checked;
+                                                            const updated = [...form.flashSaleProducts];
+                                                            updated[idx] = {
+                                                                ...updated[idx],
+                                                                isUnlimited: isChecked,
+                                                                quantityLimit: isChecked ? 0 : '5'
+                                                            };
+                                                            setForm({ ...form, flashSaleProducts: updated });
+                                                            setFormErrors(p => {
+                                                                const next = { ...p };
+                                                                delete next[`products.${idx}.quantityLimit`];
+                                                                return next;
+                                                            });
+                                                        }}
+                                                    />
+                                                    <span>Không giới hạn (∞)</span>
+                                                </label>
+                                                {formErrors[`products.${idx}.quantityLimit`] && <span className="field-error">{formErrors[`products.${idx}.quantityLimit`]}</span>}
+                                            </div>
+
+                                            <button type="button" className="action-btn-icon icon-delete align-self-start mt-1" onClick={() => handleRemoveRow(idx)}>
+                                                <i className="bi bi-trash"></i>
+                                            </button>
                                         </div>
-                                        <div>
-                                            <select 
-                                                className="form-input-cinematic"
-                                                value={fsp.variantId || ''}
-                                                onChange={(e) => handleRowChange(idx, 'variantId', e.target.value === '' ? null : parseInt(e.target.value))}
-                                            >
-                                                <option value="">Tất cả biến thể</option>
-                                                {(productVariants[fsp.productId] || []).map(v => (
-                                                    <option key={v.id} value={v.id}>{v.colorName} - {v.sizeName}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <input 
-                                                type="number" 
-                                                className={`form-input-cinematic ${formErrors[`products.${idx}.salePrice`] ? 'input-error' : ''}`} 
-                                                value={fsp.salePrice}
-                                                onChange={(e) => handleRowChange(idx, 'salePrice', parseInt(e.target.value) || 0)}
-                                            />
-                                            {formErrors[`products.${idx}.salePrice`] && <span className="field-error">{formErrors[`products.${idx}.salePrice`]}</span>}
-                                        </div>
-                                        <div>
-                                            <input 
-                                                type="number" 
-                                                className={`form-input-cinematic ${formErrors[`products.${idx}.quantityLimit`] ? 'input-error' : ''}`} 
-                                                value={fsp.quantityLimit}
-                                                onChange={(e) => handleRowChange(idx, 'quantityLimit', parseInt(e.target.value) || 0)}
-                                            />
-                                            {formErrors[`products.${idx}.quantityLimit`] && <span className="field-error">{formErrors[`products.${idx}.quantityLimit`]}</span>}
-                                        </div>
-                                        <button type="button" className="action-btn-icon icon-delete" onClick={() => handleRemoveRow(idx)}>
-                                            <i className="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                ))}
+                                    );
+                                })}
 
                                 {form.flashSaleProducts.length === 0 && (
                                     <div style={{ textAlign: 'center', padding: '40px', color: '#555', fontStyle: 'italic', fontSize: '13px' }}>
@@ -469,32 +788,154 @@ const AdminFlashSaleForm = () => {
                 <style>{`
     .sub-title-neon { display: block; color: var(--accent-red) !important; font-size: 14px; font-weight: 800; letter-spacing: 2px; margin-bottom: 5px; font-family: 'Oswald'; text-transform: uppercase; }
     .cinematic-title { font-family: 'Oswald', sans-serif; font-size: 40px; font-weight: 800; color: #000; margin: 0; line-height: 1; }
-    
+
     .card-cinematic { background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 30px; margin-bottom: 30px; border-radius: 12px; }
     .card-section-title { font-family: 'Oswald'; color: #000; font-size: 20px; font-weight: 800; letter-spacing: 1px; margin-bottom: 25px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; display: inline-block; text-transform: uppercase; }
     .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
 
     .form-grid-cinematic { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
     .form-label { display: block; color: #000; font-size: 13px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; font-family: 'Oswald'; }
-    .form-input-cinematic { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 12px; color: #3c4043; outline: none; transition: 0.2s; font-size: 14px; font-weight: 500; box-shadow: none; border-radius: 8px; }
-    .form-input-cinematic:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
+    .form-input-cinematic { width: 100%; background: #fff; border: 1.5px solid #dadce0; padding: 12px; color: #3c4043; outline: none; transition: 0.2s; font-size: 14px; font-weight: 500; box-shadow: none; border-radius: 8px; box-sizing: border-box; }
+    .form-input-cinematic:focus { border-color: #e50914; box-shadow: 0 0 0 3px rgba(229,9,20,0.08); }
     .input-error { border-color: #e50914 !important; box-shadow: 0 0 0 3px rgba(229,9,20,0.1) !important; }
     .field-error { color: #e50914; font-size: 12.5px; margin-top: 6px; display: block; font-weight: 500; }
+    .flex-1 { flex: 1; }
 
-    .btn-red-skew { 
-        background: #fff; color: #000; border: none; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase; 
+    .btn-red-skew {
+        background: #fff; color: #000; border: none; padding: 12px 30px; font-family: 'Oswald', sans-serif; font-weight: 800; text-transform: uppercase;
         transition: 0.3s; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px;
     }
-    .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-3px); }
+    .btn-red-skew:hover { background: #000; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.2); transform: translateY(-2px); }
 
     .product-list-container-alt { border: 1px solid #e2e8f0; overflow: hidden; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
     .product-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr 60px; gap: 15px; padding: 15px 20px; border-bottom: 1px solid #f1f5f9; align-items: center; }
     .product-row.header { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-    .product-row.header { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-    
     .action-btn-icon { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; color: #000; width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; cursor: pointer; font-size: 14px; }
     .action-btn-icon:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); background: #000; color: #fff; }
     .icon-delete:hover { background: #e50914; color: #fff; box-shadow: 0 4px 12px rgba(229,9,20,0.2); }
+
+    /* ===== SCHEDULE SECTION ===== */
+    .schedule-section {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fff;
+    }
+    .schedule-section-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 12px 20px;
+        background: #f8fafc;
+        border-bottom: 1.5px solid #e2e8f0;
+    }
+    .schedule-section-label {
+        font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 800;
+        letter-spacing: 1.5px; color: #000; text-transform: uppercase;
+    }
+    .schedule-past-badge {
+        font-size: 11px; font-weight: 600; color: #6b7280;
+        background: #f1f5f9; border: 1px solid #e2e8f0;
+        padding: 4px 10px; border-radius: 20px;
+    }
+    .schedule-body {
+        display: grid; grid-template-columns: 1fr 60px 1fr;
+        padding: 24px 20px; gap: 0;
+    }
+    .schedule-col { display: flex; flex-direction: column; gap: 12px; }
+
+    /* Shift quick-pick pills */
+    .shift-hint-text { font-size: 11.5px; color: #6b7280; font-weight: 600; margin-bottom: 6px; margin-top: 0; }
+    .shift-pill {
+        flex: 1; min-width: 80px;
+        background: #f8fafc; border: 1.5px solid #dadce0;
+        color: #3c4043; padding: 8px 12px; border-radius: 8px;
+        font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 700;
+        cursor: pointer; transition: all 0.18s; letter-spacing: 0.5px; text-align: center;
+    }
+    .shift-pill:hover { background: #fff0f0; border-color: #e50914; color: #e50914; transform: translateY(-1px); box-shadow: 0 3px 10px rgba(229,9,20,0.12); }
+    .shift-pill-active { background: #e50914 !important; border-color: #e50914 !important; color: #fff !important; box-shadow: 0 4px 12px rgba(229,9,20,0.3); }
+
+    /* Start date input */
+    .schedule-input-row { display: flex; gap: 8px; align-items: stretch; }
+    .now-pill {
+        display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+        background: #f8fafc; border: 1.5px solid #dadce0;
+        color: #3c4043; padding: 0 14px; border-radius: 8px;
+        font-family: 'Oswald', sans-serif; font-size: 12px; font-weight: 700;
+        cursor: pointer; transition: 0.18s; white-space: nowrap; letter-spacing: 0.5px;
+    }
+    .now-pill:hover { background: #fff0f0; border-color: #e50914; color: #e50914; }
+
+    /* Preview chips */
+    .schedule-preview-chip {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px; border-radius: 8px;
+        font-size: 12.5px; font-weight: 500;
+    }
+    .schedule-preview-green { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .schedule-preview-red   { background: #fff5f5; border: 1px solid #fecaca; color: #991b1b; }
+    .schedule-preview-red strong { color: #e50914; font-weight: 700; }
+
+    /* Timeline divider */
+    .schedule-divider {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 0 16px; gap: 4px;
+    }
+    .schedule-divider-line { flex: 1; width: 1px; background: linear-gradient(to bottom, transparent, #dadce0, transparent); min-height: 20px; }
+    .schedule-divider-pill {
+        display: flex; flex-direction: column; align-items: center; gap: 2px;
+        background: #fff0f0; border: 1.5px solid #fecaca;
+        color: #e50914; border-radius: 20px; padding: 6px 10px;
+        font-family: 'Oswald', sans-serif; font-size: 11px; font-weight: 800;
+        letter-spacing: 0.5px;
+    }
+
+    /* Duration slider */
+    .duration-block { padding: 4px 0; }
+    .dur-tick { font-size: 10px; color: #9ca3af; font-weight: 600; font-family: 'Oswald'; }
+    .dur-slider {
+        width: 100%; -webkit-appearance: none; appearance: none;
+        height: 5px; border-radius: 5px; outline: none; cursor: pointer;
+        background: linear-gradient(to right, #e50914 var(--pct, 0%), #e2e8f0 var(--pct, 0%));
+        transition: background 0.1s;
+    }
+    .dur-slider::-webkit-slider-thumb {
+        -webkit-appearance: none; appearance: none;
+        width: 18px; height: 18px; border-radius: 50%;
+        background: #e50914; cursor: pointer;
+        box-shadow: 0 0 0 3px rgba(229,9,20,0.15), 0 2px 6px rgba(229,9,20,0.3);
+        transition: 0.15s;
+    }
+    .dur-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .dur-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #e50914; border: none; cursor: pointer; }
+
+    /* Duration stepper */
+    .dur-stepper {
+        display: flex; align-items: center; gap: 0;
+        border: 1.5px solid #dadce0; border-radius: 8px; overflow: hidden; background: #fff;
+    }
+    .dur-step-btn {
+        background: #f8fafc; border: none; color: #3c4043;
+        width: 36px; height: 36px; font-size: 16px;
+        cursor: pointer; transition: 0.15s;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .dur-step-btn:hover { background: #e50914; color: #fff; }
+    .dur-number {
+        width: 52px; border: none;
+        border-left: 1.5px solid #dadce0; border-right: 1.5px solid #dadce0;
+        color: #000; font-size: 16px; font-weight: 800; text-align: center;
+        outline: none; padding: 6px 4px; font-family: 'Oswald', sans-serif;
+        background: #fff;
+    }
+    .dur-number::-webkit-inner-spin-button, .dur-number::-webkit-outer-spin-button { display: none; }
+    .dur-unit { font-size: 11px; font-weight: 800; color: #9ca3af; font-family: 'Oswald'; letter-spacing: 1px; padding: 0 10px; }
+    .dur-range-note { font-size: 11px; color: #9ca3af; font-style: italic; }
+
+    @media (max-width: 640px) {
+        .schedule-body { grid-template-columns: 1fr; }
+        .schedule-divider { flex-direction: row; padding: 10px 0; }
+        .schedule-divider-line { flex: 1; width: auto; height: 1px; min-height: unset; }
+    }
 `}</style>
             </AdminLayout>
         );

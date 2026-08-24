@@ -53,9 +53,30 @@ public class MembershipApiController {
             if (accountMap.get("phone") == null) accountMap.put("phone", "");
             if (accountMap.get("full_name") == null) accountMap.put("full_name", "");
             if (accountMap.get("points") == null) accountMap.put("points", 0);
-            if (accountMap.get("rank_name") == null) {
-                accountMap.put("rank_name", "Đồng");
-                accountMap.put("color_code", "#CD7F32"); // default Bronze color
+
+            // Dynamically verify user rank against current min_points thresholds
+            int userPoints = accountMap.get("points") != null ? ((Number) accountMap.get("points")).intValue() : 0;
+            List<Map<String, Object>> allRanksDesc = jdbc.queryForList("SELECT id, rank_name, color_code, min_points FROM membership_ranks ORDER BY min_points DESC");
+            int calculatedRankId = 1;
+            String calculatedRankName = "Đồng";
+            String calculatedColorCode = "#94a3b8";
+
+            for (Map<String, Object> r : allRanksDesc) {
+                int minPts = ((Number) r.get("min_points")).intValue();
+                if (userPoints >= minPts) {
+                    calculatedRankId = ((Number) r.get("id")).intValue();
+                    calculatedRankName = (String) r.get("rank_name");
+                    calculatedColorCode = (String) r.get("color_code");
+                    break;
+                }
+            }
+
+            if (accountMap.get("membership_rank_id") == null || ((Number) accountMap.get("membership_rank_id")).intValue() != calculatedRankId) {
+                long uId = ((Number) accountMap.get("id")).longValue();
+                jdbc.update("UPDATE accounts SET membership_rank_id = ? WHERE id = ?", calculatedRankId, uId);
+                accountMap.put("membership_rank_id", calculatedRankId);
+                accountMap.put("rank_name", calculatedRankName);
+                accountMap.put("color_code", calculatedColorCode);
             }
 
             // 3. Fetch all membership ranks ordered by min_points
@@ -123,21 +144,36 @@ public class MembershipApiController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu thông tin bắt buộc (tên hạng, điểm tối thiểu)!"));
             }
 
+            // 1. Kiểm tra trùng Tên Hạng
+            String nameCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE LOWER(TRIM(rank_name)) = LOWER(TRIM(?))"
+                    + (id != null ? " AND id <> ?" : "");
+            Integer countName = id != null ? jdbc.queryForObject(nameCheckSql, Integer.class, rankName.trim(), id)
+                                           : jdbc.queryForObject(nameCheckSql, Integer.class, rankName.trim());
+            if (countName != null && countName > 0) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Tên hạng thành viên '" + rankName.trim() + "' đã tồn tại!"));
+            }
+
+            // 2. Kiểm tra trùng Ngưỡng Điểm Tối Thiểu
+            String pointsCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE min_points = ?"
+                    + (id != null ? " AND id <> ?" : "");
+            Integer countPoints = id != null ? jdbc.queryForObject(pointsCheckSql, Integer.class, minPoints, id)
+                                             : jdbc.queryForObject(pointsCheckSql, Integer.class, minPoints);
+            if (countPoints != null && countPoints > 0) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Ngưỡng điểm tối thiểu (" + minPoints + " điểm) đã tồn tại, vui lòng nhập số điểm khác!"));
+            }
+
             MembershipRank rank;
             if (id != null) {
                 rank = rankRepo.findById(id).orElse(new MembershipRank());
             } else {
                 rank = new MembershipRank();
-                if (discountPercent == null) discountPercent = 0.0;
                 if (status == null) status = 1;
             }
 
             rank.setRankName(rankName.trim());
             rank.setMinPoints(minPoints);
             rank.setColorCode(colorCode != null ? colorCode.trim() : "#94a3b8");
-            if (discountPercent != null) {
-                rank.setDiscountPercent(discountPercent);
-            }
+            rank.setDiscountPercent(discountPercent != null ? discountPercent : 0.0);
             if (description != null) {
                 rank.setDescription(description.trim());
             }
@@ -151,11 +187,45 @@ public class MembershipApiController {
             }
 
             rankRepo.save(rank);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Lưu hạng thành công!"));
+            
+            // Tự động cập nhật lại Hạng (Rank) cho tất cả người dùng dựa trên ngưỡng điểm mới
+            recalculateUserRanks();
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Lưu hạng và cập nhật rank người dùng thành công!"));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Lỗi lưu hạng: " + e.getMessage()));
+        }
+    }
+
+    // ==================== HÀM TÍNH LẠI HẠNG CHO TOÀN BỘ USER ====================
+    private void recalculateUserRanks() {
+        try {
+            List<Map<String, Object>> ranks = jdbc.queryForList(
+                    "SELECT id, min_points FROM membership_ranks ORDER BY min_points DESC");
+            if (ranks.isEmpty()) return;
+
+            List<Map<String, Object>> accounts = jdbc.queryForList("SELECT id, COALESCE(points, 0) as points FROM accounts");
+
+            for (Map<String, Object> acc : accounts) {
+                Object idObj = acc.get("id");
+                if (idObj == null) continue;
+                long userId = ((Number) idObj).longValue();
+                int points = acc.get("points") != null ? ((Number) acc.get("points")).intValue() : 0;
+
+                int newRankId = 1;
+                for (Map<String, Object> r : ranks) {
+                    int minPoints = ((Number) r.get("min_points")).intValue();
+                    if (points >= minPoints) {
+                        newRankId = ((Number) r.get("id")).intValue();
+                        break;
+                    }
+                }
+                jdbc.update("UPDATE accounts SET membership_rank_id = ? WHERE id = ?", newRankId, userId);
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi tính lại hạng thành viên: " + e.getMessage());
         }
     }
 
@@ -170,6 +240,7 @@ public class MembershipApiController {
             jdbc.update("UPDATE accounts SET membership_rank_id = 1 WHERE membership_rank_id = ?", id);
             
             rankRepo.deleteById(id);
+            recalculateUserRanks();
             return ResponseEntity.ok(Map.of("success", true, "message", "Xóa hạng thành viên thành công!"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -106,11 +106,11 @@
     display: flex;
     align-items: center;
     padding: 12px 16px;
-    color: #8a8a93;
+    color: #8a8a93 !important;
     text-decoration: none;
     border-radius: 10px;
     margin: 4px 10px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.25s ease-in-out;
     font-size: 13px;
     font-weight: 500;
     position: relative;
@@ -122,23 +122,45 @@
     width: 25px;
     margin-right: 10px;
     text-align: center;
-    transition: 0.3s;
+    color: #8a8a93 !important;
+    transition: all 0.25s ease-in-out;
+}
+
+.nav-link span {
+    color: #8a8a93 !important;
+    transition: all 0.25s ease-in-out;
 }
 
 .nav-link:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
-    padding-left: 20px;
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    padding-left: 20px !important;
+}
+
+.nav-link:hover i,
+.nav-link:hover span {
+    color: #ffffff !important;
 }
 
 .nav-link.active {
-    background: var(--accent-red) !important;
+    background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%) !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3);
+    font-weight: 700 !important;
+    box-shadow: 0 4px 16px rgba(229, 9, 20, 0.45) !important;
+    border: none !important;
+    outline: none !important;
 }
 
 .nav-link.active i {
     color: #ffffff !important;
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+}
+
+.nav-link.active span {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.3px;
 }
 
 .font-oswald {
@@ -1623,6 +1645,17 @@ tr:hover .avatar {
     letter-spacing: 0.5px !important;
 }
 
+.cinematic-title,
+.admin-page-header h1,
+.admin-page-header h2 {
+    font-family: 'Oswald', sans-serif !important;
+    font-weight: 700 !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+    color: #111111 !important;
+    line-height: 1.2 !important;
+}
+
 .admin-banners-page .sub-title,
 .admin-banner-form-page .sub-title,
 .admin-settings-page .sub-title,
@@ -1630,10 +1663,12 @@ tr:hover .avatar {
 .admin-flash-sale-form-page .sub-title,
 .sub-title,
 .sub-title-neon {
+    font-family: 'Oswald', sans-serif !important;
     color: var(--accent-red) !important;
     font-weight: 700 !important;
     letter-spacing: 2px !important;
     text-transform: uppercase !important;
+    font-size: 13px !important;
 }
 
 /* 6. TABLES & DATA LISTS */
@@ -2111,15 +2146,17 @@ table tr:hover td {
 }
 
 .nav-link:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08);
     color: #fff;
     padding-left: 20px;
 }
 
 .nav-link.active {
-    background: var(--accent-red) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3);
+    box-shadow: none !important;
+    border: none !important;
+    outline: none !important;
 }
 
 .nav-link.active i {
@@ -2904,64 +2941,66 @@ table tr:hover td {
     text-decoration: underline;
 }
 
-/* Status Badges */
-.status-badge {
-    padding: 5px 10px;
-    border-radius: 0;
-    font-size: 11px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    text-transform: uppercase;
-    border: 1px solid;
+/* Status Badges & Select Badges System */
+.status-select-badge,
+.status-badge,
+.badge-status-neon {
+    border-radius: 20px !important;
+    padding: 6px 14px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    transition: all 0.2s ease !important;
 }
 
 .status-pending {
-    color: #facc15;
-    border-color: rgba(250, 204, 21, 0.3);
-    background: rgba(250, 204, 21, 0.1);
+    color: #b45309 !important;
+    border: 1px solid #fde68a !important;
+    background: #fef3c7 !important;
 }
 
 .status-shipping {
-    color: #60a5fa;
-    border-color: rgba(96, 165, 250, 0.3);
-    background: rgba(96, 165, 250, 0.1);
+    color: #1d4ed8 !important;
+    border: 1px solid #bfdbfe !important;
+    background: #dbeafe !important;
 }
 
-.status-success {
-    color: #4ade80;
-    border-color: rgba(74, 222, 128, 0.3);
-    background: rgba(74, 222, 128, 0.1);
+.status-success,
+.status-delivered {
+    color: #15803d !important;
+    border: 1px solid #bbf7d0 !important;
+    background: #dcfce7 !important;
 }
 
 .status-cancel {
-    color: var(--accent-red);
-    border-color: rgba(229, 9, 20, 0.3);
-    background: rgba(229, 9, 20, 0.1);
+    color: #be123c !important;
+    border: 1px solid #fecdd3 !important;
+    background: #ffe4e6 !important;
 }
 
-.status-delivered {
-    color: #a855f7;
-    border-color: rgba(168, 85, 247, 0.3);
-    background: rgba(168, 85, 247, 0.1);
-}
-
-/* Payment Badge */
+/* Payment Badge System */
 .badge-payment {
-    font-size: 10px;
-    padding: 3px 8px;
-    border-radius: 0;
-    background: #000;
-    color: #555;
-    text-transform: uppercase;
-    font-weight: 600;
+    font-size: 11px !important;
+    padding: 5px 12px !important;
+    border-radius: 6px !important;
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border: 1px solid #e2e8f0 !important;
+    text-transform: uppercase !important;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    letter-spacing: 0.5px !important;
 }
 
 .payment-vnpay {
-    color: #00f2ff;
-    border: 1px solid rgba(0, 242, 255, 0.3);
-    background: rgba(0, 242, 255, 0.1);
+    color: #3730a3 !important;
+    border: 1px solid #c7d2fe !important;
+    background: #e0e7ff !important;
 }
 
 /* Customer Info */
@@ -3579,27 +3618,49 @@ tr:hover .avatar {
 .form-control,
 .form-input,
 .search-input,
-.filter-select {
+.filter-select,
+.admin-search-input {
     background: #ffffff !important;
-    border: 1.5px solid #dadce0 !important;
-    color: #3c4043 !important;
-    border-radius: 24px !important;
-    padding: 10px 16px !important;
-    font-family: 'Poppins', sans-serif !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    border-radius: 8px !important;
+    padding: 9px 16px !important;
+    font-family: 'Inter', sans-serif !important;
     outline: none !important;
     font-size: 14px !important;
-    font-weight: 400 !important;
-    box-shadow: none !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
     transition: all 0.2s ease !important;
 }
 
+.admin-search-box-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    max-width: 450px;
+}
+
+.admin-search-icon,
+.search-icon {
+    position: absolute !important;
+    left: 14px !important;
+    color: #94a3b8 !important;
+    font-size: 15px !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+}
+
+.admin-search-input,
 .search-input {
     padding-left: 40px !important;
+    width: 100% !important;
 }
 
 .filter-select {
     height: 42px !important;
     min-width: 180px !important;
+    padding-left: 14px !important;
 }
 
 .admin-banners-page .search-input:focus,
@@ -3609,10 +3670,11 @@ tr:hover .avatar {
 .form-control:focus,
 .form-input:focus,
 .search-input:focus,
-.filter-select:focus {
-    border-color: #1a73e8 !important;
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1) !important;
-    background: #fff !important;
+.filter-select:focus,
+.admin-search-input:focus {
+    border-color: var(--accent-red) !important;
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.12) !important;
+    background: #ffffff !important;
 }
 
 .search-box i,
@@ -4129,14 +4191,14 @@ table tr:hover td {
 /* --- MODERN ROUNDED IMAGE & BUTTONS --- */
 .table-img-box {
     border: 1px solid rgba(0, 0, 0, 0.08) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
     background: #ffffff !important;
     overflow: hidden !important;
 }
 .table-img-box img {
-    object-fit: contain !important;
-    padding: 4px !important;
+    object-fit: cover !important;
+    padding: 0 !important;
     width: 100% !important;
     height: 100% !important;
 }

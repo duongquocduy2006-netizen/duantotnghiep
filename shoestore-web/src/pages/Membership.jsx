@@ -33,46 +33,35 @@ const formatNumber = (num) => {
 
 const getPerksForRank = (r) => {
     if (!r) return [];
-    const name = r.rankName || r.name || '';
-    const lower = name.toLowerCase();
-    const isFreeShipping = !!r.freeShipping || !!r.free_shipping;
+    const perks = [];
     const discount = r.discountPercent !== null && r.discountPercent !== undefined ? r.discountPercent : (r.discount || 0);
+    const isFreeShipping = !!r.freeShipping || !!r.free_shipping;
+    const description = r.description || '';
 
-    if (lower.includes('kim cuong') || lower.includes('diamond') || lower.includes('cương')) {
-        return [
-            `Giảm giá ${discount}% tất cả hóa đơn`,
-            isFreeShipping ? 'Miễn phí giao hàng không giới hạn' : 'Miễn phí giao hàng đơn từ 500K',
-            'Quyền mua giày thể thao bản giới hạn',
-            'Lối đi riêng & thử giày đặc quyền tại cửa hàng',
-            'Hỗ trợ chăm sóc đặc biệt hằng ngày'
-        ];
-    } else if (lower.includes('vàng') || lower.includes('gold')) {
-        return [
-            `Giảm giá ${discount}% tất cả hóa đơn`,
-            isFreeShipping ? 'Miễn phí giao hàng toàn quốc' : 'Miễn phí giao hàng đơn từ 500K',
-            'Ưu tiên đặt trước giày sắp ra mắt',
-            'Quà tặng sinh nhật đặc quyền',
-            'Hỗ trợ khách hàng ưu tiên'
-        ];
-    } else if (lower.includes('bạc') || lower.includes('silver')) {
-        return [
-            `Giảm giá ${discount}% tất cả hóa đơn`,
-            isFreeShipping ? 'Miễn phí giao hàng toàn quốc' : 'Miễn phí giao hàng đơn từ 500K',
-            'Tích điểm đổi quà (10K = 1đ)',
-            'Quà tặng sinh nhật cơ bản',
-            'Hỗ trợ khách hàng tiêu chuẩn'
-        ];
-    } else {
-        return [
-            `Giảm giá ${discount}% tất cả hóa đơn`,
-            isFreeShipping ? 'Miễn phí giao hàng toàn quốc' : 'Phí giao hàng tiêu chuẩn',
-            'Tích điểm đổi quà (10K = 1đ)',
-            'Nhận tin tức ưu đãi sớm nhất',
-            'Hỗ trợ khách hàng tiêu chuẩn',
-            'Quà tặng sinh nhật cơ bản'
-        ];
+    // Chiết khấu theo hạng
+    if (discount > 0) {
+        perks.push(`Giảm giá ${discount}% trên mỗi đơn hàng`);
     }
+
+    // Miễn phí vận chuyển
+    if (isFreeShipping) {
+        perks.push('Miễn phí giao hàng');
+    }
+
+    // Mô tả tùy chỉnh từ admin (nếu có)
+    if (description.trim()) {
+        // Tách description theo dấu xuống dòng hoặc dấu "|" để hỗ trợ nhiều dòng
+        const descLines = description.split(/[\n|]/).map(s => s.trim()).filter(s => s.length > 0);
+        descLines.forEach(line => perks.push(line));
+    }
+
+    if (perks.length === 0) {
+        perks.push('Hạng thành viên cơ bản');
+    }
+
+    return perks;
 };
+
 
 const Membership = () => {
     const navigate = useNavigate();
@@ -373,7 +362,7 @@ const Membership = () => {
                                                 <p className="fw-bold text-muted small mb-3">Đơn từ {formatCurrency(v.minOrderValue || v.min_order_value)}</p>
                                                 <button className="btn-brutal-outline w-100 py-2 fs-6" onClick={() => {
                                                     navigator.clipboard.writeText(v.code);
-                                                    alert('Đã copy mã: ' + v.code);
+                                                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã sao chép mã: ' + v.code }));
                                                 }}>COPY MÃ</button>
                                             </div>
                                         </div>

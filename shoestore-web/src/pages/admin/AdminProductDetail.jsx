@@ -4,6 +4,61 @@ import { Link, useParams } from "react-router-dom";
 import api from "../../services/api";
 import "./AdminProductDetail.css";
 
+// ─── LocalStorage helpers for custom Sizes & Colors ──────────────────────────
+const getStoredCustomSizes = () => {
+    try {
+        const raw = localStorage.getItem('shoestore_custom_sizes');
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+};
+
+const getStoredCustomColors = () => {
+    try {
+        const raw = localStorage.getItem('shoestore_custom_colors');
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+};
+
+const saveCustomSizeToStorage = (newSize) => {
+    if (!newSize) return;
+    try {
+        const existing = getStoredCustomSizes();
+        if (!existing.some(s => s.toLowerCase() === newSize.trim().toLowerCase())) {
+            const updated = [...existing, newSize.trim()];
+            localStorage.setItem('shoestore_custom_sizes', JSON.stringify(updated));
+        }
+    } catch {}
+};
+
+const saveCustomColorToStorage = (newColor) => {
+    if (!newColor) return;
+    try {
+        const existing = getStoredCustomColors();
+        if (!existing.some(c => c.toLowerCase() === newColor.trim().toLowerCase())) {
+            const updated = [...existing, newColor.trim()];
+            localStorage.setItem('shoestore_custom_colors', JSON.stringify(updated));
+        }
+    } catch {}
+};
+
+const removeCustomSizeFromStorage = (sizeName) => {
+    if (!sizeName) return;
+    try {
+        const existing = getStoredCustomSizes();
+        const updated = existing.filter(s => s.toLowerCase() !== sizeName.trim().toLowerCase());
+        localStorage.setItem('shoestore_custom_sizes', JSON.stringify(updated));
+    } catch {}
+};
+
+const removeCustomColorFromStorage = (colorName) => {
+    if (!colorName) return;
+    try {
+        const existing = getStoredCustomColors();
+        const updated = existing.filter(c => c.toLowerCase() !== colorName.trim().toLowerCase());
+        localStorage.setItem('shoestore_custom_colors', JSON.stringify(updated));
+    } catch {}
+};
+
 // ─── Color name translator ───────────────────────────────────────────────────
 const translateColorToVietnamese = (name) => {
     if (!name) return "";
@@ -22,7 +77,6 @@ const translateColorToVietnamese = (name) => {
 };
 
 // ─── Validation ──────────────────────────────────────────────────────────────
-// Giày trẻ em (từ ~16) đến người lớn cỡ lớn (đến 50)
 const SIZE_MIN = 16;
 const SIZE_MAX = 50;
 
@@ -30,10 +84,10 @@ const validateSize = (val) => {
     const trimmed = val.trim();
     if (!trimmed) return "Vui lòng nhập size.";
     if (!/^\d+(\.\d+)?$/.test(trimmed))
-        return "Size phải là số nguyên (VD: 38, 39…). Không được nhập chữ.";
+        return "Size phải là số (VD: 38, 39…). Không được nhập chữ.";
     const num = parseFloat(trimmed);
     if (num < SIZE_MIN || num > SIZE_MAX)
-        return `Size hợp lệ từ ${SIZE_MIN} (trẻ em nhỏ) đến ${SIZE_MAX} (người lớn cỡ lớn).`;
+        return `Size hợp lệ từ ${SIZE_MIN} đến ${SIZE_MAX}.`;
     return null;
 };
 
@@ -49,7 +103,7 @@ const validateColor = (val) => {
 };
 
 // ─── TagInput Component ──────────────────────────────────────────────────────
-const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, presets = [], validate, hint }) => {
+const TagInput = ({ label, tags, onAdd, onRemove, onEdit, onClearAll, onDeletePreset, placeholder, icon, presets = [], validate, hint }) => {
     const [inputVal, setInputVal] = useState("");
     const [editingIdx, setEditingIdx] = useState(null);
     const [editVal, setEditVal] = useState("");
@@ -68,6 +122,21 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, pre
         setInputVal("");
         setError("");
         inputRef.current?.focus();
+    };
+
+    const handleAddAllPresets = () => {
+        presets.forEach(p => {
+            const dup = tags.some(t => t.toLowerCase() === p.toLowerCase());
+            if (!dup) {
+                if (validate) {
+                    const err = validate(p);
+                    if (!err) onAdd(p);
+                } else {
+                    onAdd(p);
+                }
+            }
+        });
+        setError("");
     };
 
     const handleKeyDown = (e) => {
@@ -103,35 +172,70 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, pre
 
     return (
         <div className="tag-input-section">
-            <label className="tag-input-label">
-                {icon && <i className={`bi ${icon}`}></i>} {label}
-            </label>
+            <div className="tag-input-header">
+                <label className="tag-input-label">
+                    {icon && <i className={`bi ${icon}`}></i>} {label}
+                </label>
+                <div className="tag-action-btns">
+                    {presets.length > 0 && (
+                        <button
+                            type="button"
+                            className="btn-tag-action btn-add-all"
+                            onClick={handleAddAllPresets}
+                            title="Thêm tất cả tùy chọn"
+                        >
+                            <i className="bi bi-check-all"></i> THÊM TẤT CẢ
+                        </button>
+                    )}
+                    {tags.length > 0 && onClearAll && (
+                        <button
+                            type="button"
+                            className="btn-tag-action btn-clear-all"
+                            onClick={onClearAll}
+                            title="Xóa tất cả tùy chọn"
+                        >
+                            <i className="bi bi-trash"></i> XÓA TẤT CẢ
+                        </button>
+                    )}
+                </div>
+            </div>
 
-            {/* Hint text */}
             {hint && <p className="tag-hint">{hint}</p>}
 
-            {/* Preset quick-add chips */}
             {presets.length > 0 && (
                 <div className="preset-chips">
                     {presets.map((p) => {
                         const selected = tags.some(t => t.toLowerCase() === p.toLowerCase());
                         return (
-                            <button
-                                key={p}
-                                type="button"
-                                className={`preset-chip ${selected ? "selected" : ""}`}
-                                onClick={() => !selected && handleAdd(p)}
-                                title={selected ? "Đã thêm" : `Thêm "${p}"`}
-                            >
-                                {selected ? <i className="bi bi-check2"></i> : <i className="bi bi-plus"></i>}
-                                {p}
-                            </button>
+                            <div key={p} className={`preset-chip-wrapper ${selected ? "selected" : ""}`}>
+                                <button
+                                    type="button"
+                                    className={`preset-chip ${selected ? "selected" : ""}`}
+                                    onClick={() => !selected && handleAdd(p)}
+                                    title={selected ? "Đã chọn" : `Thêm "${p}"`}
+                                >
+                                    {selected ? <i className="bi bi-check2"></i> : <i className="bi bi-plus"></i>}
+                                    {p}
+                                </button>
+                                {onDeletePreset && (
+                                    <button
+                                        type="button"
+                                        className="preset-chip-delete-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onDeletePreset(p);
+                                        }}
+                                        title={`Xóa tùy chọn "${p}"`}
+                                    >
+                                        <i className="bi bi-x-lg"></i>
+                                    </button>
+                                )}
+                            </div>
                         );
                     })}
                 </div>
             )}
 
-            {/* Input bar */}
             <div className={`tag-input-bar ${error ? "has-error" : ""}`}>
                 <input
                     ref={inputRef}
@@ -147,14 +251,12 @@ const TagInput = ({ label, tags, onAdd, onRemove, onEdit, placeholder, icon, pre
                 </button>
             </div>
 
-            {/* Validation error */}
             {error && (
                 <div className="tag-error">
                     <i className="bi bi-exclamation-triangle-fill"></i> {error}
                 </div>
             )}
 
-            {/* Selected tags */}
             {tags.length > 0 && (
                 <div className="tag-list">
                     {tags.map((tag, idx) => (
@@ -206,14 +308,44 @@ const AdminProductDetail = () => {
     const [sizes, setSizes] = useState([]);
     const [colors, setColors] = useState([]);
 
-    // Tag-input selected sizes & colors
+    // Extra deleted presets state to hide deleted chips immediately
+    const [deletedSizePresets, setDeletedSizePresets] = useState([]);
+    const [deletedColorPresets, setDeletedColorPresets] = useState([]);
+
+    // Tag-input selected sizes & colors for CREATING NEW VARIANTS
     const [selectedSizes, setSelectedSizes] = useState([]);
     const [selectedColors, setSelectedColors] = useState([]);
-
-    // Variant form
-    const [variantId, setVariantId] = useState(null);
     const [price, setPrice] = useState("");
     const [quantity, setQuantity] = useState("");
+
+    // Inline table editing state for UPDATING EXISTING VARIANTS IN TABLE DIRECTLY (Size, Color, Price, Quantity)
+    const [inlineEditingId, setInlineEditingId] = useState(null);
+    const [inlineSizeName, setInlineSizeName] = useState("");
+    const [inlineColorName, setInlineColorName] = useState("");
+    const [inlinePrice, setInlinePrice] = useState("");
+    const [inlineQty, setInlineQty] = useState("");
+    const [savingInlineId, setSavingInlineId] = useState(null);
+
+    const sortVariantsByAscendingSize = (varList) => {
+        if (!Array.isArray(varList)) return [];
+        return [...varList].sort((a, b) => {
+            const numA = parseFloat(a.sizeName);
+            const numB = parseFloat(b.sizeName);
+            if (!isNaN(numA) && !isNaN(numB)) {
+                if (numA !== numB) return numA - numB;
+            } else if (!isNaN(numA)) {
+                return -1;
+            } else if (!isNaN(numB)) {
+                return 1;
+            } else if (a.sizeName && b.sizeName) {
+                const comp = a.sizeName.localeCompare(b.sizeName);
+                if (comp !== 0) return comp;
+            }
+            const colorA = translateColorToVietnamese(a.colorName || '');
+            const colorB = translateColorToVietnamese(b.colorName || '');
+            return colorA.localeCompare(colorB);
+        });
+    };
 
     const fetchProductDetails = async () => {
         try {
@@ -221,7 +353,7 @@ const AdminProductDetail = () => {
             const response = await api.get(`/api/products/${id}`);
             if (response.data && response.data.success) {
                 setProduct(response.data.product);
-                setVariants(response.data.variants || []);
+                setVariants(sortVariantsByAscendingSize(response.data.variants || []));
                 setImages(response.data.images || []);
 
                 const uniqueSizesMap = new Map();
@@ -255,41 +387,145 @@ const AdminProductDetail = () => {
     useEffect(() => { fetchProductDetails(); }, [id]);
 
     const getSizeId = (name) => {
+        if (!name) return null;
         const s = sizes.find(s => s.sizeName.trim().toLowerCase() === name.trim().toLowerCase());
         return s ? s.id : null;
     };
     const getColorId = (name) => {
+        if (!name) return null;
         const c = colors.find(c => translateColorToVietnamese(c.colorName).toLowerCase() === name.trim().toLowerCase());
         return c ? c.id : null;
     };
 
-    // Tag handlers
-    const addSize = (val) => setSelectedSizes(prev => [...prev, val]);
+    // Tag handlers with permanent local storage save
+    const addSize = (val) => {
+        saveCustomSizeToStorage(val);
+        setSelectedSizes(prev => [...prev, val]);
+        setDeletedSizePresets(prev => prev.filter(s => s.toLowerCase() !== val.toLowerCase()));
+    };
     const removeSize = (idx) => setSelectedSizes(prev => prev.filter((_, i) => i !== idx));
-    const editSize = (idx, val) => setSelectedSizes(prev => prev.map((s, i) => i === idx ? val : s));
+    const editSize = (idx, val) => {
+        saveCustomSizeToStorage(val);
+        setSelectedSizes(prev => prev.map((s, i) => i === idx ? val : s));
+    };
 
-    const addColor = (val) => setSelectedColors(prev => [...prev, val]);
+    const addColor = (val) => {
+        saveCustomColorToStorage(val);
+        setSelectedColors(prev => [...prev, val]);
+        setDeletedColorPresets(prev => prev.filter(c => c.toLowerCase() !== val.toLowerCase()));
+    };
     const removeColor = (idx) => setSelectedColors(prev => prev.filter((_, i) => i !== idx));
-    const editColor = (idx, val) => setSelectedColors(prev => prev.map((c, i) => i === idx ? val : c));
+    const editColor = (idx, val) => {
+        saveCustomColorToStorage(val);
+        setSelectedColors(prev => prev.map((c, i) => i === idx ? val : c));
+    };
+
+    // Preset Chip Deletion Handlers
+    const handleDeleteSizePreset = async (sizeName) => {
+        if (!sizeName) return;
+        removeCustomSizeFromStorage(sizeName);
+        setSelectedSizes(prev => prev.filter(s => s.toLowerCase() !== sizeName.toLowerCase()));
+        setSizes(prev => prev.filter(s => s.sizeName.trim().toLowerCase() !== sizeName.toLowerCase()));
+        setDeletedSizePresets(prev => [...prev, sizeName.toLowerCase()]);
+        try {
+            await api.post("/api/products/size/delete-name", { sizeName });
+        } catch {}
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã xóa tùy chọn Size ${sizeName}` }));
+    };
+
+    const handleDeleteColorPreset = async (colorName) => {
+        if (!colorName) return;
+        removeCustomColorFromStorage(colorName);
+        setSelectedColors(prev => prev.filter(c => c.toLowerCase() !== colorName.toLowerCase()));
+        setColors(prev => prev.filter(c => translateColorToVietnamese(c.colorName).toLowerCase() !== colorName.toLowerCase()));
+        setDeletedColorPresets(prev => [...prev, colorName.toLowerCase()]);
+        try {
+            await api.post("/api/products/color/delete-name", { colorName });
+        } catch {}
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã xóa tùy chọn Màu ${colorName}` }));
+    };
 
     const resetVariantForm = () => {
-        setVariantId(null);
         setSelectedSizes([]);
         setSelectedColors([]);
         setPrice("");
         setQuantity("");
     };
 
-    const startEditVariant = (v) => {
-        setVariantId(v.id);
-        setSelectedSizes(v.sizeName ? [v.sizeName] : []);
-        setSelectedColors(v.colorName ? [translateColorToVietnamese(v.colorName)] : []);
-        setPrice(v.price || "");
-        setQuantity(v.quantity || "");
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Start direct inline row editing (Size, Color, Price, Quantity) inside table
+    const startInlineEdit = (v) => {
+        setInlineEditingId(v.id);
+        setInlineSizeName(v.sizeName || "");
+        setInlineColorName(translateColorToVietnamese(v.colorName || ""));
+        setInlinePrice(v.price !== null && v.price !== undefined ? v.price.toString() : "");
+        setInlineQty(v.quantity !== null && v.quantity !== undefined ? v.quantity.toString() : "");
     };
 
-    const handleVariantSubmit = async (e) => {
+    const cancelInlineEdit = () => {
+        setInlineEditingId(null);
+        setInlineSizeName("");
+        setInlineColorName("");
+        setInlinePrice("");
+        setInlineQty("");
+    };
+
+    // Save direct inline editing row directly to backend
+    const handleSaveInlineVariant = async (v) => {
+        if (!inlineSizeName || !inlineSizeName.trim()) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Vui lòng chọn hoặc nhập Size.' }));
+            return;
+        }
+        if (!inlineColorName || !inlineColorName.trim()) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Vui lòng chọn hoặc nhập Màu sắc.' }));
+            return;
+        }
+        if (!inlinePrice || parseFloat(inlinePrice) <= 5000) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Giá bán phải lớn hơn 5,000 VNĐ.' }));
+            return;
+        }
+        if (inlineQty === "" || parseInt(inlineQty) < 0) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Số lượng tồn kho không hợp lệ.' }));
+            return;
+        }
+
+        saveCustomSizeToStorage(inlineSizeName);
+        saveCustomColorToStorage(inlineColorName);
+
+        setSavingInlineId(v.id);
+        try {
+            const sizeId = getSizeId(inlineSizeName);
+            const colorId = getColorId(inlineColorName);
+
+            const res = await api.post("/api/products/variant/save", {
+                productId: parseInt(id),
+                sku: product?.productCode || null,
+                variantId: v.id,
+                sizeId,
+                colorId,
+                newSizeName: sizeId ? "" : inlineSizeName.trim(),
+                newColorName: colorId ? "" : inlineColorName.trim(),
+                price: parseFloat(inlinePrice),
+                quantity: parseInt(inlineQty)
+            });
+
+            if (res.data?.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.message || 'Đã cập nhật biến thể thành công!' }));
+                cancelInlineEdit();
+                fetchProductDetails();
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Không thể cập nhật biến thể.' }));
+            }
+        } catch (err) {
+            console.error("Lỗi cập nhật biến thể trực tiếp:", err);
+            const msg = err.response?.data?.message || "Không thể cập nhật biến thể này.";
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: `Lỗi: ${msg}` }));
+        } finally {
+            setSavingInlineId(null);
+        }
+    };
+
+    // Handle adding NEW variants via the top form
+    const handleAddNewVariantsSubmit = async (e) => {
         e.preventDefault();
         if (!price || parseFloat(price) <= 0) {
             window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng nhập giá bán hợp lệ.' }));
@@ -300,51 +536,53 @@ const AdminProductDetail = () => {
             return;
         }
         if (selectedSizes.length === 0 || selectedColors.length === 0) {
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng thêm ít nhất 1 Size và 1 Màu sắc.' }));
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng chọn ít nhất 1 Size và 1 Màu sắc.' }));
             return;
         }
 
+        selectedSizes.forEach(sz => saveCustomSizeToStorage(sz));
+        selectedColors.forEach(cl => saveCustomColorToStorage(cl));
+
         setSavingVariant(true);
         try {
-            if (variantId) {
-                const sizeId = getSizeId(selectedSizes[0]);
-                const colorId = getColorId(selectedColors[0]);
-                const res = await api.post("/api/products/variant/save", {
-                    productId: parseInt(id), variantId,
-                    sizeId, colorId,
-                    newSizeName: sizeId ? "" : selectedSizes[0],
-                    newColorName: colorId ? "" : selectedColors[0],
-                    price: parseFloat(price), quantity: parseInt(quantity)
-                });
-                if (res.data?.success) {
-                    window.dispatchEvent(new CustomEvent('show-toast', { detail: "Cập nhật biến thể thành công!" }));
-                    resetVariantForm();
-                    fetchProductDetails();
-                }
-            } else {
-                let count = 0;
-                for (const sz of selectedSizes) {
-                    for (const cl of selectedColors) {
-                        try {
-                            const sizeId = getSizeId(sz);
-                            const colorId = getColorId(cl);
-                            const res = await api.post('/api/products/variant/save', {
-                                productId: parseInt(id), variantId: null,
-                                sizeId, colorId,
-                                newSizeName: sizeId ? "" : sz,
-                                newColorName: colorId ? "" : cl,
-                                price: parseFloat(price), quantity: parseInt(quantity)
-                            });
-                            if (res.data?.success) count++;
-                        } catch {}
+            let count = 0;
+            let lastMsg = "";
+            let accumulatedCount = 0;
+            for (const sz of selectedSizes) {
+                for (const cl of selectedColors) {
+                    try {
+                        const sizeId = getSizeId(sz);
+                        const colorId = getColorId(cl);
+                        const res = await api.post('/api/products/variant/save', {
+                            productId: parseInt(id),
+                            sku: product?.productCode || null,
+                            variantId: null,
+                            sizeId, colorId,
+                            newSizeName: sizeId ? "" : sz,
+                            newColorName: colorId ? "" : cl,
+                            price: parseFloat(price),
+                            quantity: parseInt(quantity)
+                        });
+                        if (res.data?.success) {
+                            count++;
+                            if (res.data.accumulated) accumulatedCount++;
+                            if (res.data.message) lastMsg = res.data.message;
+                        }
+                    } catch (err) {
+                        console.error("Lỗi thêm biến thể:", err);
                     }
                 }
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã lưu ${count} biến thể thành công!` }));
-                resetVariantForm();
-                fetchProductDetails();
             }
+            const toastMsg = (count === 1 && lastMsg)
+                ? lastMsg
+                : (accumulatedCount > 0
+                    ? `Đã xử lý & cộng dồn ${count} biến thể thành công!`
+                    : `Đã tạo ${count} biến thể mới thành công!`);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: toastMsg }));
+            resetVariantForm();
+            fetchProductDetails();
         } catch (err) {
-            const msg = err.response?.data?.message || "Không thể lưu biến thể.";
+            const msg = err.response?.data?.message || "Không thể lưu biến thể mới.";
             window.dispatchEvent(new CustomEvent('show-toast', { detail: msg }));
         } finally {
             setSavingVariant(false);
@@ -412,8 +650,8 @@ const AdminProductDetail = () => {
     if (loading) return (
         <AdminLayout>
             <div className="loading-screen">
-                <div className="spinner-border" role="status" style={{ width: '3rem', height: '3rem', color: '#000' }}></div>
-                <p>ĐANG TẢI DỮ LIỆU SẢN PHẨM...</p>
+                <div className="spinner-border text-red" role="status" style={{ width: '3rem', height: '3rem', color: '#e50914' }}></div>
+                <p style={{ marginTop: '16px', letterSpacing: '1px', fontWeight: '700' }}>ĐANG TẢI DỮ LIỆU SẢN PHẨM...</p>
             </div>
         </AdminLayout>
     );
@@ -421,20 +659,43 @@ const AdminProductDetail = () => {
     if (error || !product) return (
         <AdminLayout>
             <div className="error-screen">
-                <i className="bi bi-exclamation-triangle"></i>
+                <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: '48px', color: '#ef4444' }}></i>
                 <h3>LỖI TẢI DỮ LIỆU</h3>
                 <p>{error || "Không tìm thấy sản phẩm."}</p>
-                <Link to="/admin/products" className="btn-outline">QUAY LẠI</Link>
+                <Link to="/admin/products" className="btn-outline">QUAY LẠI DANH SÁCH</Link>
             </div>
         </AdminLayout>
     );
 
-    const totalVariants = selectedSizes.length * selectedColors.length;
+    const totalVariantsCount = selectedSizes.length * selectedColors.length;
+
+    // Dynamic preset lists combining: standard defaults + DB items + localStorage custom items + currently selected tags (minus deleted)
+    const dynamicSizePresets = Array.from(new Set([
+        '18','20','22','24','26','28','30','32','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48',
+        ...(sizes || []).map(s => s.sizeName ? s.sizeName.trim() : ''),
+        ...getStoredCustomSizes(),
+        ...selectedSizes
+    ]))
+        .filter(Boolean)
+        .filter(s => !deletedSizePresets.includes(s.toLowerCase()))
+        .sort((a, b) => {
+            const nA = parseFloat(a), nB = parseFloat(b);
+            return (!isNaN(nA) && !isNaN(nB)) ? nA - nB : a.localeCompare(b);
+        });
+
+    const dynamicColorPresets = Array.from(new Set([
+        'Đen','Trắng','Đỏ','Xanh dương','Xanh lá','Vàng','Hồng','Xám','Nâu','Cam','Tím','Kem','Be',
+        ...(colors || []).map(c => translateColorToVietnamese(c.colorName)),
+        ...getStoredCustomColors(),
+        ...selectedColors
+    ]))
+        .filter(Boolean)
+        .filter(c => !deletedColorPresets.includes(c.toLowerCase()));
 
     return (
         <AdminLayout>
             <div className="apd-page">
-                {/* Header */}
+                {/* Header Bar */}
                 <div className="apd-header">
                     <div>
                         <span className="apd-eyebrow">QUẢN LÝ SẢN PHẨM</span>
@@ -442,7 +703,7 @@ const AdminProductDetail = () => {
                     </div>
                     <div className="apd-header-actions">
                         <Link to={`/admin/products/edit/${id}`} className="btn-primary-dark">
-                            <i className="bi bi-pencil-square"></i> Chỉnh sửa
+                            <i className="bi bi-pencil-square"></i> Chỉnh sửa sản phẩm
                         </Link>
                         <Link to="/admin/products" className="btn-outline">
                             <i className="bi bi-arrow-left"></i> Quay lại
@@ -450,19 +711,19 @@ const AdminProductDetail = () => {
                     </div>
                 </div>
 
-                {/* 2-col grid */}
-                <div className="apd-grid">
-                    {/* LEFT */}
+                {/* Balanced Top Row Grid (2 Columns) */}
+                <div className="apd-top-grid">
+                    {/* LEFT COLUMN: BASIC INFO + GALLERY */}
                     <div className="apd-col">
-                        {/* Card: Thông tin cơ bản */}
+                        {/* Card 1: Thông tin cơ bản */}
                         <div className="apd-card">
                             <h3 className="apd-card-title">
-                                <i className="bi bi-info-circle"></i> Thông tin cơ bản
+                                <i className="bi bi-info-circle-fill"></i> Thông tin cơ bản
                             </h3>
                             <div className="info-table">
                                 <div className="info-row">
                                     <span className="info-key">Mã SKU</span>
-                                    <span className="info-val">{product.productCode}</span>
+                                    <span className="info-val sku-badge">{product.productCode}</span>
                                 </div>
                                 <div className="info-row">
                                     <span className="info-key">Danh mục</span>
@@ -480,45 +741,95 @@ const AdminProductDetail = () => {
                                 </div>
                                 <div className="info-row info-row--top">
                                     <span className="info-key">Mô tả</span>
-                                    <span className="info-val desc">{product.description || "Chưa có mô tả."}</span>
+                                    <span className="info-val desc">{product.description || "Chưa có mô tả chi tiết."}</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Card: Cấu hình biến thể */}
+                        {/* Card 2: Thư viện ảnh */}
                         <div className="apd-card">
                             <h3 className="apd-card-title">
-                                <i className={`bi ${variantId ? "bi-pencil-square" : "bi-plus-circle"}`}></i>
-                                {variantId ? " Cập nhật biến thể" : " Cấu hình biến thể"}
+                                <i className="bi bi-images"></i> Thư viện ảnh ({images.length})
                             </h3>
 
-                            <form onSubmit={handleVariantSubmit}>
+                            {images.length === 0 ? (
+                                <div className="empty-gallery-box">
+                                    <i className="bi bi-image" style={{ fontSize: '32px', color: '#cbd5e1' }}></i>
+                                    <p style={{ color: '#64748b', fontSize: '13px', margin: '8px 0 0' }}>Chưa có hình ảnh nào.</p>
+                                </div>
+                            ) : (
+                                <div className="img-grid">
+                                    {images.map((img, i) => (
+                                        <div key={i} className="img-card">
+                                            {img.isPrimary && <span className="img-primary-badge">Ảnh chính</span>}
+                                            <img src={getImageUrl(img)} alt="sp" className="img-thumb" />
+                                            <div className="img-actions">
+                                                <button type="button"
+                                                    className={`img-btn star ${img.isPrimary ? "active" : ""}`}
+                                                    onClick={() => handleSetPrimary(img.id)}
+                                                    disabled={img.isPrimary}
+                                                    title={img.isPrimary ? "Ảnh chính" : "Đặt làm ảnh chính"}
+                                                >
+                                                    <i className={`bi ${img.isPrimary ? "bi-star-fill" : "bi-star"}`}></i>
+                                                </button>
+                                                <button type="button" className="img-btn del"
+                                                    onClick={() => handleDeleteImage(img.id)} title="Xóa ảnh">
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <label className="upload-zone">
+                                <input type="file" accept="image/*" multiple onChange={handleImageUpload} hidden />
+                                <i className="bi bi-cloud-arrow-up-fill"></i>
+                                <span>Tải thêm ảnh mới lên</span>
+                                <small style={{ color: '#94a3b8', fontSize: '11px' }}>Hỗ trợ JPG, PNG, WEBP</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: VARIANT CREATION FORM (EXCLUSIVELY FOR ADDING NEW VARIANTS) */}
+                    <div className="apd-col">
+                        <div className="apd-card h-100">
+                            <h3 className="apd-card-title">
+                                <i className="bi bi-plus-circle-fill" style={{ color: '#e50914' }}></i>
+                                THÊM / CẤU HÌNH BIẾN THỂ MỚI
+                            </h3>
+
+                            <form onSubmit={handleAddNewVariantsSubmit}>
                                 {/* SIZE TAG INPUT */}
                                 <TagInput
-                                    label={`KÍCH CỠ (SIZE) — ${selectedSizes.length} đã chọn`}
+                                    label={`KÍCH CỠ (SIZE) — ${selectedSizes.length} ĐÃ CHỌN`}
                                     tags={selectedSizes}
                                     onAdd={addSize}
                                     onRemove={removeSize}
                                     onEdit={editSize}
+                                    onClearAll={() => setSelectedSizes([])}
+                                    onDeletePreset={handleDeleteSizePreset}
                                     placeholder="Hoặc nhập size thủ công rồi Enter…"
                                     icon="bi-rulers"
-                                    presets={['18','20','22','24','26','28','30','32','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48']}
+                                    presets={dynamicSizePresets}
                                     validate={validateSize}
-                                    hint={`Hợp lệ từ ${SIZE_MIN} (trẻ em) đến ${SIZE_MAX} (người lớn). Chỉ nhập số.`}
+                                    hint={`Hợp lệ từ ${SIZE_MIN} đến ${SIZE_MAX}. Chỉ nhập số. Rê chuột vào chip để xóa.`}
                                 />
 
                                 {/* COLOR TAG INPUT */}
                                 <TagInput
-                                    label={`MÀU SẮC — ${selectedColors.length} đã chọn`}
+                                    label={`MÀU SẮC — ${selectedColors.length} ĐÃ CHỌN`}
                                     tags={selectedColors}
                                     onAdd={addColor}
                                     onRemove={removeColor}
                                     onEdit={editColor}
+                                    onClearAll={() => setSelectedColors([])}
+                                    onDeletePreset={handleDeleteColorPreset}
                                     placeholder="Hoặc nhập tên màu thủ công rồi Enter…"
                                     icon="bi-palette"
-                                    presets={['Đen','Trắng','Đỏ','Xanh dương','Xanh lá','Vàng','Hồng','Xám','Nâu','Cam','Tím','Kem','Be']}
+                                    presets={dynamicColorPresets}
                                     validate={validateColor}
-                                    hint="Chỉ nhập tên màu bằng chữ, không nhập số."
+                                    hint="Chỉ nhập tên màu bằng chữ, không nhập số. Rê chuột vào chip để xóa."
                                 />
 
                                 {/* Price & Quantity */}
@@ -551,116 +862,195 @@ const AdminProductDetail = () => {
                                     <button type="submit" className="btn-save" disabled={savingVariant}>
                                         {savingVariant ? (
                                             <><span className="spinner-border spinner-border-sm me-2"></span>Đang lưu...</>
-                                        ) : variantId ? (
-                                            "CẬP NHẬT BIẾN THỂ"
-                                        ) : totalVariants > 0 ? (
-                                            `LƯU ${totalVariants} BIẾN THỂ`
+                                        ) : totalVariantsCount > 0 ? (
+                                            <>
+                                                <i className="bi bi-plus-lg me-1"></i> LƯU {totalVariantsCount} BIẾN THỂ MỚI
+                                            </>
                                         ) : (
-                                            "LƯU BIẾN THỂ"
+                                            <>
+                                                <i className="bi bi-plus-lg me-1"></i> LƯU BIẾN THỂ MỚI
+                                            </>
                                         )}
                                     </button>
-                                    {variantId && (
-                                        <button type="button" className="btn-cancel-v" onClick={resetVariantForm}>
-                                            HỦY BỎ
-                                        </button>
-                                    )}
+                                    <button type="button" className="btn-cancel-v" onClick={resetVariantForm}>
+                                        <i className="bi bi-arrow-clockwise me-1"></i>LÀM MỚI
+                                    </button>
                                 </div>
                             </form>
                         </div>
                     </div>
+                </div>
 
-                    {/* RIGHT */}
-                    <div className="apd-col">
-                        {/* Card: Danh sách biến thể */}
-                        <div className="apd-card">
-                            <h3 className="apd-card-title">
-                                <i className="bi bi-box-seam"></i> Danh sách biến thể ({variants.length})
-                            </h3>
-                            {variants.length === 0 ? (
-                                <p className="empty-msg">Chưa có biến thể nào. Thêm Size & Màu bên trái để tạo.</p>
-                            ) : (
-                                <div className="table-scroll">
-                                    <table className="vt">
-                                        <thead>
-                                            <tr>
-                                                <th>KÍCH CỠ</th>
-                                                <th>MÀU SẮC</th>
-                                                <th>GIÁ BÁN</th>
-                                                <th>KHO</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {variants.map(v => (
-                                                <tr key={v.id}>
-                                                    <td><strong>Size {v.sizeName}</strong></td>
-                                                    <td>{translateColorToVietnamese(v.colorName)}</td>
-                                                    <td className="price-cell">{v.price?.toLocaleString("vi-VN")} ₫</td>
-                                                    <td>
+                {/* FULL WIDTH BOTTOM CARD: EXISTING VARIANTS TABLE WITH DIRECT INLINE EDITING (SIZE, COLOR, PRICE, QUANTITY) */}
+                <div className="apd-card full-width-card" style={{ marginTop: '24px' }}>
+                    <div className="card-header-flex">
+                        <h3 className="apd-card-title mb-0">
+                            <i className="bi bi-box-seam-fill" style={{ color: '#e50914' }}></i>
+                            DANH SÁCH BIẾN THỂ SẢN PHẨM ({variants.length})
+                        </h3>
+                        {variants.length > 0 && (
+                            <span className="variant-summary-badge">
+                                <i className="bi bi-box-seam me-1"></i>
+                                TỔNG TỒN KHO: <b>{variants.reduce((sum, v) => sum + (v.quantity || 0), 0)} đôi</b>
+                            </span>
+                        )}
+                    </div>
+
+                    {variants.length === 0 ? (
+                        <div className="empty-msg-box">
+                            <i className="bi bi-box-seam" style={{ fontSize: '36px', color: '#cbd5e1' }}></i>
+                            <p style={{ margin: '10px 0 0', color: '#64748b', fontSize: '13.5px' }}>
+                                Chưa có biến thể nào. Chọn Size & Màu sắc ở khung phía trên để thêm biến thể mới cho sản phẩm này.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="table-responsive variant-table-wrapper">
+                            <table className="table table-hover align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '6%' }}>STT</th>
+                                        <th style={{ width: '22%' }}>KÍCH CỠ</th>
+                                        <th style={{ width: '25%' }}>MÀU SẮC</th>
+                                        <th style={{ width: '24%' }}>GIÁ BÁN (VNĐ)</th>
+                                        <th style={{ width: '15%' }}>KHO</th>
+                                        <th style={{ width: '8%', textAlign: 'center' }}>THAO TÁC</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {variants.map((v, idx) => {
+                                        const isInlineEditing = inlineEditingId === v.id;
+                                        return (
+                                            <tr key={v.id} className={isInlineEditing ? "editing-row-active" : ""}>
+                                                <td style={{ fontWeight: '700', color: '#64748b' }}>#{idx + 1}</td>
+                                                
+                                                {/* KÍCH CỠ - Editable Select or Static Chip */}
+                                                <td>
+                                                    {isInlineEditing ? (
+                                                        <select
+                                                            className="form-control inline-table-select"
+                                                            value={inlineSizeName}
+                                                            onChange={(e) => setInlineSizeName(e.target.value)}
+                                                        >
+                                                            {dynamicSizePresets.map(sz => (
+                                                                <option key={sz} value={sz}>Size {sz}</option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <span className="badge-size-chip">Size {v.sizeName}</span>
+                                                    )}
+                                                </td>
+
+                                                {/* MÀU SẮC - Editable Select or Static Chip */}
+                                                <td>
+                                                    {isInlineEditing ? (
+                                                        <select
+                                                            className="form-control inline-table-select"
+                                                            value={inlineColorName}
+                                                            onChange={(e) => setInlineColorName(e.target.value)}
+                                                        >
+                                                            {dynamicColorPresets.map(cl => (
+                                                                <option key={cl} value={cl}>{cl}</option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <span className="badge-color-chip">{translateColorToVietnamese(v.colorName)}</span>
+                                                    )}
+                                                </td>
+                                                
+                                                {/* GIÁ BÁN (VNĐ) - Direct inline edit or static label */}
+                                                <td>
+                                                    {isInlineEditing ? (
+                                                        <div className="inline-table-input-wrap">
+                                                            <input
+                                                                type="number"
+                                                                min="5000"
+                                                                className="form-control inline-table-input"
+                                                                value={inlinePrice}
+                                                                onChange={(e) => setInlinePrice(e.target.value)}
+                                                                placeholder="Giá..."
+                                                            />
+                                                            <span className="unit-label">đ</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="price-cell">{v.price?.toLocaleString("vi-VN")} đ</span>
+                                                    )}
+                                                </td>
+
+                                                {/* SỐ LƯỢNG KHO - Direct inline edit or static label */}
+                                                <td>
+                                                    {isInlineEditing ? (
+                                                        <div className="inline-table-input-wrap">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                className="form-control inline-table-input"
+                                                                value={inlineQty}
+                                                                onChange={(e) => setInlineQty(e.target.value)}
+                                                                placeholder="Kho..."
+                                                            />
+                                                            <span className="unit-label">đôi</span>
+                                                        </div>
+                                                    ) : (
                                                         <span className={`qty-badge ${v.quantity > 0 ? "in" : "out"}`}>
                                                             {v.quantity} đôi
                                                         </span>
-                                                    </td>
-                                                    <td>
-                                                        <div className="row-actions">
-                                                            <button type="button" className="row-btn edit"
-                                                                onClick={() => startEditVariant(v)} title="Sửa">
+                                                    )}
+                                                </td>
+
+                                                {/* THAO TÁC BUTTONS */}
+                                                <td style={{ textAlign: 'center' }}>
+                                                    {isInlineEditing ? (
+                                                        <div className="row-actions justify-content-center">
+                                                            <button
+                                                                type="button"
+                                                                className="row-btn save-inline"
+                                                                onClick={() => handleSaveInlineVariant(v)}
+                                                                disabled={savingInlineId === v.id}
+                                                                title="Lưu tất cả chỉnh sửa của dòng này"
+                                                            >
+                                                                {savingInlineId === v.id ? (
+                                                                    <span className="spinner-border spinner-border-sm"></span>
+                                                                ) : (
+                                                                    <i className="bi bi-check-lg"></i>
+                                                                )}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="row-btn cancel-inline"
+                                                                onClick={cancelInlineEdit}
+                                                                title="Hủy sửa"
+                                                            >
+                                                                <i className="bi bi-x-lg"></i>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="row-actions justify-content-center">
+                                                            <button
+                                                                type="button"
+                                                                className="row-btn edit"
+                                                                onClick={() => startInlineEdit(v)}
+                                                                title="Chỉnh sửa Size, Màu, Giá, Kho trực tiếp"
+                                                            >
                                                                 <i className="bi bi-pencil-square"></i>
                                                             </button>
-                                                            <button type="button" className="row-btn del"
-                                                                onClick={() => handleDeleteVariant(v.id, v.sizeName, v.colorName)} title="Xóa">
+                                                            <button
+                                                                type="button"
+                                                                className="row-btn del"
+                                                                onClick={() => handleDeleteVariant(v.id, v.sizeName, v.colorName)}
+                                                                title="Xóa biến thể"
+                                                            >
                                                                 <i className="bi bi-trash"></i>
                                                             </button>
                                                         </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
-
-                        {/* Card: Thư viện ảnh */}
-                        <div className="apd-card">
-                            <h3 className="apd-card-title">
-                                <i className="bi bi-images"></i> Thư viện ảnh ({images.length})
-                            </h3>
-
-                            {images.length === 0 && <p className="empty-msg">Chưa có ảnh nào.</p>}
-
-                            {images.length > 0 && (
-                                <div className="img-grid">
-                                    {images.map((img, i) => (
-                                        <div key={i} className="img-card">
-                                            {img.isPrimary && <span className="img-primary-badge">Ảnh chính</span>}
-                                            <img src={getImageUrl(img)} alt="sp" className="img-thumb" />
-                                            <div className="img-actions">
-                                                <button type="button"
-                                                    className={`img-btn star ${img.isPrimary ? "active" : ""}`}
-                                                    onClick={() => handleSetPrimary(img.id)}
-                                                    disabled={img.isPrimary}
-                                                    title={img.isPrimary ? "Ảnh chính" : "Đặt làm ảnh chính"}
-                                                >
-                                                    <i className={`bi ${img.isPrimary ? "bi-star-fill" : "bi-star"}`}></i>
-                                                </button>
-                                                <button type="button" className="img-btn del"
-                                                    onClick={() => handleDeleteImage(img.id)} title="Xóa ảnh">
-                                                    <i className="bi bi-trash"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            <label className="upload-zone">
-                                <input type="file" accept="image/*" multiple onChange={handleImageUpload} hidden />
-                                <i className="bi bi-cloud-arrow-up-fill"></i>
-                                <span>Nhấp để tải ảnh lên</span>
-                            </label>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </AdminLayout>

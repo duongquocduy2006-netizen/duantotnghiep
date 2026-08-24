@@ -50,7 +50,17 @@ public class SecurityConfig {
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-        configuration.setAllowedOriginPatterns(java.util.List.of("*"));
+        configuration.setAllowedOrigins(java.util.List.of(
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "http://localhost:8080",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:3000"
+        ));
+        configuration.setAllowedOriginPatterns(java.util.List.of(
+            "http://localhost:*",
+            "http://127.0.0.1:*"
+        ));
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(java.util.List.of("*"));
         configuration.setAllowCredentials(true);
@@ -79,7 +89,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/", "/login", "/register", "/forgot-password", "/verify-otp", "/resend-otp",
                                 "/reset-password", "/shop", "/details", "/new-arrivals", "/flash-sale", "/product/**",
-                                "/cart/**", "/api/**", "/api/auth/**", "/assets/**", "/css/**", "/js/**", "/images/**", "/uploads/**", "/error")
+                                "/cart/**", "/api/**", "/api/auth/**", "/oauth2/**", "/login/oauth2/**", "/assets/**", "/css/**", "/js/**", "/images/**", "/uploads/**", "/error")
                         .permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/shipper/**").hasRole("SHIPPER")
@@ -147,7 +157,7 @@ public class SecurityConfig {
                 return;
             }
 
-            response.sendRedirect("/login?error=" + errorMessage);
+            response.sendRedirect("http://localhost:5173/login?error=" + errorMessage);
         };
     }
 
@@ -167,18 +177,14 @@ public class SecurityConfig {
                 account = jdbc.queryForMap(sql, email);
             } catch (Exception e) {
                 // Trường hợp hy hữu không tìm thấy account sau khi OAuth2
-                response.sendRedirect("/login?error=account_not_found");
+                response.sendRedirect("http://localhost:5173/login?error=account_not_found");
                 return;
             }
 
             Integer status = (Integer) account.get("status");
             if (status != null && status == 0) {
                 request.getSession().invalidate();
-                if (authentication instanceof OAuth2AuthenticationToken) {
-                    response.sendRedirect("http://localhost:5173/login?error=account_locked");
-                } else {
-                    response.sendRedirect("/login?error=account_locked");
-                }
+                response.sendRedirect("http://localhost:5173/login?error=account_locked");
                 return;
             }
 
@@ -211,7 +217,7 @@ public class SecurityConfig {
             } else if ("SHIPPER".equalsIgnoreCase(role)) {
                 response.sendRedirect("/shipper/dashboard");
             } else {
-                response.sendRedirect("/");
+                response.sendRedirect("http://localhost:5173/");
             }
         };
     }

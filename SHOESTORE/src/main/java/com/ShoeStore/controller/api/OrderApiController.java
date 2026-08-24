@@ -140,7 +140,7 @@ public class OrderApiController {
                         "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                         "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
                         "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price " +
+                        "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
                         "FROM product_variants v WHERE v.id = ?";
                 items = jdbc.queryForList(buyNowSql, buyNowQty, buyNowVariantId);
                 if (items.isEmpty()) {
@@ -158,7 +158,7 @@ public class OrderApiController {
                             "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                             "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
                             "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                            "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price " +
+                            "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
                             "FROM product_variants v WHERE v.id = ?";
                     List<Map<String, Object>> singleItem = jdbc.queryForList(priceSql, qty, vId);
                     if (!singleItem.isEmpty()) {
@@ -175,7 +175,7 @@ public class OrderApiController {
                         "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
                         "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
                         "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        "AND fsp.sold_quantity < fsp.quantity_limit), v.price) as price " +
+                        "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
                         "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " +
                         "WHERE ci.user_id = ?";
                 items = jdbc.queryForList(cartSql, accountId);
@@ -189,11 +189,17 @@ public class OrderApiController {
                     .mapToDouble(item -> ((Number) item.get("price")).doubleValue() * ((Number) item.get("quantity")).intValue())
                     .sum();
 
-            double tempShipping = 30000;
-            if (shippingFee != null) {
-                tempShipping = shippingFee;
-            }
+            double tempShipping = shippingFee != null ? shippingFee : 30000;
             Integer userRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
+            if (userRankId == null) {
+                Integer points = jdbc.queryForObject("SELECT COALESCE(points, 0) FROM accounts WHERE id = ?", Integer.class, accountId);
+                int pts = points != null ? points : 0;
+                java.util.List<Integer> rankIds = jdbc.queryForList("SELECT id FROM membership_ranks WHERE min_points <= ? ORDER BY min_points DESC", Integer.class, pts);
+                if (!rankIds.isEmpty()) {
+                    userRankId = rankIds.get(0);
+                    jdbc.update("UPDATE accounts SET membership_rank_id = ? WHERE id = ?", userRankId, accountId);
+                }
+            }
             if (userRankId != null) {
                 Boolean freeShip = jdbc.queryForObject(
                         "SELECT COALESCE(free_shipping, 0) FROM membership_ranks WHERE id = ?", Boolean.class, userRankId);
@@ -201,20 +207,36 @@ public class OrderApiController {
                     tempShipping = 0;
                 }
             }
-            if (tempShipping != 0 && total >= 500000) {
-                tempShipping = 0;
-            }
             final double shipping = tempShipping;
 
-            // Kiểm tra voucher
+            // Kiểm tra voucher (Item-Level Discount: Bỏ qua các sản phẩm thuộc Flash Sale)
             double discount = 0;
             Voucher voucher = null;
             if (voucherCode != null && !voucherCode.trim().isEmpty()) {
+                double eligibleSubtotal = 0.0;
+                for (Map<String, Object> item : items) {
+                    Integer vId = ((Number) item.get("variant_id")).intValue();
+                    double price = ((Number) item.get("price")).doubleValue();
+                    int qty = ((Number) item.get("quantity")).intValue();
+
+                    String checkFsSql = "SELECT COUNT(*) FROM flash_sale_products fsp " +
+                            "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                            "JOIN product_variants v ON v.product_id = fsp.product_id " +
+                            "WHERE v.id = ? AND fs.status = 1 " +
+                            "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                            "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)";
+                    Integer fsCount = jdbc.queryForObject(checkFsSql, Integer.class, vId);
+
+                    if (fsCount == null || fsCount == 0) {
+                        eligibleSubtotal += price * qty;
+                    }
+                }
+
                 Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
                 java.util.Optional<Voucher> voucherOpt = voucherService.validateVoucher(voucherCode, rankId, total, accountId);
                 if (voucherOpt.isPresent()) {
                     voucher = voucherOpt.get();
-                    discount = voucherService.calculateDiscount(voucher, total);
+                    discount = voucherService.calculateDiscount(voucher, total, eligibleSubtotal);
                 } else {
                     return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Mã giảm giá '" + voucherCode + "' không hợp lệ, đã hết hạn, chưa đủ điều kiện hoặc đã hết lượt sử dụng!"));
                 }

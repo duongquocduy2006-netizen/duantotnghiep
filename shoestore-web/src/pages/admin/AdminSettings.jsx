@@ -18,7 +18,7 @@ const AdminSettings = () => {
 
     const handleSave = () => {
         console.log('Saving settings:', settings);
-        alert('Cài đặt đã được lưu!');
+        window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Cài đặt đã được lưu!' }));
     };
 
     return (

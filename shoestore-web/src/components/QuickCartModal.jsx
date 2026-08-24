@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
-const QuickCartModal = ({ productId, isOpen, onClose }) => {
+const QuickCartModal = ({ productId, isOpen = true, onClose }) => {
     const [product, setProduct] = useState(null);
     const [variants, setVariants] = useState([]);
     const [selectedVariantId, setSelectedVariantId] = useState(null);
@@ -42,21 +42,31 @@ const QuickCartModal = ({ productId, isOpen, onClose }) => {
     };
 
     const handleAddToCart = async () => {
-        if (!selectedVariantId) { alert("Vui lòng chọn phân loại!"); return; }
+        if (!selectedVariantId) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng chọn Kích cỡ & Màu sắc!' }));
+            return;
+        }
         const variant = variants.find(v => v.id === selectedVariantId);
-        if (!variant || variant.quantity <= 0) { alert("Sản phẩm này đã hết hàng!"); return; }
+        if (!variant || variant.quantity <= 0) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Sản phẩm này đã hết hàng!' }));
+            return;
+        }
         
         try {
             const response = await api.post('/api/cart/add', { variantId: selectedVariantId, quantity: qty });
             if (response.data && response.data.success) {
                 onClose();
                 window.dispatchEvent(new Event('cartUpdated'));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Đã thêm ${qty} sản phẩm vào giỏ hàng thành công!` }));
             } else {
-                alert(response.data.message || 'Lỗi thêm vào giỏ hàng.');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || 'Lỗi thêm vào giỏ hàng.' }));
             }
         } catch (err) {
-            if (err.response && err.response.status === 401) alert('Vui lòng đăng nhập!');
-            else alert('Lỗi xử lý giỏ hàng.');
+            if (err.response && err.response.status === 401) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập để thêm vào giỏ hàng!' }));
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi xử lý giỏ hàng.' }));
+            }
         }
     };
 
@@ -75,8 +85,8 @@ const QuickCartModal = ({ productId, isOpen, onClose }) => {
                             <>
                                 {/* PRODUCT INFO */}
                                 <div className="d-flex mb-4 align-items-center bg-white">
-                                    <div style={{ width: '90px', height: '90px', backgroundColor: '#f5f7fa', borderRadius: '16px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <img src={getImageUrl(product.imageUrl)} alt={product.productName} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                    <div style={{ width: '90px', height: '90px', backgroundColor: '#f5f7fa', borderRadius: '16px', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <img src={getImageUrl(product.imageUrl || (product.images && product.images.length > 0 ? (product.images.find(i => i.isPrimary)?.url || product.images[0].url) : ''))} alt={product.productName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }} />
                                     </div>
                                     <div className="ms-3 flex-grow-1">
                                         <div className="text-uppercase fw-bold mb-1" style={{ fontSize: '11px', color: '#ff4d4d', letterSpacing: '1px' }}>{product.brandName || 'SHOES'}</div>

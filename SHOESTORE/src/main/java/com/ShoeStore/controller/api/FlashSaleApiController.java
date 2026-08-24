@@ -35,66 +35,100 @@ public class FlashSaleApiController {
     @Autowired
     private com.ShoeStore.repository.FlashSaleRepository flashSaleRepository;
 
+    @Autowired
+    private com.ShoeStore.repository.BrandRepository brandRepository;
+
     // 1. GET ACTIVE CAMPAIGN FOR CLIENT FRONTEND
     @GetMapping("/active")
     public ResponseEntity<?> getActiveFlashSale() {
         try {
-            Optional<FlashSale> activeFlashSaleOpt = flashSaleService.getActiveFlashSale();
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            List<FlashSale> activeOrUpcomingSales = flashSaleRepository.findActiveOrUpcomingFlashSales(now);
 
-            if (activeFlashSaleOpt.isEmpty()) {
+            if (activeOrUpcomingSales.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "success", true,
                         "hasActiveCampaign", false,
+                        "campaigns", List.of(),
                         "message", "Hiện tại không có chương trình Flash Sale nào đang diễn ra."));
             }
 
-            FlashSale fs = activeFlashSaleOpt.get();
-            Map<String, Object> campaignMap = new HashMap<>();
-            campaignMap.put("id", fs.getId());
-            campaignMap.put("name", fs.getName());
-            campaignMap.put("startDate", fs.getStartDate());
-            campaignMap.put("endDate", fs.getEndDate());
+            java.util.Set<String> activeBrandNamesLower = brandRepository.findAll().stream()
+                    .filter(com.ShoeStore.model.Brand::isActive)
+                    .map(b -> b.getName() != null ? b.getName().trim().toLowerCase() : "")
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
 
-            List<FlashSaleProduct> flashProducts = flashSaleService.getProductsByFlashSaleId(fs.getId());
-            List<Map<String, Object>> productsMap = flashProducts.stream().map(fsp -> {
-                Map<String, Object> fMap = new HashMap<>();
-                fMap.put("id", fsp.getId());
-                fMap.put("salePrice", fsp.getSalePrice());
-                fMap.put("quantityLimit", fsp.getQuantityLimit());
-                fMap.put("soldQuantity", fsp.getSoldQuantity());
+            List<Map<String, Object>> campaignsMapList = new ArrayList<>();
 
-                Map<String, Object> pMap = new HashMap<>();
-                var p = fsp.getProduct();
-                pMap.put("id", p.getId());
-                pMap.put("productName", p.getProductName());
-                pMap.put("brandName", p.getBrandName());
+            for (FlashSale fs : activeOrUpcomingSales) {
+                boolean isLive = (now.isAfter(fs.getStartDate()) || now.isEqual(fs.getStartDate())) && (now.isBefore(fs.getEndDate()) || now.isEqual(fs.getEndDate()));
+                boolean isUpcoming = now.isBefore(fs.getStartDate());
 
-                // Fetch main image URL
-                String mainImg = "";
-                if (p.getImages() != null && !p.getImages().isEmpty()) {
-                    mainImg = "/images/" + p.getImages().iterator().next().getImageUrl();
-                }
-                pMap.put("imageUrl", mainImg);
+                Map<String, Object> campaignMap = new HashMap<>();
+                campaignMap.put("id", fs.getId());
+                campaignMap.put("name", fs.getName());
+                campaignMap.put("startDate", fs.getStartDate());
+                campaignMap.put("endDate", fs.getEndDate());
+                campaignMap.put("isLive", isLive);
+                campaignMap.put("isUpcoming", isUpcoming);
 
-                // Fetch min price representing original price
-                double oldPrice = 0;
-                if (p.getVariants() != null && !p.getVariants().isEmpty()) {
-                    var firstVar = p.getVariants().iterator().next();
-                    if (firstVar != null && firstVar.getPrice() != null) {
-                        oldPrice = firstVar.getPrice().doubleValue();
+                List<FlashSaleProduct> flashProducts = flashSaleService.getProductsByFlashSaleId(fs.getId());
+                List<Map<String, Object>> productsMap = flashProducts.stream()
+                        .filter(fsp -> {
+                            var p = fsp.getProduct();
+                            if (p == null) return false;
+                            if (p.getStatus() != null && p.getStatus() == 0) return false;
+                            if (p.getCategory() != null && !p.getCategory().isActive()) return false;
+                            if (p.getBrandName() != null && !p.getBrandName().trim().isEmpty()) {
+                                return activeBrandNamesLower.contains(p.getBrandName().trim().toLowerCase());
+                            }
+                            return true;
+                        })
+                        .map(fsp -> {
+                    Map<String, Object> fMap = new HashMap<>();
+                    fMap.put("id", fsp.getId());
+                    fMap.put("salePrice", fsp.getSalePrice());
+                    fMap.put("quantityLimit", fsp.getQuantityLimit());
+                    fMap.put("soldQuantity", fsp.getSoldQuantity());
+
+                    Map<String, Object> pMap = new HashMap<>();
+                    var p = fsp.getProduct();
+                    pMap.put("id", p.getId());
+                    pMap.put("productName", p.getProductName());
+                    pMap.put("brandName", p.getBrandName());
+
+                    String mainImg = "";
+                    if (p.getImages() != null && !p.getImages().isEmpty()) {
+                        mainImg = "/images/" + p.getImages().iterator().next().getImageUrl();
                     }
-                }
-                pMap.put("oldPrice", oldPrice);
+                    pMap.put("imageUrl", mainImg);
 
-                fMap.put("product", pMap);
-                return fMap;
-            }).collect(Collectors.toList());
+                    double oldPrice = 0;
+                    if (p.getVariants() != null && !p.getVariants().isEmpty()) {
+                        var firstVar = p.getVariants().iterator().next();
+                        if (firstVar != null && firstVar.getPrice() != null) {
+                            oldPrice = firstVar.getPrice().doubleValue();
+                        }
+                    }
+                    pMap.put("oldPrice", oldPrice);
+
+                    fMap.put("product", pMap);
+                    return fMap;
+                }).collect(Collectors.toList());
+
+                campaignMap.put("products", productsMap);
+                campaignsMapList.add(campaignMap);
+            }
+
+            Map<String, Object> firstCampaign = campaignsMapList.get(0);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("hasActiveCampaign", true);
-            response.put("campaign", campaignMap);
-            response.put("products", productsMap);
+            response.put("campaign", firstCampaign);
+            response.put("products", firstCampaign.get("products"));
+            response.put("campaigns", campaignsMapList);
 
             return ResponseEntity.ok(response);
 
@@ -221,39 +255,30 @@ public class FlashSaleApiController {
             java.time.LocalDateTime start = java.time.LocalDateTime.parse(startDateStr);
             java.time.LocalDateTime end = java.time.LocalDateTime.parse(endDateStr);
 
-            int startHour = start.getHour();
-            int startMinute = start.getMinute();
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
 
-            boolean isValidShift = false;
-            java.time.LocalDateTime maxEnd = start;
-
-            if (startHour == 9 && startMinute == 0) {
-                isValidShift = true;
-                maxEnd = start.withHour(14).withMinute(0).withSecond(0).withNano(0);
-            } else if (startHour == 14 && startMinute == 0) {
-                isValidShift = true;
-                maxEnd = start.withHour(20).withMinute(0).withSecond(0).withNano(0);
-            } else if (startHour == 20 && startMinute == 0) {
-                isValidShift = true;
-                maxEnd = start.plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0);
-            }
-
-            if (!isValidShift) {
+            if (id == null && start.isBefore(now.minusMinutes(5))) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Flash Sale chỉ được phép bắt đầu vào các khung giờ cố định (09:00, 14:00, 20:00) và mỗi khung giờ chỉ được có 1 chiến dịch hoạt động. Vui lòng chỉnh sửa lại thời gian."));
+                        .body(Map.of("success", false, "message", "Thời gian bắt đầu không được nằm trong quá khứ!"));
             }
 
-            if (end.isAfter(maxEnd)) {
-                String nextShift = startHour == 9 ? "14:00" : (startHour == 14 ? "20:00" : "09:00 ngày hôm sau");
+            if (!end.isAfter(start)) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Ca " + String.format("%02d:00", startHour) + " phải kết thúc trước " + nextShift + "!"));
+                        .body(Map.of("success", false, "message", "Thời gian kết thúc phải sau thời gian bắt đầu!"));
             }
 
+            // 1. Kiểm tra trùng lặp thời gian với các chiến dịch Flash Sale khác (status = 1)
             if (status == 1) {
-                long count = flashSaleRepository.countActiveCampaignsInShift(start, id);
-                if (count > 0) {
+                List<FlashSale> overlaps = flashSaleRepository.findOverlappingFlashSales(start, end, id);
+                if (!overlaps.isEmpty()) {
+                    FlashSale existing = overlaps.get(0);
+                    String existingStartStr = existing.getStartDate().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy"));
+                    String existingEndStr = existing.getEndDate().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy"));
                     return ResponseEntity.badRequest()
-                            .body(Map.of("success", false, "message", "Flash Sale chỉ được phép bắt đầu vào các khung giờ cố định (09:00, 14:00, 20:00) và mỗi khung giờ chỉ được có 1 chiến dịch hoạt động. Vui lòng chỉnh sửa lại thời gian."));
+                            .body(Map.of("success", false, "message", 
+                                "Trong cùng một thời điểm không được có hai chương trình Flash Sale cùng lúc! Chiến dịch '" 
+                                + existing.getName() + "' (#" + existing.getId() + ") diễn ra từ " 
+                                + existingStartStr + " đến " + existingEndStr + "."));
                 }
             }
 
@@ -289,6 +314,33 @@ public class FlashSaleApiController {
                             } catch (Exception e) {}
                         } else {
                             fsp.setProductVariant(null);
+                        }
+
+                        // 2. Kiểm tra giá sale không được lớn hơn hoặc bằng giá gốc
+                        java.math.BigDecimal origPrice = null;
+                        if (fsp.getProductVariant() != null && fsp.getProductVariant().getPrice() != null) {
+                            origPrice = fsp.getProductVariant().getPrice();
+                        } else if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+                            origPrice = product.getVariants().stream()
+                                    .map(com.ShoeStore.model.ProductVariant::getPrice)
+                                    .filter(p -> p != null)
+                                    .min(java.math.BigDecimal::compareTo)
+                                    .orElse(null);
+                        }
+
+                        if (origPrice != null && salePrice.compareTo(origPrice) >= 0) {
+                            String pName = product.getProductName();
+                            if (fsp.getProductVariant() != null) {
+                                String vDetail = "";
+                                if (fsp.getProductVariant().getColor() != null) vDetail += fsp.getProductVariant().getColor().getColorName();
+                                if (fsp.getProductVariant().getSize() != null) vDetail += " - " + fsp.getProductVariant().getSize().getSizeName();
+                                pName += " (" + vDetail + ")";
+                            }
+                            return ResponseEntity.badRequest().body(Map.of(
+                                "success", false,
+                                "message", "Giá Flash Sale (" + new java.text.DecimalFormat("#,###").format(salePrice) + "đ) của sản phẩm '" 
+                                        + pName + "' không được lớn hơn hoặc bằng giá gốc (" + new java.text.DecimalFormat("#,###").format(origPrice) + "đ)!"
+                            ));
                         }
 
                         fsp.setSalePrice(salePrice);

@@ -240,7 +240,15 @@
    FEATURES BAR
    ===================================================== */
 .god-features-bar {
-    background-color: #0a0a0a !important;
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0;
+    border-top: 1px solid #e2e8f0;
+}
+.god-features-bar h6 {
+    color: #0f172a !important;
+}
+.god-features-bar p {
+    color: #64748b !important;
 }
 .god-features-bar .feature-icon i {
     transition: transform 0.3s ease;
@@ -521,6 +529,47 @@
     font-weight: 900;
     font-family: 'Oswald', sans-serif;
     color: #fff;
+    align-self: center;
+    margin-bottom: 18px;
+}
+
+/* Light mode Countdown overrides */
+.god-countdown-light { display: flex; align-items: center; gap: 10px; }
+.god-countdown-light .cd-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid #e2e8f0;
+    padding: 14px 22px;
+    min-width: 82px;
+    background: #f8fafc;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: background 0.3s, transform 0.2s;
+}
+.god-countdown-light .cd-block:hover {
+    background: #f1f5f9;
+    transform: translateY(-2px);
+}
+.god-countdown-light .cd-num {
+    font-family: 'Oswald', sans-serif;
+    font-size: 36px;
+    font-weight: 900;
+    line-height: 1;
+    color: #0f172a;
+}
+.god-countdown-light .cd-txt {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-top: 6px;
+    color: #64748b;
+}
+.god-countdown-light .cd-colon {
+    font-size: 36px;
+    font-weight: 900;
+    font-family: 'Oswald', sans-serif;
+    color: #0f172a;
     align-self: center;
     margin-bottom: 18px;
 }

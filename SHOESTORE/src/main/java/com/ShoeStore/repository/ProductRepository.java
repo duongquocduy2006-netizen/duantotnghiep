@@ -18,6 +18,9 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
         @EntityGraph(attributePaths = { "category", "variants", "images" })
         java.util.Optional<Product> findById(Integer id);
 
+        @EntityGraph(attributePaths = { "category", "variants", "images" })
+        java.util.Optional<Product> findByProductCode(String productCode);
+
         @Query("SELECT COUNT(p) > 0 FROM Product p WHERE p.category.id = ?1")
         boolean existsByCategoryId(Integer categoryId);
 

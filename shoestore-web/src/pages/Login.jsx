@@ -8,6 +8,7 @@ const Login = () => {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [errors, setErrors] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
@@ -52,6 +53,11 @@ const Login = () => {
             
             if (response.data.success) {
                 sessionStorage.setItem('toast_message', 'Đăng nhập thành công!');
+                if (response.data.account) {
+                    localStorage.setItem('account', JSON.stringify(response.data.account));
+                }
+                // Thông báo Header cập nhật trạng thái đăng nhập
+                window.dispatchEvent(new Event('auth-changed'));
                 navigate('/');
             }
         } catch (err) {
@@ -59,7 +65,7 @@ const Login = () => {
             if (err.message === 'Network Error') {
                 setError('Lỗi kết nối đến Server! Hãy kiểm tra xem Backend đã chạy chưa hoặc lỗi CORS.');
             } else if (err.response && err.response.data && err.response.data.message) {
-                setError('Đăng nhập thất bại: ' + err.response.data.message);
+                setError(err.response.data.message);
             } else {
                 setError('Sai email hoặc mật khẩu!');
             }
@@ -122,17 +128,28 @@ const Login = () => {
 
                         <div className="mb-3">
                             <label className="form-label">Mật khẩu</label>
-                            <input 
-                                type="password" 
-                                className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
-                                style={errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}}
-                                placeholder="NHẬP MẬT KHẨU"
-                                value={password}
-                                onChange={(e) => {
-                                    setPassword(e.target.value);
-                                    if(errors.password) setErrors({...errors, password: ''});
-                                }}
-                            />
+                            <div className="position-relative">
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    className={`form-control custom-input ${errors.password ? 'is-invalid border-danger' : ''}`}
+                                    style={{ paddingRight: '45px', ...(errors.password ? {borderColor: '#dc3545', boxShadow: '0 0 5px rgba(220,53,69,0.5)'} : {}) }}
+                                    placeholder="NHẬP MẬT KHẨU"
+                                    value={password}
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        if(errors.password) setErrors({...errors, password: ''});
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn position-absolute top-50 end-0 translate-middle-y border-0 text-secondary pe-3"
+                                    style={{ background: 'none', zIndex: 5, cursor: 'pointer' }}
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    tabIndex="-1"
+                                >
+                                    <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                </button>
+                            </div>
                             {errors.password && <div className="text-danger mt-1" style={{fontSize: '12px', fontWeight: '500'}}>{errors.password}</div>}
                         </div>
 

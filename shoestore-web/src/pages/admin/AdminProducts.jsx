@@ -106,7 +106,7 @@ const AdminProducts = () => {
         <AdminLayout>
             <div className="admin-page-header" style={{ marginBottom: '35px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div className="header-left">
-                    <span className="sub-title-neon">⌨ SINGLE PAGE APPLICATION (REST API)</span>
+                    <span className="sub-title-neon"><i className="bi bi-box-seam me-1"></i> PRODUCT MANAGEMENT (REST API)</span>
                     <h1 className="cinematic-title" style={{ margin: 0 }}>DANH SÁCH SẢN PHẨM</h1>
                 </div>
                 <Link to="/admin/products/create" className="btn-add-red-solid">
@@ -183,10 +183,11 @@ const AdminProducts = () => {
                                     <tr key={p.id}>
                                         <td>
                                             <div className="product-item" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                                <div className="table-img-box" style={{ width: '60px', height: '70px', flexShrink: 0 }}>
+                                                <div className="table-img-box" style={{ width: '56px', height: '56px', flexShrink: 0 }}>
                                                     <img
                                                         src={getImageUrl(p.imageUrl)}
                                                         alt={p.productName}
+                                                        style={{ objectFit: 'cover', padding: 0 }}
                                                         onError={(e) => {
                                                             e.target.onerror = null;
                                                             e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.productName)}&background=fff&color=000&bold=true`;

@@ -29,11 +29,26 @@ public class ProfileApiController {
         try {
             String email = (String) sessionAccount.get("email");
 
-            String sql = "SELECT a.id, a.user_code, a.full_name, a.email, a.phone, a.status, a.role, a.points, a.membership_rank_id, r.rank_name, r.free_shipping "
+            String sql = "SELECT a.id, a.user_code, a.full_name, a.email, a.phone, a.status, a.role, a.points, a.membership_rank_id, r.rank_name, r.color_code, r.free_shipping "
                     + "FROM accounts a "
                     + "LEFT JOIN membership_ranks r ON a.membership_rank_id = r.id "
-                    + "WHERE a.email = ?";
+                    + "WHERE LOWER(a.email) = LOWER(?)";
             Map<String, Object> freshAccount = jdbc.queryForMap(sql, email);
+
+            if (freshAccount.get("membership_rank_id") == null || freshAccount.get("free_shipping") == null) {
+                int pts = freshAccount.get("points") != null ? ((Number) freshAccount.get("points")).intValue() : 0;
+                java.util.List<Map<String, Object>> ranks = jdbc.queryForList("SELECT id, rank_name, free_shipping FROM membership_ranks WHERE min_points <= ? ORDER BY min_points DESC", pts);
+                if (!ranks.isEmpty()) {
+                    int rId = ((Number) ranks.get(0).get("id")).intValue();
+                    Object fs = ranks.get(0).get("free_shipping");
+                    Object rName = ranks.get(0).get("rank_name");
+                    jdbc.update("UPDATE accounts SET membership_rank_id = ? WHERE id = ?", rId, freshAccount.get("id"));
+                    freshAccount.put("membership_rank_id", rId);
+                    freshAccount.put("free_shipping", fs);
+                    freshAccount.put("rank_name", rName);
+                }
+            }
+            freshAccount.put("freeShipping", freshAccount.get("free_shipping"));
 
             // Xử lý giá trị null thành chuỗi rỗng
             if (freshAccount.get("phone") == null) freshAccount.put("phone", "");

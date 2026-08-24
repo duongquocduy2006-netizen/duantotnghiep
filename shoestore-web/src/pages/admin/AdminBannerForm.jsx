@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/AdminLayout';
+import DateTimePicker24h from '../../components/DateTimePicker24h';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import './AdminFormModern.css';
@@ -12,7 +13,7 @@ const AdminBannerForm = () => {
     const [name, setName] = useState('');
     const [event, setEvent] = useState('');
     const [description, setDescription] = useState('');
-    const [seasonType, setSeasonType] = useState('Default');
+    const [seasonType, setSeasonType] = useState(isEdit ? 'Default' : 'Limited');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [status, setStatus] = useState(true);
@@ -89,21 +90,53 @@ const AdminBannerForm = () => {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: "Đã xóa ảnh khỏi database." }));
             } catch (error) {
                 console.error("Lỗi khi xóa ảnh:", error);
-                alert("Không thể xóa ảnh. Vui lòng thử lại.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể xóa ảnh. Vui lòng thử lại." }));
             }
         }
     };
 
+    const [formErrors, setFormErrors] = useState({});
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        const errors = {};
+        if (!name || !name.trim()) {
+            errors.name = "Vui lòng nhập tên chiến dịch banner!";
+        }
+        
+        if (seasonType === 'Limited') {
+            if (!startDate) {
+                errors.startDate = "Vui lòng chọn ngày & giờ bắt đầu!";
+            }
+            if (!endDate) {
+                errors.endDate = "Vui lòng chọn ngày & giờ kết thúc!";
+            } else if (startDate && new Date(startDate) >= new Date(endDate)) {
+                errors.endDate = "Ngày kết thúc phải sau ngày bắt đầu!";
+            }
+        }
+
+        const totalImages = (existingImages ? existingImages.length : 0) + (images ? images.length : 0);
+        if (totalImages === 0) {
+            errors.images = "Bắt buộc phải tải lên ít nhất 1 hình ảnh cho banner!";
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            const firstErr = Object.values(errors)[0];
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: firstErr }));
+            return;
+        }
+        setFormErrors({});
+
         const formData = new FormData();
         if (isEdit) formData.append('id', id);
-        formData.append('name', name);
+        formData.append('name', name.trim());
         formData.append('event', event);
         formData.append('description', description);
         formData.append('seasonType', seasonType);
-        formData.append('startDate', startDate);
-        formData.append('endDate', endDate);
+        formData.append('startDate', seasonType === 'Default' ? '' : startDate);
+        formData.append('endDate', seasonType === 'Default' ? '' : endDate);
         formData.append('status', status);
 
         images.forEach(image => {
@@ -112,14 +145,21 @@ const AdminBannerForm = () => {
 
         try {
             // Both Add and Edit use POST in the API
-            await api.post('/api/banners', formData);
+            const response = await api.post('/api/banners', formData);
+            if (response.data && response.data.error) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.error }));
+                return;
+            }
             window.dispatchEvent(new CustomEvent('show-toast', {
                 detail: isEdit ? 'Cập nhật banner thành công!' : 'Thêm banner thành công!'
             }));
             navigate('/admin/banners');
         } catch (error) {
             console.error('Lỗi khi lưu banner:', error);
-            alert('Có lỗi xảy ra khi lưu dữ liệu. Vui lòng kiểm tra lại.');
+            const errMsg = error.response && error.response.data && (error.response.data.error || error.response.data.message)
+                ? (error.response.data.error || error.response.data.message)
+                : 'Không thể lưu banner. Vui lòng kiểm tra lại.';
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         }
     };
 
@@ -143,94 +183,137 @@ const AdminBannerForm = () => {
                         </div>
                     </div>
 
-                    <div className="row g-4">
-                        <div className="col-lg-7">
-                            <div className="form-card mb-4">
+                    <div className="row g-4 align-items-stretch">
+                        <div className="col-lg-7 d-flex flex-column">
+                            <div className="form-card d-flex flex-column h-100">
                                 <h3 className="form-card-title">THÔNG TIN CHIẾN DỊCH</h3>
 
-                                <div className="mb-4">
-                                    <label className="form-label-modern">Tên chiến dịch *</label>
+                                <div className="mb-3">
+                                    <label className="form-label-modern">Tên chiến dịch <span className="text-danger">*</span></label>
                                     <input
                                         type="text"
-                                        className="form-input-modern"
+                                        className={`form-input-modern ${formErrors.name ? 'is-invalid border-danger' : ''}`}
                                         placeholder="VD: Summer Sale 2024"
-                                        required
                                         value={name}
-                                        onChange={(e) => setName(e.target.value)}
+                                        onChange={(e) => {
+                                            setName(e.target.value);
+                                            if (formErrors.name) setFormErrors({ ...formErrors, name: null });
+                                        }}
                                     />
+                                    {formErrors.name && (
+                                        <div className="text-danger small mt-1 font-oswald fw-bold">
+                                            <i className="bi bi-exclamation-circle me-1"></i>{formErrors.name}
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="row">
-                                    <div className="col-md-6 mb-4">
-                                        <label className="form-label-modern">Sự kiện / Dịp</label>
-                                        <input
-                                            type="text"
-                                            className="form-input-modern"
-                                            placeholder="VD: Black Friday"
-                                            value={event}
-                                            onChange={(e) => setEvent(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="col-md-6 mb-4">
-                                        <label className="form-label-modern">Loại hiển thị</label>
-                                        <select
-                                            className="form-input-modern"
-                                            value={seasonType}
-                                            onChange={(e) => setSeasonType(e.target.value)}
-                                        >
-                                            <option value="Default">Mặc định</option>
-                                            <option value="Limited">Giới hạn</option>
-                                            <option value="Collection">Bộ sưu tập</option>
-                                        </select>
-                                    </div>
+
+
+                                <div className="mb-3">
+                                    <label className="form-label-modern">Loại hiển thị</label>
+                                    {isEdit && seasonType === 'Default' ? (
+                                        <>
+                                            <input
+                                                type="text"
+                                                className="form-input-modern fw-bold text-info bg-info bg-opacity-10 border-info-subtle"
+                                                value="Mặc định (Vĩnh viễn - Không giới hạn thời gian)"
+                                                readOnly
+                                                disabled
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <input
+                                                type="text"
+                                                className="form-input-modern fw-bold text-dark bg-light"
+                                                value="Giới hạn thời gian (Có thời gian bắt đầu & kết thúc)"
+                                                readOnly
+                                                disabled
+                                            />
+                                            <div className="text-muted small mt-1 font-oswald">
+                                                <i className="bi bi-info-circle me-1"></i>Hệ thống đã có 1 Banner Mặc định chạy vĩnh viễn, các chiến dịch thêm mới chỉ áp dụng loại Giới hạn thời gian.
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
-                                <div className="row">
-                                     <div className="col-md-6 mb-4">
-                                         <div className="d-flex justify-content-between align-items-center mb-1">
-                                             <label className="form-label-modern mb-0">Ngày bắt đầu</label>
-                                             <button 
-                                                 type="button" 
-                                                 className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
-                                                 style={{ fontSize: '11px', letterSpacing: '0.5px' }}
-                                                 onClick={() => setStartDate(getCurrentDateTimeString())}
-                                             >
-                                                 <i className="bi bi-clock-history me-1"></i> Ngay lúc này
-                                             </button>
-                                         </div>
-                                         <input
-                                             type="datetime-local"
-                                             className="form-input-modern"
-                                             value={startDate}
-                                             onChange={(e) => setStartDate(e.target.value)}
-                                         />
-                                     </div>
-                                     <div className="col-md-6 mb-4">
-                                         <div className="d-flex justify-content-between align-items-center mb-1">
-                                             <label className="form-label-modern mb-0">Ngày kết thúc</label>
-                                             <button 
-                                                 type="button" 
-                                                 className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
-                                                 style={{ fontSize: '11px', letterSpacing: '0.5px' }}
-                                                 onClick={() => setEndDate(getCurrentDateTimeString())}
-                                             >
-                                                 <i className="bi bi-clock-history me-1"></i> Ngay lúc này
-                                             </button>
-                                         </div>
-                                         <input
-                                             type="datetime-local"
-                                             className="form-input-modern"
-                                             value={endDate}
-                                             onChange={(e) => setEndDate(e.target.value)}
-                                         />
-                                     </div>
-                                 </div>
+                                {seasonType === 'Default' ? (
+                                    <div className="alert alert-info py-2.5 px-3 mb-3 d-flex align-items-center gap-2 border-0 bg-info bg-opacity-10 text-info font-oswald" style={{ borderRadius: '8px', fontSize: '13px' }}>
+                                        <i className="bi bi-infinity fs-5"></i>
+                                        <span>Banner <strong>Mặc định</strong> sẽ hiển thị vĩnh viễn trên hệ thống và không cần thiết lập giới hạn thời gian.</span>
+                                    </div>
+                                ) : (
+                                    <div className="row">
+                                        <div className="col-md-6 mb-3">
+                                            <div className="d-flex justify-content-between align-items-center mb-1">
+                                                <label className="form-label-modern mb-0">Ngày bắt đầu <span className="text-danger">*</span></label>
+                                                <button 
+                                                    type="button" 
+                                                    className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                                    style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                                    onClick={() => {
+                                                        setStartDate(getCurrentDateTimeString());
+                                                        if (formErrors.startDate) setFormErrors({ ...formErrors, startDate: null });
+                                                    }}
+                                                >
+                                                    <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                                </button>
+                                            </div>
+                                            <DateTimePicker24h
+                                                title="CHỌN NGÀY BẮT ĐẦU BANNER (24H)"
+                                                value={startDate}
+                                                placeholder="Bấm chọn ngày & giờ bắt đầu..."
+                                                min={getCurrentDateTimeString()}
+                                                onChange={(val) => {
+                                                    setStartDate(val);
+                                                    if (formErrors.startDate) setFormErrors({ ...formErrors, startDate: null });
+                                                }}
+                                            />
+                                            {formErrors.startDate && (
+                                                <div className="text-danger small mt-1 font-oswald fw-bold">
+                                                    <i className="bi bi-exclamation-circle me-1"></i>{formErrors.startDate}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="col-md-6 mb-3">
+                                            <div className="d-flex justify-content-between align-items-center mb-1">
+                                                <label className="form-label-modern mb-0">Ngày kết thúc <span className="text-danger">*</span></label>
+                                                <button 
+                                                    type="button" 
+                                                    className="btn btn-link p-0 text-danger text-decoration-none font-oswald text-uppercase fw-bold" 
+                                                    style={{ fontSize: '11px', letterSpacing: '0.5px' }}
+                                                    onClick={() => {
+                                                        setEndDate(getCurrentDateTimeString());
+                                                        if (formErrors.endDate) setFormErrors({ ...formErrors, endDate: null });
+                                                    }}
+                                                >
+                                                    <i className="bi bi-clock-history me-1"></i> Ngay lúc này
+                                                </button>
+                                            </div>
+                                            <DateTimePicker24h
+                                                title="CHỌN NGÀY KẾT THÚC BANNER (24H)"
+                                                value={endDate}
+                                                placeholder="Bấm chọn ngày & giờ kết thúc..."
+                                                min={startDate || getCurrentDateTimeString()}
+                                                onChange={(val) => {
+                                                    setEndDate(val);
+                                                    if (formErrors.endDate) setFormErrors({ ...formErrors, endDate: null });
+                                                }}
+                                            />
+                                            {formErrors.endDate && (
+                                                <div className="text-danger small mt-1 font-oswald fw-bold">
+                                                    <i className="bi bi-exclamation-circle me-1"></i>{formErrors.endDate}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
-                                <div className="mb-4">
+                                <div className="mb-3">
                                     <label className="form-label-modern">Mô tả thêm</label>
                                     <textarea
                                         className="form-input-modern"
-                                        rows="3"
+                                        rows="2"
                                         placeholder="Ghi chú nội bộ cho chiến dịch này..."
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
@@ -251,35 +334,47 @@ const AdminBannerForm = () => {
                             </div>
                         </div>
 
-                        <div className="col-lg-5">
-                            <div className="form-card">
-                                <h3 className="form-card-title">HÌNH ẢNH BANNER</h3>
+                        <div className="col-lg-5 d-flex flex-column">
+                            <div className="form-card d-flex flex-column h-100">
+                                <h3 className="form-card-title">HÌNH ẢNH BANNER <span className="text-danger">*</span></h3>
 
-                                <div className="image-drop-zone-modern" onClick={() => document.getElementById('banner-upload').click()}>
-                                    <i className="bi bi-cloud-arrow-up display-4 text-muted mb-3 d-block"></i>
-                                    <p className="mb-0 fw-bold">Kéo thả hoặc Click để tải ảnh</p>
-                                    <p className="text-muted small">Khuyên dùng tỷ lệ 16:9 cho trang chủ</p>
+                                <div 
+                                    className={`image-drop-zone-modern flex-grow-1 ${formErrors.images ? 'border-danger bg-danger-subtle' : ''}`} 
+                                    onClick={() => document.getElementById('banner-upload').click()}
+                                >
+                                    <i className="bi bi-cloud-arrow-up display-5 text-muted mb-2 d-block"></i>
+                                    <p className="mb-1 fw-bold text-dark">Kéo thả hoặc Click để tải ảnh</p>
+                                    <p className="text-muted small mb-0">Khuyên dùng tỷ lệ 16:9 cho trang chủ (Bắt buộc)</p>
                                     <input
                                         type="file"
                                         id="banner-upload"
                                         multiple
                                         hidden
-                                        onChange={handleImageChange}
+                                        onChange={(e) => {
+                                            handleImageChange(e);
+                                            if (formErrors.images) setFormErrors({ ...formErrors, images: null });
+                                        }}
                                     />
                                 </div>
 
+                                {formErrors.images && (
+                                    <div className="text-danger small mt-2 font-oswald text-center fw-bold">
+                                        <i className="bi bi-exclamation-circle me-1"></i>{formErrors.images}
+                                    </div>
+                                )}
+
                                 {(existingImages.length > 0 || newPreviews.length > 0) && (
-                                    <div className="mt-4 pt-3 border-top">
-                                        <label className="form-label-modern">Ảnh đã chọn ({existingImages.length + newPreviews.length})</label>
+                                    <div className="mt-3 pt-3 border-top">
+                                        <label className="form-label-modern mb-2">Ảnh đã chọn ({existingImages.length + newPreviews.length})</label>
                                         <div className="d-flex flex-wrap gap-2">
                                             {/* Existing images from DB */}
                                             {existingImages.map((img) => (
-                                                <div key={`existing-${img.id}`} style={{ position: 'relative', width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
+                                                <div key={`existing-${img.id}`} style={{ position: 'relative', width: '140px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
                                                     <img src={imgUrl(img.imageUrl)} alt="Existing Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                     <button
                                                         type="button"
                                                         onClick={() => removeExistingImage(img.id)}
-                                                        style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '22px', height: '22px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}
                                                     >
                                                         <i className="bi bi-trash text-danger" style={{ fontSize: '11px' }}></i>
                                                     </button>
@@ -287,14 +382,14 @@ const AdminBannerForm = () => {
                                             ))}
                                             {/* New locally selected images */}
                                             {newPreviews.map((src, idx) => (
-                                                <div key={`new-${idx}`} style={{ position: 'relative', width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
+                                                <div key={`new-${idx}`} style={{ position: 'relative', width: '140px', height: '80px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
                                                     <img src={src} alt="New Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                     <button
                                                         type="button"
                                                         onClick={() => removeNewImage(idx)}
-                                                        style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(255,255,255,0.8)', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '22px', height: '22px', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}
                                                     >
-                                                        <i className="bi bi-x text-dark" style={{ fontSize: '12px', fontWeight: 'bold' }}></i>
+                                                        <i className="bi bi-x text-dark" style={{ fontSize: '14px', fontWeight: 'bold' }}></i>
                                                     </button>
                                                 </div>
                                             ))}

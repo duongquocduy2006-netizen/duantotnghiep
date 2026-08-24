@@ -56,7 +56,27 @@ public class AdminRankManager {
 
     @PostMapping("/add")
     public String saveAdd(@ModelAttribute("rank") MembershipRank rank, Model model) {
+        if (rank.getRankName() == null || rank.getRankName().trim().isEmpty() || rank.getMinPoints() == null) {
+            model.addAttribute("error", "Thiếu thông tin bắt buộc!");
+            return "admin/add-ranks";
+        }
+        String nameCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE LOWER(TRIM(rank_name)) = LOWER(TRIM(?))";
+        Integer countName = jdbc.queryForObject(nameCheckSql, Integer.class, rank.getRankName().trim());
+        if (countName != null && countName > 0) {
+            model.addAttribute("error", "Tên hạng thành viên '" + rank.getRankName().trim() + "' đã tồn tại!");
+            return "admin/add-ranks";
+        }
+        String pointsCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE min_points = ?";
+        Integer countPoints = jdbc.queryForObject(pointsCheckSql, Integer.class, rank.getMinPoints());
+        if (countPoints != null && countPoints > 0) {
+            model.addAttribute("error", "Ngưỡng điểm tối thiểu (" + rank.getMinPoints() + " điểm) đã tồn tại, vui lòng nhập số điểm khác!");
+            return "admin/add-ranks";
+        }
+
+        rank.setRankName(rank.getRankName().trim());
+        if (rank.getDiscountPercent() == null) rank.setDiscountPercent(0.0);
         rankRepo.save(rank);
+        recalculateUserRanks();
         model.addAttribute("message", "Thêm hạng thành viên mới thành công!");
         model.addAttribute("rank", new MembershipRank());
         return "admin/add-ranks";
@@ -75,7 +95,27 @@ public class AdminRankManager {
     @PostMapping("/edit/{id}")
     public String saveUpdate(@PathVariable("id") Integer id, @ModelAttribute("rank") MembershipRank rank, Model model) {
         rank.setId(id);
+        if (rank.getRankName() == null || rank.getRankName().trim().isEmpty() || rank.getMinPoints() == null) {
+            model.addAttribute("error", "Thiếu thông tin bắt buộc!");
+            return "admin/add-ranks";
+        }
+        String nameCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE LOWER(TRIM(rank_name)) = LOWER(TRIM(?)) AND id <> ?";
+        Integer countName = jdbc.queryForObject(nameCheckSql, Integer.class, rank.getRankName().trim(), id);
+        if (countName != null && countName > 0) {
+            model.addAttribute("error", "Tên hạng thành viên '" + rank.getRankName().trim() + "' đã tồn tại!");
+            return "admin/add-ranks";
+        }
+        String pointsCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE min_points = ? AND id <> ?";
+        Integer countPoints = jdbc.queryForObject(pointsCheckSql, Integer.class, rank.getMinPoints(), id);
+        if (countPoints != null && countPoints > 0) {
+            model.addAttribute("error", "Ngưỡng điểm tối thiểu (" + rank.getMinPoints() + " điểm) đã tồn tại, vui lòng nhập số điểm khác!");
+            return "admin/add-ranks";
+        }
+
+        rank.setRankName(rank.getRankName().trim());
+        if (rank.getDiscountPercent() == null) rank.setDiscountPercent(0.0);
         rankRepo.save(rank);
+        recalculateUserRanks();
         model.addAttribute("message", "Cập nhật hạng thành viên thành công!");
         model.addAttribute("rank", rank);
         return "admin/add-ranks";
@@ -92,11 +132,41 @@ public class AdminRankManager {
             jdbc.update("UPDATE accounts SET membership_rank_id = 1 WHERE membership_rank_id = ?", id);
 
             rankRepo.deleteById(id);
+            recalculateUserRanks();
             ra.addFlashAttribute("message",
-                    "Xóa hạng thành viên thành công! Các khách hàng cũ đã được chuyển về hạng mặc định.");
+                    "Xóa hạng thành viên thành công! Các khách hàng cũ đã được cập nhật lại hạng phù hợp.");
         } catch (Exception e) {
             ra.addFlashAttribute("error", "Lỗi khi xóa hạng: " + e.getMessage());
         }
         return "redirect:/admin/ranks";
+    }
+
+    private void recalculateUserRanks() {
+        try {
+            List<Map<String, Object>> ranks = jdbc.queryForList(
+                    "SELECT id, min_points FROM membership_ranks ORDER BY min_points DESC");
+            if (ranks.isEmpty()) return;
+
+            List<Map<String, Object>> accounts = jdbc.queryForList("SELECT id, COALESCE(points, 0) as points FROM accounts");
+
+            for (Map<String, Object> acc : accounts) {
+                Object idObj = acc.get("id");
+                if (idObj == null) continue;
+                long userId = ((Number) idObj).longValue();
+                int points = acc.get("points") != null ? ((Number) acc.get("points")).intValue() : 0;
+
+                int newRankId = 1;
+                for (Map<String, Object> r : ranks) {
+                    int minPoints = ((Number) r.get("min_points")).intValue();
+                    if (points >= minPoints) {
+                        newRankId = ((Number) r.get("id")).intValue();
+                        break;
+                    }
+                }
+                jdbc.update("UPDATE accounts SET membership_rank_id = ? WHERE id = ?", newRankId, userId);
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi tính lại hạng thành viên: " + e.getMessage());
+        }
     }
 }

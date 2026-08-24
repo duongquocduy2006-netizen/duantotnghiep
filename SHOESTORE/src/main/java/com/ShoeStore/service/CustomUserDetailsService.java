@@ -22,7 +22,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         try {
-            String sql = "SELECT id, email, password, role, full_name, status FROM accounts WHERE email = ?";
+            String sql = "SELECT id, email, password, role, full_name, status FROM accounts WHERE LOWER(email) = LOWER(?)";
             Map<String, Object> account = jdbc.queryForMap(sql, email);
 
             Integer status = (Integer) account.get("status");

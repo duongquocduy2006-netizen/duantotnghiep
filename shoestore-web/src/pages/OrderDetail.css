@@ -54,18 +54,16 @@
     text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
-/* Main Card - Thicker, more substantial */
+/* Main Card - Flat & Clean */
 .od-main-card {
     background: #fff;
-    border-radius: 20px;
-    /* "Dày hơn" effect with layered shadows and a bottom thick border */
-    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
     border: 1px solid #e2e8f0;
-    border-bottom: 4px solid #cbd5e1;
-    padding: 40px;
+    padding: 24px 28px;
     position: relative;
     z-index: 10;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .od-header-row {
@@ -74,60 +72,59 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 16px;
-    padding-bottom: 24px;
+    padding-bottom: 16px;
     border-bottom: 2px dashed #e2e8f0;
 }
 
 .od-order-id {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 800;
     color: #0f172a;
-    margin: 0 0 6px;
+    margin: 0 0 4px;
     letter-spacing: -0.5px;
 }
 
 .od-order-date {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: #64748b;
     margin: 0;
 }
 
-/* Badges - More solid and vibrant */
+/* Badges - Solid Red for shipping status */
 .od-status-badge {
-    padding: 10px 20px;
+    padding: 8px 16px;
     border-radius: 50px;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 13px;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-.od-status-badge.wait { background: #fffbeb; color: #d97706; border: 2px solid #fde68a; }
-.od-status-badge.shipping { background: #eff6ff; color: #2563eb; border: 2px solid #bfdbfe; }
-.od-status-badge.done { background: #f0fdf4; color: #16a34a; border: 2px solid #bbf7d0; }
-.od-status-badge.cancel { background: #fef2f2; color: #dc2626; border: 2px solid #fecaca; }
+.od-status-badge.wait { background: #fffbeb; color: #d97706; border: 1.5px solid #fde68a; }
+.od-status-badge.shipping { background: #ffe4e6; color: #e50914; border: 1.5px solid #fecdd3; }
+.od-status-badge.done { background: #f0fdf4; color: #16a34a; border: 1.5px solid #bbf7d0; }
+.od-status-badge.cancel { background: #fef2f2; color: #dc2626; border: 1.5px solid #fecaca; }
 
-/* Timeline - Thicker bar */
+/* Timeline - Red signature theme */
 .od-timeline {
     display: flex;
     justify-content: space-between;
     position: relative;
-    margin: 50px 0;
-    padding: 0 30px;
+    margin: 24px 0 32px;
+    padding: 0 20px;
 }
 
 .od-timeline::before {
     content: '';
     position: absolute;
-    top: 26px;
+    top: 22px;
     left: 12.5%;
     right: 12.5%;
-    height: 6px; /* Dày hơn */
+    height: 4px;
     background: #e2e8f0;
     border-radius: 10px;
     z-index: 1;
@@ -135,10 +132,10 @@
 
 .od-timeline-progress {
     position: absolute;
-    top: 26px;
+    top: 22px;
     left: 12.5%;
-    height: 6px; /* Dày hơn */
-    background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+    height: 4px;
+    background: linear-gradient(90deg, #e50914 0%, #b91c1c 100%);
     border-radius: 10px;
     z-index: 2;
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
@@ -152,23 +149,22 @@
 }
 
 .od-step-icon {
-    width: 56px;
-    height: 56px;
+    width: 46px;
+    height: 46px;
     background: #f8fafc;
-    border: 4px solid #e2e8f0;
+    border: 3px solid #e2e8f0;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 14px;
-    font-size: 20px;
+    margin: 0 auto 10px;
+    font-size: 16px;
     color: #94a3b8;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
 .od-step-label {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 700;
     color: #64748b;
     text-transform: uppercase;
@@ -177,65 +173,66 @@
 
 .od-step.active .od-step-icon,
 .od-step.completed .od-step-icon {
-    border-color: #2563eb;
-    background: #2563eb;
-    color: #fff;
-    box-shadow: 0 0 0 6px #eff6ff, 0 4px 10px rgba(37, 99, 235, 0.3);
+    border-color: #e50914;
+    background: #e50914;
+    color: #ffffff;
+    box-shadow: 0 0 0 5px #ffe4e6, 0 4px 10px rgba(229, 9, 20, 0.3);
 }
 
 .od-step.active .od-step-label,
 .od-step.completed .od-step-label {
-    color: #0f172a;
+    color: #e50914;
+    font-weight: 800;
 }
 
-/* Info Cards - Substantial blocks */
+/* Info Cards - Flat Minimal Design (Compact 3-column layout) */
 .od-info-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 24px;
-    margin-bottom: 40px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
 .od-info-card {
-    background: #f8fafc;
-    border-radius: 16px;
-    padding: 24px;
-    border: 2px solid #e2e8f0;
-    border-bottom: 4px solid #cbd5e1; /* Khối nổi dầy */
-    transition: transform 0.2s;
+    background: #fafafa;
+    border-radius: 12px;
+    padding: 16px 18px;
+    border: 1px solid #e2e8f0;
+    box-shadow: none;
+    transition: border-color 0.2s;
 }
 
 .od-info-card:hover {
-    transform: translateY(-2px);
-    border-bottom-color: #94a3b8;
+    transform: none;
+    border-color: #cbd5e1;
 }
 
 .od-info-title {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 800;
     color: #0f172a;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .od-info-title i {
-    color: #dc2626; /* Điểm nhấn đồng bộ màu đỏ đô */
-    font-size: 18px;
+    color: #e50914;
+    font-size: 16px;
 }
 
 .od-info-content p {
-    margin-bottom: 12px;
+    margin-bottom: 6px;
     color: #334155;
-    font-size: 15px;
+    font-size: 13.5px;
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
     font-weight: 500;
 }
 
@@ -456,15 +453,21 @@
     box-shadow: 0 6px 10px rgba(0,0,0,0.05);
 }
 
+@media (max-width: 992px) {
+    .od-info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 768px) {
     .od-main-card {
-        padding: 24px;
+        padding: 20px;
         margin-top: -30px;
     }
     .od-timeline {
         flex-direction: column;
-        gap: 30px;
-        margin: 30px 0;
+        gap: 20px;
+        margin: 20px 0;
         padding: 0;
     }
     .od-timeline::before, .od-timeline-progress {
@@ -473,13 +476,13 @@
     .od-step {
         display: flex;
         align-items: center;
-        gap: 20px;
+        gap: 16px;
         text-align: left;
     }
     .od-step-icon {
         margin: 0;
-        width: 48px;
-        height: 48px;
-        font-size: 18px;
+        width: 42px;
+        height: 42px;
+        font-size: 16px;
     }
 }

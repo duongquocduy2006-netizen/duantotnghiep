@@ -1,119 +1,122 @@
-/* PREMIUM CLEAN FORM - "LOOKBOOK PHOTO" VIBE */
+/* PREMIUM CLEAN FORM - MODERN ADMIN DESIGN SYSTEM */
 :root {
     --accent-red: #E50914;
-    --soft-pink: #fff5f5;
-    --border-pink: #ffe3e3;
-    --text-dark: #1a1a1a;
-    --bg-main: #ffffff;
+    --border-slate: #e2e8f0;
+    --text-dark: #0f172a;
+    --bg-main: #f8fafc;
 }
 
 .admin-form-modern {
-    padding: 10px 15px;
-    background: var(--bg-main);
-    min-height: 100vh;
+    padding: 0;
+    background: transparent;
 }
 
 .form-card {
     background: #ffffff;
-    border: 1px solid var(--border-pink);
-    border-radius: 0px;
-    /* Bo vuông */
-    padding: 20px;
-    /* Reduced from 25px */
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--border-slate);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    height: 100%;
 }
 
 .form-card-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 800;
-    color: #000;
-    margin-bottom: 30px;
+    color: var(--text-dark);
+    margin-bottom: 20px;
     text-transform: uppercase;
     font-family: 'Oswald', sans-serif;
-    border-bottom: 1px solid var(--border-pink);
-    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-slate);
+    padding-bottom: 12px;
+    letter-spacing: 0.5px;
 }
 
 .form-label-modern {
     font-size: 12px;
-    font-weight: 800;
-    color: #666;
+    font-weight: 700;
+    color: #475569;
     text-transform: uppercase;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     display: block;
     letter-spacing: 0.5px;
 }
 
 .form-input-modern {
     width: 100%;
-    padding: 15px 20px;
-    background: #fdfdfd;
-    border: 1px solid #ddd;
-    border-radius: 0px;
-    /* Bo vuông */
+    padding: 10px 14px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
     font-size: 14px;
-    color: #333;
-    transition: 0.3s;
+    color: #0f172a;
+    transition: all 0.2s ease;
+    outline: none;
 }
 
 .form-input-modern:hover {
-    border-color: #bbb;
+    border-color: #94a3b8;
 }
 
 .form-input-modern:focus {
     border-color: var(--accent-red);
-    background: #fff;
+    background: #ffffff;
     outline: none;
-    box-shadow: 0 0 10px rgba(229, 9, 20, 0.05);
+    box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.12);
 }
 
 .image-drop-zone-modern {
-    border: 2px dashed var(--border-pink);
-    background: var(--soft-pink);
-    border-radius: 0px;
-    /* Bo vuông */
-    padding: 60px 20px;
+    border: 2px dashed #cbd5e1;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 36px 20px;
     text-align: center;
     cursor: pointer;
-    transition: 0.3s;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
 }
 
 .image-drop-zone-modern:hover {
     border-color: var(--accent-red);
-    background: #fff;
+    background: #fff5f5;
 }
 
 .btn-modern-primary {
     background: var(--accent-red);
-    color: #fff;
+    color: #ffffff;
     border: none;
-    padding: 15px 35px;
-    border-radius: 0px;
-    /* Bo vuông */
+    padding: 10px 24px;
+    border-radius: 8px;
     font-family: 'Oswald', sans-serif;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: uppercase;
-    transition: 0.3s;
-    box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3);
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.25);
     cursor: pointer;
 }
 
 .btn-modern-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4);
+    background: #b8070f;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(229, 9, 20, 0.35);
 }
 
 .btn-modern-cancel {
-    background: #fff;
-    color: #666;
-    border: 1px solid #ddd;
-    padding: 15px 35px;
-    border-radius: 0px;
-    /* Bo vuông */
+    background: #ffffff;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    padding: 10px 24px;
+    border-radius: 8px;
     font-family: 'Oswald', sans-serif;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: uppercase;
-    transition: 0.3s;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
@@ -121,8 +124,7 @@
 }
 
 .btn-modern-cancel:hover {
-    background: #f8f9fa;
-    color: var(--accent-red);
-    border-color: var(--accent-red);
-    transform: translateY(-1px);
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
 }

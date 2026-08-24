@@ -20,6 +20,9 @@ const AdminBanners = () => {
     const getBannerStatus = (banner) => {
         if (!banner.status) return { text: 'TẠM ẨN', className: 'inactive' };
         
+        const isPermanent = (!banner.startDate && !banner.endDate) || banner.seasonType === 'Default';
+        if (isPermanent) return { text: 'HOẠT ĐỘNG', className: 'active' };
+
         const now = new Date();
         if (banner.startDate && new Date(banner.startDate) > now) {
             return { text: 'CHƯA DIỄN RA', className: 'scheduled' };
@@ -66,12 +69,19 @@ const AdminBanners = () => {
         if (!bannerId) return;
 
         try {
-            await api.delete(`/api/banners/${bannerId}`);
+            const res = await api.delete(`/api/banners/${bannerId}`);
+            if (res.data && res.data.error) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.error }));
+                return;
+            }
             window.dispatchEvent(new CustomEvent('show-toast', { detail: "Xóa banner thành công!" }));
             fetchBanners();
         } catch (error) {
             console.error("Lỗi xóa banner:", error);
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi khi xóa banner" }));
+            const errMsg = error.response && error.response.data && (error.response.data.error || error.response.data.message)
+                ? (error.response.data.error || error.response.data.message)
+                : "Không thể xóa banner mặc định!";
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         } finally {
             cancelDelete();
         }
@@ -97,6 +107,14 @@ const AdminBanners = () => {
         }
         
         return matchesSearch && matchesStatus;
+    });
+
+    const displayBanners = [...filteredBanners].sort((b1, b2) => {
+        const isDef1 = (!b1.startDate && !b1.endDate) || b1.seasonType === 'Default';
+        const isDef2 = (!b2.startDate && !b2.endDate) || b2.seasonType === 'Default';
+        if (isDef1 && !isDef2) return -1; // Banner Mặc định luôn nằm dòng đầu tiên!
+        if (!isDef1 && isDef2) return 1;
+        return (b2.id || 0) - (b1.id || 0);
     });
 
     return (
@@ -146,7 +164,7 @@ const AdminBanners = () => {
                         <div className="text-center py-5">
                             <div className="spinner-border text-danger" role="status"></div>
                         </div>
-                    ) : filteredBanners.length === 0 ? (
+                    ) : displayBanners.length === 0 ? (
                         <div className="text-center py-5 text-muted">
                             Chưa có dữ liệu nào được tìm thấy.
                         </div>
@@ -157,58 +175,73 @@ const AdminBanners = () => {
                                     <th style={{ width: '80px' }}>ID</th>
                                     <th style={{ width: '150px' }}>PREVIEW</th>
                                     <th>TÊN CHIẾN DỊCH</th>
-                                    <th>SỰ KIỆN / MÙA</th>
+                                    <th>MÔ TẢ</th>
                                     <th>THỜI GIAN</th>
                                     <th>TRẠNG THÁI</th>
                                     <th style={{ textAlign: 'right' }}>HÀNH ĐỘNG</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredBanners.map((banner) => (
-                                    <tr key={banner.id}>
-                                        <td className="id-text">#{banner.id}</td>
-                                        <td>
-                                            <div className="table-img-box" style={{ height: '70px', width: '120px' }}>
-                                                <img
-                                                    src={banner.images && banner.images.length > 0
-                                                        ? `http://localhost:8080/uploads/${banner.images[0].imageUrl}`
-                                                        : 'https://via.placeholder.com/120x70'}
-                                                    alt="Preview"
-                                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/120x70'; }}
-                                                />
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="caption-link">{banner.name}</div>
-                                        </td>
-                                        <td>{banner.event || 'N/A'}</td>
-                                        <td>
-                                            <div style={{ fontSize: '12px', color: '#666' }}>
-                                                Từ: {banner.startDate ? new Date(banner.startDate).toLocaleString('vi-VN') : 'N/A'}<br />
-                                                Đến: {banner.endDate ? new Date(banner.endDate).toLocaleString('vi-VN') : 'N/A'}
-                                            </div>
-                                        </td>
-                                         <td>
-                                             {(() => {
-                                                 const statusInfo = getBannerStatus(banner);
-                                                 return (
-                                                     <div className={`status-badge-modern ${statusInfo.className}`}>
-                                                         <div className="status-dot"></div>
-                                                         {statusInfo.text}
-                                                     </div>
-                                                 );
-                                             })()}
-                                         </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <Link to={`/admin/banners/edit/${banner.id}`} className="action-btn-icon" title="Chỉnh sửa">
-                                                <i className="bi bi-pencil-square"></i>
-                                            </Link>
-                                            <button onClick={() => triggerDeleteConfirm(banner.id)} className="action-btn-icon icon-delete" title="Xóa">
-                                                <i className="bi bi-trash3"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {displayBanners.map((banner) => {
+                                    const isPermanent = (!banner.startDate && !banner.endDate) || banner.seasonType === 'Default';
+                                    return (
+                                        <tr key={banner.id} style={isPermanent ? { background: '#f8fafc', borderLeft: '4px solid #0284c7' } : {}}>
+                                            <td className="id-text">#{banner.id}</td>
+                                            <td>
+                                                <div className="table-img-box" style={{ height: '70px', width: '120px' }}>
+                                                    <img
+                                                        src={banner.images && banner.images.length > 0
+                                                            ? `http://localhost:8080/uploads/${banner.images[0].imageUrl}`
+                                                            : 'https://via.placeholder.com/120x70'}
+                                                        alt="Preview"
+                                                        onError={(e) => { e.target.src = 'https://via.placeholder.com/120x70'; }}
+                                                    />
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="caption-link">{banner.name}</div>
+                                            </td>
+                                            <td>{banner.description || 'Không có mô tả'}</td>
+                                            <td>
+                                                {isPermanent ? (
+                                                    <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle font-oswald px-2.5 py-1" style={{ fontSize: '12px' }}>
+                                                        Mặc định
+                                                    </span>
+                                                ) : (
+                                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                                        Từ: {banner.startDate ? new Date(banner.startDate).toLocaleString('vi-VN') : 'N/A'}<br />
+                                                        Đến: {banner.endDate ? new Date(banner.endDate).toLocaleString('vi-VN') : 'N/A'}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td>
+                                                {(() => {
+                                                    const statusInfo = getBannerStatus(banner);
+                                                    return (
+                                                        <div className={`status-badge-modern ${statusInfo.className}`}>
+                                                            <div className="status-dot"></div>
+                                                            {statusInfo.text}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </td>
+                                            <td style={{ textAlign: 'right' }}>
+                                                <Link to={`/admin/banners/edit/${banner.id}`} className="action-btn-icon" title="Chỉnh sửa">
+                                                    <i className="bi bi-pencil-square"></i>
+                                                </Link>
+                                                {isPermanent ? (
+                                                    <button className="action-btn-icon opacity-40 border-0" title="Banner mặc định hệ thống không thể xóa" disabled style={{ cursor: 'not-allowed', background: '#f1f5f9' }}>
+                                                        <i className="bi bi-lock-fill text-muted" style={{ fontSize: '13px' }}></i>
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => triggerDeleteConfirm(banner.id)} className="action-btn-icon icon-delete" title="Xóa">
+                                                        <i className="bi bi-trash3"></i>
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     )}

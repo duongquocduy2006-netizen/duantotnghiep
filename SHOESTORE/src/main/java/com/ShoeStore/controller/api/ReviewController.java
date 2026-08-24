@@ -207,4 +207,45 @@ public class ReviewController {
         }
         return response;
     }
+
+    @PostMapping("/toggle-hide")
+    public Map<String, Object> toggleHideReview(@RequestParam("id") Integer id, HttpSession session) {
+        Map<String, Object> response = new HashMap<>();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> account = (Map<String, Object>) session.getAttribute("account");
+        
+        if (account == null) {
+            response.put("success", false);
+            response.put("message", "Vui lòng đăng nhập với quyền Admin!");
+            return response;
+        }
+
+        try {
+            Map<String, Object> review = jdbc.queryForMap("SELECT user_id, COALESCE(is_hidden, 0) as is_hidden, parent_id FROM product_reviews WHERE id = ?", id);
+            String role = (String) account.get("role");
+            int currentHidden = ((Number) review.get("is_hidden")).intValue();
+
+            // Quyền Ẩn/Hiện: Chỉ Admin mới có quyền
+            if ("ADMIN".equals(role)) {
+                int newHidden = (currentHidden == 1) ? 0 : 1;
+                jdbc.update("UPDATE product_reviews SET is_hidden = ? WHERE id = ?", newHidden, id);
+                
+                // Nếu đây là bình luận cha (parent_id IS NULL), tự động ẩn/hiện toàn bộ các phản hồi con bên dưới
+                if (review.get("parent_id") == null) {
+                    jdbc.update("UPDATE product_reviews SET is_hidden = ? WHERE parent_id = ?", newHidden, id);
+                }
+                
+                response.put("success", true);
+                response.put("isHidden", newHidden == 1);
+                response.put("message", newHidden == 1 ? "Đã ẩn bình luận!" : "Đã hiện bình luận!");
+            } else {
+                response.put("success", false);
+                response.put("message", "Chỉ có Admin mới có quyền ẩn/hiện bình luận!");
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi: " + e.getMessage());
+        }
+        return response;
+    }
 }

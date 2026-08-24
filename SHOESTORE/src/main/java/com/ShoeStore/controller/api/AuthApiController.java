@@ -65,8 +65,14 @@ public class AuthApiController {
         String password = loginRequest.getPassword();
 
         try {
-            // 2. Tải thông tin người dùng (có kiểm tra khóa tài khoản)
+            // 2. Tải thông tin người dùng và kiểm tra khóa tài khoản
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+            if (!userDetails.isAccountNonLocked()) {
+                response.put("success", false);
+                response.put("message", "Tài khoản của bạn đã bị khóa! Vui lòng liên hệ Admin.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+            }
 
             // 3. So khớp mật khẩu
             if (!passwordEncoder.matches(password, userDetails.getPassword())) {
@@ -75,11 +81,8 @@ public class AuthApiController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
             }
 
-            // 4. Vô hiệu hóa session cũ (nếu có) và tạo session mới để tránh session fixation
-            HttpSession oldSession = request.getSession(false);
-            if (oldSession != null) {
-                oldSession.invalidate();
-            }
+            // 4. Đổi Session ID để bảo mật (tránh Session Fixation)
+            request.changeSessionId();
             HttpSession newSession = request.getSession(true);
 
             // 5. Thiết lập SecurityContext và lưu vào session mới
@@ -93,7 +96,7 @@ public class AuthApiController {
             newSession.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
 
             // 6. Lấy toàn bộ thông tin tài khoản và lưu vào session
-            String sql = "SELECT id, password, role, full_name, status, email, phone, points, membership_rank_id FROM accounts WHERE email = ?";
+            String sql = "SELECT id, password, role, full_name, status, email, phone, points, membership_rank_id FROM accounts WHERE LOWER(email) = LOWER(?)";
             Map<String, Object> account = jdbc.queryForMap(sql, email);
             newSession.setAttribute("account", account);
 

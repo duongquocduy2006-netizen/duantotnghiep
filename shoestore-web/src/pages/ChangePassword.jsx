@@ -19,6 +19,7 @@ const ChangePassword = () => {
     const [showConfirmPass, setShowConfirmPass] = useState(false);
 
     const [strength, setStrength] = useState(0);
+    const [formErrors, setFormErrors] = useState({});
 
     const fetchProfile = async () => {
         try {
@@ -71,8 +72,25 @@ const ChangePassword = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (newPass !== confirmPass) {
-            alert('Mật khẩu mới không khớp!');
+        setFormErrors({});
+
+        let errors = {};
+        if (!oldPass) {
+            errors.oldPass = 'Vui lòng nhập mật khẩu hiện tại!';
+        }
+        if (!newPass) {
+            errors.newPass = 'Vui lòng nhập mật khẩu mới!';
+        } else if (newPass.length < 6) {
+            errors.newPass = 'Mật khẩu mới phải có ít nhất 6 ký tự!';
+        }
+        if (!confirmPass) {
+            errors.confirmPass = 'Vui lòng xác nhận mật khẩu mới!';
+        } else if (newPass !== confirmPass) {
+            errors.confirmPass = 'Mật khẩu mới không khớp!';
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
             return;
         }
 
@@ -84,20 +102,27 @@ const ChangePassword = () => {
             });
 
             if (response.data && response.data.success) {
-                alert('Cập nhật mật khẩu thành công!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Cập nhật mật khẩu thành công!' }));
                 setOldPass('');
                 setNewPass('');
                 setConfirmPass('');
                 setStrength(0);
+                setFormErrors({});
             } else {
-                alert('Có lỗi xảy ra: ' + response.data.message);
+                const msg = response.data?.message || 'Đổi mật khẩu thất bại!';
+                if (msg.toLowerCase().includes('hiện tại')) {
+                    setFormErrors({ oldPass: msg });
+                } else {
+                    setFormErrors({ general: msg });
+                }
             }
         } catch (err) {
             console.error("Lỗi đổi mật khẩu:", err);
-            if (err.response && err.response.data && err.response.data.message) {
-                alert('Lỗi: ' + err.response.data.message);
+            const msg = err.response?.data?.message || err.message || 'Lỗi kết nối khi đổi mật khẩu.';
+            if (msg.toLowerCase().includes('hiện tại')) {
+                setFormErrors({ oldPass: msg });
             } else {
-                alert('Lỗi kết nối khi đổi mật khẩu.');
+                setFormErrors({ general: msg });
             }
         }
     };
@@ -199,6 +224,9 @@ const ChangePassword = () => {
                                     <Link to="/profile" className="menu-link">
                                         <i className="fa-regular fa-id-badge"></i> Thông tin cá nhân
                                     </Link>
+                                    <Link to="/notifications" className="menu-link">
+                                        <i className="fa-solid fa-bell"></i> Thông báo
+                                    </Link>
                                     <Link to="/orders" className="menu-link">
                                         <i className="fa-solid fa-bag-shopping"></i> Lịch sử đơn hàng
                                     </Link>
@@ -233,17 +261,26 @@ const ChangePassword = () => {
                                             Mật khẩu mạnh nên có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
                                         </div>
 
-                                        <form onSubmit={handleSubmit}>
+                                        <form onSubmit={handleSubmit} noValidate>
+                                            {formErrors.general && (
+                                                <div className="alert alert-danger py-2 px-3 mb-3 d-flex align-items-center gap-2 border-0 bg-danger bg-opacity-10 text-danger font-oswald fw-bold" style={{ borderRadius: '8px', fontSize: '13px' }}>
+                                                    <i className="bi bi-exclamation-triangle-fill fs-5"></i>
+                                                    <span>{formErrors.general}</span>
+                                                </div>
+                                            )}
+
                                             {/* Mật khẩu hiện tại */}
-                                            <div className="float-input-group">
+                                            <div className="float-input-group mb-2">
                                                 <input
                                                     type={showOldPass ? "text" : "password"}
-                                                    className="float-input"
+                                                    className={`float-input ${formErrors.oldPass ? 'is-invalid border-danger' : ''}`}
                                                     id="oldPass"
                                                     placeholder=" "
                                                     value={oldPass}
-                                                    onChange={e => setOldPass(e.target.value)}
-                                                    required
+                                                    onChange={e => {
+                                                        setOldPass(e.target.value);
+                                                        if (formErrors.oldPass) setFormErrors({ ...formErrors, oldPass: null });
+                                                    }}
                                                 />
                                                 <label htmlFor="oldPass" className="float-label">Mật khẩu hiện tại</label>
                                                 <i
@@ -251,17 +288,24 @@ const ChangePassword = () => {
                                                     onClick={() => setShowOldPass(!showOldPass)}
                                                 ></i>
                                             </div>
+                                            {formErrors.oldPass && (
+                                                <div className="text-danger small mb-3 font-oswald fw-bold">
+                                                    <i className="bi bi-exclamation-circle me-1"></i>{formErrors.oldPass}
+                                                </div>
+                                            )}
 
                                             {/* Mật khẩu mới */}
-                                            <div className="float-input-group">
+                                            <div className="float-input-group mb-2">
                                                 <input
                                                     type={showNewPass ? "text" : "password"}
-                                                    className="float-input"
+                                                    className={`float-input ${formErrors.newPass ? 'is-invalid border-danger' : ''}`}
                                                     id="newPass"
                                                     placeholder=" "
                                                     value={newPass}
-                                                    onChange={handleNewPassChange}
-                                                    required
+                                                    onChange={e => {
+                                                        handleNewPassChange(e);
+                                                        if (formErrors.newPass) setFormErrors({ ...formErrors, newPass: null });
+                                                    }}
                                                 />
                                                 <label htmlFor="newPass" className="float-label">Mật khẩu mới</label>
                                                 <i
@@ -269,6 +313,11 @@ const ChangePassword = () => {
                                                     onClick={() => setShowNewPass(!showNewPass)}
                                                 ></i>
                                             </div>
+                                            {formErrors.newPass && (
+                                                <div className="text-danger small mb-3 font-oswald fw-bold">
+                                                    <i className="bi bi-exclamation-circle me-1"></i>{formErrors.newPass}
+                                                </div>
+                                            )}
 
                                             {/* Strength bar */}
                                             {newPass.length > 0 && (
@@ -287,15 +336,17 @@ const ChangePassword = () => {
                                             )}
 
                                             {/* Xác nhận mật khẩu mới */}
-                                            <div className="float-input-group">
+                                            <div className="float-input-group mb-2">
                                                 <input
                                                     type={showConfirmPass ? "text" : "password"}
-                                                    className="float-input"
+                                                    className={`float-input ${formErrors.confirmPass ? 'is-invalid border-danger' : ''}`}
                                                     id="confirmPass"
                                                     placeholder=" "
                                                     value={confirmPass}
-                                                    onChange={e => setConfirmPass(e.target.value)}
-                                                    required
+                                                    onChange={e => {
+                                                        setConfirmPass(e.target.value);
+                                                        if (formErrors.confirmPass) setFormErrors({ ...formErrors, confirmPass: null });
+                                                    }}
                                                 />
                                                 <label htmlFor="confirmPass" className="float-label">Xác nhận mật khẩu mới</label>
                                                 <i
@@ -303,6 +354,11 @@ const ChangePassword = () => {
                                                     onClick={() => setShowConfirmPass(!showConfirmPass)}
                                                 ></i>
                                             </div>
+                                            {formErrors.confirmPass && (
+                                                <div className="text-danger small mb-3 font-oswald fw-bold">
+                                                    <i className="bi bi-exclamation-circle me-1"></i>{formErrors.confirmPass}
+                                                </div>
+                                            )}
 
                                             {/* Match indicator */}
                                             {confirmPass.length > 0 && (

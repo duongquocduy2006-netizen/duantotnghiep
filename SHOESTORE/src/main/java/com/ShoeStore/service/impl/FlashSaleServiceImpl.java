@@ -48,18 +48,17 @@ public class FlashSaleServiceImpl implements FlashSaleService {
             existing.setEndDate(flashSale.getEndDate());
             existing.setStatus(flashSale.getStatus());
 
-            // Tránh lỗi "A collection with orphan deletion was no longer referenced"
-            // Bằng cách clear list cũ và add all từ list mới, thay vì thay thế nguyên list
-            // instance
             existing.getFlashSaleProducts().clear();
+            flashSaleRepository.flush();
+
             if (flashSale.getFlashSaleProducts() != null) {
                 for (FlashSaleProduct fsp : flashSale.getFlashSaleProducts()) {
-                    // Cần load Product thật từ DB để lấy được variants/totalStock
+                    fsp.setId(null);
                     Product prod = productRepository.findById(fsp.getProduct().getId()).orElse(null);
                     if (prod != null) {
                         fsp.setProduct(prod);
                         int totalStock = prod.getTotalStock();
-                        if (fsp.getQuantityLimit() > totalStock) {
+                        if (fsp.getQuantityLimit() != null && fsp.getQuantityLimit() > 0 && fsp.getQuantityLimit() > totalStock) {
                             fsp.setQuantityLimit(totalStock);
                         }
                     }
@@ -68,19 +67,17 @@ public class FlashSaleServiceImpl implements FlashSaleService {
                     existing.getFlashSaleProducts().add(fsp);
                 }
             }
-            FlashSale saved = flashSaleRepository.save(existing);
-            flashSaleRepository.flush(); // Cưỡng ép flush để xóa các orphan ngay lập tức
-            return saved;
+            return flashSaleRepository.save(existing);
         }
 
-        // Cần đảm bảo set bidi-relation cho trường hợp tạo mới
         if (flashSale.getFlashSaleProducts() != null) {
             for (FlashSaleProduct fsp : flashSale.getFlashSaleProducts()) {
+                fsp.setId(null);
                 Product prod = productRepository.findById(fsp.getProduct().getId()).orElse(null);
                 if (prod != null) {
                     fsp.setProduct(prod);
                     int totalStock = prod.getTotalStock();
-                    if (fsp.getQuantityLimit() > totalStock) {
+                    if (fsp.getQuantityLimit() != null && fsp.getQuantityLimit() > 0 && fsp.getQuantityLimit() > totalStock) {
                         fsp.setQuantityLimit(totalStock);
                     }
                 }
