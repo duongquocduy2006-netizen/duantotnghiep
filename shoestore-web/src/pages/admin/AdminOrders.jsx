@@ -49,7 +49,8 @@ const AdminOrders = () => {
         orderCode: null,
         newStatus: null,
         message: "",
-        cancelReason: ""
+        cancelReason: "",
+        reasonError: false
     });
 
     // Fetch orders with optional keyword
@@ -90,13 +91,21 @@ const AdminOrders = () => {
             isOpen: true,
             orderCode,
             newStatus,
-            message: `Bạn có chắc chắn muốn chuyển đơn hàng ${orderCode} sang trạng thái mới?`
+            message: `Bạn có chắc chắn muốn chuyển đơn hàng ${orderCode} sang trạng thái mới?`,
+            cancelReason: "",
+            reasonError: false
         });
     };
 
     const submitStatusChange = async () => {
         const { orderCode, newStatus, cancelReason } = confirmModal;
-        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "" });
+
+        if (newStatus === 4 && (!cancelReason || !cancelReason.trim())) {
+            setConfirmModal(prev => ({ ...prev, reasonError: true }));
+            return;
+        }
+
+        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "", reasonError: false });
 
         try {
             const payload = { orderCode, status: newStatus };
@@ -125,7 +134,7 @@ const AdminOrders = () => {
     };
 
     const cancelStatusChange = () => {
-        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "" });
+        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "", reasonError: false });
         // Re-fetch to revert the dropdown choice in UI
         fetchOrders(keyword);
     };
@@ -497,7 +506,8 @@ const AdminOrders = () => {
                                                 className={`admin-quick-reason-btn ${isSelected ? 'active' : ''}`}
                                                 onClick={() => setConfirmModal(prev => ({ 
                                                     ...prev, 
-                                                    cancelReason: isSelected ? "" : reason 
+                                                    cancelReason: isSelected ? "" : reason,
+                                                    reasonError: false 
                                                 }))}
                                             >
                                                 {reason}
@@ -508,12 +518,12 @@ const AdminOrders = () => {
 
                                 <textarea
                                     value={confirmModal.cancelReason}
-                                    onChange={e => setConfirmModal(prev => ({ ...prev, cancelReason: e.target.value }))}
+                                    onChange={e => setConfirmModal(prev => ({ ...prev, cancelReason: e.target.value, reasonError: false }))}
                                     placeholder="Nhập lý do hủy đơn hàng... (ví dụ: khách yêu cầu hủy, hết hàng, địa chỉ không hợp lệ...)"
                                     rows={3}
                                     style={{
                                         width: '100%',
-                                        border: '1.5px solid #e5e7eb',
+                                        border: confirmModal.reasonError ? '1.5px solid #e50914' : '1.5px solid #e5e7eb',
                                         borderRadius: '8px',
                                         padding: '10px 12px',
                                         fontSize: '13px',
@@ -522,14 +532,21 @@ const AdminOrders = () => {
                                         outline: 'none',
                                         boxSizing: 'border-box',
                                         color: '#1e293b',
-                                        lineHeight: '1.5'
+                                        lineHeight: '1.5',
+                                        boxShadow: confirmModal.reasonError ? '0 0 0 3px rgba(229, 9, 20, 0.15)' : 'none'
                                     }}
                                     onFocus={e => e.target.style.borderColor = '#e50914'}
-                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                                    onBlur={e => e.target.style.borderColor = confirmModal.reasonError ? '#e50914' : '#e5e7eb'}
                                 />
-                                <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', marginBottom: 0 }}>
-                                    Lý do sẽ được hiển thị cho khách hàng.
-                                </p>
+                                {confirmModal.reasonError ? (
+                                    <p style={{ fontSize: '12px', color: '#e50914', marginTop: '6px', marginBottom: 0, fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <i className="bi bi-exclamation-triangle-fill"></i> Vui lòng chọn hoặc nhập lý do hủy đơn hàng!
+                                    </p>
+                                ) : (
+                                    <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', marginBottom: 0 }}>
+                                        Lý do sẽ được hiển thị cho khách hàng.
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -539,7 +556,6 @@ const AdminOrders = () => {
                                 className="admin-btn-confirm-ok"
                                 onClick={submitStatusChange}
                                 style={confirmModal.newStatus === 4 ? {background:'#e50914', borderColor:'#e50914'} : {}}
-                                disabled={confirmModal.newStatus === 4 && (!confirmModal.cancelReason || !confirmModal.cancelReason.trim())}
                             >
                                 {confirmModal.newStatus === 4 ? '⚠️ Xác nhận hủy' : 'Đồng ý'}
                             </button>

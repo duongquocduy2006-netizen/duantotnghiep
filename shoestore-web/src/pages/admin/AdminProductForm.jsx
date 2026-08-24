@@ -857,20 +857,81 @@ const AdminProductForm = () => {
         if (!isEdit) {
             if (selectedSizes.length === 0) newErrors.sizeId = 'Vui lòng thêm ít nhất 1 kích cỡ.';
             if (selectedColors.length === 0) newErrors.colorId = 'Vui lòng thêm ít nhất 1 màu sắc.';
-            if (!variant.price || parseFloat(variant.price) <= 0) {
-                // Check if overrides filled
-                const hasValidOverride = Object.values(variantOverrides).some(o => o.price && parseFloat(o.price) > 0);
-                if (!hasValidOverride) newErrors.price = 'Vui lòng nhập giá bán cho sản phẩm hoặc nhập ở từng dòng.';
+
+            // Validate Price (> 5000)
+            const bulkPrice = parseFloat(variant.price);
+            let isPriceValid = !isNaN(bulkPrice) && bulkPrice > 5000;
+
+            if (!isPriceValid) {
+                const totalCombos = selectedSizes.length * selectedColors.length;
+                if (totalCombos > 0) {
+                    let validOverrides = 0;
+                    for (const sz of selectedSizes) {
+                        for (const cl of selectedColors) {
+                            const key = `${sz}-${cl}`;
+                            const customPrice = variantOverrides[key]?.price;
+                            if (customPrice !== undefined && customPrice !== '' && !isNaN(parseFloat(customPrice)) && parseFloat(customPrice) > 5000) {
+                                validOverrides++;
+                            }
+                        }
+                    }
+                    if (validOverrides === totalCombos) {
+                        isPriceValid = true;
+                    }
+                }
             }
-            if (!variant.quantity || parseInt(variant.quantity) <= 0) {
-                const hasValidQtyOverride = Object.values(variantOverrides).some(o => o.quantity && parseInt(o.quantity) > 0);
-                if (!hasValidQtyOverride) newErrors.quantity = 'Vui lòng nhập số lượng nhập kho.';
+
+            if (!isPriceValid) {
+                newErrors.price = 'Giá bán phải lớn hơn 5,000 VNĐ.';
+            }
+
+            // Validate Quantity (>= 1)
+            const bulkQty = parseInt(variant.quantity);
+            let isQtyValid = !isNaN(bulkQty) && bulkQty >= 1;
+
+            if (!isQtyValid) {
+                const totalCombos = selectedSizes.length * selectedColors.length;
+                if (totalCombos > 0) {
+                    let validQtyOverrides = 0;
+                    for (const sz of selectedSizes) {
+                        for (const cl of selectedColors) {
+                            const key = `${sz}-${cl}`;
+                            const customQty = variantOverrides[key]?.quantity;
+                            if (customQty !== undefined && customQty !== '' && !isNaN(parseInt(customQty)) && parseInt(customQty) >= 1) {
+                                validQtyOverrides++;
+                            }
+                        }
+                    }
+                    if (validQtyOverrides === totalCombos) {
+                        isQtyValid = true;
+                    }
+                }
+            }
+
+            if (!isQtyValid) {
+                newErrors.quantity = 'Số lượng tồn kho khi thêm phải từ 1 trở lên.';
+            }
+        }
+
+        if (isEdit && existingVariants.length > 0) {
+            for (const ev of existingVariants) {
+                if (ev.isModified) {
+                    if (!ev.price || parseFloat(ev.price) <= 5000) {
+                        newErrors.existingVariants = `Giá bán của biến thể Size ${ev.sizeName} - ${ev.colorName} phải lớn hơn 5,000 VNĐ.`;
+                        break;
+                    }
+                    if (!ev.quantity || parseInt(ev.quantity) < 1) {
+                        newErrors.existingVariants = `Số lượng tồn kho của biến thể Size ${ev.sizeName} - ${ev.colorName} phải từ 1 trở lên.`;
+                        break;
+                    }
+                }
             }
         }
 
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Vui lòng điền đầy đủ các thông tin bắt buộc.' }));
+            const firstErrorMsg = Object.values(newErrors)[0];
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: `Lỗi: ${firstErrorMsg}` }));
             return;
         }
 
@@ -913,7 +974,7 @@ const AdminProductForm = () => {
                                 ? parseInt(custom.quantity)
                                 : parseInt(variant.quantity || 0);
 
-                            if (priceVal > 0 && qtyVal > 0) {
+                            if (priceVal > 5000 && qtyVal >= 1) {
                                 const variantPayload = {
                                     productId: savedProductId,
                                     variantId: null,
@@ -1366,21 +1427,33 @@ const AdminProductForm = () => {
                                         <div className="form-group mb-0">
                                             <label className="form-label">Giá bán hàng loạt (VNĐ) *</label>
                                             <input
-                                                type="number" min="5000" className="form-control"
-                                                placeholder="VD: 1500000 (Áp dụng nhanh cho tất cả)"
+                                                type="number" min="5001" className="form-control"
+                                                style={variant.price !== '' && parseFloat(variant.price) <= 5000 ? { borderColor: '#e50914', boxShadow: '0 0 0 3px rgba(229, 9, 20, 0.15)' } : {}}
+                                                placeholder="VD: 1500000 (Phải > 5,000đ)"
                                                 value={variant.price}
                                                 onChange={(e) => setVariant({ ...variant, price: e.target.value })}
                                             />
+                                            {variant.price !== '' && parseFloat(variant.price) <= 5000 && (
+                                                <div style={{ color: '#e50914', fontSize: '12px', fontWeight: 'bold', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <i className="bi bi-exclamation-triangle-fill"></i> Giá bán phải lớn hơn 5,000 VNĐ!
+                                                </div>
+                                            )}
                                             {errors.price && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.price}</div>}
                                         </div>
                                         <div className="form-group mb-0">
                                             <label className="form-label">Số lượng tồn kho hàng loạt *</label>
                                             <input
                                                 type="number" min="1" max="10000" className="form-control"
-                                                placeholder="VD: 100 (Áp dụng nhanh cho tất cả)"
+                                                style={variant.quantity !== '' && parseInt(variant.quantity) < 1 ? { borderColor: '#e50914', boxShadow: '0 0 0 3px rgba(229, 9, 20, 0.15)' } : {}}
+                                                placeholder="VD: 100 (Phải từ 1 trở lên)"
                                                 value={variant.quantity}
                                                 onChange={(e) => setVariant({ ...variant, quantity: e.target.value })}
                                             />
+                                            {variant.quantity !== '' && parseInt(variant.quantity) < 1 && (
+                                                <div style={{ color: '#e50914', fontSize: '12px', fontWeight: 'bold', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <i className="bi bi-exclamation-triangle-fill"></i> Số lượng tồn kho khi thêm phải từ 1 trở lên!
+                                                </div>
+                                            )}
                                             {errors.quantity && <div className="text-danger small mt-1" style={{ fontSize: '12px', fontWeight: 'bold' }}>{errors.quantity}</div>}
                                         </div>
                                     </div>
@@ -1415,6 +1488,9 @@ const AdminProductForm = () => {
                                                 {isEdit ? (
                                                     // EDIT MODE ROWS
                                                     existingVariants.map((vItem, index) => {
+                                                        const isInvalidPrice = vItem.price !== '' && vItem.price !== null && vItem.price !== undefined && parseFloat(vItem.price) <= 5000;
+                                                        const isInvalidQty = vItem.quantity !== '' && vItem.quantity !== null && vItem.quantity !== undefined && parseInt(vItem.quantity) < 1;
+
                                                         return (
                                                             <tr key={vItem.id || index} className={vItem.isModified ? 'row-modified' : ''}>
                                                                 <td>
@@ -1427,27 +1503,39 @@ const AdminProductForm = () => {
                                                                     <div className="inline-input-group">
                                                                         <input
                                                                             type="number"
-                                                                            min="5000"
+                                                                            min="5001"
                                                                             className="form-control variant-inline-input"
+                                                                            style={isInvalidPrice ? { borderColor: '#e50914', boxShadow: '0 0 0 2px rgba(229, 9, 20, 0.2)' } : {}}
                                                                             value={vItem.price}
                                                                             onChange={(e) => handleExistingVariantChange(index, 'price', e.target.value)}
-                                                                            placeholder="Nhập giá..."
+                                                                            placeholder="Nhập giá (> 5,000đ)..."
                                                                         />
                                                                         <span className="currency-unit">đ</span>
                                                                     </div>
+                                                                    {isInvalidPrice && (
+                                                                        <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                            <i className="bi bi-exclamation-triangle-fill"></i> Giá phải &gt; 5,000đ
+                                                                        </div>
+                                                                    )}
                                                                 </td>
                                                                 <td>
                                                                     <div className="inline-input-group">
                                                                         <input
                                                                             type="number"
-                                                                            min="0"
+                                                                            min="1"
                                                                             className="form-control variant-inline-input"
+                                                                            style={isInvalidQty ? { borderColor: '#e50914', boxShadow: '0 0 0 2px rgba(229, 9, 20, 0.2)' } : {}}
                                                                             value={vItem.quantity}
                                                                             onChange={(e) => handleExistingVariantChange(index, 'quantity', e.target.value)}
-                                                                            placeholder="Nhập kho..."
+                                                                            placeholder="Nhập kho (>= 1)..."
                                                                         />
                                                                         <span className="currency-unit">đôi</span>
                                                                     </div>
+                                                                    {isInvalidQty && (
+                                                                        <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                            <i className="bi bi-exclamation-triangle-fill"></i> Kho phải &gt;= 1
+                                                                        </div>
+                                                                    )}
                                                                 </td>
                                                                 <td style={{ textAlign: 'center' }}>
                                                                     <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
@@ -1485,6 +1573,9 @@ const AdminProductForm = () => {
                                                             const currentPrice = custom.price !== undefined ? custom.price : variant.price;
                                                             const currentQty = custom.quantity !== undefined ? custom.quantity : variant.quantity;
 
+                                                            const isInvalidPrice = currentPrice !== '' && currentPrice !== null && currentPrice !== undefined && parseFloat(currentPrice) <= 5000;
+                                                            const isInvalidQty = currentQty !== '' && currentQty !== null && currentQty !== undefined && parseInt(currentQty) < 1;
+
                                                             return (
                                                                 <tr key={key}>
                                                                     <td>
@@ -1497,27 +1588,39 @@ const AdminProductForm = () => {
                                                                         <div className="inline-input-group">
                                                                             <input
                                                                                 type="number"
-                                                                                min="5000"
+                                                                                min="5001"
                                                                                 className="form-control variant-inline-input"
+                                                                                style={isInvalidPrice ? { borderColor: '#e50914', boxShadow: '0 0 0 2px rgba(229, 9, 20, 0.2)' } : {}}
                                                                                 value={currentPrice}
                                                                                 onChange={(e) => handleOverrideChange(size, color, 'price', e.target.value)}
-                                                                                placeholder="Nhập giá bán..."
+                                                                                placeholder="Nhập giá bán (> 5,000đ)..."
                                                                             />
                                                                             <span className="currency-unit">đ</span>
                                                                         </div>
+                                                                        {isInvalidPrice && (
+                                                                            <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                                <i className="bi bi-exclamation-triangle-fill"></i> Giá phải &gt; 5,000đ
+                                                                            </div>
+                                                                        )}
                                                                     </td>
                                                                     <td>
                                                                         <div className="inline-input-group">
                                                                             <input
                                                                                 type="number"
-                                                                                min="0"
+                                                                                min="1"
                                                                                 className="form-control variant-inline-input"
+                                                                                style={isInvalidQty ? { borderColor: '#e50914', boxShadow: '0 0 0 2px rgba(229, 9, 20, 0.2)' } : {}}
                                                                                 value={currentQty}
                                                                                 onChange={(e) => handleOverrideChange(size, color, 'quantity', e.target.value)}
-                                                                                placeholder="Số lượng..."
+                                                                                placeholder="Số lượng (>= 1)..."
                                                                             />
                                                                             <span className="currency-unit">đôi</span>
                                                                         </div>
+                                                                        {isInvalidQty && (
+                                                                            <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                                <i className="bi bi-exclamation-triangle-fill"></i> Kho phải &gt;= 1
+                                                                            </div>
+                                                                        )}
                                                                     </td>
                                                                     <td style={{ textAlign: 'center' }}>
                                                                         <button

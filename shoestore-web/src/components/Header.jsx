@@ -682,28 +682,39 @@ const Header = () => {
                     </div>
                 </nav>
             </header>
-            {toast && (
-                <div style={{
-                    position: 'fixed',
-                    top: '24px',
-                    right: '24px',
-                    backgroundColor: '#198754',
-                    color: '#fff',
-                    padding: '16px 24px',
-                    borderRadius: '16px',
-                    boxShadow: '0 10px 25px rgba(25, 135, 84, 0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    zIndex: 99999,
-                    fontWeight: '600',
-                    fontFamily: "'Inter', sans-serif",
-                    fontSize: '15px'
-                }} className="animate__animated animate__fadeInDown">
-                    <i className="fa-solid fa-circle-check" style={{ fontSize: '18px' }}></i>
-                    {toast}
-                </div>
-            )}
+            {toast && (() => {
+                const toastStr = String(toast);
+                const isErrorToast = toastStr.toLowerCase().includes('lỗi') ||
+                                     toastStr.toLowerCase().includes('không') ||
+                                     toastStr.toLowerCase().includes('vui lòng') ||
+                                     toastStr.toLowerCase().includes('chỉ có thể') ||
+                                     toastStr.toLowerCase().includes('tối đa') ||
+                                     toastStr.toLowerCase().includes('thất bại') ||
+                                     toastStr.toLowerCase().includes('hết hàng') ||
+                                     toastStr.toLowerCase().includes('chưa');
+                return (
+                    <div style={{
+                        position: 'fixed',
+                        top: '24px',
+                        right: '24px',
+                        backgroundColor: isErrorToast ? '#dc2626' : '#198754',
+                        color: '#fff',
+                        padding: '16px 24px',
+                        borderRadius: '16px',
+                        boxShadow: isErrorToast ? '0 10px 25px rgba(220, 38, 38, 0.25)' : '0 10px 25px rgba(25, 135, 84, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        zIndex: 99999,
+                        fontWeight: '600',
+                        fontFamily: "'Inter', sans-serif",
+                        fontSize: '15px'
+                    }} className="animate__animated animate__fadeInDown">
+                        <i className={`fa-solid ${isErrorToast ? 'fa-circle-exclamation' : 'fa-circle-check'}`} style={{ fontSize: '18px' }}></i>
+                        {toast}
+                    </div>
+                );
+            })()}
         </>
     );
 };

@@ -483,8 +483,8 @@ const AdminProductDetail = () => {
             window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Giá bán phải lớn hơn 5,000 VNĐ.' }));
             return;
         }
-        if (inlineQty === "" || parseInt(inlineQty) < 0) {
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Số lượng tồn kho không hợp lệ.' }));
+        if (inlineQty === "" || parseInt(inlineQty) < 1) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Số lượng tồn kho khi thêm phải từ 1 trở lên.' }));
             return;
         }
 
@@ -527,12 +527,12 @@ const AdminProductDetail = () => {
     // Handle adding NEW variants via the top form
     const handleAddNewVariantsSubmit = async (e) => {
         e.preventDefault();
-        if (!price || parseFloat(price) <= 0) {
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng nhập giá bán hợp lệ.' }));
+        if (!price || parseFloat(price) <= 5000) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Giá bán phải lớn hơn 5,000 VNĐ.' }));
             return;
         }
-        if (quantity === "" || parseInt(quantity) < 0) {
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng nhập số lượng hợp lệ.' }));
+        if (quantity === "" || parseInt(quantity) < 1) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Số lượng tồn kho khi thêm phải từ 1 trở lên.' }));
             return;
         }
         if (selectedSizes.length === 0 || selectedColors.length === 0) {
@@ -960,17 +960,25 @@ const AdminProductDetail = () => {
                                                 {/* GIÁ BÁN (VNĐ) - Direct inline edit or static label */}
                                                 <td>
                                                     {isInlineEditing ? (
-                                                        <div className="inline-table-input-wrap">
-                                                            <input
-                                                                type="number"
-                                                                min="5000"
-                                                                className="form-control inline-table-input"
-                                                                value={inlinePrice}
-                                                                onChange={(e) => setInlinePrice(e.target.value)}
-                                                                placeholder="Giá..."
-                                                            />
-                                                            <span className="unit-label">đ</span>
-                                                        </div>
+                                                        <>
+                                                            <div className="inline-table-input-wrap">
+                                                                <input
+                                                                    type="number"
+                                                                    min="5001"
+                                                                    className="form-control inline-table-input"
+                                                                    style={inlinePrice !== "" && parseFloat(inlinePrice) <= 5000 ? { borderColor: '#e50914', boxShadow: '0 0 0 2px rgba(229, 9, 20, 0.2)' } : {}}
+                                                                    value={inlinePrice}
+                                                                    onChange={(e) => setInlinePrice(e.target.value)}
+                                                                    placeholder="Giá (> 5,000đ)..."
+                                                                />
+                                                                <span className="unit-label">đ</span>
+                                                            </div>
+                                                            {inlinePrice !== "" && parseFloat(inlinePrice) <= 5000 && (
+                                                                <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                    <i className="bi bi-exclamation-triangle-fill"></i> Giá phải &gt; 5,000đ
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     ) : (
                                                         <span className="price-cell">{v.price?.toLocaleString("vi-VN")} đ</span>
                                                     )}
@@ -979,17 +987,25 @@ const AdminProductDetail = () => {
                                                 {/* SỐ LƯỢNG KHO - Direct inline edit or static label */}
                                                 <td>
                                                     {isInlineEditing ? (
-                                                        <div className="inline-table-input-wrap">
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                className="form-control inline-table-input"
-                                                                value={inlineQty}
-                                                                onChange={(e) => setInlineQty(e.target.value)}
-                                                                placeholder="Kho..."
-                                                            />
-                                                            <span className="unit-label">đôi</span>
-                                                        </div>
+                                                        <>
+                                                            <div className="inline-table-input-wrap">
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    className="form-control inline-table-input"
+                                                                    style={inlineQty !== "" && parseInt(inlineQty) < 1 ? { borderColor: '#e50914', boxShadow: '0 0 0 2px rgba(229, 9, 20, 0.2)' } : {}}
+                                                                    value={inlineQty}
+                                                                    onChange={(e) => setInlineQty(e.target.value)}
+                                                                    placeholder="Kho (>= 1)..."
+                                                                />
+                                                                <span className="unit-label">đôi</span>
+                                                            </div>
+                                                            {inlineQty !== "" && parseInt(inlineQty) < 1 && (
+                                                                <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                    <i className="bi bi-exclamation-triangle-fill"></i> Kho phải &gt;= 1
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     ) : (
                                                         <span className={`qty-badge ${v.quantity > 0 ? "in" : "out"}`}>
                                                             {v.quantity} đôi
