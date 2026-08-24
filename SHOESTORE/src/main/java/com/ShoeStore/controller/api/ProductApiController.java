@@ -770,6 +770,51 @@ public class ProductApiController {
         }
     }
 
+    // 4.5 CẬP NHẬT BIẾN THỂ HÀNG LOẠT (BULK SAVE VARIANTS)
+    @PostMapping("/variant/bulk-save")
+    @Transactional
+    public ResponseEntity<?> bulkSaveVariants(@RequestBody List<Map<String, Object>> payload) {
+        try {
+            if (payload == null || payload.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Không có dữ liệu biến thể để cập nhật!"));
+            }
+
+            int count = 0;
+            for (Map<String, Object> item : payload) {
+                Integer variantId = (Integer) item.get("id");
+                if (variantId == null) continue;
+
+                ProductVariant variant = productVariantRepository.findById(variantId).orElse(null);
+                if (variant == null) continue;
+
+                if (item.containsKey("price") && item.get("price") != null) {
+                    Double p = Double.valueOf(item.get("price").toString());
+                    if (p <= 5000) {
+                        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Giá bán của tất cả biến thể phải lớn hơn 5,000đ!"));
+                    }
+                    variant.setPrice(p);
+                }
+
+                if (item.containsKey("quantity") && item.get("quantity") != null) {
+                    Integer q = Integer.valueOf(item.get("quantity").toString());
+                    if (q < 1) {
+                        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Số lượng tồn kho của tất cả biến thể phải từ 1 trở lên!"));
+                    }
+                    variant.setQuantity(q);
+                }
+
+                productVariantRepository.save(variant);
+                count++;
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Cập nhật thành công hàng loạt " + count + " biến thể sản phẩm!"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi cập nhật hàng loạt: " + e.getMessage()));
+        }
+    }
+
     // 5. XÓA BIẾN THỂ CỦA SẢN PHẨM
     @DeleteMapping("/variant/{variantId}")
     @Transactional
