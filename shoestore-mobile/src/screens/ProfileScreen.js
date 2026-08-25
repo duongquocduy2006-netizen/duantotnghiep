@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   StyleSheet,
   Text,
@@ -15,6 +15,7 @@ import {
   RefreshControl
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CartContext } from '../context/CartContext';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -34,7 +35,14 @@ const mapStatusIntToString = (statusInt) => {
 
 const { width, height } = Dimensions.get('window');
 
+const normalizeImagePath = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('/images/')) return url;
+  return `/images/${url}`;
+};
+
 export default function ProfileScreen({ navigation }) {
+  const { addToCart } = useContext(CartContext);
   const isFocused = useIsFocused();
   const [userName, setUserName] = useState('Khách hàng');
   const [userEmail, setUserEmail] = useState('');
@@ -93,12 +101,6 @@ export default function ProfileScreen({ navigation }) {
     try {
       let requestUrl = `${API_BASE_URL}/api/vouchers`;
       const storedUser = await AsyncStorage.getItem('userAccount');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        if (user && user.id) {
-          requestUrl += `?accountId=${user.id}`;
-        }
-      }
 
       const response = await fetch(requestUrl, {
         headers: { 'Accept': 'application/json' }
@@ -200,8 +202,9 @@ export default function ProfileScreen({ navigation }) {
                 quantity: Number(item.quantity) || 1,
                 size: item.size_name || 'Default',
                 color: item.color_name || 'Default',
-                imageUrl: item.image_url || '',
-                productId: item.product_id || o.first_product_id
+                imageUrl: normalizeImagePath(item.image_url || o.first_product_image || ''),
+                productId: item.product_id || o.first_product_id,
+                variantId: item.product_variant_id
               })),
               firstProductId: o.first_product_id,
               isReviewed: (o.is_reviewed || 0) > 0,
@@ -284,8 +287,9 @@ export default function ProfileScreen({ navigation }) {
             quantity: Number(item.quantity) || 1,
             size: item.size_name || 'Default',
             color: item.color_name || 'Default',
-            imageUrl: item.image_url || '',
-            productId: item.product_id || o.first_product_id
+            imageUrl: normalizeImagePath(item.image_url || o.first_product_image || ''),
+            productId: item.product_id || o.first_product_id,
+            variantId: item.product_variant_id
           })),
           firstProductId: o.first_product_id,
           isReviewed: (o.is_reviewed || 0) > 0,
@@ -436,6 +440,44 @@ export default function ProfileScreen({ navigation }) {
     } catch (e) {
       console.log("Error saving profile info:", e);
       showToast("Không thể lưu thông tin thay đổi do lỗi kết nối.");
+    }
+  };
+
+
+  const handleRebuy = (order) => {
+    if (!order || !order.items || order.items.length === 0) {
+      showToast("Đơn hàng không có sản phẩm để mua lại.");
+      return;
+    }
+
+    setOrdersModalVisible(false);
+    setDetailModalVisible(false);
+
+    let addedCount = 0;
+    order.items.forEach(item => {
+      if (item.variantId) {
+        const mockProduct = {
+          id: item.productId,
+          productName: item.productName,
+          brandName: item.brandName,
+          imageUrl: item.imageUrl,
+          variants: [{
+            id: item.variantId,
+            sizeName: item.size,
+            colorName: item.color,
+            quantity: 10 // Mock stock, will be validated during checkout
+          }]
+        };
+        addToCart(mockProduct, item.size, item.color, item.quantity, item.price);
+        addedCount++;
+      }
+    });
+
+    if (addedCount > 0) {
+      showToast("Đã thêm các sản phẩm vào giỏ hàng!");
+      navigation.navigate('Cart');
+    } else {
+      showToast("Không thể mua lại đơn hàng này do thiếu thông tin sản phẩm.");
     }
   };
 
@@ -942,20 +984,18 @@ export default function ProfileScreen({ navigation }) {
                         <>
                           <TouchableOpacity 
                             style={[styles.orderDetailBtn, { backgroundColor: '#0f172a', borderColor: '#0f172a', marginLeft: 8 }]} 
-                            onPress={() => { setOrdersModalVisible(false); navigation.navigate('Shop'); }}
+                            onPress={() => handleRebuy(item)}
                             activeOpacity={0.7}
                           >
                             <Text style={[styles.orderDetailBtnText, { color: '#fff' }]}>Mua lại</Text>
                           </TouchableOpacity>
-                          {!item.isReviewed && (
-                            <TouchableOpacity 
-                              style={[styles.orderDetailBtn, { backgroundColor: '#e50914', borderColor: '#e50914', marginLeft: 8 }]} 
-                              onPress={() => handleOpenReviewModal(item)}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={[styles.orderDetailBtnText, { color: '#fff' }]}>Đánh giá</Text>
-                            </TouchableOpacity>
-                          )}
+                          <TouchableOpacity 
+                            style={[styles.orderDetailBtn, { backgroundColor: item.isReviewed ? '#808080' : '#e50914', borderColor: item.isReviewed ? '#808080' : '#e50914', marginLeft: 8 }]} 
+                            onPress={() => handleOpenReviewModal(item)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.orderDetailBtnText, { color: '#fff' }]}>{item.isReviewed ? 'Đánh giá lại' : 'Đánh giá'}</Text>
+                          </TouchableOpacity>
                         </>
                       )}
                     </View>
@@ -1189,21 +1229,19 @@ export default function ProfileScreen({ navigation }) {
                 {selectedOrder.status === 'Hoàn thành' && (
                   <View style={{ flexDirection: 'row', marginTop: 20, justifyContent: 'space-between' }}>
                     <TouchableOpacity 
-                      style={[styles.orderDetailBtn, { flex: 1, height: 48, backgroundColor: '#0f172a', borderColor: '#0f172a', justifyContent: 'center', alignItems: 'center', marginRight: !selectedOrder.isReviewed ? 4 : 0 }]} 
-                      onPress={() => { setDetailModalVisible(false); navigation.navigate('Shop'); }}
+                      style={[styles.orderDetailBtn, { flex: 1, height: 48, backgroundColor: '#0f172a', borderColor: '#0f172a', justifyContent: 'center', alignItems: 'center', marginRight: 4 }]} 
+                      onPress={() => handleRebuy(selectedOrder)}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.orderDetailBtnText, { color: '#fff', fontSize: 13 }]}>Mua lại</Text>
                     </TouchableOpacity>
-                    {!selectedOrder.isReviewed && (
-                      <TouchableOpacity 
-                        style={[styles.orderDetailBtn, { flex: 1, height: 48, backgroundColor: '#e50914', borderColor: '#e50914', justifyContent: 'center', alignItems: 'center', marginLeft: 4 }]} 
-                        onPress={() => handleOpenReviewModal(selectedOrder)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.orderDetailBtnText, { color: '#fff', fontSize: 13 }]}>Đánh giá đơn hàng</Text>
-                      </TouchableOpacity>
-                    )}
+                    <TouchableOpacity 
+                      style={[styles.orderDetailBtn, { flex: 1, height: 48, backgroundColor: selectedOrder.isReviewed ? '#808080' : '#e50914', borderColor: selectedOrder.isReviewed ? '#808080' : '#e50914', justifyContent: 'center', alignItems: 'center', marginLeft: 4 }]} 
+                      onPress={() => handleOpenReviewModal(selectedOrder)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.orderDetailBtnText, { color: '#fff', fontSize: 13 }]}>{selectedOrder.isReviewed ? 'Đánh giá lại' : 'Đánh giá đơn hàng'}</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -1292,7 +1330,6 @@ export default function ProfileScreen({ navigation }) {
             ) : (
               <FlatList
                 data={vouchers.filter(v => {
-                  if (userPoints < (v.minPoints || 0)) return false;
                   if (voucherFilter === 'DISCOUNT') return v.type !== 'SHIPPING';
                   if (voucherFilter === 'SHIPPING') return v.type === 'SHIPPING';
                   return true;
@@ -1992,14 +2029,15 @@ const styles = StyleSheet.create({
     marginTop: 'auto',
   },
   voucherCineExp: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#888888',
     fontWeight: '600',
+    flex: 1,
   },
   voucherCineCodeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    marginLeft: 6,
   },
   voucherCodeDashed: {
     backgroundColor: '#F8F9FA',
@@ -2008,24 +2046,28 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 6,
     paddingVertical: 3,
-    paddingHorizontal: 8,
+    paddingHorizontal: 5,
+    marginRight: 4,
   },
   voucherCodeString: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
     color: '#000000',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   voucherCopyBtn: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 6,
+    minWidth: 62,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   voucherCopyBtnText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   statusBadgeCancelled: {
     backgroundColor: '#FFEBEE',

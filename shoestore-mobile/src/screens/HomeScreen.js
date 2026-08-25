@@ -33,6 +33,9 @@ export default function HomeScreen({ navigation }) {
   const isFocused = useIsFocused();
 
   const [products, setProducts] = useState([]);
+  const [activeFlashSale, setActiveFlashSale] = useState(null);
+  const [flashProducts, setFlashProducts] = useState([]);
+  const [timeLeft, setTimeLeft] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,6 +84,33 @@ export default function HomeScreen({ navigation }) {
   }, [isFocused]);
 
 
+  useEffect(() => {
+    if (activeFlashSale && activeFlashSale.endDate) {
+      const interval = setInterval(() => {
+        const now = new Date().getTime();
+        const end = new Date(activeFlashSale.endDate).getTime();
+        const distance = end - now;
+
+        if (distance < 0) {
+          clearInterval(interval);
+          setTimeLeft(null);
+          setActiveFlashSale(null); // Sale ended
+        } else {
+          const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+          
+          let timeString = '';
+          if (days > 0) timeString += `${days}N `;
+          timeString += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          setTimeLeft(timeString);
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [activeFlashSale]);
+
   // Format Image URL helper
   const formatImageUrl = (url) => {
     if (!url) return 'https://via.placeholder.com/150';
@@ -95,14 +125,14 @@ export default function HomeScreen({ navigation }) {
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/products`, {
-        signal: controller.signal,
-        headers: { 'Accept': 'application/json' }
-      });
+      const [productsRes, homeRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/products`, { signal: controller.signal, headers: { 'Accept': 'application/json' } }),
+        fetch(`${API_BASE_URL}/api/home`, { signal: controller.signal, headers: { 'Accept': 'application/json' } })
+      ]);
       clearTimeout(timeoutId);
       
-      if (response.ok) {
-        const data = await response.json();
+      if (productsRes.ok) {
+        const data = await productsRes.json();
         if (Array.isArray(data) && data.length > 0) {
           setProducts(data);
         } else {
@@ -111,9 +141,19 @@ export default function HomeScreen({ navigation }) {
       } else {
         throw new Error('API Error response');
       }
+
+      if (homeRes.ok) {
+        const homeData = await homeRes.json();
+        if (homeData.success) {
+          setActiveFlashSale(homeData.activeFlashSale || null);
+          setFlashProducts(homeData.flashProducts || []);
+        }
+      }
     } catch (error) {
       console.warn("Could not connect to API:", error.message);
       setProducts([]);
+      setActiveFlashSale(null);
+      setFlashProducts([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -212,6 +252,79 @@ export default function HomeScreen({ navigation }) {
             })}
           </ScrollView>
         </View>
+
+        {/* FLASH SALE SECTION */}
+        {activeFlashSale && flashProducts.length > 0 && (
+          <View style={styles.flashSaleSection}>
+            <View style={styles.flashSaleHeader}>
+              <View style={styles.flashSaleTitleRow}>
+                <Ionicons name="flash" size={20} color="#FFD700" style={{ marginRight: 4 }} />
+                <Text style={styles.flashSaleTitle}>FLASH SALE ĐANG DIỄN RA</Text>
+              </View>
+              {timeLeft && (
+                <View style={styles.countdownContainer}>
+                  <Text style={styles.countdownText}>{timeLeft}</Text>
+                </View>
+              )}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.flashSaleScroll}
+            >
+              {flashProducts.map((fsp) => {
+                const item = fsp.product;
+                const isFav = favorites.includes(item.id);
+                const oldPrice = fsp.oldPrice || item.oldPrice;
+                const discountPercent = oldPrice > fsp.salePrice 
+                  ? Math.round(((oldPrice - fsp.salePrice) / oldPrice) * 100) 
+                  : 0;
+
+                return (
+                  <TouchableOpacity
+                    key={fsp.id}
+                    style={styles.flashSaleCard}
+                    onPress={() => navigation.navigate('Detail', { productId: item.id, product: item })}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.flashSaleImageWrapper}>
+                      <Image
+                        source={{ uri: formatImageUrl(item.imageUrl) }}
+                        style={styles.flashSaleImage}
+                        resizeMode="cover"
+                      />
+                      {discountPercent > 0 && (
+                        <View style={styles.flashSaleBadge}>
+                          <Text style={styles.flashSaleBadgeText}>-{discountPercent}%</Text>
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        style={styles.gridFavoriteBtn}
+                        onPress={() => toggleFavorite(item.id)}
+                      >
+                        <Ionicons
+                          name={isFav ? "heart" : "heart-outline"}
+                          size={16}
+                          color={isFav ? "#E51E25" : "#606060"}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.flashSaleContent}>
+                      <Text style={styles.gridCardBrand}>{item.brandName}</Text>
+                      <Text style={styles.gridCardTitle} numberOfLines={1}>{item.productName}</Text>
+                      <View style={styles.flashSalePriceRow}>
+                        <Text style={styles.flashSalePrice}>{formatVND(fsp.salePrice)}</Text>
+                        {oldPrice > fsp.salePrice && (
+                          <Text style={styles.flashSaleOldPrice}>{formatVND(oldPrice)}</Text>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {/* ALL PRODUCTS */}
         <View style={styles.gridHeader}>
@@ -474,6 +587,99 @@ const styles = StyleSheet.create({
   categoryCardTextActive: {
     color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+
+  flashSaleSection: {
+    backgroundColor: '#FFE5E5',
+    paddingVertical: 16,
+    marginBottom: 20,
+  },
+  flashSaleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  flashSaleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  flashSaleTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#E51E25',
+    letterSpacing: 0.5,
+  },
+  countdownContainer: {
+    backgroundColor: '#000000',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  countdownText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  flashSaleScroll: {
+    paddingLeft: 20,
+    paddingRight: 10,
+  },
+  flashSaleCard: {
+    width: 150,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#FFB3B3',
+    overflow: 'hidden',
+    shadowColor: '#E51E25',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  flashSaleImageWrapper: {
+    width: '100%',
+    height: 120,
+    position: 'relative',
+    backgroundColor: '#FAF9FB',
+  },
+  flashSaleImage: {
+    width: '100%',
+    height: '100%',
+  },
+  flashSaleBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: '#E51E25',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  flashSaleBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  flashSaleContent: {
+    padding: 10,
+  },
+  flashSalePriceRow: {
+    marginTop: 4,
+  },
+  flashSalePrice: {
+    color: '#E51E25',
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  flashSaleOldPrice: {
+    color: '#A0A0A0',
+    fontSize: 11,
+    textDecorationLine: 'line-through',
+    marginTop: 2,
   },
 
   gridHeader: {

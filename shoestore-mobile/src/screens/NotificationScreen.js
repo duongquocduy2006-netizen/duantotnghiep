@@ -6,74 +6,172 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  Dimensions
+  Dimensions,
+  Image,
+  ActivityIndicator
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, Feather, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../config';
 
 const { width } = Dimensions.get('window');
 
-const MOCK_NOTIFICATIONS = [
-  {
-    id: '1',
-    type: 'promo',
-    title: 'Khuyến mãi chào mừng 🎉',
-    content: 'Chào mừng bạn đến với SHOE STORE! Sử dụng mã NEW10 để được giảm ngay 10% cho đơn hàng đầu tiên của bạn.',
-    time: '10 phút trước',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'sale',
-    title: 'Ưu đãi Flash Sale hôm nay 🔥',
-    content: 'Giảm giá lên đến 30% cho toàn bộ giày dòng Jordan & Adidas NMD duy nhất ngày hôm nay. Số lượng có hạn!',
-    time: '2 giờ trước',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'points',
-    title: 'Tích lũy điểm thành viên 👑',
-    content: 'Bạn vừa nhận được +120 điểm tích lũy thành viên VIP từ hệ thống sau khi tạo tài khoản thành công.',
-    time: '1 ngày trước',
-    read: true,
-  },
-  {
-    id: '4',
-    type: 'shipping',
-    title: 'Giao hàng siêu tốc miễn phí 🚚',
-    content: 'SHOE STORE hỗ trợ miễn phí vận chuyển toàn quốc cho toàn bộ đơn hàng. Mua sắm cực đã không lo phí ship!',
-    time: '3 ngày trước',
-    read: true,
-  }
-];
-
 export default function NotificationScreen({ navigation }) {
   const isFocused = useIsFocused();
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('Notifications');
+  const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     if (isFocused) {
-      setActiveTab('Notifications');
-      loadReadStatus();
+      fetchNotificationsData();
     }
   }, [isFocused]);
 
-  const loadReadStatus = async () => {
+  const fetchNotificationsData = async () => {
     try {
-      const savedState = await AsyncStorage.getItem('readNotifications');
-      if (savedState) {
-        const readIds = JSON.parse(savedState);
-        setNotifications(prev => prev.map(n => 
-          readIds.includes(n.id) ? { ...n, read: true } : n
-        ));
+      setLoading(true);
+      const storedUser = await AsyncStorage.getItem('userAccount');
+      if (!storedUser) {
+        setIsLoggedIn(false);
+        setLoading(false);
+        return;
       }
-    } catch (e) {
-      console.warn('Lỗi load trạng thái thông báo:', e);
+      
+      setIsLoggedIn(true);
+      const user = JSON.parse(storedUser);
+      const realNotis = [];
+      const readNotiIdsStr = await AsyncStorage.getItem('readNotifications');
+      const readNotiIds = readNotiIdsStr ? JSON.parse(readNotiIdsStr) : [];
+
+      // 1. Đơn hàng
+      try {
+        const orderRes = await fetch(`${API_BASE_URL}/api/orders`, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (orderRes.ok) {
+          const orderData = await orderRes.json();
+          if (orderData.success && Array.isArray(orderData.orders)) {
+            orderData.orders.forEach(o => {
+              let notiTitle = '';
+              let notiDesc = '';
+              const amountStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(o.final_amount || 0);
+
+              if (o.status === 1) {
+                notiTitle = `Đơn hàng #${o.order_code} đang chờ duyệt`;
+                notiDesc = `Đơn hàng trị giá ${amountStr} đã được hệ thống ghi nhận và đang chờ đóng gói.`;
+              } else if (o.status === 2) {
+                notiTitle = `Đơn hàng #${o.order_code} đang được giao`;
+                notiDesc = `Đơn hàng đang trên đường vận chuyển. Hãy chú ý điện thoại nhé!`;
+              } else if (o.status === 3) {
+                notiTitle = `Đơn hàng #${o.order_code} đã giao thành công`;
+                notiDesc = `Giao hàng thành công! Bạn đã tích thêm điểm thành viên cho đơn hàng này.`;
+              } else if (o.status === 4) {
+                notiTitle = `Đơn hàng #${o.order_code} đã bị hủy`;
+                notiDesc = o.cancel_reason ? `Lý do hủy: ${o.cancel_reason}` : `Đơn hàng đã được hủy thành công.`;
+              }
+
+              if (notiTitle) {
+                const notiId = `order_${o.order_code}_${o.status}`;
+                const dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString('vi-VN') : 'Gần đây';
+                realNotis.push({
+                  id: notiId,
+                  type: 'order',
+                  title: notiTitle,
+                  content: notiDesc,
+                  time: dateStr,
+                  read: readNotiIds.includes(notiId),
+                  image: o.first_product_image,
+                  status: o.status,
+                  orderCode: o.order_code
+                });
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Lỗi lấy thông báo đơn hàng', e);
+      }
+
+      // 2. Flash Sale
+      try {
+        const fsRes = await fetch(`${API_BASE_URL}/api/flash-sales/active`, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (fsRes.ok) {
+          const fsData = await fsRes.json();
+          if (fsData.success && fsData.campaign) {
+            const camp = fsData.campaign;
+            const notiId = `fs_${camp.id}`;
+            realNotis.push({
+              id: notiId,
+              type: 'sale',
+              title: `Flash Sale: ${camp.name || 'Giờ Vàng Giá Sốc'}`,
+              content: `Khung giờ săn deal nảy lửa đang diễn ra. Đừng bỏ lỡ sản phẩm giảm đến 50%!`,
+              time: 'Đang diễn ra',
+              read: readNotiIds.includes(notiId),
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Lỗi lấy thông báo Flash Sale', e);
+      }
+
+      // 3. Mã giảm giá
+      try {
+        const vRes = await fetch(`${API_BASE_URL}/api/vouchers`, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          if (vData.success && Array.isArray(vData.vouchers)) {
+            vData.vouchers.forEach(v => {
+              const notiId = `voucher_${v.id || v.code}`;
+              const discountVal = (v.discount_percent && Number(v.discount_percent) > 0)
+                  ? `${v.discount_percent}%`
+                  : ((v.discount_amount && Number(v.discount_amount) > 0)
+                      ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v.discount_amount)
+                      : 'đặc biệt');
+              realNotis.push({
+                id: notiId,
+                type: 'promo',
+                title: `Mã giảm giá mới: ${v.code}`,
+                content: `Ưu đãi giảm ${discountVal} cho đơn hàng mua sắm hôm nay!`,
+                time: 'Mã mới',
+                read: readNotiIds.includes(notiId),
+              });
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Lỗi lấy thông báo Vouchers', e);
+      }
+
+      // 4. Thành viên
+      if (user) {
+        const points = user.points !== undefined ? user.points : 0;
+        const rankName = user.rank_name || 'Thành Viên';
+        const notiId = `member_${user.id || 'usr'}_${points}`;
+        const pointsStr = new Intl.NumberFormat('vi-VN').format(points || 0);
+        realNotis.push({
+          id: notiId,
+          type: 'points',
+          title: `Hạng thành viên: ${rankName}`,
+          content: `Tích lũy hiện tại: ${pointsStr} PTS. Mua sắm thêm để nâng hạng tích ưu đãi!`,
+          time: 'Thành viên',
+          read: readNotiIds.includes(notiId),
+        });
+      }
+
+      setNotifications(realNotis);
+    } catch (err) {
+      console.error("Lỗi lấy thông tin thông báo:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -88,10 +186,7 @@ export default function NotificationScreen({ navigation }) {
 
   const onRefresh = () => {
     setRefreshing(true);
-    setTimeout(() => {
-      // Simulate fetching new notifications
-      setRefreshing(false);
-    }, 1000);
+    fetchNotificationsData();
   };
 
   const markAllAsRead = () => {
@@ -100,13 +195,24 @@ export default function NotificationScreen({ navigation }) {
     saveReadStatus(updated);
   };
 
-  const markAsRead = (id) => {
+  const handleNotiClick = (item) => {
     const updated = notifications.map(n => {
-      if (n.id === id) return { ...n, read: true };
+      if (n.id === item.id) return { ...n, read: true };
       return n;
     });
     setNotifications(updated);
     saveReadStatus(updated);
+
+    if (item.type === 'order') {
+      // Navigate to order details if you have one, or profile
+      navigation.navigate('Profile');
+    } else if (item.type === 'sale') {
+      navigation.navigate('Shop'); // Or wherever flash sale is
+    } else if (item.type === 'promo') {
+      navigation.navigate('Cart');
+    } else if (item.type === 'points') {
+      navigation.navigate('Profile');
+    }
   };
 
   const getNotificationIcon = (type) => {
@@ -117,8 +223,8 @@ export default function NotificationScreen({ navigation }) {
         return <Ionicons name="flame-outline" size={20} color="#E51E25" />;
       case 'points':
         return <MaterialCommunityIcons name="crown-outline" size={22} color="#FB8C00" />;
-      case 'shipping':
-        return <Feather name="truck" size={18} color="#43A047" />;
+      case 'order':
+        return <Feather name="shopping-bag" size={18} color="#43A047" />;
       default:
         return <Feather name="bell" size={18} color="#8E8E9F" />;
     }
@@ -129,23 +235,37 @@ export default function NotificationScreen({ navigation }) {
       case 'promo': return '#E3F2FD';
       case 'sale': return '#FFF5F5';
       case 'points': return '#FFF3E0';
-      case 'shipping': return '#E8F5E9';
+      case 'order': return '#E8F5E9';
       default: return '#FAF9FB';
     }
+  };
+
+  const getImageUrl = (url) => {
+    if (!url) return 'https://ui-avatars.com/api/?name=SP&background=f1f5f9&color=94a3b8&bold=true';
+    if (url.startsWith('http')) return url;
+    const prefix = url.startsWith('/') ? '' : '/images/';
+    return `${API_BASE_URL}${prefix}${url}`;
   };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity 
       style={[styles.notiItem, !item.read && styles.notiUnread]}
-      onPress={() => markAsRead(item.id)}
+      onPress={() => handleNotiClick(item)}
       activeOpacity={0.7}
     >
-      <View style={[styles.iconWrapper, { backgroundColor: getIconBgColor(item.type) }]}>
-        {getNotificationIcon(item.type)}
-      </View>
+      {item.type === 'order' && item.image ? (
+        <Image 
+          source={{ uri: getImageUrl(item.image) }} 
+          style={styles.orderImage} 
+        />
+      ) : (
+        <View style={[styles.iconWrapper, { backgroundColor: getIconBgColor(item.type) }]}>
+          {getNotificationIcon(item.type)}
+        </View>
+      )}
       <View style={styles.notiContent}>
         <View style={styles.notiHeader}>
-          <Text style={styles.notiTitle}>{item.title}</Text>
+          <Text style={styles.notiTitle} numberOfLines={1}>{item.title}</Text>
           {!item.read && <View style={styles.unreadDot} />}
         </View>
         <Text style={styles.notiText}>{item.content}</Text>
@@ -153,6 +273,35 @@ export default function NotificationScreen({ navigation }) {
       </View>
     </TouchableOpacity>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#E51E25" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Thông Báo Của Bạn</Text>
+        </View>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="lock-closed-outline" size={80} color="#C0C0C0" />
+          <Text style={styles.emptyTitle}>Bạn chưa đăng nhập!</Text>
+          <Text style={styles.emptySubtitle}>Vui lòng đăng nhập để xem danh sách thông báo của bạn.</Text>
+          <TouchableOpacity 
+            style={styles.loginBtn}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={styles.loginBtnText}>ĐĂNG NHẬP NGAY</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -171,7 +320,7 @@ export default function NotificationScreen({ navigation }) {
         <View style={styles.emptyContainer}>
           <Ionicons name="notifications-off-outline" size={80} color="#C0C0C0" />
           <Text style={styles.emptyTitle}>Chưa có thông báo nào!</Text>
-          <Text style={styles.emptySubtitle}>Ứng dụng sẽ cập nhật thông tin khuyến mãi và trạng thái đơn hàng của bạn tại đây.</Text>
+          <Text style={styles.emptySubtitle}>Quản lý tất cả các cập nhật đơn hàng, khuyến mãi và thông báo tài khoản tại đây.</Text>
         </View>
       ) : (
         <FlatList
@@ -190,8 +339,6 @@ export default function NotificationScreen({ navigation }) {
           }
         />
       )}
-
-
     </SafeAreaView>
   );
 }
@@ -199,6 +346,12 @@ export default function NotificationScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
   header: {
@@ -244,6 +397,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 15,
   },
+  orderImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    marginRight: 15,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
   notiContent: {
     flex: 1,
   },
@@ -257,6 +418,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#000000',
+    flex: 1,
+    marginRight: 8,
   },
   unreadDot: {
     width: 8,
@@ -295,5 +458,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginTop: 8,
+  },
+  loginBtn: {
+    marginTop: 20,
+    backgroundColor: '#E51E25',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  loginBtnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
   }
 });

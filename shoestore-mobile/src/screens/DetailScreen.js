@@ -49,6 +49,7 @@ export default function DetailScreen({ route, navigation }) {
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('desc');
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // Sync selected variant's stock with quantity state
   const currentVariant = productDetail?.variants?.find(
@@ -131,6 +132,7 @@ export default function DetailScreen({ route, navigation }) {
             categoryName: product.categoryName || initialProduct?.categoryName || '',
             description: product.description || initialProduct?.description || 'Chưa có mô tả chi tiết cho sản phẩm này.',
             imageUrl: mainImgUrl,
+            images: result.images || initialProduct?.images || [],
             price: defaultPrice,
             variants: defaultVariants,
             avgRating: result.avgRating || 0,
@@ -165,6 +167,7 @@ export default function DetailScreen({ route, navigation }) {
           brandName: initialProduct.brandName || '',
           categoryName: initialProduct.categoryName || 'Chưa phân loại',
           imageUrl: initialProduct.imageUrl || '',
+          images: initialProduct.images || [],
           price: basePrice,
           description: initialProduct.description || 'Chưa có mô tả chi tiết cho sản phẩm này.',
           variants: initialProduct.variants || [],
@@ -372,7 +375,7 @@ export default function DetailScreen({ route, navigation }) {
         {/* BIG IMAGE */}
         <View style={styles.imageContainer}>
           <Image
-            source={{ uri: formatImageUrl(productDetail.imageUrl) }}
+            source={{ uri: formatImageUrl(selectedImage || productDetail.imageUrl) }}
             style={styles.image}
             resizeMode="cover"
           />
@@ -382,6 +385,24 @@ export default function DetailScreen({ route, navigation }) {
             </View>
           )}
         </View>
+
+        {/* THUMBNAILS (SECONDARY IMAGES) */}
+        {productDetail.images && productDetail.images.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbnailsContainer}>
+            {productDetail.images.map((img, idx) => {
+              const isSelected = selectedImage ? (selectedImage === img.url) : (img.url === productDetail.imageUrl || (!productDetail.imageUrl && idx === 0));
+              return (
+                <TouchableOpacity 
+                  key={idx} 
+                  onPress={() => setSelectedImage(img.url)} 
+                  style={[styles.thumbnailWrapper, isSelected && styles.thumbnailActive]}
+                >
+                  <Image source={{ uri: formatImageUrl(img.url) }} style={styles.thumbnailImage} />
+                </TouchableOpacity>
+              )
+            })}
+          </ScrollView>
+        )}
 
         {/* DETAILS INFO */}
         <View style={styles.infoSection}>
@@ -863,6 +884,30 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  thumbnailsContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 5,
+    flexDirection: 'row',
+  },
+  thumbnailWrapper: {
+    width: 65,
+    height: 65,
+    borderRadius: 8,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#EAEAEA',
+    overflow: 'hidden',
+    backgroundColor: '#FAF9FB',
+  },
+  thumbnailActive: {
+    borderColor: '#0f172a',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   flashSaleBadge: {
     position: 'absolute',
