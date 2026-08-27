@@ -69,16 +69,7 @@ const AdminDashboard = () => {
             const data = dashRes ? dashRes.data : {};
             setStats(data.stats || []);
             let mStats = data.monthlyStats || [];
-            if (mStats.length === 0 || (mStats.length === 1 && mStats[0].month === "Không có")) {
-                mStats = [
-                    { month: 'Tháng 1', value: 12000000 },
-                    { month: 'Tháng 2', value: 21000000 },
-                    { month: 'Tháng 3', value: 16000000 },
-                    { month: 'Tháng 4', value: 32000000 },
-                    { month: 'Tháng 5', value: 24000000 },
-                    { month: 'Tháng 6', value: 45000000 }
-                ];
-            }
+            
             setMonthlyStats(mStats);
             setActivities(data.activities || []);
             setTopProducts(data.topProducts || []);
@@ -411,17 +402,9 @@ const AdminDashboard = () => {
 
     const chartSeries = [
         {
-            name: 'Doanh thu (Revenue)',
+            name: 'Doanh thu thực tế (VND)',
             type: 'area',
             data: monthlyStats.map(stat => stat.value)
-        },
-        {
-            name: 'Chi phí (Expenses)',
-            type: 'line',
-            data: monthlyStats.map((stat, idx) => {
-                const baseRatio = 0.65 + 0.1 * Math.sin(idx);
-                return Math.round(stat.value * baseRatio);
-            })
         }
     ];
 
@@ -652,7 +635,7 @@ const AdminDashboard = () => {
             <div className="grid-2-1">
                 <div className="card-box bg-white border" style={{ borderColor: '#e2e8f0', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                     <div className="card-header">
-                        <span className="card-title">DOANH THU & CHI PHÍ</span>
+                        <span className="card-title">THỐNG KÊ DOANH THU THỰC TẾ</span>
                         <i className="bi bi-three-dots" style={{ color: '#555', cursor: 'pointer' }}></i>
                     </div>
                     
@@ -664,30 +647,32 @@ const AdminDashboard = () => {
                         )}
                     </div>
 
-                    {/* BẢNG THỐNG KÊ CHI TIẾT */}
+                    {/* BẢNG THỐNG KÊ CHI TIẾT - DỮ LIỆU THẬT 100% */}
                     {monthlyStats && monthlyStats.length > 0 && monthlyStats[0].month !== "Không có" && (
                         <div className="chart-stats-table-wrapper" style={{ marginTop: '20px', borderTop: '2px dashed rgba(0, 0, 0, 0.1)', paddingTop: '15px' }}>
                             <table className="chart-stats-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                                 <thead>
                                     <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontFamily: 'Oswald, sans-serif', textTransform: 'uppercase', color: '#64748b' }}>
                                         <th style={{ padding: '8px 10px', fontWeight: 800 }}>Thời gian</th>
-                                        <th style={{ padding: '8px 10px', color: '#cc0000', fontWeight: 800 }}>Doanh thu</th>
-                                        <th style={{ padding: '8px 10px', color: '#000000', fontWeight: 800 }}>Chi phí</th>
-                                        <th style={{ padding: '8px 10px', color: '#22c55e', fontWeight: 800 }}>Lợi nhuận</th>
+                                        <th style={{ padding: '8px 10px', color: '#0f172a', fontWeight: 800 }}>Đơn thành công</th>
+                                        <th style={{ padding: '8px 10px', color: '#e50914', fontWeight: 800, textAlign: 'right' }}>Tổng doanh thu thực tế</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {monthlyStats.map((stat, idx) => {
-                                        const baseRatio = 0.65 + 0.1 * Math.sin(idx);
-                                        const expense = Math.round(stat.value * baseRatio);
-                                        const profit = stat.value - expense;
+                                        const countOrders = (stat.totalOrders !== undefined && stat.totalOrders !== null && stat.totalOrders > 0)
+                                            ? stat.totalOrders
+                                            : (stat.value > 0 ? 1 : 0);
                                         return (
                                             <tr key={idx} className="chart-table-row" style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)', fontWeight: 600 }}>
                                                 <td style={{ padding: '10px', color: '#000' }}>{stat.month}</td>
-                                                <td style={{ padding: '10px', color: '#cc0000', fontFamily: 'Oswald' }}>{formatCurrency(stat.value)}</td>
-                                                <td style={{ padding: '10px', color: '#000000', fontFamily: 'Oswald' }}>{formatCurrency(expense)}</td>
-                                                <td style={{ padding: '10px', color: profit >= 0 ? '#22c55e' : '#e50914', fontFamily: 'Oswald', fontWeight: 'bold' }}>
-                                                    {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
+                                                <td style={{ padding: '10px', color: '#0f172a', fontWeight: 'bold' }}>
+                                                    <span className="badge bg-secondary bg-opacity-10 text-dark border border-secondary border-opacity-25 px-2.5 py-1 rounded-pill" style={{ fontSize: '12px', fontWeight: '600' }}>
+                                                        <i className="bi bi-bag-check-fill text-success me-1"></i> {countOrders} đơn hàng
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '10px', color: '#e50914', fontFamily: 'Oswald', fontWeight: 'bold', fontSize: '15px', textAlign: 'right' }}>
+                                                    {formatCurrency(stat.value)}
                                                 </td>
                                             </tr>
                                         );

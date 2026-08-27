@@ -19,6 +19,7 @@ import NewArrivals from './pages/NewArrivals';
 import Vouchers from './pages/Vouchers';
 import OrderDetail from './pages/OrderDetail';
 import Notifications from './pages/Notifications';
+import Wallet from './pages/Wallet';
 import ShipperDashboard from './pages/shipper/ShipperDashboard';
 import ShipperWaitingOrders from './pages/shipper/ShipperWaitingOrders';
 import ShipperShippingOrders from './pages/shipper/ShipperShippingOrders';
@@ -26,6 +27,7 @@ import ShipperCompletedOrders from './pages/shipper/ShipperCompletedOrders';
 import ShipperEarnings from './pages/shipper/ShipperEarnings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminWithdrawals from './pages/admin/AdminWithdrawals';
 import AdminPOS from './pages/admin/AdminPOS';
 import AdminVouchers from './pages/admin/AdminVouchers';
 import AdminProducts from './pages/admin/AdminProducts';
@@ -91,6 +93,7 @@ function App() {
         <Route path="/checkout-success" element={<CheckoutSuccess />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/wallet" element={<Wallet />} />
         <Route path="/orders" element={<Orders />} />
         <Route path="/order-history" element={<OrderHistory />} />
         <Route path="/orders/detail/:id" element={<OrderDetail />} />
@@ -113,6 +116,7 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/orders" element={<AdminOrders />} />
+          <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
           <Route path="/admin/sale" element={<AdminPOS />} />
           <Route path="/admin/vouchers" element={<AdminVouchers />} />
           <Route path="/admin/products" element={<AdminProducts />} />

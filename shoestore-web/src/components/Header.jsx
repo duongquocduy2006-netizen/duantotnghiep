@@ -15,6 +15,7 @@ const Header = () => {
         }
     });
     const [cartCount, setCartCount] = useState(0);
+    const [walletBalance, setWalletBalance] = useState(0);
     const [searchQuery, setSearchQuery] = useState(() => {
         const params = new URLSearchParams(window.location.search);
         return params.get('search') || '';
@@ -35,18 +36,73 @@ const Header = () => {
         const realNotis = [];
         const readNotiIds = JSON.parse(localStorage.getItem('read_notifications') || '[]');
 
-        // 1. Đơn hàng thực tế của User
+        // 1. Thông báo Ví điện tử (Hoàn tiền & Rút tiền) - Tối đa 3 giao dịch mới nhất
         if (account) {
+            try {
+                const walletRes = await api.get('/api/wallet');
+                if (walletRes.data && walletRes.data.success && Array.isArray(walletRes.data.transactions)) {
+                    walletRes.data.transactions.slice(0, 3).forEach(t => {
+                        const amtStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(t.amount || 0);
+                        const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString('vi-VN') : 'Gần đây';
+                        const notiId = `wallet_tx_${t.id}_${t.status}`;
+
+                        if (t.type === 'REFUND') {
+                            realNotis.push({
+                                id: notiId,
+                                title: `Hoàn tiền Ví Điện Tử: +${amtStr}`,
+                                desc: t.description || `Đã tự động hoàn ${amtStr} vào Ví điện tử của bạn!`,
+                                time: dateStr,
+                                icon: 'fa-wallet text-success',
+                                unread: !readNotiIds.includes(notiId),
+                                link: '/wallet'
+                            });
+                        } else if (t.type === 'WITHDRAW') {
+                            if (t.status === 1) {
+                                realNotis.push({
+                                    id: notiId,
+                                    title: `Rút tiền thành công: -${amtStr}`,
+                                    desc: `Yêu cầu rút ${amtStr} về TK ${t.bank_account || ''} đã được Admin chuyển khoản thành công!`,
+                                    time: dateStr,
+                                    icon: 'fa-circle-check text-success',
+                                    unread: !readNotiIds.includes(notiId),
+                                    link: '/wallet'
+                                });
+                            } else if (t.status === 2) {
+                                realNotis.push({
+                                    id: notiId,
+                                    title: `Từ chối rút tiền: ${amtStr}`,
+                                    desc: t.description || `Yêu cầu rút tiền bị từ chối. Số tiền đã được hoàn lại vào Ví!`,
+                                    time: dateStr,
+                                    icon: 'fa-circle-xmark text-danger',
+                                    unread: !readNotiIds.includes(notiId),
+                                    link: '/wallet'
+                                });
+                            } else if (t.status === 0) {
+                                realNotis.push({
+                                    id: notiId,
+                                    title: `Lệnh rút tiền đang xử lý: ${amtStr}`,
+                                    desc: `Yêu cầu rút tiền về TK ${t.bank_account || ''} đang được Admin xử lý.`,
+                                    time: dateStr,
+                                    icon: 'fa-clock text-warning',
+                                    unread: !readNotiIds.includes(notiId),
+                                    link: '/wallet'
+                                });
+                            }
+                        }
+                    });
+                }
+            } catch (e) {}
+
+            // 2. Đơn hàng thực tế của User - Tối đa 3 đơn mới nhất
             try {
                 const orderRes = await api.get('/api/orders');
                 if (orderRes.data && orderRes.data.success && Array.isArray(orderRes.data.orders)) {
-                    const userOrders = orderRes.data.orders.slice(0, 5);
+                    const userOrders = orderRes.data.orders.slice(0, 3);
                     userOrders.forEach(o => {
                         let notiTitle = '';
                         let notiDesc = '';
                         const amountStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(o.final_amount || 0);
                         
-                        let productNameText = '';
                         if (o.status === 1) {
                             notiTitle = `Đơn hàng #${o.order_code} đang chờ duyệt`;
                             notiDesc = `Đơn hàng trị giá ${amountStr} đã được hệ thống ghi nhận.`;
@@ -58,7 +114,8 @@ const Header = () => {
                             notiDesc = `Giao hàng thành công! Bạn đã tích thêm điểm thành viên.`;
                         } else if (o.status === 4) {
                             notiTitle = `Đơn hàng #${o.order_code} đã bị hủy`;
-                            notiDesc = o.cancel_reason ? `Lý do: ${o.cancel_reason}` : `Đơn hàng đã hủy thành công.`;
+                            const isPaid = o.payment_method === 'BANK' || o.payment_status === 3 || o.payment_status === 4 || o.payment_status === 1 || o.payment_status === 2;
+                            notiDesc = (o.cancel_reason ? `Lý do: ${o.cancel_reason}.` : `Đơn hàng đã hủy thành công.`) + (isPaid ? ` Đã hoàn ${amountStr} vào Ví điện tử!` : '');
                         }
 
                         if (notiTitle) {
@@ -69,6 +126,7 @@ const Header = () => {
                                 title: notiTitle,
                                 desc: notiDesc,
                                 time: dateStr,
+                                icon: o.status === 4 ? 'fa-ban text-danger' : 'fa-box text-primary',
                                 unread: !readNotiIds.includes(notiId),
                                 link: `/orders/detail/${o.order_code}`
                             });
@@ -80,7 +138,7 @@ const Header = () => {
             }
         }
 
-        // 2. Flash Sale thực tế đang diễn ra
+        // 3. Flash Sale thực tế đang diễn ra
         try {
             const fsRes = await api.get('/api/flash-sales/active');
             if (fsRes.data && fsRes.data.success && fsRes.data.campaign) {
@@ -98,52 +156,14 @@ const Header = () => {
             }
         } catch (e) {}
 
-        // 3. Mã giảm giá khả dụng thực tế
-        try {
-            const vRes = await api.get('/api/vouchers');
-            if (vRes.data && vRes.data.success && Array.isArray(vRes.data.vouchers)) {
-                const validVouchers = vRes.data.vouchers.slice(0, 2);
-                validVouchers.forEach(v => {
-                    const notiId = `voucher_${v.id || v.code}`;
-                    const discountVal = (v.discount_percent && Number(v.discount_percent) > 0)
-                        ? `${v.discount_percent}%`
-                        : ((v.discount_amount && Number(v.discount_amount) > 0)
-                            ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(v.discount_amount)
-                            : 'đặc biệt');
-                    realNotis.push({
-                        id: notiId,
-                        title: `Mã giảm giá mới: ${v.code}`,
-                        desc: `Ưu đãi giảm ${discountVal} cho đơn hàng mua sắm hôm nay!`,
-                        time: 'Mã mới',
-                        icon: 'fa-ticket text-danger',
-                        unread: !readNotiIds.includes(notiId),
-                        link: '/cart'
-                    });
-                });
-            }
-        } catch (e) {}
-
-        // 4. Thông tin Hạng thành viên thực tế
-        if (account) {
-            const points = account.points !== undefined ? account.points : 0;
-            const rankName = account.rank_name || 'Thành Viên';
-            const notiId = `member_${account.id || 'usr'}_${points}`;
-            realNotis.push({
-                id: notiId,
-                title: `Hạng thành viên: ${rankName}`,
-                desc: `Tích lũy hiện tại: ${points} điểm. Mua sắm thêm để nâng hạng tích ưu đãi!`,
-                time: 'Thành viên',
-                icon: 'fa-crown text-warning',
-                unread: !readNotiIds.includes(notiId),
-                link: '/membership'
-            });
-        }
-
-        setNotifications(realNotis);
+        // Tối ưu: Giới hạn tối đa 5 thông báo mới nhất cho Menu Popup Header
+        setNotifications(realNotis.slice(0, 5));
     };
 
     useEffect(() => {
         fetchRealNotifications();
+        const interval = setInterval(fetchRealNotifications, 10000);
+        return () => clearInterval(interval);
     }, [authVersion, account?.id]);
 
     const markAllNotiAsRead = () => {
@@ -177,7 +197,7 @@ const Header = () => {
         }
 
         if (noti.link) {
-            navigate(noti.link);
+            window.location.href = noti.link;
         }
     };
 
@@ -270,6 +290,13 @@ const Header = () => {
             } catch (err) {
                 console.error("Lỗi tải danh mục ở header:", err);
             }
+
+            try {
+                const walletRes = await api.get('/api/wallet/my-wallet');
+                if (walletRes.data && walletRes.data.success) {
+                    setWalletBalance(walletRes.data.balance || 0);
+                }
+            } catch (e) {}
         };
 
         fetchHeaderData();
@@ -566,6 +593,7 @@ const Header = () => {
                                                         </div>
                                                     )}
                                                 </li>
+                                                <li><Link className="dropdown-item" to="/wallet"><i className="fa-solid fa-wallet text-warning me-2"></i> Ví điện tử / Rút tiền</Link></li>
                                                 <li><Link className="dropdown-item" to="/orders"><i className="fa fa-box-open me-2"></i> Đơn hàng</Link></li>
                                                 <li><Link className="dropdown-item" to="/change-password"><i className="fa fa-key me-2"></i> Mật khẩu</Link></li>
                                                 {account.role === 'ADMIN' && (
@@ -586,6 +614,9 @@ const Header = () => {
                                 </div>
 
                                 <Link to="/favourites" className="icon-item" title="Yêu thích"><i className="fa fa-heart"></i></Link>
+
+                                <Link to="/wallet" className="icon-item" title="Ví điện tử / Rút tiền"><i className="fa-solid fa-wallet text-warning"></i></Link>
+
                                 <Link to="/cart" className="icon-item position-relative" title="Giỏ hàng">
                                     <i className="fa fa-shopping-cart"></i>
                                     {cartCount > 0 && (

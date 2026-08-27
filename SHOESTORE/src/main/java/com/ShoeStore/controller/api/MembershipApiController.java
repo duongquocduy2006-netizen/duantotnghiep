@@ -109,6 +109,7 @@ public class MembershipApiController {
             response.put("account", accountMap);
             response.put("ranks", ranks);
             response.put("vouchers", vouchers);
+            response.put("vndPerPoint", getVndPerPoint());
 
             return ResponseEntity.ok(response);
 
@@ -245,6 +246,57 @@ public class MembershipApiController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Lỗi khi xóa hạng: " + e.getMessage()));
+        }
+    }
+
+    // ==================== CẤU HÌNH TỶ LỆ QUY ĐỔI ĐIỂM ====================
+    private int getVndPerPoint() {
+        try {
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'system_settings') " +
+                         "CREATE TABLE system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value NVARCHAR(255))");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM system_settings WHERE setting_key = 'vnd_per_point') " +
+                         "INSERT INTO system_settings (setting_key, setting_value) VALUES ('vnd_per_point', '1000')");
+
+            String val = jdbc.queryForObject("SELECT setting_value FROM system_settings WHERE setting_key = 'vnd_per_point'", String.class);
+            if (val != null && !val.trim().isEmpty()) {
+                int rate = Integer.parseInt(val.trim());
+                if (rate > 0) return rate;
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi đọc tỷ lệ quy đổi: " + e.getMessage());
+        }
+        return 1000;
+    }
+
+    @GetMapping("/point-rate")
+    public ResponseEntity<?> getPointRate() {
+        int rate = getVndPerPoint();
+        return ResponseEntity.ok(Map.of("success", true, "vndPerPoint", rate));
+    }
+
+    @PostMapping("/point-rate")
+    public ResponseEntity<?> updatePointRate(@RequestBody Map<String, Object> payload) {
+        try {
+            if (!payload.containsKey("vndPerPoint") || payload.get("vndPerPoint") == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu số tiền quy đổi!"));
+            }
+            int rate = ((Number) payload.get("vndPerPoint")).intValue();
+            if (rate <= 0) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Số tiền quy đổi phải lớn hơn 0!"));
+            }
+
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'system_settings') " +
+                         "CREATE TABLE system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value NVARCHAR(255))");
+
+            int updated = jdbc.update("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'vnd_per_point'", String.valueOf(rate));
+            if (updated == 0) {
+                jdbc.update("INSERT INTO system_settings (setting_key, setting_value) VALUES ('vnd_per_point', ?)", String.valueOf(rate));
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Đã cập nhật tỷ lệ quy đổi điểm thành công!", "vndPerPoint", rate));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi cập nhật: " + e.getMessage()));
         }
     }
 }

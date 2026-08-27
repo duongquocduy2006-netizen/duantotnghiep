@@ -86,7 +86,10 @@ const Checkout = () => {
                     // Lọc danh sách sản phẩm theo các sản phẩm người dùng đã tích chọn từ giỏ hàng
                     const savedSelectedIds = location.state?.selectedItemIds || JSON.parse(sessionStorage.getItem('selectedCartItemIds') || 'null');
                     if (!buyNowVariantId && savedSelectedIds && Array.isArray(savedSelectedIds) && savedSelectedIds.length > 0) {
-                        items = items.filter(item => savedSelectedIds.includes(item.id));
+                        items = items.filter(item => {
+                            const rawId = String(item.id).replace(/_fs|_normal/, '');
+                            return savedSelectedIds.map(String).includes(rawId) || savedSelectedIds.includes(item.id);
+                        });
                     }
 
                     setCartItems(items);
@@ -1135,7 +1138,12 @@ const Checkout = () => {
             voucherCode: appliedVoucher ? appliedVoucher.code : '',
             shippingFee: shippingFee,
             buyNowVariantId: buyNowVariantId ? parseInt(buyNowVariantId) : null,
-            buyNowQty: buyNowQty ? parseInt(buyNowQty) : null
+            buyNowQty: buyNowQty ? parseInt(buyNowQty) : null,
+            cartItemIds: cartItems.map(item => item.id),
+            items: cartItems.map(item => ({
+                variantId: item.product_variant_id || item.variant_id || item.variantId,
+                quantity: item.quantity
+            }))
         };
 
         try {
@@ -1343,7 +1351,14 @@ const Checkout = () => {
                                         <div key={item.id} className="order-summary-item">
                                             <img src={getImageUrl(item.image_url)} className="item-img" alt="Shoe" />
                                             <div className="item-info">
-                                                <div className="item-name">{item.product_name}</div>
+                                                <div className="item-name">
+                                                    {item.product_name}
+                                                    {item.is_flash_sale && (
+                                                        <span className="badge bg-danger ms-2" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>
+                                                            <i className="bi bi-lightning-charge-fill me-1"></i>FLASH SALE
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="item-meta">{item.quantity} x {formatCurrency(item.price)}</div>
                                                 <div className="item-meta">Biến thể: {item.size_name} / {item.color_name}</div>
                                             </div>

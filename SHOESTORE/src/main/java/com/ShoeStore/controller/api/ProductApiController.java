@@ -792,7 +792,7 @@ public class ProductApiController {
                     if (p <= 5000) {
                         return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Giá bán của tất cả biến thể phải lớn hơn 5,000đ!"));
                     }
-                    variant.setPrice(p);
+                    variant.setPrice(java.math.BigDecimal.valueOf(p));
                 }
 
                 if (item.containsKey("quantity") && item.get("quantity") != null) {

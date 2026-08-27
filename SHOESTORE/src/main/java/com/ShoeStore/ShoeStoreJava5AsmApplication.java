@@ -60,7 +60,10 @@ public class ShoeStoreJava5AsmApplication {
                 jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'cancel_reason') ALTER TABLE orders ADD cancel_reason NVARCHAR(500) NULL;");
                 jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'external_transaction_id') ALTER TABLE orders ADD external_transaction_id NVARCHAR(255) NULL;");
                 jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'voucher_id') ALTER TABLE orders ADD voucher_id INT NULL;");
-                System.out.println("-> Fix: orders table columns checked/added");
+                jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'payment_status') ALTER TABLE orders ADD payment_status INT DEFAULT 0;");
+                jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'refund_reason') ALTER TABLE orders ADD refund_reason NVARCHAR(500) NULL;");
+                jdbcTemplate.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'refund_at') ALTER TABLE orders ADD refund_at DATETIME NULL;");
+                System.out.println("-> Fix: orders table columns checked/added (including payment_status & refund fields)");
             } catch (Exception e) {}
 
             // 5b. Xóa CHECK constraint trên flash_sale_products.quantity_limit cho phép quantity_limit = 0 (Không giới hạn)

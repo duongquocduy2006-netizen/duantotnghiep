@@ -275,11 +275,21 @@ const OrderHistory = () => {
                                                 src={`https://ui-avatars.com/api/?name=${encodeURIComponent(account.full_name)}&background=1e293b&color=fff&bold=true&size=200`}
                                                 className="user-avatar" alt="Avatar"
                                             />
-                                            <i className="fa fa-crown vip-crown"></i>
                                         </div>
                                         <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
                                         <div className="mb-2">
-                                            <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>{account.rank_name || 'Đồng'}</span>
+                                            <span 
+                                                className={`rank-badge-flat ${getRankClass(account.rank_name)}`}
+                                                style={account.color_code ? {
+                                                    backgroundColor: `${account.color_code}1f`,
+                                                    color: account.color_code,
+                                                    borderColor: `${account.color_code}40`,
+                                                    borderStyle: 'solid',
+                                                    borderWidth: '1px'
+                                                } : {}}
+                                            >
+                                                {account.rank_name || 'Đồng'}
+                                            </span>
                                         </div>
                                         <div className="points-flat-box mb-3">
                                             <span className="points-label">Điểm</span>
@@ -429,9 +439,21 @@ const OrderHistory = () => {
                                                         {formatDate(order.created_at)}
                                                     </span>
                                                 </div>
-                                                <span className={badge.cls}>
-                                                    <i className={`fa-solid ${badge.icon} me-1`}></i> {badge.text}
-                                                </span>
+                                                <div className="d-flex align-items-center gap-2 flex-wrap">
+                                                    <span className={badge.cls}>
+                                                        <i className={`fa-solid ${badge.icon} me-1`}></i> {badge.text}
+                                                    </span>
+                                                    {order.status === 4 && (order.payment_status === 2 || order.paymentStatus === 2) && (
+                                                        <span className="badge-luxury" style={{ backgroundColor: '#fffbe6', color: '#d48806', borderColor: '#ffe58f' }}>
+                                                            <i className="fa-solid fa-rotate fa-spin me-1"></i> Chờ hoàn tiền
+                                                        </span>
+                                                    )}
+                                                    {order.status === 4 && (order.payment_status === 3 || order.paymentStatus === 3) && (
+                                                        <span className="badge-luxury" style={{ backgroundColor: '#f6ffed', color: '#389e0d', borderColor: '#b7eb8f' }}>
+                                                            <i className="fa-solid fa-circle-check me-1"></i> Đã hoàn tiền
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {/* Product info */}

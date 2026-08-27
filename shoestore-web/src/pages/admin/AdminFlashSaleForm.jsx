@@ -244,12 +244,16 @@ const AdminFlashSaleForm = () => {
             const response = await api.get(`/api/flash-sales/${id}`);
             if (response.data && response.data.success) {
                 const fs = response.data.flashSale;
-                const loadedProducts = (fs.flashSaleProducts || []).map(fsp => ({
-                    ...fsp,
-                    salePrice: fsp.salePrice != null ? String(fsp.salePrice) : '',
-                    quantityLimit: fsp.quantityLimit === 0 || fsp.quantityLimit == null ? 0 : String(fsp.quantityLimit),
-                    isUnlimited: fsp.quantityLimit === 0 || fsp.quantityLimit == null
-                }));
+                const loadedProducts = (fs.flashSaleProducts || []).map(fsp => {
+                    const sPrice = fsp.salePrice != null ? Number(fsp.salePrice) : 0;
+                    return {
+                        ...fsp,
+                        discountPercent: fsp.discountPercent || (sPrice > 0 ? 10 : 10),
+                        salePrice: sPrice > 0 ? String(sPrice) : '',
+                        quantityLimit: fsp.quantityLimit === 0 || fsp.quantityLimit == null ? 0 : String(fsp.quantityLimit),
+                        isUnlimited: fsp.quantityLimit === 0 || fsp.quantityLimit == null
+                    };
+                });
 
                 setForm({
                     id: fs.id,
@@ -280,11 +284,18 @@ const AdminFlashSaleForm = () => {
             window.dispatchEvent(new CustomEvent('show-toast', { detail: "Vui lòng đợi tải sản phẩm hoặc tạo sản phẩm trước!" }));
             return;
         }
+        
+        const firstProdId = products[0].id;
+        const initialPct = 10;
+        const origInfo = getOriginalPriceInfo({ productId: firstProdId, variantId: null });
+        const minP = origInfo ? origInfo.minPrice : 0;
+        const calculatedSale = minP > 0 ? Math.round(minP * (100 - initialPct) / 100) : '';
+
         setForm({
             ...form,
             flashSaleProducts: [
                 ...form.flashSaleProducts,
-                { id: "temp." + Date.now(), productId: products[0].id, variantId: null, salePrice: '', quantityLimit: '5', isUnlimited: false, soldQuantity: 0 }
+                { id: "temp." + Date.now(), productId: firstProdId, variantId: null, discountPercent: initialPct, salePrice: calculatedSale, quantityLimit: '5', isUnlimited: false, soldQuantity: 0 }
             ]
         });
         setFormErrors(p => {
@@ -368,11 +379,14 @@ const AdminFlashSaleForm = () => {
             const fsp = form.flashSaleProducts[i];
             const origInfo = getOriginalPriceInfo(fsp);
             
+            const pct = Number(fsp.discountPercent);
+            if (fsp.discountPercent === '' || fsp.discountPercent === null || isNaN(pct) || pct < 1 || pct > 50) {
+                errors[`products.${i}.discountPercent`] = "Mức giảm giá phải từ 1% đến tối đa 50%!";
+            }
+
             const sPrice = Number(fsp.salePrice);
             if (fsp.salePrice === '' || fsp.salePrice === null || isNaN(sPrice) || sPrice <= 0) {
-                errors[`products.${i}.salePrice`] = "Vui lòng nhập giá sale lớn hơn 0đ!";
-            } else if (origInfo && sPrice >= origInfo.minPrice) {
-                errors[`products.${i}.salePrice`] = `Giá sale (${new Intl.NumberFormat('vi-VN').format(sPrice)}đ) không được lớn hơn hoặc bằng giá gốc (${origInfo.displayText})!`;
+                errors[`products.${i}.salePrice`] = "Không thể tính được giá sale từ phần trăm giảm!";
             }
 
             if (!fsp.isUnlimited) {
@@ -614,28 +628,13 @@ const AdminFlashSaleForm = () => {
                                 <div className="product-row header">
                                     <div className="form-label">SẢN PHẨM</div>
                                     <div className="form-label">BIẾN THỂ</div>
-                                    <div className="form-label">GIÁ SALE (Đ)</div>
+                                    <div className="form-label">MỨC GIẢM GIÁ (%)</div>
                                     <div className="form-label">GIỚI HẠN (SL)</div>
                                     <div className="form-label"></div>
                                 </div>
 
                                 {form.flashSaleProducts.map((fsp, idx) => {
                                     const origInfo = getOriginalPriceInfo(fsp);
-                                    const numericSale = Number(fsp.salePrice);
-                                    const isValidSale = fsp.salePrice !== '' && !isNaN(numericSale) && numericSale > 0;
-                                    
-                                    let discountPct = null;
-                                    let savingsAmount = null;
-                                    let isHigherThanOrig = false;
-
-                                    if (origInfo && isValidSale) {
-                                        if (numericSale >= origInfo.minPrice) {
-                                            isHigherThanOrig = true;
-                                        } else {
-                                            discountPct = Math.round(((origInfo.minPrice - numericSale) / origInfo.minPrice) * 100);
-                                            savingsAmount = origInfo.minPrice - numericSale;
-                                        }
-                                    }
 
                                     return (
                                         <div key={fsp.id} className="product-row align-items-start">
@@ -644,15 +643,15 @@ const AdminFlashSaleForm = () => {
                                                     className={`form-input-cinematic ${formErrors[`products.${idx}.productId`] ? 'input-error' : ''}`}
                                                     value={fsp.productId}
                                                     onChange={(e) => {
+                                                        const pId = e.target.value;
                                                         const updated = [...form.flashSaleProducts];
-                                                        updated[idx] = { ...updated[idx], productId: e.target.value, variantId: null };
+                                                        const curPct = updated[idx].discountPercent || 10;
+                                                        const newFsp = { ...updated[idx], productId: pId, variantId: null, discountPercent: curPct };
+                                                        const info = getOriginalPriceInfo(newFsp);
+                                                        const minP = info ? info.minPrice : 0;
+                                                        newFsp.salePrice = minP > 0 ? Math.round(minP * (100 - curPct) / 100) : '';
+                                                        updated[idx] = newFsp;
                                                         setForm({ ...form, flashSaleProducts: updated });
-                                                        setFormErrors(p => {
-                                                            const next = { ...p };
-                                                            delete next[`products.${idx}.productId`];
-                                                            delete next[`products.${idx}.variantId`];
-                                                            return next;
-                                                        });
                                                     }}
                                                 >
                                                     {products.map(p => (
@@ -666,7 +665,17 @@ const AdminFlashSaleForm = () => {
                                                 <select 
                                                     className="form-input-cinematic"
                                                     value={fsp.variantId || ''}
-                                                    onChange={(e) => handleRowChange(idx, 'variantId', e.target.value === '' ? null : parseInt(e.target.value))}
+                                                    onChange={(e) => {
+                                                        const vId = e.target.value === '' ? null : parseInt(e.target.value);
+                                                        const updated = [...form.flashSaleProducts];
+                                                        const curPct = updated[idx].discountPercent || 10;
+                                                        const newFsp = { ...updated[idx], variantId: vId, discountPercent: curPct };
+                                                        const info = getOriginalPriceInfo(newFsp);
+                                                        const minP = info ? info.minPrice : 0;
+                                                        newFsp.salePrice = minP > 0 ? Math.round(minP * (100 - curPct) / 100) : '';
+                                                        updated[idx] = newFsp;
+                                                        setForm({ ...form, flashSaleProducts: updated });
+                                                    }}
                                                 >
                                                     <option value="">Tất cả biến thể</option>
                                                     {(productVariants[fsp.productId] || []).map(v => (
@@ -678,41 +687,84 @@ const AdminFlashSaleForm = () => {
                                             </div>
 
                                             <div>
-                                                <input 
-                                                    type="text" 
-                                                    inputMode="numeric"
-                                                    className={`form-input-cinematic ${formErrors[`products.${idx}.salePrice`] || isHigherThanOrig ? 'input-error' : ''}`} 
-                                                    placeholder="Nhập giá sale..."
-                                                    value={fsp.salePrice === null || fsp.salePrice === undefined ? '' : fsp.salePrice}
-                                                    onFocus={(e) => e.target.select()}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        if (val === '' || /^\d*$/.test(val)) {
-                                                            handleRowChange(idx, 'salePrice', val);
-                                                        }
-                                                    }}
-                                                />
+                                                <div style={{ position: 'relative' }}>
+                                                    <input 
+                                                        type="text" 
+                                                        inputMode="numeric"
+                                                        className={`form-input-cinematic ${formErrors[`products.${idx}.discountPercent`] || formErrors[`products.${idx}.salePrice`] ? 'input-error' : ''}`} 
+                                                        placeholder="Nhập % giảm (1 - 50%)..."
+                                                        value={fsp.discountPercent === null || fsp.discountPercent === undefined ? '' : fsp.discountPercent}
+                                                        onFocus={(e) => e.target.select()}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            if (val === '' || /^\d*$/.test(val)) {
+                                                                let num = val === '' ? '' : parseInt(val, 10);
+                                                                if (typeof num === 'number') {
+                                                                    if (num > 50) num = 50; // TỐI ĐA 50%
+                                                                }
+                                                                
+                                                                const info = getOriginalPriceInfo(fsp);
+                                                                const minP = info ? info.minPrice : 0;
+                                                                const calculatedSale = (typeof num === 'number' && num > 0 && minP > 0) 
+                                                                    ? Math.round(minP * (100 - num) / 100) 
+                                                                    : '';
 
-                                                {/* Display Original Price (Giá Gốc) & Live Discount Percentage */}
+                                                                const updated = [...form.flashSaleProducts];
+                                                                updated[idx] = {
+                                                                    ...updated[idx],
+                                                                    discountPercent: num,
+                                                                    salePrice: calculatedSale
+                                                                };
+                                                                setForm({ ...form, flashSaleProducts: updated });
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 'bold', color: '#e50914', pointerEvents: 'none' }}>%</span>
+                                                </div>
+
+                                                {/* Nút chọn nhanh % giảm giá (5%, 10%, 20%, 30%, 50%) */}
+                                                <div className="d-flex gap-1 mt-1 flex-wrap">
+                                                    {[5, 10, 20, 30, 50].map(pct => (
+                                                        <button
+                                                            key={pct}
+                                                            type="button"
+                                                            className={`btn btn-xs ${fsp.discountPercent === pct ? 'btn-danger' : 'btn-outline-secondary'}`}
+                                                            style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}
+                                                            onClick={() => {
+                                                                const info = getOriginalPriceInfo(fsp);
+                                                                const minP = info ? info.minPrice : 0;
+                                                                const calculatedSale = minP > 0 ? Math.round(minP * (100 - pct) / 100) : '';
+
+                                                                const updated = [...form.flashSaleProducts];
+                                                                updated[idx] = {
+                                                                    ...updated[idx],
+                                                                    discountPercent: pct,
+                                                                    salePrice: calculatedSale
+                                                                };
+                                                                setForm({ ...form, flashSaleProducts: updated });
+                                                            }}
+                                                        >
+                                                            -{pct}%
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                {/* Hiển thị Giá Gốc & Giá Sale Tương Ứng */}
                                                 {origInfo && (
                                                     <div className="mt-1" style={{ fontSize: '11.5px', lineHeight: '1.4' }}>
                                                         <div style={{ color: '#64748b', fontWeight: 600 }}>
-                                                            Giá gốc: <span style={{ textDecoration: isValidSale && !isHigherThanOrig ? 'line-through' : 'none', color: '#334155' }}>{origInfo.displayText}</span>
+                                                            Giá gốc: <span style={{ textDecoration: fsp.discountPercent > 0 ? 'line-through' : 'none', color: '#334155' }}>{origInfo.displayText}</span>
                                                         </div>
-                                                        {isValidSale && !isHigherThanOrig && discountPct > 0 && (
+                                                        {fsp.discountPercent > 0 && fsp.salePrice > 0 && (
                                                             <div className="mt-1" style={{ color: '#e50914', fontWeight: 700 }}>
                                                                 <i className="bi bi-fire me-1"></i>
-                                                                Giảm {discountPct}% <span className="text-muted font-normal">(Tiết kiệm {new Intl.NumberFormat('vi-VN').format(savingsAmount)}đ)</span>
-                                                            </div>
-                                                        )}
-                                                        {isValidSale && isHigherThanOrig && (
-                                                            <div className="mt-1 text-danger font-bold" style={{ fontSize: '11px' }}>
-                                                                ⚠️ Giá sale ≥ giá gốc ({origInfo.displayText})
+                                                                Giảm {fsp.discountPercent}% ➔ Giá Sale: {new Intl.NumberFormat('vi-VN').format(fsp.salePrice)}đ
                                                             </div>
                                                         )}
                                                     </div>
                                                 )}
 
+                                                {formErrors[`products.${idx}.discountPercent`] && <span className="field-error">{formErrors[`products.${idx}.discountPercent`]}</span>}
                                                 {formErrors[`products.${idx}.salePrice`] && <span className="field-error">{formErrors[`products.${idx}.salePrice`]}</span>}
                                             </div>
 

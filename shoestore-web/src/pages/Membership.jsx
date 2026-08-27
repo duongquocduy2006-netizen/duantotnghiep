@@ -65,6 +65,7 @@ const Membership = () => {
     const [vouchers, setVouchers] = useState([]);
     const [loggedIn, setLoggedIn] = useState(false);
     const [activeFaq, setActiveFaq] = useState(null);
+    const [vndPerPoint, setVndPerPoint] = useState(1000);
 
     useEffect(() => {
         fetchMembershipData();
@@ -78,6 +79,7 @@ const Membership = () => {
             if (res.data && res.data.success && res.data.loggedIn) {
                 setLoggedIn(true);
                 setUserInfo(res.data.account);
+                if (res.data.vndPerPoint) setVndPerPoint(res.data.vndPerPoint);
                 
                 const ranksList = res.data.ranks || [];
                 setAllRanks(ranksList);
@@ -321,7 +323,7 @@ const Membership = () => {
                                     <i className="fa-solid fa-cart-shopping"></i>
                                 </div>
                                 <h4>Mua Sắm Tích Lũy</h4>
-                                <p>Mỗi đơn hàng hoàn thành tại ShoeStore đều được tự động quy đổi thành điểm thành viên (10.000 VND mua sắm = 1 điểm tích lũy).</p>
+                                <p>Mỗi đơn hàng hoàn thành tại ShoeStore đều được tự động quy đổi thành điểm thành viên ({formatNumber(vndPerPoint)} VND mua sắm = 1 điểm tích lũy).</p>
                             </div>
                             <div className="step-card">
                                 <div className="step-number">02</div>
@@ -394,7 +396,7 @@ const Membership = () => {
                                     <i className="fa-solid fa-chevron-down"></i>
                                 </button>
                                 <div className="faq-answer">
-                                    Điểm thành viên được tích lũy hoàn toàn tự động dựa trên hóa đơn mua sắm thực tế của bạn. Cứ mỗi 10,000 VND chi tiêu thanh toán thành công (online hoặc tại quầy), tài khoản của bạn sẽ tự động được cộng thêm 1 điểm thành viên.
+                                    Điểm thành viên được tích lũy hoàn toàn tự động dựa trên hóa đơn mua sắm thực tế của bạn. Cứ mỗi {formatNumber(vndPerPoint)} VND chi tiêu thanh toán thành công (online hoặc tại quầy), tài khoản của bạn sẽ tự động được cộng thêm 1 điểm thành viên.
                                 </div>
                             </div>
                             <div className={`faq-item ${activeFaq === 1 ? 'active-faq' : ''}`}>

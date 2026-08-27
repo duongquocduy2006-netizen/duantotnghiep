@@ -301,9 +301,9 @@ public class DashboardService {
         // Nhóm doanh thu theo ngày
         String sql = "SELECT CAST(created_at AS DATE) as stat_date, " +
                      "SUM(final_amount) as totalRevenue, " +
-                     "SUM(CASE WHEN status = 3 THEN final_amount ELSE 0 END) as successfulRevenue, " +
+                     "SUM(CASE WHEN (status = 3 OR status = 5) THEN final_amount ELSE 0 END) as successfulRevenue, " +
                      "COUNT(id) as totalOrders " +
-                     "FROM orders WHERE status = 3 " + dateCond +
+                     "FROM orders WHERE (status = 3 OR status = 5) " + dateCond +
                      " GROUP BY CAST(created_at AS DATE) " +
                      "ORDER BY CAST(created_at AS DATE) ASC";
 
@@ -314,9 +314,10 @@ public class DashboardService {
                     dateStr = dateStr.substring(8, 10) + "/" + dateStr.substring(5, 7); // DD/MM
                 }
                 double revenue = rs.getDouble("totalRevenue");
-                // Giả lập percentage bằng cách tính revenue / 1000000 (Chỉ mang tính chất hiển thị)
+                int ordersCount = rs.getInt("totalOrders");
+                // Giả lập percentage bằng cách tính revenue / 2000000
                 int percentage = (int) Math.min(100, revenue / 2000000); 
-                stats.add(new RevenueItem(dateStr, percentage > 0 ? percentage : 10, revenue));
+                stats.add(new RevenueItem(dateStr, percentage > 0 ? percentage : 10, revenue, ordersCount));
                 return null;
             });
         } catch (Exception e) {
@@ -324,7 +325,7 @@ public class DashboardService {
         }
 
         if (stats.isEmpty()) {
-            stats.add(new RevenueItem("Không có", 0, 0));
+            stats.add(new RevenueItem("Không có", 0, 0, 0));
         }
 
         return stats;

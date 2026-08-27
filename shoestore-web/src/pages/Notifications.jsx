@@ -97,7 +97,67 @@ const Notifications = () => {
                 const realNotis = [];
                 const readNotiIds = JSON.parse(localStorage.getItem('read_notifications') || '[]');
 
-                // 1. Đơn hàng
+                // 1. Thông báo Ví điện tử & Rút tiền (ƯU TIÊN HÀNG ĐẦU)
+                try {
+                    const walletRes = await api.get('/api/wallet');
+                    if (walletRes.data && walletRes.data.success && Array.isArray(walletRes.data.transactions)) {
+                        walletRes.data.transactions.forEach(t => {
+                            const amtStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(t.amount || 0);
+                            const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString('vi-VN') : 'Gần đây';
+                            const notiId = `wallet_tx_${t.id}_${t.status}`;
+
+                            if (t.type === 'REFUND') {
+                                realNotis.push({
+                                    id: notiId,
+                                    category: 'wallet',
+                                    title: `Hoàn tiền vào Ví Điện Tử: +${amtStr}`,
+                                    desc: t.description || `Hệ thống đã tự động hoàn ${amtStr} vào Ví điện tử của bạn!`,
+                                    time: dateStr,
+                                    icon: 'fa-wallet text-success',
+                                    unread: !readNotiIds.includes(notiId),
+                                    link: '/wallet'
+                                });
+                            } else if (t.type === 'WITHDRAW') {
+                                if (t.status === 1) {
+                                    realNotis.push({
+                                        id: notiId,
+                                        category: 'wallet',
+                                        title: `Rút tiền thành công: -${amtStr}`,
+                                        desc: `Yêu cầu rút ${amtStr} về TK ${t.bank_account || ''} đã được Admin chuyển khoản thành công!`,
+                                        time: dateStr,
+                                        icon: 'fa-circle-check text-success',
+                                        unread: !readNotiIds.includes(notiId),
+                                        link: '/wallet'
+                                    });
+                                } else if (t.status === 2) {
+                                    realNotis.push({
+                                        id: notiId,
+                                        category: 'wallet',
+                                        title: `Từ chối rút tiền: ${amtStr}`,
+                                        desc: t.description || `Yêu cầu rút tiền bị từ chối. Số tiền đã được hoàn lại vào Ví!`,
+                                        time: dateStr,
+                                        icon: 'fa-circle-xmark text-danger',
+                                        unread: !readNotiIds.includes(notiId),
+                                        link: '/wallet'
+                                    });
+                                } else if (t.status === 0) {
+                                    realNotis.push({
+                                        id: notiId,
+                                        category: 'wallet',
+                                        title: `Lệnh rút tiền đang xử lý: ${amtStr}`,
+                                        desc: `Yêu cầu rút tiền về TK ${t.bank_account || ''} đang được Admin xử lý.`,
+                                        time: dateStr,
+                                        icon: 'fa-clock text-warning',
+                                        unread: !readNotiIds.includes(notiId),
+                                        link: '/wallet'
+                                    });
+                                }
+                            }
+                        });
+                    }
+                } catch (e) {}
+
+                // 2. Đơn hàng
                 try {
                     const orderRes = await api.get('/api/orders');
                     if (orderRes.data && orderRes.data.success && Array.isArray(orderRes.data.orders)) {
@@ -255,7 +315,7 @@ const Notifications = () => {
         }
         setNotifications(prev => prev.map(n => n.id === noti.id ? { ...n, unread: false } : n));
         if (noti.link) {
-            navigate(noti.link);
+            window.location.href = noti.link;
         }
     };
 
@@ -327,11 +387,19 @@ const Notifications = () => {
                                             className="user-avatar"
                                             alt="Avatar"
                                         />
-                                        <i className="fa fa-crown vip-crown"></i>
                                     </div>
                                     <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
                                     <div className="mb-2">
-                                        <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>
+                                        <span 
+                                            className={`rank-badge-flat ${getRankClass(account.rank_name)}`}
+                                            style={account.color_code ? {
+                                                backgroundColor: `${account.color_code}1f`,
+                                                color: account.color_code,
+                                                borderColor: `${account.color_code}40`,
+                                                borderStyle: 'solid',
+                                                borderWidth: '1px'
+                                            } : {}}
+                                        >
                                             {account.rank_name || 'Đồng'}
                                         </span>
                                     </div>
@@ -410,6 +478,14 @@ const Notifications = () => {
                                     </button>
                                     <button 
                                         type="button" 
+                                        className={`btn btn-sm ${filterCategory === 'wallet' ? 'btn-danger' : 'btn-outline-secondary'}`}
+                                        style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '13px' }}
+                                        onClick={() => setFilterCategory('wallet')}
+                                    >
+                                        <i className="fa-solid fa-wallet me-1"></i> Ví Điện Tử
+                                    </button>
+                                    <button 
+                                        type="button" 
                                         className={`btn btn-sm ${filterCategory === 'promo' ? 'btn-danger' : 'btn-outline-secondary'}`}
                                         style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '13px' }}
                                         onClick={() => setFilterCategory('promo')}
@@ -437,7 +513,7 @@ const Notifications = () => {
                                     ) : (
                                         filteredNotis.map(n => {
                                             const isExpanded = !!expandedIds[n.id];
-                                            const isOrderType = n.category === 'order';
+                                            const isOrderType = n.category === 'order' && !!n.image;
 
                                             return (
                                                 <div 
@@ -464,10 +540,10 @@ const Notifications = () => {
                                                             <div 
                                                                 className="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
                                                                 style={{ 
-                                                                    width: '44px', 
-                                                                    height: '44px', 
-                                                                    background: n.unread ? '#ffe4e6' : '#f1f5f9',
-                                                                    color: n.unread ? '#e50914' : '#64748b'
+                                                                    width: '48px', 
+                                                                    height: '48px', 
+                                                                    background: n.unread ? '#fee2e2' : '#f1f5f9',
+                                                                    fontSize: '20px'
                                                                 }}
                                                             >
                                                                 <i className={`fa-solid ${n.icon || 'fa-bell'}`}></i>

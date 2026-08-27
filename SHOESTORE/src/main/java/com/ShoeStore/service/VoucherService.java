@@ -30,6 +30,10 @@ public class VoucherService {
         return voucherRepo.findById(id);
     }
 
+    public Optional<Voucher> getVoucherByCode(String code) {
+        return voucherRepo.findByCode(code);
+    }
+
     public Voucher saveVoucher(Voucher voucher) {
         return voucherRepo.save(voucher);
     }

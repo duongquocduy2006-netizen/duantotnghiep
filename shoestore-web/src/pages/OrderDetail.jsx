@@ -15,6 +15,24 @@ const OrderDetail = () => {
     const [account, setAccount] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+const VIETNAM_BANKS = [
+    { bin: "970422", name: "MBBank (Ngân hàng Quân Đội)" },
+    { bin: "970436", name: "Vietcombank (VCB)" },
+    { bin: "970407", name: "Techcombank (TCB)" },
+    { bin: "970415", name: "VietinBank (CTG)" },
+    { bin: "970418", name: "BIDV" },
+    { bin: "970405", name: "Agribank (VBA)" },
+    { bin: "970432", name: "VPBank (VPB)" },
+    { bin: "970416", name: "ACB" },
+    { bin: "970423", name: "TPBank" },
+    { bin: "970403", name: "Sacombank" },
+    { bin: "970437", name: "HDBank" },
+    { bin: "970441", name: "VIB" },
+    { bin: "970426", name: "MSB" },
+    { bin: "970443", name: "SHB" },
+    { bin: "971005", name: "Ví MoMo" }
+];
+
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         step: 1,
@@ -23,7 +41,12 @@ const OrderDetail = () => {
     });
     const [cancelModal, setCancelModal] = useState({
         isOpen: false,
-        orderCode: null
+        orderCode: null,
+        cancelReason: "Khách hàng tự hủy",
+        bankBin: "970422",
+        bankAccount: "",
+        accountName: "",
+        isSubmitting: false
     });
 
     const fetchOrderDetail = async (showLoading = true) => {
@@ -135,28 +158,62 @@ const OrderDetail = () => {
         }
     };
 
-    const triggerCancel = (orderCode) => {
+    const triggerCancel = async (orderCode) => {
+        let bBin = "970422";
+        let bAccount = "";
+        let aName = "";
+
+        try {
+            const wRes = await api.get('/api/wallet/my-wallet');
+            if (wRes.data && wRes.data.success && wRes.data.savedBankAccount) {
+                bBin = wRes.data.savedBankBin || "970422";
+                bAccount = wRes.data.savedBankAccount || "";
+                aName = wRes.data.savedAccountName || "";
+            }
+        } catch (e) {}
+
         setCancelModal({
             isOpen: true,
-            orderCode
+            orderCode,
+            cancelReason: "Khách hàng tự hủy",
+            bankBin: bBin,
+            bankAccount: bAccount,
+            accountName: aName,
+            isSubmitting: false
         });
     };
 
     const confirmCancelSubmit = async () => {
-        const { orderCode } = cancelModal;
-        setCancelModal({ isOpen: false, orderCode: null });
+        const { orderCode, cancelReason, bankBin, bankAccount, accountName } = cancelModal;
+        setCancelModal(prev => ({ ...prev, isSubmitting: true }));
         try {
-            const response = await api.post('/api/orders/cancel', { orderCode });
+            const payload = {
+                orderCode,
+                cancelReason: cancelReason || "Khách hàng tự hủy"
+            };
+
+            if (bankAccount && bankAccount.trim()) {
+                payload.bankBin = bankBin;
+                payload.bankAccount = bankAccount.trim();
+                if (accountName && accountName.trim()) {
+                    payload.accountName = accountName.trim();
+                }
+            }
+
+            const response = await api.post('/api/orders/cancel', payload);
             if (response.data && response.data.success) {
-                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã hủy đơn hàng thành công!' }));
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã gửi yêu cầu hủy đơn và thông tin hoàn tiền!' }));
+                setCancelModal({ isOpen: false, orderCode: null, cancelReason: "Khách hàng tự hủy", bankBin: "970422", bankAccount: "", accountName: "", isSubmitting: false });
                 fetchOrderDetail(false);
             } else {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Không thể hủy đơn hàng: ' + response.data.message }));
+                setCancelModal(prev => ({ ...prev, isSubmitting: false }));
             }
         } catch (err) {
             console.error("Lỗi hủy đơn hàng:", err);
             const errMsg = err.response?.data?.message || 'Lỗi kết nối khi hủy đơn hàng.';
             window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: ' + errMsg }));
+            setCancelModal(prev => ({ ...prev, isSubmitting: false }));
         }
     };
 
@@ -250,11 +307,19 @@ const OrderDetail = () => {
                                             className="user-avatar"
                                             alt="Avatar"
                                         />
-                                        <i className="fa fa-crown vip-crown"></i>
                                     </div>
                                     <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
                                     <div className="mb-2">
-                                        <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>
+                                        <span 
+                                            className={`rank-badge-flat ${getRankClass(account.rank_name)}`}
+                                            style={account.color_code ? {
+                                                backgroundColor: `${account.color_code}1f`,
+                                                color: account.color_code,
+                                                borderColor: `${account.color_code}40`,
+                                                borderStyle: 'solid',
+                                                borderWidth: '1px'
+                                            } : {}}
+                                        >
                                             {account.rank_name || 'Đồng'}
                                         </span>
                                     </div>
@@ -348,7 +413,7 @@ const OrderDetail = () => {
                                             border: '1.5px solid #fca5a5',
                                             borderRadius: '12px',
                                             padding: '16px 20px',
-                                            marginBottom: '28px',
+                                            marginBottom: '20px',
                                             display: 'flex',
                                             alignItems: 'flex-start',
                                             gap: '14px'
@@ -371,7 +436,30 @@ const OrderDetail = () => {
                                         </div>
                                     )}
 
-
+                                    {/* Trạng thái Hoàn tiền vào Ví Điện Tử (Chỉ cho đơn Online/Chuyển khoản) */}
+                                    {order.status === 4 && !isCod && (order.payment_status === 3 || order.paymentStatus === 3 || order.payment_method === 'BANK') && (
+                                        <div style={{
+                                            background: '#f6ffed',
+                                            border: '1.5px solid #b7eb8f',
+                                            borderRadius: '12px',
+                                            padding: '16px 20px',
+                                            marginBottom: '28px',
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: '14px'
+                                        }}>
+                                            <div style={{
+                                                width: '40px', height: '40px', borderRadius: '10px',
+                                                background: '#d9f7be', display: 'flex', alignItems: 'center',
+                                                justifyContent: 'center', flexShrink: 0
+                                            }}>
+                                                <div style={{ fontSize: '13px', color: '#135200' }}>
+                                                    Cửa hàng đã hoàn thành tự động số tiền <strong>{order.final_amount?.toLocaleString('vi-VN')} ₫</strong> vào <a href="/wallet" style={{ fontWeight: 'bold', color: '#389e0d', textDecoration: 'underline' }}>Ví Điện Tử</a> của bạn cho đơn hàng này.
+                                                    {order.refund_at && <span> (Thời gian hoàn tiền: {new Date(order.refund_at).toLocaleString('vi-VN')})</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Info Grids */}
                                     <div className="od-info-grid mb-5">
@@ -395,9 +483,17 @@ const OrderDetail = () => {
                                         <div className="od-info-card">
                                             <h3 className="od-info-title"><i className="fa-solid fa-credit-card"></i> Phương thức thanh toán</h3>
                                             <div className="od-info-content">
-                                                <p className="mb-3"><strong>{order.method_name}</strong></p>
+                                                <p className="mb-3"><strong>{order.method_name === 'BANK' ? 'Chuyển khoản (PayOS)' : (order.method_name || 'Thanh toán COD')}</strong></p>
                                                 <div>
-                                                    {isPaid ? (
+                                                    {!isCod && (order.payment_status === 3 || order.paymentStatus === 3) ? (
+                                                        <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill" style={{fontSize: '12px', fontWeight: '600'}}>
+                                                            <i className="fa-solid fa-wallet me-1"></i> Đã hoàn vào Ví
+                                                        </span>
+                                                    ) : (order.payment_status === 2 || order.paymentStatus === 2) ? (
+                                                        <span className="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2 rounded-pill" style={{color: '#d97706', fontSize: '12px', fontWeight: '600'}}>
+                                                            <i className="fa-solid fa-rotate fa-spin me-1"></i> Đang hoàn tiền
+                                                        </span>
+                                                    ) : isPaid ? (
                                                         <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill" style={{fontSize: '12px', fontWeight: '600'}}>
                                                             <i className="fa-solid fa-circle-check me-1"></i> Đã thanh toán
                                                         </span>
@@ -511,16 +607,87 @@ const OrderDetail = () => {
                 </div>
             </div>
             {cancelModal.isOpen && (
-                <div className="epic-modal-overlay">
-                    <div className="epic-modal-box animate__animated animate__zoomIn">
+                <div className="epic-modal-overlay" onClick={() => setCancelModal({ isOpen: false, orderCode: null, cancelReason: "Khách hàng tự hủy", bankBin: "970422", bankAccount: "", accountName: "", isSubmitting: false })}>
+                    <div className="epic-modal-box animate__animated animate__zoomIn" style={{ maxWidth: '500px', width: '90%' }} onClick={e => e.stopPropagation()}>
                         <div className="epic-modal-icon" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
                             <i className="fa-solid fa-circle-xmark"></i>
                         </div>
-                        <h4 className="epic-modal-title">Hủy đơn hàng</h4>
-                        <p className="epic-modal-message">Bạn có chắc chắn muốn hủy đơn hàng này không?</p>
+                        <h4 className="epic-modal-title">HỦY ĐƠN HÀNG #{cancelModal.orderCode}</h4>
+
+                        {order && (order.payment_status === 1 || (paymentMethod && paymentMethod.method_name === 'BANK')) ? (
+                            <div style={{ textAlign: 'left', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', margin: '14px 0' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#0284c7', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <i className="fa-solid fa-hand-holding-dollar"></i> NHẬP THÔNG TIN TÀI KHOẢN ĐỂ NHẬN HOÀN TIỀN
+                                </div>
+
+                                <div className="mb-3">
+                                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                        Chọn Ngân hàng nhận lại tiền hoàn
+                                    </label>
+                                    <select
+                                        className="form-select form-select-sm"
+                                        style={{ fontSize: '13px', padding: '6px 10px', borderRadius: '8px' }}
+                                        value={cancelModal.bankBin}
+                                        onChange={e => setCancelModal(prev => ({ ...prev, bankBin: e.target.value }))}
+                                    >
+                                        {VIETNAM_BANKS.map(b => (
+                                            <option key={b.bin} value={b.bin}>{b.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="mb-3">
+                                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                        Số tài khoản ngân hàng của bạn <span style={{ color: '#dc2626' }}>*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        placeholder="Nhập số tài khoản ngân hàng nhận tiền..."
+                                        style={{ fontSize: '13px', padding: '6px 10px', borderRadius: '8px' }}
+                                        value={cancelModal.bankAccount}
+                                        onChange={e => setCancelModal(prev => ({ ...prev, bankAccount: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                        Tên chủ tài khoản (Viết hoa không dấu)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        placeholder="VD: NGUYEN VAN A..."
+                                        style={{ fontSize: '13px', padding: '6px 10px', borderRadius: '8px' }}
+                                        value={cancelModal.accountName}
+                                        onChange={e => setCancelModal(prev => ({ ...prev, accountName: e.target.value }))}
+                                    />
+                                </div>
+
+                                <p style={{ fontSize: '11px', color: '#64748b', marginTop: '8px', marginBottom: 0 }}>
+                                    💡 Cửa hàng sẽ chuyển khoản hoàn lại <strong style={{ color: '#dc2626' }}>{formatCurrency(order.final_amount)}</strong> trực tiếp vào số tài khoản này cho bạn.
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="epic-modal-message">Bạn có chắc chắn muốn hủy đơn hàng này không?</p>
+                        )}
+
                         <div className="epic-modal-actions">
-                            <button className="epic-btn-modal-cancel" onClick={() => setCancelModal({ isOpen: false, orderCode: null })}>Quay lại</button>
-                            <button className="epic-btn-modal-confirm" style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }} onClick={confirmCancelSubmit}>Xác nhận hủy</button>
+                            <button
+                                className="epic-btn-modal-cancel"
+                                disabled={cancelModal.isSubmitting}
+                                onClick={() => setCancelModal({ isOpen: false, orderCode: null, cancelReason: "Khách hàng tự hủy", bankBin: "970422", bankAccount: "", accountName: "", isSubmitting: false })}
+                            >
+                                Quay lại
+                            </button>
+                            <button
+                                className="epic-btn-modal-confirm"
+                                style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
+                                disabled={cancelModal.isSubmitting}
+                                onClick={confirmCancelSubmit}
+                            >
+                                {cancelModal.isSubmitting ? 'Đang xử lý...' : 'Xác nhận hủy & Hoàn tiền'}
+                            </button>
                         </div>
                     </div>
                 </div>

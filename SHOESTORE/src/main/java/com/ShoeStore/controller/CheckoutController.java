@@ -88,27 +88,34 @@ public class CheckoutController {
         @SuppressWarnings("unchecked")
         Map<String, Object> quickInfo = (Map<String, Object>) session.getAttribute("quickCheckout");
         if (quickInfo != null) {
-            String quickPriceSql = "SELECT ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                    "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                    "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                    "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as effective_price " +
-                    "FROM product_variants v WHERE v.id = ?";
+            String quickPriceSql = "SELECT v.id as variant_id, v.price as original_price, " +
+                    "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "FROM product_variants v " +
+                    "LEFT JOIN ( " +
+                    "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "    FROM flash_sale_products fsp " +
+                    "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                    "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                    ") fsp ON fsp.product_id = v.product_id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) " +
+                    "WHERE v.id = ?";
             Map<String, Object> item = jdbc.queryForMap(quickPriceSql, quickInfo.get("variantId"));
-            return ((Number) item.get("effective_price")).doubleValue()
-                    * ((Number) quickInfo.get("quantity")).intValue();
+            item.put("quantity", quickInfo.get("quantity"));
+            return com.ShoeStore.util.FlashSalePriceUtil.processAndSplitItem(item).totalPrice;
         } else {
-            String cartTotalSql = "SELECT ci.quantity, " +
-                    "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                    "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                    "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                    "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as effective_price " +
-                    "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id WHERE ci.user_id = ?";
+            String cartTotalSql = "SELECT ci.quantity, v.price as original_price, " +
+                    "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " +
+                    "LEFT JOIN ( " +
+                    "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "    FROM flash_sale_products fsp " +
+                    "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                    "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                    ") fsp ON fsp.product_id = v.product_id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) " +
+                    "WHERE ci.user_id = ?";
             List<Map<String, Object>> items = jdbc.queryForList(cartTotalSql, accountId);
-            return items.stream()
-                    .mapToDouble(i -> ((Number) i.get("effective_price")).doubleValue()
-                            * ((Number) i.get("quantity")).intValue())
+            List<Map<String, Object>> processed = com.ShoeStore.util.FlashSalePriceUtil.processAndSplitList(items);
+            return processed.stream()
+                    .mapToDouble(i -> ((Number) i.get("price")).doubleValue() * ((Number) i.get("quantity")).intValue())
                     .sum();
         }
     }
@@ -201,26 +208,30 @@ public class CheckoutController {
 
     private void populateQuickCheckoutModel(Model model, Long variantId, Integer quantity) {
         String sql = "SELECT v.id as variant_id, p.id as product_id, " +
-                "p.product_name, s.size_name, col.color_name, " +
-                "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                "WHERE fsp.product_id = p.id AND fs.status = 1 " +
-                "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price, " +
-                "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url "
-                +
+                "p.product_name, s.size_name, col.color_name, v.price as original_price, " +
+                "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, " +
+                "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
                 "FROM product_variants v " +
                 "JOIN products p ON v.product_id = p.id " +
                 "JOIN sizes s ON v.size_id = s.id " +
                 "JOIN colors col ON v.color_id = col.id " +
+                "LEFT JOIN ( " +
+                "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                "    FROM flash_sale_products fsp " +
+                "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                ") fsp ON fsp.product_id = p.id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) " +
                 "WHERE v.id = ?";
 
         Map<String, Object> item = jdbc.queryForMap(sql, variantId);
         item.put("quantity", quantity);
         item.put("id", -1);
 
-        List<Map<String, Object>> cartItems = List.of(item);
-        double total = ((Number) item.get("price")).doubleValue() * quantity;
+        com.ShoeStore.util.FlashSalePriceUtil.SplitResult sr = 
+            com.ShoeStore.util.FlashSalePriceUtil.processAndSplitItem(item);
+
+        List<Map<String, Object>> cartItems = sr.items;
+        double total = sr.totalPrice;
 
         model.addAttribute("cartItems", cartItems);
         model.addAttribute("totalPrice", total);
@@ -228,22 +239,25 @@ public class CheckoutController {
 
     private void populateCheckoutModel(Model model, Long accountId) {
         String sql = "SELECT ci.id, ci.quantity, ci.product_variant_id as variant_id, p.id as product_id, " +
-                "p.product_name, s.size_name, col.color_name, " +
-                "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                "WHERE fsp.product_id = p.id AND fs.status = 1 " +
-                "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price, " +
-                "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url "
-                +
+                "p.product_name, s.size_name, col.color_name, v.price as original_price, " +
+                "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, " +
+                "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
                 "FROM cart_items ci " +
                 "JOIN product_variants v ON ci.product_variant_id = v.id " +
                 "JOIN products p ON v.product_id = p.id " +
                 "JOIN sizes s ON v.size_id = s.id " +
                 "JOIN colors col ON v.color_id = col.id " +
+                "LEFT JOIN ( " +
+                "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                "    FROM flash_sale_products fsp " +
+                "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                ") fsp ON fsp.product_id = p.id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) " +
                 "WHERE ci.user_id = ?";
 
-        List<Map<String, Object>> cartItems = jdbc.queryForList(sql, accountId);
+        List<Map<String, Object>> rawCartItems = jdbc.queryForList(sql, accountId);
+        List<Map<String, Object>> cartItems = com.ShoeStore.util.FlashSalePriceUtil.processAndSplitList(rawCartItems);
+
         double total = cartItems.stream()
                 .mapToDouble(
                         item -> ((Number) item.get("price")).doubleValue() * ((Number) item.get("quantity")).intValue())
@@ -278,30 +292,37 @@ public class CheckoutController {
         List<Map<String, Object>> items;
 
         if (quickInfo != null) {
-            String quickSql = "SELECT v.id as variant_id, " +
-                    "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                    "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                    "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                    "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
-                    "FROM product_variants v WHERE v.id = ?";
+            String quickSql = "SELECT v.id as variant_id, v.price as original_price, " +
+                    "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "FROM product_variants v " +
+                    "LEFT JOIN ( " +
+                    "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "    FROM flash_sale_products fsp " +
+                    "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                    "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                    ") fsp ON fsp.product_id = v.product_id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) " +
+                    "WHERE v.id = ?";
             Map<String, Object> item = jdbc.queryForMap(quickSql, quickInfo.get("variantId"));
             item.put("quantity", quickInfo.get("quantity"));
             items = List.of(item);
         } else {
-            String cartSql = "SELECT ci.product_variant_id as variant_id, ci.quantity, " +
-                    "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                    "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                    "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                    "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
+            String cartSql = "SELECT ci.product_variant_id as variant_id, ci.quantity, v.price as original_price, " +
+                    "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
                     "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " +
+                    "LEFT JOIN ( " +
+                    "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "    FROM flash_sale_products fsp " +
+                    "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                    "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                    ") fsp ON fsp.product_id = v.product_id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) " +
                     "WHERE ci.user_id = ?";
             items = jdbc.queryForList(cartSql, accountId);
         }
 
         if (items.isEmpty())
             return "redirect:/cart";
+
+        items = com.ShoeStore.util.FlashSalePriceUtil.processAndSplitList(items);
 
         double total = items.stream()
                 .mapToDouble(
@@ -392,6 +413,16 @@ public class CheckoutController {
                 jdbc.update(
                         "INSERT INTO order_items (order_id, product_variant_id, quantity, price) VALUES (?, ?, ?, ?)",
                         orderId, variantId, buyQty, price);
+
+                int fsQtyUsed = item.get("flashSaleQtyUsed") != null ? ((Number) item.get("flashSaleQtyUsed")).intValue() : 0;
+                if (fsQtyUsed > 0) {
+                    jdbc.update("UPDATE fsp SET sold_quantity = ISNULL(fsp.sold_quantity, 0) + ? " +
+                            "FROM flash_sale_products fsp " +
+                            "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                            "JOIN product_variants v ON v.product_id = fsp.product_id " +
+                            "WHERE v.id = ? AND fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date",
+                            fsQtyUsed, variantId);
+                }
             }
 
             // Trừ tồn kho sản phẩm ngay khi đặt hàng

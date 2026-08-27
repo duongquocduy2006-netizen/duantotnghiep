@@ -59,6 +59,7 @@ const AdminLayout = ({ children }) => {
         { label: 'KINH DOANH', type: 'label' },
         { path: '/admin/dashboard', icon: 'bi-grid-fill', label: 'Tổng Quan' },
         { path: '/admin/orders', icon: 'bi-cart-check', label: 'Đơn Hàng' },
+        { path: '/admin/withdrawals', icon: 'bi-wallet2', label: 'Quản Lý Rút Tiền' },
         { path: '/admin/customers', icon: 'bi-people-fill', label: 'Khách Hàng' },
         { path: '/admin/ranks', icon: 'bi-gem', label: 'Hạng Thành Viên' },
 
