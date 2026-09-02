@@ -37,6 +37,7 @@ const OrderHistory = () => {
     const [statusFilter, setStatusFilter] = useState('all');
     const [sortDesc, setSortDesc] = useState(true); // true = mới nhất trước
     const [currentPage, setCurrentPage] = useState(1);
+    const [jumpInputVal, setJumpInputVal] = useState('');
 
     // ── Fetch ──
     const fetchData = async (showLoading = true) => {
@@ -219,7 +220,25 @@ const OrderHistory = () => {
     }, [orders, statusFilter, fromDate, toDate, sortDesc]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const paginated  = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+    const validPage = Math.min(Math.max(1, currentPage), totalPages);
+    const paginated  = filtered.slice((validPage - 1) * PAGE_SIZE, validPage * PAGE_SIZE);
+
+    // Calculate max 5 sliding page numbers (no ... duplicates)
+    const maxButtons = 5;
+    let startPage = 1;
+    let endPage = totalPages;
+    if (totalPages > maxButtons) {
+        startPage = Math.max(1, validPage - 2);
+        endPage = startPage + maxButtons - 1;
+        if (endPage > totalPages) {
+            endPage = totalPages;
+            startPage = endPage - maxButtons + 1;
+        }
+    }
+    const pageNumbers = [];
+    for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+    }
 
     const handleFilterChange = () => setCurrentPage(1);
 
@@ -545,44 +564,96 @@ const OrderHistory = () => {
 
                             {/* ── PAGINATION ── */}
                             {totalPages > 1 && (
-                                <div className="pagination-bar">
-                                    <button
-                                        className="page-btn"
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                        disabled={currentPage === 1}
-                                    >
-                                        <i className="fa-solid fa-chevron-left" style={{ fontSize: '12px' }}></i>
-                                    </button>
+                                <div className="d-flex flex-column align-items-center mt-4 pt-3 border-top border-light gap-2">
+                                    <div className="pagination-bar mt-0 pt-0 border-0 d-flex align-items-center gap-1.5">
+                                        <button
+                                            className="page-btn"
+                                            onClick={() => {
+                                                setCurrentPage(p => Math.max(1, p - 1));
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            }}
+                                            disabled={validPage === 1}
+                                            title="Trang trước"
+                                        >
+                                            <i className="fa-solid fa-chevron-left" style={{ fontSize: '12px' }}></i>
+                                        </button>
 
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                        .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                                        .reduce((acc, p, idx, arr) => {
-                                            if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
-                                            acc.push(p);
-                                            return acc;
-                                        }, [])
-                                        .map((p, idx) =>
-                                            p === '...' ? (
-                                                <span key={`dots-${idx}`} style={{ padding: '0 4px', color: '#94a3b8', fontSize: '14px' }}>…</span>
-                                            ) : (
-                                                <button
-                                                    key={p}
-                                                    className={`page-btn ${currentPage === p ? 'active' : ''}`}
-                                                    onClick={() => setCurrentPage(p)}
-                                                >
-                                                    {p}
-                                                </button>
-                                            )
-                                        )
-                                    }
+                                        {pageNumbers.map(p => (
+                                            <button
+                                                key={p}
+                                                className={`page-btn ${validPage === p ? 'active' : ''}`}
+                                                onClick={() => {
+                                                    setCurrentPage(p);
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                            >
+                                                {p}
+                                            </button>
+                                        ))}
 
-                                    <button
-                                        className="page-btn"
-                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                        disabled={currentPage === totalPages}
-                                    >
-                                        <i className="fa-solid fa-chevron-right" style={{ fontSize: '12px' }}></i>
-                                    </button>
+                                        <button
+                                            className="page-btn"
+                                            onClick={() => {
+                                                setCurrentPage(p => Math.min(totalPages, p + 1));
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            }}
+                                            disabled={validPage === totalPages}
+                                            title="Trang sau"
+                                        >
+                                            <i className="fa-solid fa-chevron-right" style={{ fontSize: '12px' }}></i>
+                                        </button>
+                                    </div>
+
+                                    <div className="d-flex flex-wrap align-items-center justify-content-center gap-2 text-muted" style={{ fontSize: '12.5px' }}>
+                                        <span>
+                                            Hiển thị <b className="text-dark">{(validPage - 1) * PAGE_SIZE + 1}</b> - <b className="text-dark">{Math.min(validPage * PAGE_SIZE, filtered.length)}</b> trong <b className="text-dark">{filtered.length}</b> đơn hàng
+                                        </span>
+                                        <span style={{ color: '#cbd5e1' }}>|</span>
+                                        <div className="d-flex align-items-center gap-1.5">
+                                            <span>Đến trang:</span>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max={totalPages}
+                                                value={jumpInputVal}
+                                                placeholder={validPage.toString()}
+                                                onChange={(e) => setJumpInputVal(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const num = parseInt(jumpInputVal, 10);
+                                                        if (!isNaN(num) && num >= 1 && num <= totalPages) {
+                                                            setCurrentPage(num);
+                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                        }
+                                                        setJumpInputVal('');
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    if (jumpInputVal) {
+                                                        const num = parseInt(jumpInputVal, 10);
+                                                        if (!isNaN(num) && num >= 1 && num <= totalPages) {
+                                                            setCurrentPage(num);
+                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                        }
+                                                        setJumpInputVal('');
+                                                    }
+                                                }}
+                                                style={{
+                                                    width: '48px',
+                                                    height: '28px',
+                                                    textAlign: 'center',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid #cbd5e1',
+                                                    outline: 'none',
+                                                    fontSize: '12.5px',
+                                                    fontWeight: '600',
+                                                    color: '#0f172a',
+                                                    background: '#fff'
+                                                }}
+                                            />
+                                            <span>/ {totalPages}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 

@@ -211,9 +211,11 @@
 }
 
 .page-btn.active {
-    background: #0f172a;
+    background: #e50914;
     color: #fff;
-    border-color: #0f172a;
+    border-color: #e50914;
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.25);
+    font-weight: 700;
 }
 
 .page-btn:disabled {
