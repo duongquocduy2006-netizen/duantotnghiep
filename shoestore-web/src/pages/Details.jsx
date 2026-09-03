@@ -294,6 +294,25 @@ const Details = () => {
         }
     };
 
+    const handleToggleHideReview = async (id) => {
+        try {
+            const response = await api.post(`/api/reviews/toggle-hide?id=${id}`);
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message }));
+                fetchProductDetails(false);
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: (response.data && response.data.message) || "Không thể thực hiện thao tác." }));
+            }
+        } catch (err) {
+            console.error(err);
+            if (err.response && err.response.data && err.response.data.message) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: err.response.data.message }));
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối." }));
+            }
+        }
+    };
+
     const fetchRelated = async (brand, categoryId) => {
         try {
             const response = await api.get(`/api/products/search?category=${categoryId}`);
@@ -443,12 +462,13 @@ const Details = () => {
             const response = await api.post('/api/favourites/toggle', { productId });
             if (response.data && response.data.success) {
                 setIsWishlist(response.data.action === 'added');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.action === 'added' ? 'Đã thêm sản phẩm vào danh sách yêu thích!' : 'Đã xóa sản phẩm khỏi danh sách yêu thích!' }));
             } else {
-                alert(response.data.message || 'Vui lòng đăng nhập!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || 'Vui lòng đăng nhập!' }));
             }
         } catch (err) {
-            if (err.response && err.response.status === 401) alert('Vui lòng đăng nhập!');
-            else alert('Lỗi xử lý yêu thích.');
+            if (err.response && err.response.status === 401) window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập!' }));
+            else window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi xử lý yêu thích.' }));
         }
     };
 
@@ -572,27 +592,27 @@ const Details = () => {
                                                 const saleVal = flashSale.salePrice !== undefined && flashSale.salePrice !== null ? flashSale.salePrice : flashSale.upcomingSalePrice;
                                                 return (
                                                     <>
-                                                        <div className="det-flash-sale-banner" style={{ background: 'linear-gradient(135deg, #ff4d4f 0%, #dc2626 100%)', border: '1px solid #ef4444' }}>
-                                                            <div className="det-flash-sale-icon" style={{ background: 'rgba(255, 255, 255, 0.2)', color: '#ffffff' }}>
+                                                        <div className="det-flash-sale-banner" style={{ background: 'linear-gradient(135deg, #e50914 0%, #dc2626 100%)', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '12px 18px', marginBottom: '12px', boxShadow: '0 4px 14px rgba(229, 9, 20, 0.15)' }}>
+                                                            <div className="det-flash-sale-icon" style={{ background: 'rgba(255, 255, 255, 0.2)', color: '#ffffff', borderRadius: '50%', width: '36px', height: '36px', fontSize: '15px' }}>
                                                                 <i className="fa-solid fa-clock"></i>
                                                             </div>
                                                             <div className="det-flash-sale-info">
-                                                                <span className="det-flash-sale-tag" style={{ background: '#ffffff', color: '#dc2626', fontWeight: 'bold' }}>SẮP DIỄN RA FLASH SALE</span>
-                                                                <span className="det-flash-sale-name" style={{ color: '#ffffff' }}>{flashSale.campaignName}</span>
+                                                                <span className="det-flash-sale-tag" style={{ color: '#ffffff', fontSize: '13px', fontWeight: '800', letterSpacing: '0.6px', background: 'transparent', display: 'inline-block' }}>SẮP DIỄN RA FLASH SALE</span>
+                                                                <span className="det-flash-sale-name" style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '11px', marginTop: '1px' }}>{flashSale.campaignName}</span>
                                                             </div>
-                                                            <div className="det-flash-sale-discount-badge" style={{ background: '#ffffff', color: '#dc2626', fontWeight: 'bold' }}>
-                                                                SẮP GIẢM -{flashSale.discountPercent}%
+                                                            <div className="det-flash-sale-discount-badge" style={{ background: '#ffffff', color: '#e50914', fontSize: '12px', fontWeight: '900', padding: '5px 14px', borderRadius: '20px', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)' }}>
+                                                                {flashSale.discountPercent > 0 ? `SẮP GIẢM -${flashSale.discountPercent}%` : 'SẮP DIỄN RA'}
                                                             </div>
                                                         </div>
-                                                        <div className="det-price-block" style={{ background: '#ffffff', border: '2px solid #fee2e2', borderRadius: '16px' }}>
+                                                        <div className="det-price-block" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px 20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)' }}>
                                                             <div>
-                                                                <div className="det-price-label text-muted">Giá bán hiện tại (Chưa đến giờ Sale)</div>
-                                                                <div className="det-price-value text-danger fw-bold">{formatCurrency(displayPrice)}</div>
-                                                                <div className="mt-2 text-danger fw-bold font-oswald d-flex align-items-center gap-1" style={{ fontSize: '15px' }}>
-                                                                    <i className="fa-solid fa-clock text-danger me-1"></i> Giá Flash Sale sắp tới: {formatCurrency(saleVal)}
+                                                                <div className="det-price-label text-muted" style={{ fontSize: '13px', fontWeight: '500' }}>Giá bán hiện tại (Chưa đến giờ Sale)</div>
+                                                                <div className="det-price-value text-dark fw-bold" style={{ fontSize: '26px', margin: '2px 0' }}>{formatCurrency(displayPrice)}</div>
+                                                                <div className="mt-1 fw-bold font-oswald d-flex align-items-center gap-1" style={{ fontSize: '14px', color: '#e50914' }}>
+                                                                    <i className="fa-solid fa-fire me-1" style={{ color: '#e50914' }}></i> Giá Flash Sale sắp tới: {formatCurrency(saleVal)}
                                                                 </div>
                                                             </div>
-                                                            <div className="det-price-badge" style={{ background: '#ef4444', color: '#ffffff' }}>Sắp Sale</div>
+                                                            <div className="det-price-badge" style={{ background: '#e50914', color: '#ffffff', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: '700' }}>Sắp Sale</div>
                                                         </div>
                                                     </>
                                                 );
@@ -810,17 +830,26 @@ const Details = () => {
 
                                     <div className="det-review-list mt-5">
                                         <h5 className="mb-4">Khách hàng nhận xét</h5>
-                                        {reviews.length === 0 ? (
-                                            <p className="text-muted">Chưa có đánh giá nào cho sản phẩm này.</p>
-                                        ) : (
-                                            reviews.map(r => {
+                                        {(() => {
+                                            const isAdminUser = currentUser && currentUser.role === 'ADMIN';
+                                            const visibleReviews = reviews.filter(r => isAdminUser || (Number(r.is_hidden) !== 1 && r.is_hidden !== true));
+
+                                            if (visibleReviews.length === 0) {
+                                                return <p className="text-muted">Chưa có đánh giá nào cho sản phẩm này.</p>;
+                                            }
+
+                                            return visibleReviews.map(r => {
                                                 const isAuthor = currentUser && currentUser.id === r.user_id;
                                                 const canDelete = currentUser && (currentUser.id === r.user_id || currentUser.role === 'ADMIN');
+                                                const canHide = isAdminUser;
+                                                const isHidden = Number(r.is_hidden) === 1 || r.is_hidden === true;
                                                 const isEditing = activeEditId === r.id;
                                                 const isReplying = activeReplyId === r.id;
 
+                                                const visibleReplies = (r.replies || []).filter(reply => isAdminUser || (Number(reply.is_hidden) !== 1 && reply.is_hidden !== true));
+
                                                 return (
-                                                    <div key={r.id} className="det-review-item-container mb-4 p-3 rounded" style={{ background: '#fff', border: '1px solid #f1f5f9' }}>
+                                                    <div key={r.id} className="det-review-item-container mb-4 p-3 rounded" style={{ background: isHidden ? '#fafafa' : '#fff', border: '1px solid #f1f5f9' }}>
                                                         {/* Parent Review Card */}
                                                         <div className="det-review-item">
                                                             <div className="d-flex align-items-center mb-2">
@@ -832,6 +861,9 @@ const Details = () => {
                                                                         <strong className="text-dark">{r.user_name}</strong>
                                                                         {r.role === 'ADMIN' && (
                                                                             <span className="badge bg-danger" style={{ fontSize: '10px' }}>QTV</span>
+                                                                        )}
+                                                                        {isHidden && (
+                                                                            <span className="badge bg-secondary opacity-75" style={{ fontSize: '10px' }}>Đã ẩn</span>
                                                                         )}
                                                                     </div>
                                                                     <div className="det-rating-stars" style={{ color: '#ffb800', fontSize: '0.85rem' }}>
@@ -867,13 +899,15 @@ const Details = () => {
                                                                     </div>
                                                                 </div>
                                                             ) : (
-                                                                <p className="mb-2 text-secondary" style={{ fontSize: '15px', lineHeight: '1.6' }}>{r.content}</p>
+                                                                <p className={`mb-2 ${isHidden ? 'text-muted text-decoration-line-through opacity-75' : 'text-secondary'}`} style={{ fontSize: '15px', lineHeight: '1.6' }}>
+                                                                    {r.content}
+                                                                </p>
                                                             )}
 
                                                             <div className="d-flex align-items-center justify-content-between">
                                                                 <small className="text-muted">{new Date(r.created_at).toLocaleString('vi-VN')}</small>
                                                                 
-                                                                {/* Action Buttons: Like, Reply, Edit, Delete */}
+                                                                {/* Action Buttons: Like, Reply, Edit, Hide/Unhide, Delete */}
                                                                 <div className="d-flex align-items-center gap-3">
                                                                     {/* Heart button (Like) */}
                                                                     <button 
@@ -911,6 +945,16 @@ const Details = () => {
                                                                         </button>
                                                                     )}
 
+                                                                    {/* Hide / Unhide button (Admin only) */}
+                                                                    {canHide && (
+                                                                        <button 
+                                                                            onClick={() => handleToggleHideReview(r.id)}
+                                                                            style={{ border: 'none', background: 'none', color: isHidden ? '#16a34a' : '#64748b', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                        >
+                                                                            {isHidden ? 'Hiện' : 'Ẩn'}
+                                                                        </button>
+                                                                    )}
+
                                                                     {/* Delete button */}
                                                                     {canDelete && (
                                                                         <button 
@@ -943,15 +987,17 @@ const Details = () => {
                                                         )}
 
                                                         {/* Replies list (Nested) */}
-                                                        {r.replies && r.replies.length > 0 && (
+                                                        {visibleReplies.length > 0 && (
                                                             <div className="det-replies-list mt-3" style={{ marginLeft: '2.5rem' }}>
-                                                                {r.replies.map(reply => {
+                                                                {visibleReplies.map(reply => {
                                                                     const isReplyAuthor = currentUser && currentUser.id === reply.user_id;
                                                                     const canDeleteReply = currentUser && (currentUser.id === reply.user_id || currentUser.role === 'ADMIN');
+                                                                    const canHideReply = isAdminUser;
+                                                                    const isReplyHidden = Number(reply.is_hidden) === 1 || reply.is_hidden === true;
                                                                     const isEditingReply = activeEditId === reply.id;
 
                                                                     return (
-                                                                        <div key={reply.id} className="p-3 mb-2 rounded position-relative" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                                                                        <div key={reply.id} className="p-3 mb-2 rounded position-relative" style={{ background: isReplyHidden ? '#f1f5f9' : '#f8fafc', border: '1px solid #e2e8f0' }}>
                                                                             <div className="d-flex align-items-center mb-2">
                                                                                 <div className="det-review-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#64748b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', marginRight: '0.75rem', fontSize: '0.85rem' }}>
                                                                                     {reply.user_name ? reply.user_name.charAt(0).toUpperCase() : 'U'}
@@ -961,6 +1007,9 @@ const Details = () => {
                                                                                         <strong className="text-dark" style={{ fontSize: '0.9rem' }}>{reply.user_name}</strong>
                                                                                         {reply.role === 'ADMIN' && (
                                                                                             <span className="badge bg-danger" style={{ fontSize: '9px', padding: '2px 4px' }}>QTV</span>
+                                                                                        )}
+                                                                                        {isReplyHidden && (
+                                                                                            <span className="badge bg-secondary opacity-75" style={{ fontSize: '9px', padding: '2px 4px' }}>Đã ẩn</span>
                                                                                         )}
                                                                                     </div>
                                                                                 </div>
@@ -981,7 +1030,7 @@ const Details = () => {
                                                                                     </div>
                                                                                 </div>
                                                                             ) : (
-                                                                                <p className="mb-2 text-secondary" style={{ fontSize: '14px', lineHeight: '1.5' }}>{reply.content}</p>
+                                                                                <p className={`mb-2 ${isReplyHidden ? 'text-muted text-decoration-line-through opacity-75' : 'text-secondary'}`} style={{ fontSize: '14px', lineHeight: '1.5' }}>{reply.content}</p>
                                                                             )}
 
                                                                             <div className="d-flex align-items-center justify-content-between">
@@ -1011,6 +1060,16 @@ const Details = () => {
                                                                                         </button>
                                                                                     )}
 
+                                                                                    {/* Reply Hide / Unhide button (Admin only) */}
+                                                                                    {canHideReply && (
+                                                                                        <button 
+                                                                                            onClick={() => handleToggleHideReview(reply.id)}
+                                                                                            style={{ border: 'none', background: 'none', color: isReplyHidden ? '#16a34a' : '#64748b', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                                                        >
+                                                                                            {isReplyHidden ? 'Hiện' : 'Ẩn'}
+                                                                                        </button>
+                                                                                    )}
+
                                                                                     {/* Reply delete */}
                                                                                     {canDeleteReply && (
                                                                                         <button 
@@ -1029,8 +1088,8 @@ const Details = () => {
                                                         )}
                                                     </div>
                                                 );
-                                            })
-                                        )}
+                                            });
+                                        })()}
                                     </div>
                                 </div>
                             )}

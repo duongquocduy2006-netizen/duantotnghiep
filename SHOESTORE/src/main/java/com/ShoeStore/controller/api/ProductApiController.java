@@ -179,9 +179,12 @@ public class ProductApiController {
         }
     }
 
-    // 2. LẤY CHI TIẾT SẢN PHẨM DÀNH CHO ADMIN
+    // 2. LẤY CHI TIẾT SẢN PHẨM DÀNH CHO ADMIN HOẶC CLIENT
     @GetMapping("/{id}")
-    public ResponseEntity<?> getProductDetail(@PathVariable Integer id, jakarta.servlet.http.HttpSession session) {
+    public ResponseEntity<?> getProductDetail(
+            @PathVariable Integer id,
+            @RequestParam(value = "admin", required = false, defaultValue = "false") boolean isAdmin,
+            jakarta.servlet.http.HttpSession session) {
         java.util.Optional<Product> productOpt = productRepository.findById(id);
         if (productOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -189,6 +192,32 @@ public class ProductApiController {
         }
 
         Product product = productOpt.get();
+
+        if (!isAdmin) {
+            // 1. Kiểm tra trạng thái sản phẩm
+            if (product.getStatus() != null && product.getStatus() == 0) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Sản phẩm hiện đang bị ẩn!"));
+            }
+
+            // 2. Kiểm tra trạng thái danh mục
+            if (product.getCategory() != null && !product.getCategory().isActive()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Danh mục của sản phẩm này đã bị ẩn!"));
+            }
+
+            // 3. Kiểm tra trạng thái thương hiệu
+            if (product.getBrandName() != null && !product.getBrandName().trim().isEmpty()) {
+                String bNameTrim = product.getBrandName().trim();
+                List<Brand> allBrands = brandRepository.findAll();
+                boolean brandActive = allBrands.stream()
+                        .anyMatch(b -> b.getName() != null && b.getName().equalsIgnoreCase(bNameTrim) && b.isActive());
+                if (!brandActive) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(Map.of("success", false, "message", "Thương hiệu của sản phẩm này đã bị ẩn!"));
+                }
+            }
+        }
 
         // Map product details
         Map<String, Object> prodMap = new HashMap<>();
@@ -273,7 +302,7 @@ public class ProductApiController {
         
         if (account != null) {
             Integer currentUserId = (Integer) account.get("id");
-            sqlAllReviews = "SELECT r.*, a.full_name as user_name, a.role, r.like_count, " +
+            sqlAllReviews = "SELECT r.*, COALESCE(r.is_hidden, 0) as is_hidden, a.full_name as user_name, a.role, r.like_count, " +
                     "(SELECT COUNT(*) FROM product_review_likes prl WHERE prl.review_id = r.id AND prl.user_id = ?) as user_liked " +
                     "FROM product_reviews r " +
                     "JOIN accounts a ON r.user_id = a.id " +
@@ -281,7 +310,7 @@ public class ProductApiController {
                     "ORDER BY r.created_at ASC";
             allEntries = jdbc.queryForList(sqlAllReviews, currentUserId, id);
         } else {
-            sqlAllReviews = "SELECT r.*, a.full_name as user_name, a.role, r.like_count, 0 as user_liked " +
+            sqlAllReviews = "SELECT r.*, COALESCE(r.is_hidden, 0) as is_hidden, a.full_name as user_name, a.role, r.like_count, 0 as user_liked " +
                     "FROM product_reviews r " +
                     "JOIN accounts a ON r.user_id = a.id " +
                     "WHERE r.product_id = ? " +
@@ -312,7 +341,7 @@ public class ProductApiController {
         parents.sort((a, b) -> ((java.util.Date) b.get("created_at")).compareTo((java.util.Date) a.get("created_at")));
 
         String sqlRatingStats = "SELECT COUNT(*) as count, AVG(CAST(rating AS FLOAT)) as avg_rating " +
-                "FROM product_reviews WHERE product_id = ? AND parent_id IS NULL";
+                "FROM product_reviews WHERE product_id = ? AND parent_id IS NULL AND (is_hidden IS NULL OR is_hidden = 0)";
         Map<String, Object> stats = jdbc.queryForMap(sqlRatingStats, id);
         
         boolean hasPurchased = false;
@@ -361,6 +390,9 @@ public class ProductApiController {
                         flashSaleInfo.put("originalPrice", origPrice);
                         if (origPrice > 0 && fsp.getSalePrice() != null) {
                             int discountPercent = (int) Math.round((1.0 - fsp.getSalePrice().doubleValue() / origPrice) * 100);
+                            if (discountPercent < 0) {
+                                discountPercent = 0;
+                            }
                             flashSaleInfo.put("discountPercent", discountPercent);
                         }
                         break;
@@ -621,6 +653,30 @@ public class ProductApiController {
                         .body(Map.of("success", false, "message", "Giá bán phải lớn hơn 5,000 VNĐ!"));
             }
 
+            // CHECK FLASH SALE VALIDATION: Chặn đổi giá sản phẩm nhỏ hơn hoặc bằng giá Flash Sale đang/sắp chạy
+            try {
+                String checkFsSql = "SELECT fsp.sale_price, fs.name FROM flash_sale_products fsp " +
+                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                        "WHERE fsp.product_id = ? AND fs.end_date >= GETDATE()";
+                java.util.List<java.util.Map<String, Object>> activeFsList = jdbc.queryForList(checkFsSql, product.getId());
+                for (java.util.Map<String, Object> fsRow : activeFsList) {
+                    BigDecimal fsSalePrice = fsRow.get("sale_price") != null ? new BigDecimal(fsRow.get("sale_price").toString()) : null;
+                    String fsName = (String) fsRow.get("name");
+                    if (fsSalePrice != null) {
+                        int cmp = price.compareTo(fsSalePrice);
+                        if (cmp < 0) {
+                            return ResponseEntity.badRequest().body(Map.of("success", false, "message", 
+                                    "Lỗi: Giá gốc (" + String.format("%,.0f", price.doubleValue()) + "đ) không được THẤP HƠN giá Flash Sale (" + String.format("%,.0f", fsSalePrice.doubleValue()) + "đ) của chiến dịch '" + fsName + "'!"));
+                        } else if (cmp == 0) {
+                            return ResponseEntity.badRequest().body(Map.of("success", false, "message", 
+                                    "Lỗi: Giá gốc (" + String.format("%,.0f", price.doubleValue()) + "đ) không được BẰNG giá Flash Sale (" + String.format("%,.0f", fsSalePrice.doubleValue()) + "đ) của chiến dịch '" + fsName + "'!"));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore query error
+            }
+
             if (quantity == null || quantity < 1) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("success", false, "message", "Số lượng tồn kho thêm mới phải từ 1 trở lên!"));
@@ -711,6 +767,51 @@ public class ProductApiController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Lỗi lưu biến thể: " + e.getMessage()));
+        }
+    }
+
+    // 4.5 CẬP NHẬT BIẾN THỂ HÀNG LOẠT (BULK SAVE VARIANTS)
+    @PostMapping("/variant/bulk-save")
+    @Transactional
+    public ResponseEntity<?> bulkSaveVariants(@RequestBody List<Map<String, Object>> payload) {
+        try {
+            if (payload == null || payload.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Không có dữ liệu biến thể để cập nhật!"));
+            }
+
+            int count = 0;
+            for (Map<String, Object> item : payload) {
+                Integer variantId = (Integer) item.get("id");
+                if (variantId == null) continue;
+
+                ProductVariant variant = productVariantRepository.findById(variantId).orElse(null);
+                if (variant == null) continue;
+
+                if (item.containsKey("price") && item.get("price") != null) {
+                    Double p = Double.valueOf(item.get("price").toString());
+                    if (p <= 5000) {
+                        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Giá bán của tất cả biến thể phải lớn hơn 5,000đ!"));
+                    }
+                    variant.setPrice(java.math.BigDecimal.valueOf(p));
+                }
+
+                if (item.containsKey("quantity") && item.get("quantity") != null) {
+                    Integer q = Integer.valueOf(item.get("quantity").toString());
+                    if (q < 1) {
+                        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Số lượng tồn kho của tất cả biến thể phải từ 1 trở lên!"));
+                    }
+                    variant.setQuantity(q);
+                }
+
+                productVariantRepository.save(variant);
+                count++;
+            }
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Cập nhật thành công hàng loạt " + count + " biến thể sản phẩm!"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi cập nhật hàng loạt: " + e.getMessage()));
         }
     }
 
@@ -948,7 +1049,10 @@ public class ProductApiController {
                     " AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) as sale_price " +
                     "FROM products p " +
                     "LEFT JOIN categories c ON p.category_id = c.id " +
+                    "LEFT JOIN brands b ON LOWER(p.brand_name) = LOWER(b.brand_name) " +
                     "WHERE p.status = 1 " +
+                    "AND (c.status IS NULL OR c.status = 1) " +
+                    "AND (b.status IS NULL OR b.status = 1) " +
                     "AND p.created_at >= DATEADD(day, -3, GETDATE()) " +
                     "ORDER BY p.created_at DESC";
 
@@ -979,11 +1083,12 @@ public class ProductApiController {
             List<Map<String, Object>> activeCategories = jdbc.queryForList(
                     "SELECT id, category_name FROM categories WHERE status = 1 ORDER BY category_name ASC");
 
+            java.util.Set<String> activeBrandNamesLower = activeBrands.stream()
+                    .map(b -> b.get("name") != null ? b.get("name").toString().trim().toLowerCase() : "")
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
+
             List<Product> allProducts = productRepository.findAll();
-            System.out.println("=== SEARCH API ALL PRODUCTS SIZE: " + allProducts.size());
-            for (Product p : allProducts) {
-                System.out.println("   DB Product ID: " + p.getId() + " | Name: " + p.getProductName() + " | Status: " + p.getStatus() + " | Category: " + (p.getCategory() != null ? p.getCategory().getName() : "NULL"));
-            }
 
             String searchTerm = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim().toLowerCase() : ((q != null && !q.trim().isEmpty()) ? q.trim().toLowerCase() : null);
 
@@ -1000,6 +1105,12 @@ public class ProductApiController {
                     .filter(p -> p != null)
                     .filter(p -> p.getStatus() == null || p.getStatus() == 1)
                     .filter(p -> p.getCategory() == null || p.getCategory().isActive())
+                    .filter(p -> {
+                        if (p.getBrandName() != null && !p.getBrandName().trim().isEmpty()) {
+                            return activeBrandNamesLower.contains(p.getBrandName().trim().toLowerCase());
+                        }
+                        return true;
+                    })
                     .filter(p -> {
                         if (searchTerm == null) return true;
                         String pName = p.getProductName() != null ? p.getProductName().toLowerCase() : "";

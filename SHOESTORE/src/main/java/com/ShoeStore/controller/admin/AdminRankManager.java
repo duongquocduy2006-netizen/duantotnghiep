@@ -56,6 +56,25 @@ public class AdminRankManager {
 
     @PostMapping("/add")
     public String saveAdd(@ModelAttribute("rank") MembershipRank rank, Model model) {
+        if (rank.getRankName() == null || rank.getRankName().trim().isEmpty() || rank.getMinPoints() == null) {
+            model.addAttribute("error", "Thiếu thông tin bắt buộc!");
+            return "admin/add-ranks";
+        }
+        String nameCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE LOWER(TRIM(rank_name)) = LOWER(TRIM(?))";
+        Integer countName = jdbc.queryForObject(nameCheckSql, Integer.class, rank.getRankName().trim());
+        if (countName != null && countName > 0) {
+            model.addAttribute("error", "Tên hạng thành viên '" + rank.getRankName().trim() + "' đã tồn tại!");
+            return "admin/add-ranks";
+        }
+        String pointsCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE min_points = ?";
+        Integer countPoints = jdbc.queryForObject(pointsCheckSql, Integer.class, rank.getMinPoints());
+        if (countPoints != null && countPoints > 0) {
+            model.addAttribute("error", "Ngưỡng điểm tối thiểu (" + rank.getMinPoints() + " điểm) đã tồn tại, vui lòng nhập số điểm khác!");
+            return "admin/add-ranks";
+        }
+
+        rank.setRankName(rank.getRankName().trim());
+        if (rank.getDiscountPercent() == null) rank.setDiscountPercent(0.0);
         rankRepo.save(rank);
         recalculateUserRanks();
         model.addAttribute("message", "Thêm hạng thành viên mới thành công!");
@@ -76,6 +95,25 @@ public class AdminRankManager {
     @PostMapping("/edit/{id}")
     public String saveUpdate(@PathVariable("id") Integer id, @ModelAttribute("rank") MembershipRank rank, Model model) {
         rank.setId(id);
+        if (rank.getRankName() == null || rank.getRankName().trim().isEmpty() || rank.getMinPoints() == null) {
+            model.addAttribute("error", "Thiếu thông tin bắt buộc!");
+            return "admin/add-ranks";
+        }
+        String nameCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE LOWER(TRIM(rank_name)) = LOWER(TRIM(?)) AND id <> ?";
+        Integer countName = jdbc.queryForObject(nameCheckSql, Integer.class, rank.getRankName().trim(), id);
+        if (countName != null && countName > 0) {
+            model.addAttribute("error", "Tên hạng thành viên '" + rank.getRankName().trim() + "' đã tồn tại!");
+            return "admin/add-ranks";
+        }
+        String pointsCheckSql = "SELECT COUNT(*) FROM membership_ranks WHERE min_points = ? AND id <> ?";
+        Integer countPoints = jdbc.queryForObject(pointsCheckSql, Integer.class, rank.getMinPoints(), id);
+        if (countPoints != null && countPoints > 0) {
+            model.addAttribute("error", "Ngưỡng điểm tối thiểu (" + rank.getMinPoints() + " điểm) đã tồn tại, vui lòng nhập số điểm khác!");
+            return "admin/add-ranks";
+        }
+
+        rank.setRankName(rank.getRankName().trim());
+        if (rank.getDiscountPercent() == null) rank.setDiscountPercent(0.0);
         rankRepo.save(rank);
         recalculateUserRanks();
         model.addAttribute("message", "Cập nhật hạng thành viên thành công!");

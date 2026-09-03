@@ -59,6 +59,7 @@ const AdminLayout = ({ children }) => {
         { label: 'KINH DOANH', type: 'label' },
         { path: '/admin/dashboard', icon: 'bi-grid-fill', label: 'Tổng Quan' },
         { path: '/admin/orders', icon: 'bi-cart-check', label: 'Đơn Hàng' },
+        { path: '/admin/withdrawals', icon: 'bi-wallet2', label: 'Quản Lý Rút Tiền' },
         { path: '/admin/customers', icon: 'bi-people-fill', label: 'Khách Hàng' },
         { path: '/admin/ranks', icon: 'bi-gem', label: 'Hạng Thành Viên' },
 
@@ -79,10 +80,23 @@ const AdminLayout = ({ children }) => {
                          toastStr.toLowerCase().includes('thất bại') || 
                          toastStr.toLowerCase().includes('vui lòng') || 
                          toastStr.toLowerCase().includes('chưa') || 
-                         toastStr.toLowerCase().includes('không');
+                         toastStr.toLowerCase().includes('không') ||
+                         toastStr.toLowerCase().includes('violation') ||
+                         toastStr.toLowerCase().includes('could not') ||
+                         toastStr.toLowerCase().includes('failed') ||
+                         toastStr.toLowerCase().includes('cannot') ||
+                         toastStr.toLowerCase().includes('duplicate') ||
+                         toastStr.toLowerCase().includes('error');
     const toastBgColor = isToastError ? '#dc2626' : '#198754';
     const toastBgShadow = isToastError ? 'rgba(220, 38, 38, 0.2)' : 'rgba(25, 135, 84, 0.2)';
     const toastIconClass = isToastError ? 'bi bi-exclamation-circle-fill' : 'bi bi-check-circle-fill';
+
+    const isPathActive = (path) => {
+        if (path === '/admin/dashboard' || path === '/admin') {
+            return location.pathname === '/admin' || location.pathname === '/admin/dashboard' || location.pathname === '/admin/';
+        }
+        return location.pathname === path || location.pathname.startsWith(path + '/');
+    };
 
     return (
         <div className="admin-wrapper">
@@ -109,9 +123,10 @@ const AdminLayout = ({ children }) => {
                         if (item.type === 'label') {
                             return <div key={index} className="nav-label">{item.label}</div>;
                         }
+                        const active = isPathActive(item.path);
                         return (
                             <li key={item.path} style={{ listStyle: 'none' }}>
-                                <Link to={item.path} className={`nav-link ${location.pathname === item.path || (item.path === '/admin/products' && location.pathname.startsWith('/admin/products/detail')) ? 'active' : ''}`}>
+                                <Link to={item.path} className={`nav-link ${active ? 'active' : ''}`}>
                                     <i className={`bi ${item.icon}`}></i>
                                     <span>{item.label}</span>
                                 </Link>

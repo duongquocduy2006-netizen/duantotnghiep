@@ -241,11 +241,19 @@ const Orders = () => {
                                             className="user-avatar"
                                             alt="Avatar"
                                         />
-                                        <i className="fa fa-crown vip-crown"></i>
                                     </div>
                                     <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
                                     <div className="mb-2">
-                                        <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>
+                                        <span 
+                                            className={`rank-badge-flat ${getRankClass(account.rank_name)}`}
+                                            style={account.color_code ? {
+                                                backgroundColor: `${account.color_code}1f`,
+                                                color: account.color_code,
+                                                borderColor: `${account.color_code}40`,
+                                                borderStyle: 'solid',
+                                                borderWidth: '1px'
+                                            } : {}}
+                                        >
                                             {account.rank_name || 'Đồng'}
                                         </span>
                                     </div>

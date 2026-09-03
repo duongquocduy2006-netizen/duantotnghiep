@@ -59,9 +59,6 @@ const AdminRankForm = () => {
         if (form.minPoints === '' || isNaN(form.minPoints) || parseInt(form.minPoints) < 0) {
             errors.minPoints = "Vui lòng nhập ngưỡng điểm tối thiểu (>= 0)!";
         }
-        if (form.discountPercent === '' || isNaN(form.discountPercent) || parseFloat(form.discountPercent) < 0 || parseFloat(form.discountPercent) > 100) {
-            errors.discountPercent = "Vui lòng nhập phần trăm chiết khấu từ 0% đến 100%!";
-        }
 
         if (Object.keys(errors).length > 0) {
             setFormErrors(errors);
@@ -73,10 +70,10 @@ const AdminRankForm = () => {
         try {
             const payload = {
                 id: isEdit ? parseInt(id) : null,
-                rankName: form.rankName,
+                rankName: form.rankName.trim(),
                 minPoints: parseInt(form.minPoints),
                 colorCode: form.colorCode,
-                discountPercent: parseFloat(form.discountPercent),
+                discountPercent: 0,
                 freeShipping: form.freeShipping
             };
             const res = await api.post('/api/membership/ranks', payload);
@@ -89,7 +86,12 @@ const AdminRankForm = () => {
         } catch (err) {
             console.error('Lỗi khi lưu hạng thành viên:', err);
             const errMsg = err.response?.data?.message || err.message || "Có lỗi xảy ra khi lưu hạng thành viên.";
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi khi lưu hạng thành viên: " + errMsg }));
+            if (errMsg.includes("Tên hạng")) {
+                setFormErrors(p => ({ ...p, rankName: errMsg }));
+            } else if (errMsg.includes("Ngưỡng điểm")) {
+                setFormErrors(p => ({ ...p, minPoints: errMsg }));
+            }
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
         }
     };
 
@@ -139,25 +141,6 @@ const AdminRankForm = () => {
                                 }}
                             />
                             {formErrors.minPoints && <span className="field-error">{formErrors.minPoints}</span>}
-                        </div>
-
-                        <div className="form-group" style={{ marginTop: '20px' }}>
-                            <label className="form-label"><i className="bi bi-percent"></i> Chiết khấu giảm giá trực tiếp (%) *</label>
-                            <input 
-                                type="number" 
-                                className={`form-input-cinematic ${formErrors.discountPercent ? 'input-error' : ''}`} 
-                                placeholder="Ví dụ: 0, 5, 10, 15..." 
-                                required 
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                value={form.discountPercent}
-                                onChange={(e) => {
-                                    setForm({...form, discountPercent: e.target.value});
-                                    if (formErrors.discountPercent) setFormErrors(p => ({...p, discountPercent: ''}));
-                                }}
-                            />
-                            {formErrors.discountPercent && <span className="field-error">{formErrors.discountPercent}</span>}
                         </div>
 
                         <div className="form-group" style={{ marginTop: '20px' }}>

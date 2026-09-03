@@ -61,12 +61,31 @@
 }
 
 .vip-crown {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    font-size: 20px;
-    color: #ffd700;
-    text-shadow: none;
+    display: none !important;
+}
+
+.rank-bronze {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #ffedd5;
+}
+
+.rank-silver {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.rank-gold {
+    background: #fef9c3;
+    color: #a16207;
+    border: 1px solid #fef08a;
+}
+
+.rank-diamond {
+    background: #e0f2fe;
+    color: #0284c7;
+    border: 1px solid #bae6fd;
 }
 
 .menu-link {
@@ -317,9 +336,9 @@
 }
 
 .rank-diamond {
-    background: #fae8ff;
-    color: #a21caf;
-    border: 1px solid #f5d0fe;
+    background: #e0f2fe;
+    color: #0284c7;
+    border: 1px solid #bae6fd;
 }
 
 /* --- EPIC CUSTOM MODAL (GLASSMORPHISM) --- */

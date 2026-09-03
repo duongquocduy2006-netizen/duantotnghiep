@@ -34,29 +34,21 @@ const formatNumber = (num) => {
 const getPerksForRank = (r) => {
     if (!r) return [];
     const perks = [];
-    const discount = r.discountPercent !== null && r.discountPercent !== undefined ? r.discountPercent : (r.discount || 0);
-    const isFreeShipping = !!r.freeShipping || !!r.free_shipping;
+    const isFreeShipping = r.freeShipping === true || r.freeShipping === 1 || r.free_shipping === true || r.free_shipping === 1;
     const description = r.description || '';
 
-    // Chiết khấu theo hạng
-    if (discount > 0) {
-        perks.push(`Giảm giá ${discount}% trên mỗi đơn hàng`);
-    }
+    // Mã giảm giá độc quyền theo hạng
+    perks.push('Mã giảm giá độc quyền theo hạng');
 
-    // Miễn phí vận chuyển
+    // Miễn phí giao hàng (khi bật cờ free_shipping trong DB)
     if (isFreeShipping) {
         perks.push('Miễn phí giao hàng');
     }
 
-    // Mô tả tùy chỉnh từ admin (nếu có)
-    if (description.trim()) {
-        // Tách description theo dấu xuống dòng hoặc dấu "|" để hỗ trợ nhiều dòng
+    // Mô tả tùy chỉnh từ Admin trong cơ sở dữ liệu
+    if (description && description.trim()) {
         const descLines = description.split(/[\n|]/).map(s => s.trim()).filter(s => s.length > 0);
         descLines.forEach(line => perks.push(line));
-    }
-
-    if (perks.length === 0) {
-        perks.push('Hạng thành viên cơ bản');
     }
 
     return perks;
@@ -73,6 +65,7 @@ const Membership = () => {
     const [vouchers, setVouchers] = useState([]);
     const [loggedIn, setLoggedIn] = useState(false);
     const [activeFaq, setActiveFaq] = useState(null);
+    const [vndPerPoint, setVndPerPoint] = useState(1000);
 
     useEffect(() => {
         fetchMembershipData();
@@ -86,6 +79,7 @@ const Membership = () => {
             if (res.data && res.data.success && res.data.loggedIn) {
                 setLoggedIn(true);
                 setUserInfo(res.data.account);
+                if (res.data.vndPerPoint) setVndPerPoint(res.data.vndPerPoint);
                 
                 const ranksList = res.data.ranks || [];
                 setAllRanks(ranksList);
@@ -265,12 +259,13 @@ const Membership = () => {
                     <div className="mt-5 pt-5">
                         <div className="section-header">
                             <h2>ĐẶC QUYỀN HẠNG THÀNH VIÊN</h2>
-                            <p>Tích lũy chi tiêu nhiều hơn, nâng hạng thẻ cao hơn để hưởng chiết khấu độc quyền trên từng đơn hàng.</p>
+                            <p>Tích lũy chi tiêu nhiều hơn, nâng hạng thẻ cao hơn để nhận các mã giảm giá độc quyền và đặc quyền giao hàng.</p>
                         </div>
                         <div className="tier-perks-grid">
                             {allRanks.map((r) => {
                                 const isActive = userInfo?.membership_rank_id === r.id;
                                 const perks = getPerksForRank(r);
+                                const isFreeShipping = r.freeShipping === true || r.freeShipping === 1 || r.free_shipping === true || r.free_shipping === 1;
                                 return (
                                     <div 
                                         key={r.id} 
@@ -291,8 +286,17 @@ const Membership = () => {
                                         </div>
 
                                         <div className="tier-discount-box">
-                                            <div className="tier-discount-val">-{r.discountPercent || 0}%</div>
-                                            <div className="tier-discount-desc">Giảm trực tiếp mỗi đơn</div>
+                                            {isFreeShipping ? (
+                                                <>
+                                                    <div className="tier-discount-val" style={{ fontSize: '20px', letterSpacing: '0.5px' }}>FREESHIP</div>
+                                                    <div className="tier-discount-desc">Miễn phí giao hàng đơn hàng</div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="tier-discount-val" style={{ fontSize: '18px', letterSpacing: '0.5px' }}>VOUCHER</div>
+                                                    <div className="tier-discount-desc">Mã giảm giá độc quyền theo hạng</div>
+                                                </>
+                                            )}
                                         </div>
 
                                         <ul className="tier-perks-list flex-grow-1">
@@ -319,7 +323,7 @@ const Membership = () => {
                                     <i className="fa-solid fa-cart-shopping"></i>
                                 </div>
                                 <h4>Mua Sắm Tích Lũy</h4>
-                                <p>Mỗi đơn hàng hoàn thành tại ShoeStore đều được tự động quy đổi thành điểm thành viên (10.000 VND mua sắm = 1 điểm tích lũy).</p>
+                                <p>Mỗi đơn hàng hoàn thành tại ShoeStore đều được tự động quy đổi thành điểm thành viên ({formatNumber(vndPerPoint)} VND mua sắm = 1 điểm tích lũy).</p>
                             </div>
                             <div className="step-card">
                                 <div className="step-number">02</div>
@@ -362,7 +366,7 @@ const Membership = () => {
                                                 <p className="fw-bold text-muted small mb-3">Đơn từ {formatCurrency(v.minOrderValue || v.min_order_value)}</p>
                                                 <button className="btn-brutal-outline w-100 py-2 fs-6" onClick={() => {
                                                     navigator.clipboard.writeText(v.code);
-                                                    alert('Đã copy mã: ' + v.code);
+                                                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã sao chép mã: ' + v.code }));
                                                 }}>COPY MÃ</button>
                                             </div>
                                         </div>
@@ -392,7 +396,7 @@ const Membership = () => {
                                     <i className="fa-solid fa-chevron-down"></i>
                                 </button>
                                 <div className="faq-answer">
-                                    Điểm thành viên được tích lũy hoàn toàn tự động dựa trên hóa đơn mua sắm thực tế của bạn. Cứ mỗi 10,000 VND chi tiêu thanh toán thành công (online hoặc tại quầy), tài khoản của bạn sẽ tự động được cộng thêm 1 điểm thành viên.
+                                    Điểm thành viên được tích lũy hoàn toàn tự động dựa trên hóa đơn mua sắm thực tế của bạn. Cứ mỗi {formatNumber(vndPerPoint)} VND chi tiêu thanh toán thành công (online hoặc tại quầy), tài khoản của bạn sẽ tự động được cộng thêm 1 điểm thành viên.
                                 </div>
                             </div>
                             <div className={`faq-item ${activeFaq === 1 ? 'active-faq' : ''}`}>
@@ -406,11 +410,11 @@ const Membership = () => {
                             </div>
                             <div className={`faq-item ${activeFaq === 2 ? 'active-faq' : ''}`}>
                                 <button className="faq-question-btn" onClick={() => toggleFaq(2)}>
-                                    Chiết khấu thành viên có áp dụng đồng thời với các mã giảm giá khác không?
+                                    Ưu đãi Voucher theo hạng thành viên có áp dụng cùng lúc với Miễn phí vận chuyển không?
                                     <i className="fa-solid fa-chevron-down"></i>
                                 </button>
                                 <div className="faq-answer">
-                                    Có! Chiết khấu theo hạng thành viên (ví dụ Bạc giảm 5%, Vàng giảm 10%, Kim Cương giảm 15%) được trừ trực tiếp vào giá trị của từng sản phẩm. Bạn vẫn có thể nhập thêm các mã giảm giá, mã vận chuyển hoặc điểm tích lũy bổ sung ở bước thanh toán để tối đa hóa ưu đãi.
+                                    Có! Bạn hoàn toàn có thể áp dụng Mã giảm giá độc quyền dành cho Hạng thành viên của mình cùng lúc với ưu đãi Miễn phí vận chuyển (nếu hạng thẻ của bạn có đặc quyền Freeship) để tối đa hóa tiết kiệm cho đơn hàng.
                                 </div>
                             </div>
                             <div className={`faq-item ${activeFaq === 3 ? 'active-faq' : ''}`}>

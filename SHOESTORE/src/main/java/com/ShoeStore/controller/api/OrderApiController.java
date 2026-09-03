@@ -130,21 +130,41 @@ public class OrderApiController {
                 ((Number) payload.get("buyNowQty")).intValue() : null;
 
         try {
+            String fsJoinSubquery = "LEFT JOIN ( " +
+                    "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "    FROM flash_sale_products fsp " +
+                    "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                    "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                    ") fsp ON fsp.product_id = v.product_id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) ";
+
             List<Map<String, Object>> items;
             boolean isBuyNow = (buyNowVariantId != null && buyNowQty != null);
 
             if (isBuyNow) {
                 // Lấy sản phẩm trực tiếp (Mua ngay)
-                String buyNowSql = "SELECT v.id as variant_id, ? as quantity, " +
-                        "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                        "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                        "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
-                        "FROM product_variants v WHERE v.id = ?";
+                String buyNowSql = "SELECT v.id as variant_id, ? as quantity, v.price as original_price, " +
+                        "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                        "FROM product_variants v " + fsJoinSubquery +
+                        "WHERE v.id = ?";
                 items = jdbc.queryForList(buyNowSql, buyNowQty, buyNowVariantId);
                 if (items.isEmpty()) {
                     return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Sản phẩm không tồn tại!"));
+                }
+            } else if (payload.containsKey("cartItemIds") && payload.get("cartItemIds") != null && !((List<?>) payload.get("cartItemIds")).isEmpty()) {
+                @SuppressWarnings("unchecked")
+                List<Object> cartItemIds = (List<Object>) payload.get("cartItemIds");
+                String inSql = cartItemIds.stream().map(id -> "?").collect(java.util.stream.Collectors.joining(","));
+                String cartSql = "SELECT ci.product_variant_id as variant_id, ci.quantity, v.price as original_price, " +
+                        "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                        "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " + fsJoinSubquery +
+                        "WHERE ci.user_id = ? AND ci.id IN (" + inSql + ")";
+                List<Object> queryParams = new java.util.ArrayList<>();
+                queryParams.add(accountId);
+                queryParams.addAll(cartItemIds);
+                items = jdbc.queryForList(cartSql, queryParams.toArray());
+
+                if (items.isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Không tìm thấy sản phẩm được chọn trong giỏ hàng!"));
                 }
             } else if (payload.containsKey("items") && payload.get("items") != null) {
                 // Lấy danh sách sản phẩm truyền trực tiếp từ client payload (cho mobile)
@@ -153,13 +173,10 @@ public class OrderApiController {
                 for (Map<String, Object> pi : payloadItems) {
                     Integer vId = ((Number) pi.get("variantId")).intValue();
                     Integer qty = ((Number) pi.get("quantity")).intValue();
-                    String priceSql = "SELECT v.id as variant_id, ? as quantity, " +
-                            "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                            "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                            "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                            "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                            "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
-                            "FROM product_variants v WHERE v.id = ?";
+                    String priceSql = "SELECT v.id as variant_id, ? as quantity, v.price as original_price, " +
+                            "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                            "FROM product_variants v " + fsJoinSubquery +
+                            "WHERE v.id = ?";
                     List<Map<String, Object>> singleItem = jdbc.queryForList(priceSql, qty, vId);
                     if (!singleItem.isEmpty()) {
                         items.add(singleItem.get(0));
@@ -170,13 +187,9 @@ public class OrderApiController {
                 }
             } else {
                 // Lấy danh sách sản phẩm từ giỏ hàng thực tế
-                String cartSql = "SELECT ci.product_variant_id as variant_id, ci.quantity, " +
-                        "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                        "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                        "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price " +
-                        "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " +
+                String cartSql = "SELECT ci.product_variant_id as variant_id, ci.quantity, v.price as original_price, " +
+                        "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                        "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " + fsJoinSubquery +
                         "WHERE ci.user_id = ?";
                 items = jdbc.queryForList(cartSql, accountId);
 
@@ -185,21 +198,29 @@ public class OrderApiController {
                 }
             }
 
+            // Tách các dòng sản phẩm thành dòng Flash Sale và dòng giá gốc (nếu mua vượt quá giới hạn SL)
+            items = com.ShoeStore.util.FlashSalePriceUtil.processAndSplitList(items);
+
             double total = items.stream()
                     .mapToDouble(item -> ((Number) item.get("price")).doubleValue() * ((Number) item.get("quantity")).intValue())
                     .sum();
 
-            double tempShipping = 30000;
-            if (shippingFee != null) {
-                tempShipping = shippingFee;
-            } else {
-                Integer userRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
-                if (userRankId != null) {
-                    Boolean freeShip = jdbc.queryForObject(
-                            "SELECT COALESCE(free_shipping, 0) FROM membership_ranks WHERE id = ?", Boolean.class, userRankId);
-                    if (Boolean.TRUE.equals(freeShip)) {
-                        tempShipping = 0;
-                    }
+            double tempShipping = shippingFee != null ? shippingFee : 30000;
+            Integer userRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
+            if (userRankId == null) {
+                Integer points = jdbc.queryForObject("SELECT COALESCE(points, 0) FROM accounts WHERE id = ?", Integer.class, accountId);
+                int pts = points != null ? points : 0;
+                java.util.List<Integer> rankIds = jdbc.queryForList("SELECT id FROM membership_ranks WHERE min_points <= ? ORDER BY min_points DESC", Integer.class, pts);
+                if (!rankIds.isEmpty()) {
+                    userRankId = rankIds.get(0);
+                    jdbc.update("UPDATE accounts SET membership_rank_id = ? WHERE id = ?", userRankId, accountId);
+                }
+            }
+            if (userRankId != null) {
+                Boolean freeShip = jdbc.queryForObject(
+                        "SELECT COALESCE(free_shipping, 0) FROM membership_ranks WHERE id = ?", Boolean.class, userRankId);
+                if (Boolean.TRUE.equals(freeShip)) {
+                    tempShipping = 0;
                 }
             }
             final double shipping = tempShipping;
@@ -282,7 +303,7 @@ public class OrderApiController {
 
             Long orderId = keyHolder.getKey().longValue();
 
-            // Thêm order items
+            // Thêm order items & Cập nhật số lượng đã bán (sold_quantity) Flash Sale
             for (Map<String, Object> item : items) {
                 Integer variantId = ((Number) item.get("variant_id")).intValue();
                 Integer buyQty = ((Number) item.get("quantity")).intValue();
@@ -291,6 +312,16 @@ public class OrderApiController {
                 jdbc.update(
                         "INSERT INTO order_items (order_id, product_variant_id, quantity, price) VALUES (?, ?, ?, ?)",
                         orderId, variantId, buyQty, price);
+
+                int fsQtyUsed = item.get("flashSaleQtyUsed") != null ? ((Number) item.get("flashSaleQtyUsed")).intValue() : 0;
+                if (fsQtyUsed > 0) {
+                    jdbc.update("UPDATE fsp SET sold_quantity = ISNULL(fsp.sold_quantity, 0) + ? " +
+                            "FROM flash_sale_products fsp " +
+                            "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                            "JOIN product_variants v ON v.product_id = fsp.product_id " +
+                            "WHERE v.id = ? AND fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date",
+                            fsQtyUsed, variantId);
+                }
             }
 
             // Trừ tồn kho sản phẩm ngay khi đặt hàng
@@ -302,9 +333,19 @@ public class OrderApiController {
                         voucher.getId(), accountId);
             }
 
-            // Xóa giỏ hàng nếu không phải mua ngay và không đặt hàng qua items payload trực tiếp
-            if (!isBuyNow && !payload.containsKey("items")) {
-                jdbc.update("DELETE FROM cart_items WHERE user_id = ?", accountId);
+            // Xóa các sản phẩm đã được đặt hàng khỏi giỏ hàng
+            if (!isBuyNow) {
+                if (payload.containsKey("cartItemIds") && payload.get("cartItemIds") != null && !((List<?>) payload.get("cartItemIds")).isEmpty()) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> cartItemIds = (List<Object>) payload.get("cartItemIds");
+                    String inSql = cartItemIds.stream().map(id -> "?").collect(java.util.stream.Collectors.joining(","));
+                    List<Object> delParams = new java.util.ArrayList<>();
+                    delParams.add(accountId);
+                    delParams.addAll(cartItemIds);
+                    jdbc.update("DELETE FROM cart_items WHERE user_id = ? AND id IN (" + inSql + ")", delParams.toArray());
+                } else if (!payload.containsKey("items")) {
+                    jdbc.update("DELETE FROM cart_items WHERE user_id = ?", accountId);
+                }
             }
             // Xử lý thanh toán online qua BANK (PayOS)
             if ("BANK".equalsIgnoreCase(paymentMethod)) {
@@ -340,7 +381,7 @@ public class OrderApiController {
                     vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse checkoutResponseData = payOS.paymentRequests().create(paymentData);
                     String checkoutUrl = checkoutResponseData.getCheckoutUrl();
 
-                    jdbc.update("UPDATE orders SET external_transaction_id = ? WHERE order_code = ?", String.valueOf(payosOrderCode), orderCode);
+                    jdbc.update("UPDATE orders SET external_transaction_id = ?, payment_status = 1 WHERE order_code = ?", String.valueOf(payosOrderCode), orderCode);
 
                     return ResponseEntity.ok(Map.of(
                             "success", true,
@@ -381,11 +422,15 @@ public class OrderApiController {
         }
 
         String orderCode = (String) payload.get("orderCode");
+        String cancelReason = (String) payload.get("cancelReason");
+        String bankBin = (String) payload.get("bankBin");
+        String bankAccount = (String) payload.get("bankAccount");
+        String accountName = (String) payload.get("accountName");
         Long userId = ((Number) account.get("id")).longValue();
 
         try {
-            orderService.cancelOrder(orderCode, userId);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Hủy đơn hàng thành công!"));
+            orderService.cancelOrder(orderCode, userId, cancelReason, bankBin, bankAccount, accountName);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Hủy đơn hàng và xử lý hoàn tiền thành công!"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("success", false, "message", "Không thể hủy đơn hàng: " + e.getMessage()));
@@ -541,6 +586,86 @@ public class OrderApiController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("success", false, "message", "Lỗi xóa sản phẩm khỏi đơn hàng: " + e.getMessage()));
+        }
+    }
+
+    // 10. ADMIN XÁC NHẬN ĐÃ HOÀN TIỀN CHO ĐƠN HÀNG HỦY (HỖ TRỢ PAYOS PAYOUT TỰ ĐỘNG CHUYỂN TIỀN)
+    @PostMapping("/confirm-refund")
+    public ResponseEntity<?> confirmRefund(@RequestBody Map<String, Object> payload) {
+        String orderCode = (String) payload.get("orderCode");
+        String bankBin = (String) payload.get("bankBin");
+        String bankAccount = (String) payload.get("bankAccount");
+        String accountName = (String) payload.get("accountName");
+
+        if (orderCode == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu orderCode!"));
+        }
+
+        try {
+            orderService.confirmRefund(orderCode, bankBin, bankAccount, accountName);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Xác nhận và chuyển hoàn tiền thành công qua PayOS cho đơn hàng " + orderCode + "!"));
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi hoàn tiền PayOS: " + e.getMessage()));
+        }
+    }
+
+    // 10.1 ADMIN TỪ CHỐI HOÀN TIỀN
+    @PostMapping("/reject-refund")
+    public ResponseEntity<?> rejectRefund(@RequestBody Map<String, Object> payload) {
+        String orderCode = (String) payload.get("orderCode");
+        String rejectReason = (String) payload.get("rejectReason");
+
+        if (orderCode == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu orderCode!"));
+        }
+
+        try {
+            orderService.rejectRefund(orderCode, rejectReason);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Đã từ chối hoàn tiền cho đơn hàng " + orderCode + "!"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Lỗi xử lý từ chối hoàn tiền: " + e.getMessage()));
+        }
+    }
+
+    // 11. TỰ ĐỘNG LẤY THÔNG TIN TÀI KHOẢN NGÂN HÀNG NGƯỜI CHUYỂN TIỀN TỪ PAYOS
+    @GetMapping("/{orderCode}/payos-info")
+    public ResponseEntity<?> getPayOSPaymentInfo(@PathVariable String orderCode) {
+        try {
+            Map<String, Object> orderDetail = orderService.getOrderDetail(orderCode);
+            if (orderDetail == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Không tìm thấy đơn hàng!"));
+            }
+
+            String extTxId = orderDetail.get("external_transaction_id") != null ? orderDetail.get("external_transaction_id").toString() : null;
+            if (extTxId == null || extTxId.trim().isEmpty() || payOS == null) {
+                return ResponseEntity.ok(Map.of("success", false, "message", "Đơn hàng không có mã giao dịch PayOS"));
+            }
+
+            vn.payos.model.v2.paymentRequests.PaymentLink paymentLink;
+            try {
+                paymentLink = payOS.paymentRequests().get(Long.parseLong(extTxId));
+            } catch (NumberFormatException nfe) {
+                paymentLink = payOS.paymentRequests().get(extTxId);
+            }
+
+            if (paymentLink != null && paymentLink.getTransactions() != null && !paymentLink.getTransactions().isEmpty()) {
+                vn.payos.model.v2.paymentRequests.Transaction tx = paymentLink.getTransactions().get(0);
+                Map<String, Object> txData = new HashMap<>();
+                txData.put("counterAccountBankId", tx.getCounterAccountBankId());
+                txData.put("counterAccountBankName", tx.getCounterAccountBankName());
+                txData.put("counterAccountName", tx.getCounterAccountName());
+                txData.put("counterAccountNumber", tx.getCounterAccountNumber());
+                txData.put("amountPaid", paymentLink.getAmountPaid());
+                return ResponseEntity.ok(Map.of("success", true, "payosInfo", txData));
+            }
+
+            return ResponseEntity.ok(Map.of("success", false, "message", "Chưa tìm thấy giao dịch chuyển tiền trên PayOS"));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("success", false, "message", "Không thể lấy thông tin PayOS: " + e.getMessage()));
         }
     }
 }

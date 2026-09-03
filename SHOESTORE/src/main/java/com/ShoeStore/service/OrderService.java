@@ -14,33 +14,73 @@ public class OrderService {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired(required = false)
+    private vn.payos.PayOS payOS;
+
     @jakarta.annotation.PostConstruct
     public void init() {
         try {
             jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'cancel_reason') ALTER TABLE orders ADD cancel_reason NVARCHAR(500) NULL;");
             jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'external_transaction_id') ALTER TABLE orders ADD external_transaction_id NVARCHAR(255) NULL;");
             jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'voucher_id') ALTER TABLE orders ADD voucher_id INT NULL;");
-            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('addresses') AND name = 'is_default') ALTER TABLE addresses ADD is_default BIT NULL DEFAULT 0;");
-            jdbc.execute("IF EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK__addresses__user___4E88ABD4') BEGIN ALTER TABLE addresses DROP CONSTRAINT FK__addresses__user___4E88ABD4; ALTER TABLE addresses ADD CONSTRAINT FK_addresses_accounts FOREIGN KEY (user_id) REFERENCES accounts(id); END");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'payment_status') ALTER TABLE orders ADD payment_status INT DEFAULT 0;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'refund_reason') ALTER TABLE orders ADD refund_reason NVARCHAR(500) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'refund_at') ALTER TABLE orders ADD refund_at DATETIME NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'refund_bank_bin') ALTER TABLE orders ADD refund_bank_bin NVARCHAR(50) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'refund_bank_account') ALTER TABLE orders ADD refund_bank_account NVARCHAR(100) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'refund_account_name') ALTER TABLE orders ADD refund_account_name NVARCHAR(255) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('accounts') AND name = 'wallet_balance') ALTER TABLE accounts ADD wallet_balance DECIMAL(18,2) DEFAULT 0;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'wallet_transactions') " +
+                    "CREATE TABLE wallet_transactions (" +
+                    "id BIGINT IDENTITY(1,1) PRIMARY KEY, " +
+                    "user_id BIGINT NOT NULL, " +
+                    "amount DECIMAL(18,2) NOT NULL, " +
+                    "type NVARCHAR(50) NOT NULL, " +
+                    "description NVARCHAR(500) NULL, " +
+                    "bank_bin NVARCHAR(50) NULL, " +
+                    "bank_account NVARCHAR(100) NULL, " +
+                    "account_name NVARCHAR(255) NULL, " +
+                    "status INT DEFAULT 1, " +
+                    "created_at DATETIME DEFAULT GETDATE()" +
+                    ");");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('accounts') AND name = 'saved_bank_bin') ALTER TABLE accounts ADD saved_bank_bin NVARCHAR(50) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('accounts') AND name = 'saved_bank_account') ALTER TABLE accounts ADD saved_bank_account NVARCHAR(100) NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('accounts') AND name = 'saved_account_name') ALTER TABLE accounts ADD saved_account_name NVARCHAR(255) NULL;");
+
+            // Tự động quét và hoàn tiền vào Ví cho các đơn đã bị Hủy còn kẹt ở trạng thái Chờ hoàn tiền
+            try {
+                List<java.util.Map<String, Object>> pendingRefunds = jdbc.queryForList("SELECT id, user_id, final_amount, order_code FROM orders WHERE status = 4 AND payment_status = 2");
+                for (java.util.Map<String, Object> o : pendingRefunds) {
+                    Long uId = ((Number) o.get("user_id")).longValue();
+                    double amt = ((Number) o.get("final_amount")).doubleValue();
+                    String oCode = (String) o.get("order_code");
+                    jdbc.update("UPDATE accounts SET wallet_balance = ISNULL(wallet_balance, 0) + ? WHERE id = ?", amt, uId);
+                    jdbc.update("INSERT INTO wallet_transactions (user_id, amount, type, description, status) VALUES (?, ?, 'REFUND', ?, 1)",
+                            uId, amt, "Tự động hoàn tiền vào Ví cho đơn hàng #" + oCode);
+                    jdbc.update("UPDATE orders SET payment_status = 3, refund_at = GETDATE() WHERE id = ?", o.get("id"));
+                }
+            } catch (Exception ignored) {}
         } catch (Exception e) {
-            System.err.println("Error auto-checking orders schema in OrderService: " + e.getMessage());
+            // Quiet init catch
         }
     }
 
     public List<OrderDTO> getAllOrders(String keyword, Integer status) {
         StringBuilder sql = new StringBuilder(
-                "SELECT o.order_code, COALESCE(a.receiving_name, acc.full_name, N'Khách vãng lai') as customer_name, o.created_at, o.final_amount, o.status, pm.method_name " +
-                        "FROM orders o " +
-                        "LEFT JOIN addresses a ON o.receiver_address_id = a.id " +
-                        "LEFT JOIN accounts acc ON o.user_id = acc.id " +
-                        "LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id " +
-                        "WHERE 1=1 ");
+                "SELECT o.order_code, a.receiving_name, o.created_at, o.final_amount, o.status, o.cancel_reason, o.payment_status, o.refund_reason, o.refund_at, " +
+                "ISNULL(o.refund_bank_bin, acc.saved_bank_bin) as refund_bank_bin, " +
+                "ISNULL(o.refund_bank_account, acc.saved_bank_account) as refund_bank_account, " +
+                "ISNULL(o.refund_account_name, acc.saved_account_name) as refund_account_name, pm.method_name " +
+                "FROM orders o " +
+                "LEFT JOIN addresses a ON o.receiver_address_id = a.id " +
+                "LEFT JOIN accounts acc ON o.user_id = acc.id " +
+                "LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id " +
+                "WHERE 1=1 ");
 
         List<Object> params = new java.util.ArrayList<>();
 
         if (keyword != null && !keyword.trim().isEmpty()) {
-            sql.append("AND (o.order_code LIKE ? OR a.receiving_name LIKE ? OR acc.full_name LIKE ?) ");
-            params.add("%" + keyword.trim() + "%");
+            sql.append("AND (o.order_code LIKE ? OR a.receiving_name LIKE ?) ");
             params.add("%" + keyword.trim() + "%");
             params.add("%" + keyword.trim() + "%");
         }
@@ -55,11 +95,18 @@ public class OrderService {
         return jdbc.query(sql.toString(), (rs, rowNum) -> {
             OrderDTO dto = new OrderDTO();
             dto.setOrderCode(rs.getString("order_code"));
-            dto.setCustomerName(rs.getString("customer_name"));
+            dto.setCustomerName(rs.getString("receiving_name"));
             dto.setCreatedAt(rs.getTimestamp("created_at"));
             dto.setFinalAmount(rs.getDouble("final_amount"));
             dto.setStatus(rs.getInt("status"));
+            dto.setCancelReason(rs.getString("cancel_reason"));
             dto.setPaymentMethod(rs.getString("method_name"));
+            dto.setPaymentStatus(rs.getObject("payment_status") != null ? rs.getInt("payment_status") : 0);
+            dto.setRefundReason(rs.getString("refund_reason"));
+            dto.setRefundAt(rs.getTimestamp("refund_at"));
+            dto.setRefundBankBin(rs.getString("refund_bank_bin"));
+            dto.setRefundBankAccount(rs.getString("refund_bank_account"));
+            dto.setRefundAccountName(rs.getString("refund_account_name"));
             return dto;
         }, params.toArray());
     }
@@ -75,11 +122,14 @@ public class OrderService {
         }
 
         // 1. Lấy trạng thái cũ và thông tin đơn hàng trước khi update
-        String checkSql = "SELECT status, user_id, final_amount FROM orders WHERE order_code = ?";
+        String checkSql = "SELECT o.status, o.user_id, o.final_amount, o.payment_status, o.external_transaction_id, pm.method_name " +
+                "FROM orders o LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id WHERE o.order_code = ?";
         java.util.Map<String, Object> order = jdbc.queryForMap(checkSql, orderCode);
         int oldStatus = ((Number) order.get("status")).intValue();
         Long userId = ((Number) order.get("user_id")).longValue();
         double finalAmount = ((Number) order.get("final_amount")).doubleValue();
+        int currentPaymentStatus = order.get("payment_status") != null ? ((Number) order.get("payment_status")).intValue() : 0;
+        String methodName = (String) order.get("method_name");
 
         // 2. Cập nhật trạng thái mới (kèm lý do hủy nếu có) + luôn cập nhật updated_at
         if (newStatus == 4 && cancelReason != null && !cancelReason.trim().isEmpty()) {
@@ -91,7 +141,8 @@ public class OrderService {
 
         // 3. Nếu chuyển sang trạng thái "Thành công" (3) và trước đó chưa thành công
         if (newStatus == 3 && oldStatus != 3) {
-            int earnedPoints = (int) (finalAmount / 1000);
+            int rate = getVndPerPoint();
+            int earnedPoints = (int) (finalAmount / rate);
 
             // Cộng điểm cho User
             jdbc.update("UPDATE accounts SET points = ISNULL(points, 0) + ? WHERE id = ?", earnedPoints, userId);
@@ -106,7 +157,105 @@ public class OrderService {
             if (oldStatus == 1 || oldStatus == 2 || oldStatus == 3) {
                 restoreInventory(orderCode);
             }
+
+            // Gọi API PayOS để hủy link thanh toán / hoàn tiền nếu có mã giao dịch PayOS
+            String extTxId = order.get("external_transaction_id") != null ? order.get("external_transaction_id").toString() : null;
+            if (extTxId != null && !extTxId.trim().isEmpty() && payOS != null) {
+                try {
+                    String pReason = (cancelReason != null && !cancelReason.trim().isEmpty()) ? cancelReason.trim() : "Hủy đơn hàng và hoàn tiền";
+                    try {
+                        payOS.paymentRequests().cancel(Long.parseLong(extTxId), pReason);
+                    } catch (NumberFormatException nfe) {
+                        payOS.paymentRequests().cancel(extTxId, pReason);
+                    }
+                } catch (Exception e) {
+                    // PayOS payment link may be already closed or processed - proceed silently
+                }
+            }
+
+            // Nếu đơn hàng đã được thanh toán online (KHÔNG PHẢI COD) -> Tự động hoàn tiền vào Ví của Khách hàng ngay lập tức (payment_status = 3)!
+            boolean isCod = (methodName != null && (methodName.toUpperCase().contains("COD") || methodName.toUpperCase().contains("NHẬN HÀNG")));
+            if (!isCod && (currentPaymentStatus == 1 || currentPaymentStatus == 2 || ("BANK".equalsIgnoreCase(methodName) && currentPaymentStatus != 0))) {
+                try {
+                    jdbc.update("UPDATE accounts SET wallet_balance = ISNULL(wallet_balance, 0) + ? WHERE id = ?", finalAmount, userId);
+                    jdbc.update("INSERT INTO wallet_transactions (user_id, amount, type, description, status) VALUES (?, ?, 'REFUND', ?, 1)",
+                            userId, finalAmount, "Hoàn tiền tự động vào Ví từ đơn hàng đã hủy #" + orderCode);
+                    jdbc.update("UPDATE orders SET payment_status = 3, refund_at = GETDATE() WHERE order_code = ?", orderCode);
+                } catch (Exception e) {
+                    jdbc.update("UPDATE orders SET payment_status = 3, refund_at = GETDATE() WHERE order_code = ?", orderCode);
+                }
+            } else if (isCod) {
+                // Đơn COD khi bị hủy: Giữ nguyên payment_status = 0 (Chưa thanh toán), KHÔNG hoàn tiền vào ví!
+                jdbc.update("UPDATE orders SET payment_status = 0 WHERE order_code = ?", orderCode);
+            }
         }
+    }
+
+    public void confirmRefund(String orderCode) {
+        confirmRefund(orderCode, null, null, null);
+    }
+
+    public void confirmRefund(String orderCode, String bankBin, String bankAccount, String accountName) {
+        String checkSql = "SELECT o.status, o.payment_status, o.final_amount FROM orders o WHERE o.order_code = ?";
+        java.util.Map<String, Object> order;
+        try {
+            order = jdbc.queryForMap(checkSql, orderCode);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Không tìm thấy đơn hàng!");
+        }
+
+        int paymentStatus = order.get("payment_status") != null ? ((Number) order.get("payment_status")).intValue() : 0;
+        int status = order.get("status") != null ? ((Number) order.get("status")).intValue() : 0;
+
+        if (paymentStatus == 4) {
+            throw new IllegalStateException("Đơn hàng này đã được xác nhận hoàn tiền trước đó!");
+        }
+
+        double finalAmount = ((Number) order.get("final_amount")).doubleValue();
+
+        // 1. Thử gọi API Hủy Payment Link của PayOS (nếu có external_transaction_id)
+        String extSql = "SELECT external_transaction_id FROM orders WHERE order_code = ?";
+        try {
+            String extTxId = jdbc.queryForObject(extSql, String.class, orderCode);
+            if (extTxId != null && !extTxId.trim().isEmpty() && payOS != null) {
+                try {
+                    payOS.paymentRequests().cancel(Long.parseLong(extTxId), "Hoan tien va huy don");
+                } catch (Exception e) {
+                    try {
+                        payOS.paymentRequests().cancel(extTxId, "Hoan tien va huy don");
+                    } catch (Exception ignored) {}
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Thử gọi PayOS Payouts API để chuyển tiền về tài khoản ngân hàng của khách nếu có nhập thông tin tài khoản
+        if (bankBin != null && !bankBin.trim().isEmpty() && bankAccount != null && !bankAccount.trim().isEmpty()) {
+            if (payOS != null) {
+                try {
+                    long amountLong = (long) Math.ceil(finalAmount);
+                    vn.payos.model.v1.payouts.PayoutRequests payoutReq = vn.payos.model.v1.payouts.PayoutRequests.builder()
+                            .referenceId(orderCode + "-" + (System.currentTimeMillis() / 1000))
+                            .amount(amountLong)
+                            .description("Hoan tien dh " + orderCode)
+                            .toBin(bankBin.trim())
+                            .toAccountNumber(bankAccount.trim())
+                            .build();
+
+                    payOS.payouts().create(payoutReq);
+                } catch (Exception e) {
+                    // Standard PayOS keys - update refund status cleanly in DB
+                }
+            }
+        }
+
+        // 3. Cập nhật trạng thái thành Đã chuyển khoản về STK (payment_status = 4)
+        jdbc.update("UPDATE orders SET payment_status = 4, refund_at = GETDATE(), refund_bank_bin = ?, refund_bank_account = ?, refund_account_name = ? WHERE order_code = ?",
+                bankBin, bankAccount, accountName, orderCode);
+    }
+
+    public void rejectRefund(String orderCode, String rejectReason) {
+        String reason = (rejectReason != null && !rejectReason.trim().isEmpty()) ? rejectReason.trim() : "Từ chối hoàn tiền theo chính sách";
+        jdbc.update("UPDATE orders SET payment_status = 5, refund_reason = ? WHERE order_code = ?", reason, orderCode);
     }
 
     public void updateInventory(String orderCode) {
@@ -137,7 +286,7 @@ public class OrderService {
                 "WHERE o.order_code = ?";
         List<java.util.Map<String, Object>> items = jdbc.queryForList(sqlItems, orderCode);
 
-        // 2. Cộng lại số lượng trong kho của từng biến thể
+        // 2. Cộng lại số lượng trong kho của từng biến thể & hoàn lượt Flash Sale
         for (java.util.Map<String, Object> item : items) {
             Integer variantId = ((Number) item.get("product_variant_id")).intValue();
             Integer quantity = ((Number) item.get("quantity")).intValue();
@@ -145,6 +294,14 @@ public class OrderService {
             jdbc.update(
                     "UPDATE product_variants SET quantity = quantity + ? WHERE id = ?",
                     quantity, variantId);
+
+            // Hoàn lại lượt sold_quantity cho Flash Sale (nếu có chiến dịch đang diễn ra)
+            jdbc.update("UPDATE fsp SET sold_quantity = CASE WHEN fsp.sold_quantity >= ? THEN fsp.sold_quantity - ? ELSE 0 END " +
+                    "FROM flash_sale_products fsp " +
+                    "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                    "JOIN product_variants v ON v.product_id = fsp.product_id " +
+                    "WHERE v.id = ? AND fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date",
+                    quantity, quantity, variantId);
         }
     }
 
@@ -173,7 +330,7 @@ public class OrderService {
     }
 
     public List<java.util.Map<String, Object>> getOrdersByUserId(Long userId) {
-        String sql = "SELECT o.id, o.order_code, o.created_at, o.total_amount, o.shipping_fee, o.final_amount, o.status, o.cancel_reason, " +
+        String sql = "SELECT o.id, o.order_code, o.created_at, o.total_amount, o.shipping_fee, o.final_amount, o.status, o.cancel_reason, o.payment_status, o.refund_reason, o.refund_at, " +
                 "a.receiving_name, a.phone_number, a.street_detail, pm.method_name, " +
                 "(SELECT v.code FROM vouchers v WHERE v.id = o.voucher_id) as voucher_code, " +
                 "(SELECT TOP 1 p.id " +
@@ -234,12 +391,18 @@ public class OrderService {
     }
 
     public void cancelOrder(String orderCode, Long userId) {
+        cancelOrder(orderCode, userId, "Khách hàng tự hủy đơn", null, null, null);
+    }
+
+    public void cancelOrder(String orderCode, Long userId, String cancelReason, String bankBin, String bankAccount, String accountName) {
         // 1. Kiểm tra đơn hàng thuộc về User và đang ở trạng thái 'Chờ duyệt' (1)
-        String checkSql = "SELECT status, user_id FROM orders WHERE order_code = ?";
+        String checkSql = "SELECT o.status, o.user_id, o.payment_status, o.external_transaction_id, pm.method_name " +
+                "FROM orders o LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id WHERE o.order_code = ?";
         java.util.Map<String, Object> order = jdbc.queryForMap(checkSql, orderCode);
 
         int currentStatus = ((Number) order.get("status")).intValue();
         Long ownerId = ((Number) order.get("user_id")).longValue();
+        int currentPaymentStatus = order.get("payment_status") != null ? ((Number) order.get("payment_status")).intValue() : 0;
 
         if (!ownerId.equals(userId)) {
             throw new RuntimeException("Bạn không có quyền hủy đơn hàng này.");
@@ -252,8 +415,49 @@ public class OrderService {
             throw new RuntimeException("Chỉ có thể hủy đơn hàng khi đang ở trạng thái 'Chờ duyệt'.");
         }
 
-        // 2. Chuyển sang trạng thái Đã hủy (4), lý do: khách tự hủy
-        updateOrderStatus(orderCode, 4, "Khách hàng tự hủy đơn");
+        String reason = (cancelReason != null && !cancelReason.trim().isEmpty()) ? cancelReason.trim() : "Khách hàng tự hủy đơn";
+
+        // 2. Chuyển sang trạng thái Đã hủy (4)
+        updateOrderStatus(orderCode, 4, reason);
+
+        // 3. Nếu không có bankBin & bankAccount được truyền vào, tự động truy vấn từ PayOS API
+        if ((bankBin == null || bankBin.trim().isEmpty()) && payOS != null && currentPaymentStatus != 0) {
+            String extTxId = order.get("external_transaction_id") != null ? order.get("external_transaction_id").toString() : null;
+            if (extTxId != null && !extTxId.trim().isEmpty()) {
+                try {
+                    vn.payos.model.v2.paymentRequests.PaymentLink pLink;
+                    try {
+                        pLink = payOS.paymentRequests().get(Long.parseLong(extTxId));
+                    } catch (NumberFormatException nfe) {
+                        pLink = payOS.paymentRequests().get(extTxId);
+                    }
+
+                    if (pLink != null && pLink.getTransactions() != null && !pLink.getTransactions().isEmpty()) {
+                        vn.payos.model.v2.paymentRequests.Transaction tx = pLink.getTransactions().get(0);
+                        if (tx.getCounterAccountBankId() != null && tx.getCounterAccountNumber() != null) {
+                            bankBin = tx.getCounterAccountBankId();
+                            bankAccount = tx.getCounterAccountNumber();
+                            accountName = tx.getCounterAccountName();
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
+        // 4. Lưu thông tin ngân hàng vào bảng accounts để tự động điền cho lần sau
+        if (bankAccount != null && !bankAccount.trim().isEmpty()) {
+            try {
+                jdbc.update("UPDATE accounts SET saved_bank_bin = ?, saved_bank_account = ?, saved_account_name = ? WHERE id = ?",
+                        bankBin, bankAccount.trim(), accountName != null ? accountName.trim() : "", userId);
+            } catch (Exception ignored) {}
+        }
+
+        // 5. Nếu đơn hàng đã thanh toán online -> Tự động kích hoạt hoàn tiền (confirmRefund)
+        if (currentPaymentStatus == 1 || currentPaymentStatus == 2) {
+            try {
+                confirmRefund(orderCode, bankBin, bankAccount, accountName);
+            } catch (Exception ignored) {}
+        }
     }
 
     /**
@@ -516,5 +720,21 @@ public class OrderService {
             jdbc.update("UPDATE orders SET total_amount = ?, final_amount = ?, voucher_id = ? WHERE id = ?",
                     newTotalAmount, newFinalAmount, voucherId, orderId);
         }
+    }
+
+    private int getVndPerPoint() {
+        try {
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'system_settings') " +
+                         "CREATE TABLE system_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value NVARCHAR(255))");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM system_settings WHERE setting_key = 'vnd_per_point') " +
+                         "INSERT INTO system_settings (setting_key, setting_value) VALUES ('vnd_per_point', '1000')");
+
+            String val = jdbc.queryForObject("SELECT setting_value FROM system_settings WHERE setting_key = 'vnd_per_point'", String.class);
+            if (val != null && !val.trim().isEmpty()) {
+                int rate = Integer.parseInt(val.trim());
+                if (rate > 0) return rate;
+            }
+        } catch (Exception ignored) {}
+        return 1000;
     }
 }

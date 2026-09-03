@@ -78,19 +78,20 @@ const Cart = () => {
         loadCart();
     }, []);
 
-    const updateQty = async (itemId, newQty, stock) => {
-        if (newQty > stock) {
+    const updateQty = async (itemObj, delta, stock) => {
+        if (delta > 0 && itemObj.quantity + delta > stock) {
             showError('Sản phẩm này chỉ còn ' + stock + ' cái trong kho!');
             return;
         }
-        if (newQty < 1) {
-            removeItem(itemId);
+        if (itemObj.quantity + delta < 1) {
+            removeItem(itemObj);
             return;
         }
         try {
             const response = await api.post('/api/cart/update', {
-                itemId: itemId,
-                quantity: newQty
+                itemId: itemObj.id,
+                cartItemId: itemObj.cartItemId || itemObj.id,
+                delta: delta
             });
             if (response.data && response.data.success) {
                 loadCart();
@@ -107,10 +108,16 @@ const Cart = () => {
         }
     };
 
-    const removeItem = async (itemId) => {
+    const removeItem = async (itemObj) => {
         try {
+            const itemId = typeof itemObj === 'object' ? itemObj.id : itemObj;
+            const cartItemId = typeof itemObj === 'object' ? (itemObj.cartItemId || itemObj.id) : itemObj;
+            const removeQty = typeof itemObj === 'object' ? itemObj.quantity : 1;
+
             const response = await api.post('/api/cart/remove', {
-                itemId: itemId
+                itemId: itemId,
+                cartItemId: cartItemId,
+                quantity: removeQty
             });
             if (response.data && response.data.success) {
                 setSelectedItemIds(prev => prev.filter(id => id !== itemId));
@@ -289,16 +296,16 @@ const Cart = () => {
 
                                                 <div className="item-actions d-flex align-items-center gap-4">
                                                     <div className="qty-control-flat d-flex align-items-center">
-                                                        <button className="qty-btn-flat" onClick={() => updateQty(item.id, item.quantity - 1, item.stock)}>-</button>
+                                                        <button className="qty-btn-flat" onClick={() => updateQty(item, -1, item.stock)}>-</button>
                                                         <input type="text" className="qty-input-flat text-center bg-transparent border-0 font-oswald fw-bold fs-5" value={item.quantity} readOnly />
-                                                        <button className="qty-btn-flat" onClick={() => updateQty(item.id, item.quantity + 1, item.stock)}>+</button>
+                                                        <button className="qty-btn-flat" onClick={() => updateQty(item, 1, item.stock)}>+</button>
                                                     </div>
 
                                                     <div className="item-price d-none d-md-block font-oswald text-danger fs-4 fw-bold" style={{ minWidth: '130px', textAlign: 'right' }}>
                                                         {formatCurrency(item.price * item.quantity)}
                                                     </div>
 
-                                                    <button className="btn-remove-flat" title="Xóa khỏi giỏ hàng" onClick={() => removeItem(item.id)}>
+                                                    <button className="btn-remove-flat" title="Xóa khỏi giỏ hàng" onClick={() => removeItem(item)}>
                                                         <i className="fa-solid fa-trash-can"></i>
                                                     </button>
                                                 </div>

@@ -4,6 +4,19 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import './Profile.css';
 
+const VIETNAM_BANKS = [
+    { bin: "970422", name: "MBBank (Ngân hàng Quân Đội)" },
+    { bin: "970436", name: "Vietcombank (VCB)" },
+    { bin: "970418", name: "BIDV (Ngân hàng Đầu tư và Phát triển VN)" },
+    { bin: "970415", name: "VietinBank (Công Thương Việt Nam)" },
+    { bin: "970405", name: "Agribank (Nông nghiệp và Phát triển Nông thôn)" },
+    { bin: "970407", name: "Techcombank (Kỹ thương Việt Nam)" },
+    { bin: "970423", name: "TPBank (Tài chính Tiên Phong)" },
+    { bin: "970432", name: "VPBank (Việt Nam Thịnh Vượng)" },
+    { bin: "970416", name: "ACB (Á Châu)" },
+    { bin: "970403", name: "Sacombank (Sài Gòn Thương Tín)" }
+];
+
 const Profile = () => {
     const [loading, setLoading] = useState(true);
     const [loggedIn, setLoggedIn] = useState(false);
@@ -11,6 +24,11 @@ const Profile = () => {
 
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
+    
+    // Ngân hàng hoàn tiền
+    const [savedBankBin, setSavedBankBin] = useState('970422');
+    const [savedBankAccount, setSavedBankAccount] = useState('');
+    const [savedAccountName, setSavedAccountName] = useState('');
 
     const fetchProfile = async () => {
         try {
@@ -18,9 +36,13 @@ const Profile = () => {
             const response = await api.get('/api/profile');
             if (response.data && response.data.success) {
                 setLoggedIn(true);
-                setAccount(response.data.account);
-                setFullName(response.data.account.full_name || '');
-                setPhone(response.data.account.phone || '');
+                const acc = response.data.account;
+                setAccount(acc);
+                setFullName(acc.full_name || '');
+                setPhone(acc.phone || '');
+                setSavedBankBin(acc.saved_bank_bin || '970422');
+                setSavedBankAccount(acc.saved_bank_account || '');
+                setSavedAccountName(acc.saved_account_name || '');
             } else {
                 setLoggedIn(false);
             }
@@ -62,17 +84,20 @@ const Profile = () => {
         try {
             const response = await api.post('/api/profile/update', {
                 fullName: fullName,
-                phone: phone
+                phone: phone,
+                savedBankBin: savedBankBin,
+                savedBankAccount: savedBankAccount,
+                savedAccountName: savedAccountName
             });
             if (response.data && response.data.success) {
-                alert('Cập nhật hồ sơ thành công!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Cập nhật hồ sơ và Sổ ngân hàng hoàn tiền thành công!' }));
                 fetchProfile();
             } else {
-                alert('Có lỗi xảy ra: ' + response.data.message);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Có lỗi xảy ra: ' + response.data.message }));
             }
         } catch (err) {
             console.error("Lỗi cập nhật hồ sơ:", err);
-            alert('Lỗi kết nối khi cập nhật hồ sơ.');
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi kết nối khi cập nhật hồ sơ.' }));
         }
     };
 
@@ -143,11 +168,19 @@ const Profile = () => {
                                             className="user-avatar"
                                             alt="Avatar"
                                         />
-                                        <i className="fa fa-crown vip-crown"></i>
                                     </div>
                                     <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
                                     <div className="mb-2">
-                                        <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>
+                                        <span 
+                                            className={`rank-badge-flat ${getRankClass(account.rank_name)}`}
+                                            style={account.color_code ? {
+                                                backgroundColor: `${account.color_code}1f`,
+                                                color: account.color_code,
+                                                borderColor: `${account.color_code}40`,
+                                                borderStyle: 'solid',
+                                                borderWidth: '1px'
+                                            } : {}}
+                                        >
                                             {account.rank_name || 'Đồng'}
                                         </span>
                                     </div>
@@ -186,12 +219,12 @@ const Profile = () => {
                                 <div className="content-header pb-3 mb-4">
                                     <div className="d-flex align-items-center gap-2 mb-1">
                                         <div style={{width: '4px', height: '20px', background: '#e50914', borderRadius: '2px'}}></div>
-                                        <h4 className="mb-0">Chỉnh sửa hồ sơ</h4>
+                                        <h4 className="mb-0">Chỉnh sửa hồ sơ & Sổ Ngân Hàng</h4>
                                     </div>
-                                    <p className="mb-0 ms-3">Quản lý thông tin cá nhân và bảo mật tài khoản</p>
+                                    <p className="mb-0 ms-3">Quản lý thông tin cá nhân và Tài khoản Ngân hàng nhận hoàn tiền</p>
                                 </div>
 
-                                <form onSubmit={handleSave}>
+                                <form onSubmit={handleSave} noValidate>
                                     <div className="row g-4">
                                         {/* Email */}
                                         <div className="col-md-6">
@@ -212,7 +245,7 @@ const Profile = () => {
                                         {/* Full Name */}
                                         <div className="col-md-6">
                                             <div className="float-input-group">
-                                                <input type="text" className="float-input" id="fullname" name="fullName" value={fullName} onChange={e => setFullName(e.target.value)} placeholder=" " required />
+                                                <input type="text" className="float-input" id="fullname" name="fullName" value={fullName} onChange={e => setFullName(e.target.value)} placeholder=" " />
                                                 <label htmlFor="fullname" className="float-label">Họ và tên</label>
                                             </div>
                                         </div>

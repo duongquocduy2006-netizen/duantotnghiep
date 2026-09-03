@@ -112,8 +112,16 @@ const AdminFlashSales = () => {
                                                 <br />
                                                 <small style={{ color: '#555' }}>ID: #{fs.id}</small>
                                             </td>
-                                            <td>{new Date(fs.startDate).toLocaleString('vi-VN')}</td>
-                                            <td>{new Date(fs.endDate).toLocaleString('vi-VN')}</td>
+                                            <td>{(() => {
+                                                if (!fs.startDate) return '';
+                                                const d = new Date(fs.startDate);
+                                                return isNaN(d.getTime()) ? fs.startDate : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                                            })()}</td>
+                                            <td>{(() => {
+                                                if (!fs.endDate) return '';
+                                                const d = new Date(fs.endDate);
+                                                return isNaN(d.getTime()) ? fs.endDate : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                                            })()}</td>
                                             <td>{fs.productCount}</td>
                                             <td>
                                                 <span className={`status-badge ${fs.status === 1 ? 'status-active' : 'status-inactive'}`}>

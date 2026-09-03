@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import './Profile.css';
 import './Orders.css';
+import './OrderHistory.css';
 
 const Notifications = () => {
     const navigate = useNavigate();
@@ -13,6 +14,14 @@ const Notifications = () => {
     const [notifications, setNotifications] = useState([]);
     const [filterCategory, setFilterCategory] = useState('all');
     const [expandedIds, setExpandedIds] = useState({});
+    const [currentPage, setCurrentPage] = useState(1);
+    const [jumpInputVal, setJumpInputVal] = useState('');
+    const NOTIFICATIONS_PER_PAGE = 5;
+
+    const handleCategoryChange = (category) => {
+        setFilterCategory(category);
+        setCurrentPage(1);
+    };
 
     const toggleExpand = (id) => {
         setExpandedIds(prev => ({ ...prev, [id]: !prev[id] }));
@@ -97,7 +106,67 @@ const Notifications = () => {
                 const realNotis = [];
                 const readNotiIds = JSON.parse(localStorage.getItem('read_notifications') || '[]');
 
-                // 1. Đơn hàng
+                // 1. Thông báo Ví điện tử & Rút tiền (ƯU TIÊN HÀNG ĐẦU)
+                try {
+                    const walletRes = await api.get('/api/wallet');
+                    if (walletRes.data && walletRes.data.success && Array.isArray(walletRes.data.transactions)) {
+                        walletRes.data.transactions.forEach(t => {
+                            const amtStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(t.amount || 0);
+                            const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString('vi-VN') : 'Gần đây';
+                            const notiId = `wallet_tx_${t.id}_${t.status}`;
+
+                            if (t.type === 'REFUND') {
+                                realNotis.push({
+                                    id: notiId,
+                                    category: 'wallet',
+                                    title: `Hoàn tiền vào Ví Điện Tử: +${amtStr}`,
+                                    desc: t.description || `Hệ thống đã tự động hoàn ${amtStr} vào Ví điện tử của bạn!`,
+                                    time: dateStr,
+                                    icon: 'fa-wallet text-success',
+                                    unread: !readNotiIds.includes(notiId),
+                                    link: '/wallet'
+                                });
+                            } else if (t.type === 'WITHDRAW') {
+                                if (t.status === 1) {
+                                    realNotis.push({
+                                        id: notiId,
+                                        category: 'wallet',
+                                        title: `Rút tiền thành công: -${amtStr}`,
+                                        desc: `Yêu cầu rút ${amtStr} về TK ${t.bank_account || ''} đã được Admin chuyển khoản thành công!`,
+                                        time: dateStr,
+                                        icon: 'fa-circle-check text-success',
+                                        unread: !readNotiIds.includes(notiId),
+                                        link: '/wallet'
+                                    });
+                                } else if (t.status === 2) {
+                                    realNotis.push({
+                                        id: notiId,
+                                        category: 'wallet',
+                                        title: `Từ chối rút tiền: ${amtStr}`,
+                                        desc: t.description || `Yêu cầu rút tiền bị từ chối. Số tiền đã được hoàn lại vào Ví!`,
+                                        time: dateStr,
+                                        icon: 'fa-circle-xmark text-danger',
+                                        unread: !readNotiIds.includes(notiId),
+                                        link: '/wallet'
+                                    });
+                                } else if (t.status === 0) {
+                                    realNotis.push({
+                                        id: notiId,
+                                        category: 'wallet',
+                                        title: `Lệnh rút tiền đang xử lý: ${amtStr}`,
+                                        desc: `Yêu cầu rút tiền về TK ${t.bank_account || ''} đang được Admin xử lý.`,
+                                        time: dateStr,
+                                        icon: 'fa-clock text-warning',
+                                        unread: !readNotiIds.includes(notiId),
+                                        link: '/wallet'
+                                    });
+                                }
+                            }
+                        });
+                    }
+                } catch (e) {}
+
+                // 2. Đơn hàng
                 try {
                     const orderRes = await api.get('/api/orders');
                     if (orderRes.data && orderRes.data.success && Array.isArray(orderRes.data.orders)) {
@@ -255,7 +324,7 @@ const Notifications = () => {
         }
         setNotifications(prev => prev.map(n => n.id === noti.id ? { ...n, unread: false } : n));
         if (noti.link) {
-            navigate(noti.link);
+            window.location.href = noti.link;
         }
     };
 
@@ -263,6 +332,28 @@ const Notifications = () => {
         if (filterCategory === 'all') return true;
         return n.category === filterCategory;
     });
+
+    const totalPages = Math.ceil(filteredNotis.length / NOTIFICATIONS_PER_PAGE) || 1;
+    const validPage = Math.min(Math.max(1, currentPage), totalPages);
+    const startIndex = (validPage - 1) * NOTIFICATIONS_PER_PAGE;
+    const paginatedNotis = filteredNotis.slice(startIndex, startIndex + NOTIFICATIONS_PER_PAGE);
+
+    // Calculate max 5 sliding page numbers (no ... duplicates)
+    const maxButtons = 5;
+    let startPage = 1;
+    let endPage = totalPages;
+    if (totalPages > maxButtons) {
+        startPage = Math.max(1, validPage - 2);
+        endPage = startPage + maxButtons - 1;
+        if (endPage > totalPages) {
+            endPage = totalPages;
+            startPage = endPage - maxButtons + 1;
+        }
+    }
+    const pageNumbers = [];
+    for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+    }
 
     const unreadCount = notifications.filter(n => n.unread).length;
 
@@ -327,11 +418,19 @@ const Notifications = () => {
                                             className="user-avatar"
                                             alt="Avatar"
                                         />
-                                        <i className="fa fa-crown vip-crown"></i>
                                     </div>
                                     <h3 className="mt-3 fw-bold mb-1" style={{ fontSize: '16px', color: '#0f172a' }}>{account.full_name}</h3>
                                     <div className="mb-2">
-                                        <span className={`rank-badge-flat ${getRankClass(account.rank_name)}`}>
+                                        <span 
+                                            className={`rank-badge-flat ${getRankClass(account.rank_name)}`}
+                                            style={account.color_code ? {
+                                                backgroundColor: `${account.color_code}1f`,
+                                                color: account.color_code,
+                                                borderColor: `${account.color_code}40`,
+                                                borderStyle: 'solid',
+                                                borderWidth: '1px'
+                                            } : {}}
+                                        >
                                             {account.rank_name || 'Đồng'}
                                         </span>
                                     </div>
@@ -390,13 +489,13 @@ const Notifications = () => {
                                     )}
                                 </div>
 
-                                {/* Category Filters */}
+                                 {/* Category Filters */}
                                 <div className="d-flex gap-2 mb-4 overflow-auto pb-1">
                                     <button 
                                         type="button" 
                                         className={`btn btn-sm ${filterCategory === 'all' ? 'btn-danger' : 'btn-outline-secondary'}`}
                                         style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '13px' }}
-                                        onClick={() => setFilterCategory('all')}
+                                        onClick={() => handleCategoryChange('all')}
                                     >
                                         Tất cả ({notifications.length})
                                     </button>
@@ -404,15 +503,23 @@ const Notifications = () => {
                                         type="button" 
                                         className={`btn btn-sm ${filterCategory === 'order' ? 'btn-danger' : 'btn-outline-secondary'}`}
                                         style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '13px' }}
-                                        onClick={() => setFilterCategory('order')}
+                                        onClick={() => handleCategoryChange('order')}
                                     >
                                         <i className="fa-solid fa-bag-shopping me-1"></i> Đơn hàng
                                     </button>
                                     <button 
                                         type="button" 
+                                        className={`btn btn-sm ${filterCategory === 'wallet' ? 'btn-danger' : 'btn-outline-secondary'}`}
+                                        style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '13px' }}
+                                        onClick={() => handleCategoryChange('wallet')}
+                                    >
+                                        <i className="fa-solid fa-wallet me-1"></i> Ví Điện Tử
+                                    </button>
+                                    <button 
+                                        type="button" 
                                         className={`btn btn-sm ${filterCategory === 'promo' ? 'btn-danger' : 'btn-outline-secondary'}`}
                                         style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '13px' }}
-                                        onClick={() => setFilterCategory('promo')}
+                                        onClick={() => handleCategoryChange('promo')}
                                     >
                                         <i className="fa-solid fa-bolt me-1"></i> Khuyến mãi
                                     </button>
@@ -420,7 +527,7 @@ const Notifications = () => {
                                         type="button" 
                                         className={`btn btn-sm ${filterCategory === 'system' ? 'btn-danger' : 'btn-outline-secondary'}`}
                                         style={{ borderRadius: '20px', padding: '6px 16px', fontWeight: 600, fontSize: '13px' }}
-                                        onClick={() => setFilterCategory('system')}
+                                        onClick={() => handleCategoryChange('system')}
                                     >
                                         <i className="fa-solid fa-crown me-1"></i> Hạng thành viên
                                     </button>
@@ -435,9 +542,9 @@ const Notifications = () => {
                                             <p className="small mb-0">Bạn chưa có thông báo thuộc danh mục này.</p>
                                         </div>
                                     ) : (
-                                        filteredNotis.map(n => {
+                                        paginatedNotis.map(n => {
                                             const isExpanded = !!expandedIds[n.id];
-                                            const isOrderType = n.category === 'order';
+                                            const isOrderType = n.category === 'order' && !!n.image;
 
                                             return (
                                                 <div 
@@ -464,10 +571,10 @@ const Notifications = () => {
                                                             <div 
                                                                 className="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
                                                                 style={{ 
-                                                                    width: '44px', 
-                                                                    height: '44px', 
-                                                                    background: n.unread ? '#ffe4e6' : '#f1f5f9',
-                                                                    color: n.unread ? '#e50914' : '#64748b'
+                                                                    width: '48px', 
+                                                                    height: '48px', 
+                                                                    background: n.unread ? '#fee2e2' : '#f1f5f9',
+                                                                    fontSize: '20px'
                                                                 }}
                                                             >
                                                                 <i className={`fa-solid ${n.icon || 'fa-bell'}`}></i>
@@ -572,6 +679,101 @@ const Notifications = () => {
                                         })
                                     )}
                                 </div>
+
+                                {/* Pagination Controls */}
+                                {totalPages > 1 && (
+                                    <div className="d-flex flex-column align-items-center mt-4 pt-3 border-top border-light gap-2">
+                                        <div className="pagination-bar mt-0 pt-0 border-0 d-flex align-items-center gap-1.5">
+                                            <button
+                                                className="page-btn"
+                                                onClick={() => {
+                                                    setCurrentPage(p => Math.max(1, p - 1));
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                disabled={validPage === 1}
+                                                title="Trang trước"
+                                            >
+                                                <i className="fa-solid fa-chevron-left" style={{ fontSize: '12px' }}></i>
+                                            </button>
+
+                                            {pageNumbers.map(p => (
+                                                <button
+                                                    key={p}
+                                                    className={`page-btn ${validPage === p ? 'active' : ''}`}
+                                                    onClick={() => {
+                                                        setCurrentPage(p);
+                                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                    }}
+                                                >
+                                                    {p}
+                                                </button>
+                                            ))}
+
+                                            <button
+                                                className="page-btn"
+                                                onClick={() => {
+                                                    setCurrentPage(p => Math.min(totalPages, p + 1));
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                disabled={validPage === totalPages}
+                                                title="Trang sau"
+                                            >
+                                                <i className="fa-solid fa-chevron-right" style={{ fontSize: '12px' }}></i>
+                                            </button>
+                                        </div>
+
+                                        <div className="d-flex flex-wrap align-items-center justify-content-center gap-2 text-muted" style={{ fontSize: '12.5px' }}>
+                                            <span>
+                                                Hiển thị <b className="text-dark">{startIndex + 1}</b> - <b className="text-dark">{Math.min(startIndex + NOTIFICATIONS_PER_PAGE, filteredNotis.length)}</b> trong <b className="text-dark">{filteredNotis.length}</b> thông báo
+                                            </span>
+                                            <span style={{ color: '#cbd5e1' }}>|</span>
+                                            <div className="d-flex align-items-center gap-1.5">
+                                                <span>Đến trang:</span>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={totalPages}
+                                                    value={jumpInputVal}
+                                                    placeholder={validPage.toString()}
+                                                    onChange={(e) => setJumpInputVal(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            const num = parseInt(jumpInputVal, 10);
+                                                            if (!isNaN(num) && num >= 1 && num <= totalPages) {
+                                                                setCurrentPage(num);
+                                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                            }
+                                                            setJumpInputVal('');
+                                                        }
+                                                    }}
+                                                    onBlur={() => {
+                                                        if (jumpInputVal) {
+                                                            const num = parseInt(jumpInputVal, 10);
+                                                            if (!isNaN(num) && num >= 1 && num <= totalPages) {
+                                                                setCurrentPage(num);
+                                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                            }
+                                                            setJumpInputVal('');
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        width: '48px',
+                                                        height: '28px',
+                                                        textAlign: 'center',
+                                                        borderRadius: '4px',
+                                                        border: '1px solid #cbd5e1',
+                                                        outline: 'none',
+                                                        fontSize: '12.5px',
+                                                        fontWeight: '600',
+                                                        color: '#0f172a',
+                                                        background: '#fff'
+                                                    }}
+                                                />
+                                                <span>/ {totalPages}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                             </div>
                         </div>

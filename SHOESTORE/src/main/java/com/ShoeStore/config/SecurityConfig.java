@@ -59,7 +59,11 @@ public class SecurityConfig {
         ));
         configuration.setAllowedOriginPatterns(java.util.List.of(
             "http://localhost:*",
-            "http://127.0.0.1:*"
+            "http://127.0.0.1:*",
+            "https://*.lhr.life",
+            "https://*.loca.lt",
+            "https://*.ngrok-free.app",
+            "*"
         ));
         configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(java.util.List.of("*"));

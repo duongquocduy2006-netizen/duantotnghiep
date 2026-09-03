@@ -68,8 +68,44 @@ const AdminRanks = () => {
         }
     };
 
+    const [vndPerPoint, setVndPerPoint] = useState(1000);
+    const [savingRate, setSavingRate] = useState(false);
+
+    const fetchPointRate = async () => {
+        try {
+            const res = await api.get('/api/membership/point-rate');
+            if (res.data && res.data.success && res.data.vndPerPoint) {
+                setVndPerPoint(res.data.vndPerPoint);
+            }
+        } catch (err) {
+            console.error('Lỗi lấy tỷ lệ quy đổi điểm:', err);
+        }
+    };
+
+    const handleSavePointRate = async () => {
+        if (!vndPerPoint || Number(vndPerPoint) <= 0) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Số tiền quy đổi phải lớn hơn 0!" }));
+            return;
+        }
+        setSavingRate(true);
+        try {
+            const res = await api.post('/api/membership/point-rate', { vndPerPoint: Number(vndPerPoint) });
+            if (res.data && res.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Cập nhật thành công: 1 điểm = ${Number(vndPerPoint).toLocaleString('vi-VN')} VNĐ` }));
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi: " + (res.data.message || "Không thể lưu.") }));
+            }
+        } catch (err) {
+            console.error('Lỗi lưu tỷ lệ quy đổi điểm:', err);
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối máy chủ!" }));
+        } finally {
+            setSavingRate(false);
+        }
+    };
+
     useEffect(() => {
         fetchRanks();
+        fetchPointRate();
     }, []);
 
     const filteredRanks = ranks.filter(r => !searchTerm || r.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -89,6 +125,47 @@ const AdminRanks = () => {
                         <i className="bi bi-plus-lg"></i> &nbsp;THÊM HẠNG MỚI
                     </Link>
                 </div>
+
+                {/* POINT RATE CONFIG CARD */}
+                <div className="bg-white p-3 rounded-4 border border-light-subtle shadow-sm mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3 animate__animated animate__fadeIn">
+                    <div className="d-flex align-items-center gap-3">
+                        <div className="d-flex align-items-center justify-content-center bg-danger-subtle text-danger rounded-circle" style={{ width: '44px', height: '44px' }}>
+                            <i className="bi bi-coin fs-4"></i>
+                        </div>
+                        <div>
+                            <div className="fw-bold font-oswald text-uppercase text-dark fs-6" style={{ letterSpacing: '0.5px' }}>
+                                QUY ĐỔI ĐIỂM TÍCH LŨY
+                            </div>
+                            <div className="text-muted small">
+                                Tự chỉnh số tiền VNĐ chi tiêu tương ứng với <strong>1 điểm tích lũy</strong> khi mua hàng
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-2">
+                        <span className="fw-bold text-dark font-oswald me-1">1 ĐIỂM =</span>
+                        <div className="input-group" style={{ maxWidth: '190px' }}>
+                            <input 
+                                type="number" 
+                                className="form-control fw-bold font-oswald text-danger text-center fs-6" 
+                                value={vndPerPoint}
+                                onChange={e => setVndPerPoint(e.target.value)}
+                                min="1"
+                                step="100"
+                            />
+                            <span className="input-group-text font-oswald fw-bold bg-light text-secondary">VNĐ</span>
+                        </div>
+                        <button 
+                            className="btn btn-danger font-oswald text-uppercase fw-bold px-3 py-2 ms-2 rounded-3 d-flex align-items-center gap-1 shadow-sm"
+                            onClick={handleSavePointRate}
+                            disabled={savingRate}
+                        >
+                            {savingRate ? <span className="spinner-border spinner-border-sm me-1"></span> : <i className="bi bi-floppy me-1"></i>}
+                            LƯU TỶ LỆ
+                        </button>
+                    </div>
+                </div>
+
                 {/* TOOLBAR */}
                 <div className="toolbar-container">
                     <div className="search-input-pill">
@@ -110,7 +187,6 @@ const AdminRanks = () => {
                                 <th style={{ width: '100px', whiteSpace: 'nowrap' }}>ID</th>
                                 <th style={{ whiteSpace: 'nowrap' }}>TÊN HẠNG</th>
                                 <th style={{ whiteSpace: 'nowrap' }}>ĐIỂM TỐI THIỂU</th>
-                                <th style={{ whiteSpace: 'nowrap' }}>CHIẾT KHẤU GIẢM</th>
                                 <th style={{ whiteSpace: 'nowrap' }}>FREE SHIP</th>
                                 <th style={{ whiteSpace: 'nowrap' }}>ƯU ĐÃI VOUCHER</th>
                                 <th style={{ textAlign: 'right', whiteSpace: 'nowrap', width: '150px' }}>HÀNH ĐỘNG</th>
@@ -119,13 +195,13 @@ const AdminRanks = () => {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', fontWeight: '800' }}>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px', fontWeight: '800' }}>
                                         ĐANG TẢI DỮ LIỆU...
                                     </td>
                                 </tr>
                             ) : filteredRanks.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#999', fontWeight: '700' }}>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#999', fontWeight: '700' }}>
                                         Chưa có hạng thành viên nào phù hợp.
                                     </td>
                                 </tr>
@@ -150,8 +226,7 @@ const AdminRanks = () => {
                                             <i className="bi bi-star-fill" style={{ fontSize: '10px' }}></i> {r.name}
                                         </span>
                                     </td>
-                                    <td style={{ fontWeight: 800, color: '#111', whiteSpace: 'nowrap' }}>{r.points} điểm</td>
-                                    <td style={{ fontWeight: 800, color: 'var(--accent-red)', whiteSpace: 'nowrap' }}>-{r.discount}%</td>
+                                    <td style={{ fontWeight: 800, color: '#111', whiteSpace: 'nowrap' }}>{Number(r.points).toLocaleString('vi-VN')} điểm</td>
                                     <td style={{ whiteSpace: 'nowrap' }}>
                                         {r.freeShipping ? (
                                             <span className="badge-free-ship-modern">

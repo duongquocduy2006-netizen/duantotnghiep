@@ -35,6 +35,9 @@ public class FlashSaleApiController {
     @Autowired
     private com.ShoeStore.repository.FlashSaleRepository flashSaleRepository;
 
+    @Autowired
+    private com.ShoeStore.repository.BrandRepository brandRepository;
+
     // 1. GET ACTIVE CAMPAIGN FOR CLIENT FRONTEND
     @GetMapping("/active")
     public ResponseEntity<?> getActiveFlashSale() {
@@ -49,6 +52,12 @@ public class FlashSaleApiController {
                         "campaigns", List.of(),
                         "message", "Hiện tại không có chương trình Flash Sale nào đang diễn ra."));
             }
+
+            java.util.Set<String> activeBrandNamesLower = brandRepository.findAll().stream()
+                    .filter(com.ShoeStore.model.Brand::isActive)
+                    .map(b -> b.getName() != null ? b.getName().trim().toLowerCase() : "")
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
 
             List<Map<String, Object>> campaignsMapList = new ArrayList<>();
 
@@ -65,7 +74,18 @@ public class FlashSaleApiController {
                 campaignMap.put("isUpcoming", isUpcoming);
 
                 List<FlashSaleProduct> flashProducts = flashSaleService.getProductsByFlashSaleId(fs.getId());
-                List<Map<String, Object>> productsMap = flashProducts.stream().map(fsp -> {
+                List<Map<String, Object>> productsMap = flashProducts.stream()
+                        .filter(fsp -> {
+                            var p = fsp.getProduct();
+                            if (p == null) return false;
+                            if (p.getStatus() != null && p.getStatus() == 0) return false;
+                            if (p.getCategory() != null && !p.getCategory().isActive()) return false;
+                            if (p.getBrandName() != null && !p.getBrandName().trim().isEmpty()) {
+                                return activeBrandNamesLower.contains(p.getBrandName().trim().toLowerCase());
+                            }
+                            return true;
+                        })
+                        .map(fsp -> {
                     Map<String, Object> fMap = new HashMap<>();
                     fMap.put("id", fsp.getId());
                     fMap.put("salePrice", fsp.getSalePrice());
@@ -247,6 +267,21 @@ public class FlashSaleApiController {
                         .body(Map.of("success", false, "message", "Thời gian kết thúc phải sau thời gian bắt đầu!"));
             }
 
+            // 1. Kiểm tra trùng lặp thời gian với các chiến dịch Flash Sale khác (status = 1)
+            if (status == 1) {
+                List<FlashSale> overlaps = flashSaleRepository.findOverlappingFlashSales(start, end, id);
+                if (!overlaps.isEmpty()) {
+                    FlashSale existing = overlaps.get(0);
+                    String existingStartStr = existing.getStartDate().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy"));
+                    String existingEndStr = existing.getEndDate().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy"));
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("success", false, "message", 
+                                "Trong cùng một thời điểm không được có hai chương trình Flash Sale cùng lúc! Chiến dịch '" 
+                                + existing.getName() + "' (#" + existing.getId() + ") diễn ra từ " 
+                                + existingStartStr + " đến " + existingEndStr + "."));
+                }
+            }
+
             flashSale.setStartDate(start);
             flashSale.setEndDate(end);
             flashSale.setStatus(status);
@@ -279,6 +314,33 @@ public class FlashSaleApiController {
                             } catch (Exception e) {}
                         } else {
                             fsp.setProductVariant(null);
+                        }
+
+                        // 2. Kiểm tra giá sale không được lớn hơn hoặc bằng giá gốc
+                        java.math.BigDecimal origPrice = null;
+                        if (fsp.getProductVariant() != null && fsp.getProductVariant().getPrice() != null) {
+                            origPrice = fsp.getProductVariant().getPrice();
+                        } else if (product.getVariants() != null && !product.getVariants().isEmpty()) {
+                            origPrice = product.getVariants().stream()
+                                    .map(com.ShoeStore.model.ProductVariant::getPrice)
+                                    .filter(p -> p != null)
+                                    .min(java.math.BigDecimal::compareTo)
+                                    .orElse(null);
+                        }
+
+                        if (origPrice != null && salePrice.compareTo(origPrice) >= 0) {
+                            String pName = product.getProductName();
+                            if (fsp.getProductVariant() != null) {
+                                String vDetail = "";
+                                if (fsp.getProductVariant().getColor() != null) vDetail += fsp.getProductVariant().getColor().getColorName();
+                                if (fsp.getProductVariant().getSize() != null) vDetail += " - " + fsp.getProductVariant().getSize().getSizeName();
+                                pName += " (" + vDetail + ")";
+                            }
+                            return ResponseEntity.badRequest().body(Map.of(
+                                "success", false,
+                                "message", "Giá Flash Sale (" + new java.text.DecimalFormat("#,###").format(salePrice) + "đ) của sản phẩm '" 
+                                        + pName + "' không được lớn hơn hoặc bằng giá gốc (" + new java.text.DecimalFormat("#,###").format(origPrice) + "đ)!"
+                            ));
                         }
 
                         fsp.setSalePrice(salePrice);

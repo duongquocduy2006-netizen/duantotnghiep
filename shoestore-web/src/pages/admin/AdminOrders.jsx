@@ -23,6 +23,15 @@ const AdminOrders = () => {
     // Computed orders filtered by status locally
     const orders = useMemo(() => {
         if (statusFilter === "") return allOrders;
+        if (statusFilter === "refund_pending") {
+            return allOrders.filter(o => {
+                const isCancelled = Number(o.status) === 4;
+                const pStat = o.paymentStatus !== undefined && o.paymentStatus !== null ? Number(o.paymentStatus) : Number(o.payment_status || 0);
+                const isRefunded = pStat === 4;
+                const isOnlineOrBank = o.paymentMethod === 'BANK' || (o.paymentMethod && o.paymentMethod.toLowerCase().includes('chuyển khoản')) || pStat === 1 || pStat === 2 || pStat === 3;
+                return isCancelled && isOnlineOrBank && !isRefunded;
+            });
+        }
         return allOrders.filter(o => o.status === parseInt(statusFilter));
     }, [allOrders, statusFilter]);
 
@@ -49,7 +58,44 @@ const AdminOrders = () => {
         orderCode: null,
         newStatus: null,
         message: "",
-        cancelReason: ""
+        cancelReason: "",
+        reasonError: false
+    });
+
+const VIETNAM_BANKS = [
+    { bin: "970422", name: "MBBank (Ngân hàng Quân Đội)" },
+    { bin: "970436", name: "Vietcombank (VCB)" },
+    { bin: "970407", name: "Techcombank (TCB)" },
+    { bin: "970415", name: "VietinBank (CTG)" },
+    { bin: "970418", name: "BIDV" },
+    { bin: "970405", name: "Agribank (VBA)" },
+    { bin: "970432", name: "VPBank (VPB)" },
+    { bin: "970416", name: "ACB" },
+    { bin: "970423", name: "TPBank" },
+    { bin: "970403", name: "Sacombank" },
+    { bin: "970437", name: "HDBank" },
+    { bin: "970441", name: "VIB" },
+    { bin: "970426", name: "MSB" },
+    { bin: "970443", name: "SHB" },
+    { bin: "971005", name: "Ví MoMo" }
+];
+
+    // Custom confirm refund modal state
+    const [confirmRefundModal, setConfirmRefundModal] = useState({
+        isOpen: false,
+        orderCode: null,
+        finalAmount: 0,
+        bankBin: "970422",
+        bankAccount: "",
+        accountName: "",
+        isSubmitting: false
+    });
+    const [isTransferredChecked, setIsTransferredChecked] = useState(false);
+    const [rejectRefundModal, setRejectRefundModal] = useState({
+        isOpen: false,
+        orderCode: null,
+        reason: "",
+        isSubmitting: false
     });
 
     // Fetch orders with optional keyword
@@ -90,44 +136,131 @@ const AdminOrders = () => {
             isOpen: true,
             orderCode,
             newStatus,
-            message: `Bạn có chắc chắn muốn chuyển đơn hàng ${orderCode} sang trạng thái mới?`
+            message: `Bạn có chắc chắn muốn chuyển đơn hàng ${orderCode} sang trạng thái mới?`,
+            cancelReason: "",
+            reasonError: false
         });
     };
 
     const submitStatusChange = async () => {
         const { orderCode, newStatus, cancelReason } = confirmModal;
-        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "" });
+
+        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "", reasonError: false });
 
         try {
             const payload = { orderCode, status: newStatus };
-            if (newStatus === 4 && cancelReason && cancelReason.trim()) {
-                payload.cancelReason = cancelReason.trim();
+            if (newStatus === 4) {
+                payload.cancelReason = (cancelReason && cancelReason.trim()) ? cancelReason.trim() : "Admin đã hủy đơn hàng";
             }
 
             const response = await api.post("/api/orders/update-status", payload);
 
             if (response.data && response.data.success) {
-                // Backend tự chuyển status 5 (Đã giao) → 3 (Thành công), cập nhật local state cho đúng
-                const actualStatus = newStatus === 5 ? 3 : newStatus;
-                setAllOrders(prevOrders =>
-                    prevOrders.map(o => o.orderCode === orderCode ? { ...o, status: actualStatus } : o)
-                );
+                fetchOrders(keyword);
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Cập nhật trạng thái đơn hàng thành công!" }));
             }
         } catch (err) {
             console.error("Lỗi cập nhật trạng thái đơn hàng:", err);
             const errMsg = err.response && err.response.data && err.response.data.message
                 ? err.response.data.message
                 : "Không thể cập nhật trạng thái đơn hàng. Vui lòng kiểm tra lại.";
-            alert(errMsg);
-            // Re-fetch to sync state with server
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
             fetchOrders(keyword);
         }
     };
 
     const cancelStatusChange = () => {
-        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "" });
-        // Re-fetch to revert the dropdown choice in UI
+        setConfirmModal({ isOpen: false, orderCode: null, newStatus: null, message: "", cancelReason: "", reasonError: false });
         fetchOrders(keyword);
+    };
+
+    const triggerConfirmRefund = (orderCode, finalAmount) => {
+        const found = allOrders.find(o => o.orderCode === orderCode);
+        const bin = found?.refundBankBin || found?.refund_bank_bin || "970422";
+        const acc = found?.refundBankAccount || found?.refund_bank_account || "";
+        const name = found?.refundAccountName || found?.refund_account_name || "";
+        setIsTransferredChecked(false);
+        setConfirmRefundModal({
+            isOpen: true,
+            orderCode,
+            finalAmount,
+            bankBin: bin,
+            bankAccount: acc,
+            accountName: name,
+            isSubmitting: false
+        });
+    };
+
+    const submitConfirmRefund = async () => {
+        const { orderCode, bankBin, bankAccount, accountName } = confirmRefundModal;
+        setConfirmRefundModal(prev => ({ ...prev, isSubmitting: true }));
+        try {
+            const payload = { orderCode };
+            if (bankAccount && bankAccount.trim()) {
+                payload.bankBin = bankBin;
+                payload.bankAccount = bankAccount.trim();
+                if (accountName && accountName.trim()) {
+                    payload.accountName = accountName.trim();
+                }
+            }
+
+            const response = await api.post("/api/orders/confirm-refund", payload);
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Xác nhận hoàn tiền thành công!" }));
+                setAllOrders(prevOrders =>
+                    prevOrders.map(o => o.orderCode === orderCode ? { ...o, paymentStatus: 4, payment_status: 4 } : o)
+                );
+                if (orderDetail && orderDetail.order && orderDetail.order.order_code === orderCode) {
+                    setOrderDetail(prev => ({
+                        ...prev,
+                        order: { ...prev.order, payment_status: 4, refund_at: new Date().toISOString() }
+                    }));
+                }
+                fetchOrders();
+                setConfirmRefundModal({ isOpen: false, orderCode: null, finalAmount: 0, bankBin: "970422", bankAccount: "", accountName: "", isSubmitting: false });
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Lỗi xác nhận hoàn tiền." }));
+                setConfirmRefundModal(prev => ({ ...prev, isSubmitting: false }));
+            }
+        } catch (err) {
+            console.error("Lỗi xác nhận hoàn tiền:", err);
+            const errMsg = err.response?.data?.message || "Không thể kết nối máy chủ để xác nhận hoàn tiền.";
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
+            setConfirmRefundModal(prev => ({ ...prev, isSubmitting: false }));
+        }
+    };
+
+    const triggerRejectRefund = (orderCode) => {
+        setRejectRefundModal({
+            isOpen: true,
+            orderCode,
+            reason: "",
+            isSubmitting: false
+        });
+    };
+
+    const submitRejectRefund = async () => {
+        const { orderCode, reason } = rejectRefundModal;
+        setRejectRefundModal(prev => ({ ...prev, isSubmitting: true }));
+        try {
+            const response = await api.post("/api/orders/reject-refund", {
+                orderCode,
+                rejectReason: reason
+            });
+            if (response.data && response.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Đã từ chối hoàn tiền!" }));
+                fetchOrders();
+                setRejectRefundModal({ isOpen: false, orderCode: null, reason: "", isSubmitting: false });
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: response.data.message || "Lỗi xử lý từ chối hoàn tiền." }));
+                setRejectRefundModal(prev => ({ ...prev, isSubmitting: false }));
+            }
+        } catch (err) {
+            console.error("Lỗi từ chối hoàn tiền:", err);
+            const errMsg = err.response?.data?.message || "Lỗi kết nối khi từ chối hoàn tiền.";
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: errMsg }));
+            setRejectRefundModal(prev => ({ ...prev, isSubmitting: false }));
+        }
     };
 
     // Open detail modal and fetch order info
@@ -142,12 +275,12 @@ const AdminOrders = () => {
             if (response.data && response.data.success) {
                 setOrderDetail(response.data);
             } else {
-                alert("Không thể tải chi tiết đơn hàng.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Không thể tải chi tiết đơn hàng." }));
                 setIsModalOpen(false);
             }
         } catch (err) {
             console.error("Lỗi tải chi tiết đơn hàng:", err);
-            alert("Lỗi kết nối khi lấy chi tiết đơn hàng.");
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: "Lỗi kết nối khi lấy chi tiết đơn hàng." }));
             setIsModalOpen(false);
         } finally {
             setModalLoading(false);
@@ -328,9 +461,22 @@ const AdminOrders = () => {
                                             </div>
                                         </td>
                                         <td>
-                                            <span className={`badge-payment ${order.paymentMethod === 'BANK' || order.paymentMethod?.toLowerCase().includes('chuyển khoản') ? 'payment-vnpay' : ''}`} style={order.status === 4 ? { opacity: 0.5 } : {}}>
-                                                {order.paymentMethod === 'BANK' ? 'Chuyển khoản' : (order.paymentMethod || 'COD')}
-                                            </span>
+                                            <div className="d-flex flex-column gap-1">
+                                                <span className={`badge-payment ${order.paymentMethod === 'BANK' || order.paymentMethod?.toLowerCase().includes('chuyển khoản') ? 'payment-vnpay' : ''}`} style={order.status === 4 ? { opacity: 0.8 } : {}}>
+                                                    {order.paymentMethod === 'BANK' ? 'Chuyển khoản' : (order.paymentMethod || 'COD')}
+                                                </span>
+                                                {(() => {
+                                                    const isCodMethod = !order.paymentMethod || order.paymentMethod === 'COD' || order.paymentMethod.toUpperCase().includes('COD') || order.paymentMethod.toUpperCase().includes('NHẬN HÀNG');
+                                                    if (order.status === 4 && !isCodMethod && (order.paymentStatus === 3 || order.paymentStatus === 4 || order.paymentMethod === 'BANK')) {
+                                                        return (
+                                                            <span className="badge mt-1 d-inline-flex align-items-center justify-content-center gap-1" style={{ background: '#f6ffed', color: '#389e0d', border: '1px solid #b7eb8f', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>
+                                                                <i className="bi bi-wallet2"></i> Đã hoàn vào ví
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                            </div>
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
                                             <button
@@ -383,6 +529,27 @@ const AdminOrders = () => {
                                             )}
                                             {orderDetail.order.external_transaction_id && (
                                                 <p><b>Mã giao dịch PayOS:</b> <span style={{ color: '#aaa', fontSize: '12px' }}>{orderDetail.order.external_transaction_id}</span></p>
+                                            )}
+                                            {Number(orderDetail.order.payment_status) === 2 && (
+                                                <div style={{ marginTop: '12px', background: '#fffbe6', border: '1px solid #ffe58f', padding: '12px 14px', borderRadius: '8px' }}>
+                                                    <p style={{ color: '#d48806', margin: 0, fontWeight: 'bold', fontSize: '13px' }}>🟡 TRẠNG THÁI: CHỜ HOÀN TIỀN</p>
+                                                    <p style={{ color: '#613400', margin: '4px 0 8px 0', fontSize: '12px' }}>Khách hàng đã thanh toán online cho đơn hàng bị hủy này.</p>
+                                                    <button
+                                                        className="btn btn-sm btn-warning"
+                                                        style={{ fontWeight: 'bold', fontSize: '12px', color: '#613400' }}
+                                                        onClick={() => triggerConfirmRefund(orderDetail.order.order_code, orderDetail.order.final_amount)}
+                                                    >
+                                                        <i className="bi bi-check-circle-fill me-1"></i> Xác nhận đã hoàn tiền
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {Number(orderDetail.order.payment_status) === 3 && (
+                                                <div style={{ marginTop: '12px', background: '#f6ffed', border: '1px solid #b7eb8f', padding: '12px 14px', borderRadius: '8px' }}>
+                                                    <p style={{ color: '#389e0d', margin: 0, fontWeight: 'bold', fontSize: '13px' }}>🟢 ĐÃ HOÀN TIỀN THÀNH CÔNG</p>
+                                                    {orderDetail.order.refund_at && (
+                                                        <p style={{ fontSize: '12px', color: '#135200', margin: '4px 0 0 0' }}>Thời gian: {formatDate(orderDetail.order.refund_at)}</p>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -483,7 +650,7 @@ const AdminOrders = () => {
                         {confirmModal.newStatus === 4 && (
                             <div style={{ marginTop: '12px', textAlign: 'left' }}>
                                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>
-                                    Lý do hủy <span style={{color:'#e50914'}}>*</span>
+                                    Lý do hủy (Không bắt buộc)
                                 </label>
 
                                 {/* Gợi ý lý do hủy nhanh */}
@@ -497,7 +664,8 @@ const AdminOrders = () => {
                                                 className={`admin-quick-reason-btn ${isSelected ? 'active' : ''}`}
                                                 onClick={() => setConfirmModal(prev => ({ 
                                                     ...prev, 
-                                                    cancelReason: isSelected ? "" : reason 
+                                                    cancelReason: isSelected ? "" : reason,
+                                                    reasonError: false 
                                                 }))}
                                             >
                                                 {reason}
@@ -508,12 +676,12 @@ const AdminOrders = () => {
 
                                 <textarea
                                     value={confirmModal.cancelReason}
-                                    onChange={e => setConfirmModal(prev => ({ ...prev, cancelReason: e.target.value }))}
+                                    onChange={e => setConfirmModal(prev => ({ ...prev, cancelReason: e.target.value, reasonError: false }))}
                                     placeholder="Nhập lý do hủy đơn hàng... (ví dụ: khách yêu cầu hủy, hết hàng, địa chỉ không hợp lệ...)"
                                     rows={3}
                                     style={{
                                         width: '100%',
-                                        border: '1.5px solid #e5e7eb',
+                                        border: confirmModal.reasonError ? '1.5px solid #e50914' : '1.5px solid #e5e7eb',
                                         borderRadius: '8px',
                                         padding: '10px 12px',
                                         fontSize: '13px',
@@ -522,14 +690,21 @@ const AdminOrders = () => {
                                         outline: 'none',
                                         boxSizing: 'border-box',
                                         color: '#1e293b',
-                                        lineHeight: '1.5'
+                                        lineHeight: '1.5',
+                                        boxShadow: confirmModal.reasonError ? '0 0 0 3px rgba(229, 9, 20, 0.15)' : 'none'
                                     }}
                                     onFocus={e => e.target.style.borderColor = '#e50914'}
-                                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                                    onBlur={e => e.target.style.borderColor = confirmModal.reasonError ? '#e50914' : '#e5e7eb'}
                                 />
-                                <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', marginBottom: 0 }}>
-                                    Lý do sẽ được hiển thị cho khách hàng.
-                                </p>
+                                {confirmModal.reasonError ? (
+                                    <p style={{ fontSize: '12px', color: '#e50914', marginTop: '6px', marginBottom: 0, fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <i className="bi bi-exclamation-triangle-fill"></i> Vui lòng chọn hoặc nhập lý do hủy đơn hàng!
+                                    </p>
+                                ) : (
+                                    <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', marginBottom: 0 }}>
+                                        Lý do sẽ được hiển thị cho khách hàng.
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -539,9 +714,164 @@ const AdminOrders = () => {
                                 className="admin-btn-confirm-ok"
                                 onClick={submitStatusChange}
                                 style={confirmModal.newStatus === 4 ? {background:'#e50914', borderColor:'#e50914'} : {}}
-                                disabled={confirmModal.newStatus === 4 && (!confirmModal.cancelReason || !confirmModal.cancelReason.trim())}
                             >
                                 {confirmModal.newStatus === 4 ? '⚠️ Xác nhận hủy' : 'Đồng ý'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* CUSTOM CONFIRM REFUND MODAL WITH GUIDANCE & CHECKBOX */}
+            {confirmRefundModal.isOpen && (
+                <div className="admin-confirm-overlay" onClick={() => setConfirmRefundModal({ isOpen: false, orderCode: null, finalAmount: 0, bankBin: "970422", bankAccount: "", accountName: "", isSubmitting: false })}>
+                    <div className="admin-confirm-box animate__animated animate__zoomIn" style={{ maxWidth: '540px', width: '92%' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="admin-confirm-icon" style={{ background: '#fffbe6', color: '#d48806' }}>
+                            <i className="bi bi-cash-stack"></i>
+                        </div>
+                        <h4 className="admin-confirm-title">XÁC NHẬN HOÀN TIỀN CỦA ĐƠN HÀNG</h4>
+                        <p className="admin-confirm-message" style={{ marginBottom: '16px' }}>
+                            Số tiền cần hoàn trả: <strong style={{ color: '#d48806', fontSize: '18px' }}>{formatCurrency(confirmRefundModal.finalAmount)}</strong> cho đơn <strong>{confirmRefundModal.orderCode}</strong>
+                        </p>
+
+                        {/* STEP BY STEP GUIDANCE */}
+                        <div style={{ textAlign: 'left', background: '#f8fafc', padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
+                            <h6 style={{ fontSize: '13px', fontWeight: 'bold', color: '#0f172a', marginBottom: '8px' }} className="d-flex align-items-center gap-1">
+                                <i className="bi bi-list-check text-primary fs-5 me-1"></i> <b>CÁC BƯỚC THỰC HIỆN HOÀN TIỀN:</b>
+                            </h6>
+                            <div style={{ fontSize: '12px', color: '#334155', lineHeight: '1.6' }}>
+                                <div className="mb-1"><b>Bước 1:</b> Mở App Ngân hàng bất kỳ trên điện thoại và quét mã VietQR bên dưới.</div>
+                                <div className="mb-1"><b>Bước 2:</b> Thực hiện chuyển số tiền <strong style={{ color: '#d48806' }}>{formatCurrency(confirmRefundModal.finalAmount)}</strong> tới STK của Khách.</div>
+                                <div><b>Bước 3:</b> Tích chọn ô xác nhận bên dưới để mở khóa nút <i>Xác nhận đã chuyển tiền</i>.</div>
+                            </div>
+                        </div>
+
+                        {/* READ-ONLY BANK DETAILS */}
+                        <div style={{ textAlign: 'left', background: '#f1f5f9', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1', marginBottom: '14px' }}>
+                            <div style={{ fontSize: '13px', color: '#1e293b', marginBottom: '6px' }}>
+                                <i className="bi bi-building-columns text-primary me-2"></i><b>Ngân hàng nhận:</b> {VIETNAM_BANKS.find(b => b.bin === confirmRefundModal.bankBin)?.name || confirmRefundModal.bankBin}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#1e293b', marginBottom: '6px' }}>
+                                <i className="bi bi-credit-card-2-front text-danger me-2"></i><b>Số tài khoản nhận tiền:</b> <span style={{ color: '#e50914', fontWeight: 'bold', fontSize: '15px' }}>{confirmRefundModal.bankAccount || 'Khách chưa nhập STK'}</span>
+                            </div>
+                            {confirmRefundModal.accountName && (
+                                <div style={{ fontSize: '13px', color: '#1e293b' }}>
+                                    <i className="bi bi-person-check text-success me-2"></i><b>Chủ tài khoản:</b> <span style={{ fontWeight: 'bold' }}>{confirmRefundModal.accountName}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* VIETQR IMAGE */}
+                        {confirmRefundModal.bankAccount && confirmRefundModal.bankAccount.trim() !== "" ? (
+                            <div style={{ textAlign: 'center', marginBottom: '14px', background: '#fff', padding: '14px', borderRadius: '12px', border: '1.5px dashed #d48806' }}>
+                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>
+                                    <i className="bi bi-qr-code-scan me-1 text-danger"></i> MÃ VIETQR HOÀN TIỀN TRỰC TIẾP CHO KHÁCH:
+                                </p>
+                                <img 
+                                    src={`https://img.vietqr.io/image/${confirmRefundModal.bankBin}-${confirmRefundModal.bankAccount.trim()}-compact2.png?amount=${Math.ceil(confirmRefundModal.finalAmount)}&addInfo=Hoan%20tien%20${confirmRefundModal.orderCode}&accountName=${encodeURIComponent(confirmRefundModal.accountName || '')}`} 
+                                    alt="VietQR Refund" 
+                                    style={{ maxHeight: '200px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} 
+                                />
+                            </div>
+                        ) : (
+                            <div className="alert alert-warning text-center" style={{ fontSize: '13px', marginBottom: '14px' }}>
+                                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                Khách hàng chưa nhập Số tài khoản ngân hàng trên trang Hủy đơn / Ví!
+                            </div>
+                        )}
+
+                        {/* CHECKBOX CONFIRMATION */}
+                        <div style={{ textAlign: 'left', background: '#fffbe6', padding: '12px 16px', borderRadius: '10px', border: '1px solid #ffe58f', marginBottom: '16px' }}>
+                            <div className="form-check m-0">
+                                <input 
+                                    className="form-check-input" 
+                                    type="checkbox" 
+                                    id="chkTransferred" 
+                                    checked={isTransferredChecked} 
+                                    onChange={e => setIsTransferredChecked(e.target.checked)}
+                                    style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                                />
+                                <label className="form-check-label fw-bold text-dark ms-2" htmlFor="chkTransferred" style={{ cursor: 'pointer', fontSize: '13px', lineHeight: '1.4' }}>
+                                    Tôi xác nhận đã chuyển khoản thành công tiền hoàn trả cho Khách hàng trên App Ngân Hàng.
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* ACTIONS */}
+                        <div className="admin-confirm-actions">
+                            <button
+                                className="admin-btn-confirm-cancel"
+                                disabled={confirmRefundModal.isSubmitting}
+                                onClick={() => setConfirmRefundModal({ isOpen: false, orderCode: null, finalAmount: 0, bankBin: "970422", bankAccount: "", accountName: "", isSubmitting: false })}
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                className="admin-btn-confirm-ok"
+                                style={{ 
+                                    background: isTransferredChecked ? '#d48806' : '#94a3b8',
+                                    boxShadow: isTransferredChecked ? '0 4px 6px -1px rgba(212, 136, 6, 0.2)' : 'none',
+                                    cursor: isTransferredChecked ? 'pointer' : 'not-allowed',
+                                    opacity: isTransferredChecked ? 1 : 0.6
+                                }}
+                                disabled={!isTransferredChecked || confirmRefundModal.isSubmitting}
+                                onClick={submitConfirmRefund}
+                            >
+                                {confirmRefundModal.isSubmitting ? (
+                                    <span><i className="bi bi-arrow-repeat spin me-1"></i> Đang xử lý...</span>
+                                ) : (
+                                    <span><i className="bi bi-check-circle-fill me-1"></i> Xác nhận đã chuyển tiền</span>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* REJECT REFUND MODAL */}
+            {rejectRefundModal.isOpen && (
+                <div className="admin-confirm-overlay" onClick={() => setRejectRefundModal({ isOpen: false, orderCode: null, reason: "", isSubmitting: false })}>
+                    <div className="admin-confirm-box animate__animated animate__zoomIn" style={{ maxWidth: '460px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="admin-confirm-icon" style={{ background: '#fff1f0', color: '#cf1322' }}>
+                            <i className="bi bi-x-circle-fill"></i>
+                        </div>
+                        <h4 className="admin-confirm-title font-oswald text-uppercase">TỪ CHỐI HOÀN TIỀN</h4>
+                        <p className="admin-confirm-message mb-3">
+                            Bạn đang từ chối yêu cầu hoàn tiền cho đơn hàng <strong>{rejectRefundModal.orderCode}</strong>
+                        </p>
+
+                        <div className="text-start mb-4">
+                            <label className="form-label font-oswald text-uppercase fw-bold text-secondary" style={{ fontSize: '12px' }}>
+                                Lý do từ chối hoàn tiền (Không bắt buộc)
+                            </label>
+                            <textarea
+                                className="form-control"
+                                rows="3"
+                                placeholder="Nhập lý do từ chối..."
+                                style={{ fontSize: '13px', padding: '10px' }}
+                                value={rejectRefundModal.reason}
+                                onChange={e => setRejectRefundModal(prev => ({ ...prev, reason: e.target.value }))}
+                            ></textarea>
+                        </div>
+
+                        <div className="admin-confirm-actions">
+                            <button
+                                className="admin-btn-confirm-cancel"
+                                disabled={rejectRefundModal.isSubmitting}
+                                onClick={() => setRejectRefundModal({ isOpen: false, orderCode: null, reason: "", isSubmitting: false })}
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                className="admin-btn-confirm-ok"
+                                style={{ background: '#dc2626' }}
+                                disabled={rejectRefundModal.isSubmitting}
+                                onClick={submitRejectRefund}
+                            >
+                                {rejectRefundModal.isSubmitting ? (
+                                    <span><i className="bi bi-arrow-repeat spin me-1"></i> Đang xử lý...</span>
+                                ) : (
+                                    <span><i className="bi bi-x-circle-fill me-1"></i> Xác nhận từ chối</span>
+                                )}
                             </button>
                         </div>
                     </div>

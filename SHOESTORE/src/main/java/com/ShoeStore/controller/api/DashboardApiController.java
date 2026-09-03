@@ -78,6 +78,12 @@ public class DashboardApiController {
         // 4. Top Products
         data.put("topProducts", dashboardService.getTopProducts(startDate, endDate));
         
+        // 5. Donut & Bar Charts
+        data.put("categorySales", dashboardService.getCategorySales(startDate, endDate));
+        data.put("orderStatusStats", dashboardService.getOrderStatusDistribution(startDate, endDate));
+        data.put("categoryBestSellers", dashboardService.getCategoryBestSellers(startDate, endDate));
+        data.put("brandBestSellers", dashboardService.getBrandBestSellers(startDate, endDate));
+
         return ResponseEntity.ok(data);
     }
     

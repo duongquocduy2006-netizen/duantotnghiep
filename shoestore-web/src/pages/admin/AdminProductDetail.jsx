@@ -326,6 +326,125 @@ const AdminProductDetail = () => {
     const [inlineQty, setInlineQty] = useState("");
     const [savingInlineId, setSavingInlineId] = useState(null);
 
+    // Bulk Edit states for updating all/selected variants at once
+    const [selectedVariantIds, setSelectedVariantIds] = useState([]);
+    const [bulkPriceInput, setBulkPriceInput] = useState("");
+    const [bulkQtyInput, setBulkQtyInput] = useState("");
+    const [isSavingBulk, setIsSavingBulk] = useState(false);
+    const [showBulkConfirmModal, setShowBulkConfirmModal] = useState(false);
+
+    const handleSelectAllVariants = () => {
+        if (selectedVariantIds.length === variants.length) {
+            setSelectedVariantIds([]);
+        } else {
+            setSelectedVariantIds(variants.map(v => v.id));
+        }
+    };
+
+    const handleToggleSelectVariant = (variantId) => {
+        setSelectedVariantIds(prev =>
+            prev.includes(variantId)
+                ? prev.filter(vId => vId !== variantId)
+                : [...prev, variantId]
+        );
+    };
+
+    const handleApplyBulkPrice = () => {
+        const numPrice = parseFloat(bulkPriceInput);
+        if (!bulkPriceInput || isNaN(numPrice) || numPrice <= 5000) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Giá bán chung phải lớn hơn 5,000 VNĐ!' }));
+            return;
+        }
+
+        const targetIds = selectedVariantIds.length > 0 ? selectedVariantIds : variants.map(v => v.id);
+        setVariants(prev => prev.map(v => targetIds.includes(v.id) ? { ...v, price: numPrice } : v));
+        
+        window.dispatchEvent(new CustomEvent('show-toast', {
+            detail: `Đã áp dụng giá mới ${numPrice.toLocaleString('vi-VN')} đ cho ${targetIds.length} biến thể! Vui lòng ấn "LƯU TẤT CẢ THAY ĐỔI" để cập nhật vào hệ thống cửa hàng.`
+        }));
+    };
+
+    const handleApplyBulkQty = () => {
+        const numQty = parseInt(bulkQtyInput);
+        if (!bulkQtyInput || isNaN(numQty) || numQty < 1) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Số lượng tồn kho phải từ 1 trở lên!' }));
+            return;
+        }
+
+        const targetIds = selectedVariantIds.length > 0 ? selectedVariantIds : variants.map(v => v.id);
+        setVariants(prev => prev.map(v => targetIds.includes(v.id) ? { ...v, quantity: numQty } : v));
+
+        window.dispatchEvent(new CustomEvent('show-toast', {
+            detail: `Đã áp dụng tồn kho ${numQty} đôi cho ${targetIds.length} biến thể! Vui lòng ấn "LƯU TẤT CẢ THAY ĐỔI" để cập nhật vào hệ thống cửa hàng.`
+        }));
+    };
+
+    const handleSaveAllBulkVariants = () => {
+        const invalidPriceVar = variants.find(v => !v.price || parseFloat(v.price) <= 5000);
+        if (invalidPriceVar) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: `Lỗi: Giá bán của tất cả biến thể phải lớn hơn 5,000 VNĐ (Biến thể Size ${invalidPriceVar.sizeName} - Màu ${translateColorToVietnamese(invalidPriceVar.colorName)} không hợp lệ)!` }));
+            return;
+        }
+
+        const invalidQtyVar = variants.find(v => v.quantity === undefined || v.quantity === null || parseInt(v.quantity) < 1);
+        if (invalidQtyVar) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: `Lỗi: Số lượng tồn kho của tất cả biến thể phải từ 1 trở lên (Biến thể Size ${invalidQtyVar.sizeName} - Màu ${translateColorToVietnamese(invalidQtyVar.colorName)} không hợp lệ)!` }));
+            return;
+        }
+
+        setShowBulkConfirmModal(true);
+    };
+
+    const confirmAndExecuteBulkSave = async () => {
+        setIsSavingBulk(true);
+        const payload = variants.map(v => ({
+            id: v.id,
+            price: parseFloat(v.price),
+            quantity: parseInt(v.quantity)
+        }));
+
+        try {
+            const res = await api.post('/api/products/variant/bulk-save', payload);
+            if (res.data && res.data.success) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `🎉 ${res.data.message}` }));
+                setShowBulkConfirmModal(false);
+                fetchProductDetails();
+            } else {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Không thể lưu thay đổi biến thể.' }));
+            }
+        } catch (err) {
+            console.warn('Lỗi gọi /bulk-save, chuyển sang chế độ lưu tuần tự fallback...', err);
+            try {
+                let successCount = 0;
+                for (const item of payload) {
+                    const v = variants.find(varItem => varItem.id === item.id);
+                    if (!v) continue;
+                    const sizeId = getSizeId(v.sizeName);
+                    const colorId = getColorId(v.colorName);
+                    await api.post('/api/products/variant/save', {
+                        productId: parseInt(id),
+                        sku: product?.productCode || null,
+                        variantId: item.id,
+                        sizeId,
+                        colorId,
+                        price: item.price,
+                        quantity: item.quantity
+                    });
+                    successCount++;
+                }
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `🎉 Cập nhật thành công hàng loạt ${successCount} biến thể sản phẩm!` }));
+                setShowBulkConfirmModal(false);
+                fetchProductDetails();
+            } catch (fallbackErr) {
+                console.error('Lỗi lưu biến thể hàng loạt:', fallbackErr);
+                const msg = fallbackErr.response?.data?.message || 'Không thể lưu các thay đổi biến thể hàng loạt.';
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: `Lỗi: ${msg}` }));
+            }
+        } finally {
+            setIsSavingBulk(false);
+        }
+    };
+
     const sortVariantsByAscendingSize = (varList) => {
         if (!Array.isArray(varList)) return [];
         return [...varList].sort((a, b) => {
@@ -483,8 +602,8 @@ const AdminProductDetail = () => {
             window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Giá bán phải lớn hơn 5,000 VNĐ.' }));
             return;
         }
-        if (inlineQty === "" || parseInt(inlineQty) < 0) {
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Số lượng tồn kho không hợp lệ.' }));
+        if (inlineQty === "" || parseInt(inlineQty) < 1) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Số lượng tồn kho khi thêm phải từ 1 trở lên.' }));
             return;
         }
 
@@ -527,12 +646,12 @@ const AdminProductDetail = () => {
     // Handle adding NEW variants via the top form
     const handleAddNewVariantsSubmit = async (e) => {
         e.preventDefault();
-        if (!price || parseFloat(price) <= 0) {
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng nhập giá bán hợp lệ.' }));
+        if (!price || parseFloat(price) <= 5000) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Giá bán phải lớn hơn 5,000 VNĐ.' }));
             return;
         }
-        if (quantity === "" || parseInt(quantity) < 0) {
-            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng nhập số lượng hợp lệ.' }));
+        if (quantity === "" || parseInt(quantity) < 1) {
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi: Số lượng tồn kho khi thêm phải từ 1 trở lên.' }));
             return;
         }
         if (selectedSizes.length === 0 || selectedColors.length === 0) {
@@ -896,6 +1015,118 @@ const AdminProductDetail = () => {
                         )}
                     </div>
 
+                    {/* KHUNG CHỈNH SỬA HÀNG LOẠT (BULK EDIT TOOLBAR) */}
+                    {variants.length > 0 && (
+                        <div style={{
+                            background: '#f8fafc',
+                            border: '2px solid #e2e8f0',
+                            borderRadius: '12px',
+                            padding: '16px 20px',
+                            margin: '15px 0 20px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: '#0f172a', fontSize: '15px' }}>
+                                    <i className="bi bi-pencil-square" style={{ color: '#e50914', fontSize: '18px' }}></i>
+                                    <span>CHỈNH SỬA HÀNG LOẠT ({selectedVariantIds.length > 0 ? `Đã chọn ${selectedVariantIds.length}/${variants.length} biến thể` : `Áp dụng cho tất cả ${variants.length} biến thể`})</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={handleSelectAllVariants}
+                                    style={{ fontWeight: '600', fontSize: '13px' }}
+                                >
+                                {selectedVariantIds.length === variants.length ? (
+                                    <><i className="bi bi-x-circle me-1"></i> Bỏ chọn tất cả</>
+                                ) : (
+                                    <><i className="bi bi-check2-square me-1"></i> Chọn tất cả</>
+                                )}
+                                </button>
+                            </div>
+
+                            <div className="row g-3 align-items-end">
+                                {/* 1. ÁP DỤNG GIÁ MỚI HÀNG LOẠT */}
+                                <div className="col-md-4">
+                                    <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '13px' }}>
+                                        <i className="bi bi-cash-stack text-success me-1"></i> Giá bán chung (VNĐ):
+                                    </label>
+                                    <div className="input-group">
+                                        <input
+                                            type="number"
+                                            min="5001"
+                                            className="form-control"
+                                            placeholder="VD: 1600000"
+                                            value={bulkPriceInput}
+                                            onChange={e => setBulkPriceInput(e.target.value)}
+                                            style={bulkPriceInput !== "" && parseFloat(bulkPriceInput) <= 5000 ? { borderColor: '#e50914' } : {}}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-danger fw-bold"
+                                            onClick={handleApplyBulkPrice}
+                                            disabled={!bulkPriceInput || parseFloat(bulkPriceInput) <= 5000}
+                                        >
+                                            ÁP DỤNG GIÁ
+                                        </button>
+                                    </div>
+                                    {bulkPriceInput !== "" && parseFloat(bulkPriceInput) <= 5000 && (
+                                        <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px' }}>
+                                            ⚠️ Giá bán phải lớn hơn 5,000đ
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 2. ÁP DỤNG SỐ LƯỢNG KHO HÀNG LOẠT */}
+                                <div className="col-md-4">
+                                    <label className="form-label fw-bold text-dark mb-1" style={{ fontSize: '13px' }}>
+                                        <i className="bi bi-box-seam text-primary me-1"></i> Số lượng tồn kho chung (Đôi):
+                                    </label>
+                                    <div className="input-group">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            className="form-control"
+                                            placeholder="VD: 10"
+                                            value={bulkQtyInput}
+                                            onChange={e => setBulkQtyInput(e.target.value)}
+                                            style={bulkQtyInput !== "" && parseInt(bulkQtyInput) < 1 ? { borderColor: '#e50914' } : {}}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-primary fw-bold"
+                                            onClick={handleApplyBulkQty}
+                                            disabled={!bulkQtyInput || parseInt(bulkQtyInput) < 1}
+                                        >
+                                            ÁP DỤNG KHO
+                                        </button>
+                                    </div>
+                                    {bulkQtyInput !== "" && parseInt(bulkQtyInput) < 1 && (
+                                        <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px' }}>
+                                            ⚠️ Số lượng kho phải từ 1 trở lên
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 3. NÚT LƯU HÀNG LOẠT VÀO DATABASE */}
+                                <div className="col-md-4 text-end">
+                                    <button
+                                        type="button"
+                                        className="btn btn-danger fw-bold w-100 py-2"
+                                        style={{ background: '#e50914', border: 'none', boxShadow: '0 4px 12px rgba(229, 9, 20, 0.3)' }}
+                                        onClick={handleSaveAllBulkVariants}
+                                        disabled={isSavingBulk}
+                                    >
+                                        {isSavingBulk ? (
+                                            <><span className="spinner-border spinner-border-sm me-2"></span>Đang lưu hàng loạt...</>
+                                        ) : (
+                                            <><i className="bi bi-cloud-arrow-up-fill me-1"></i> LƯU TẤT CẢ THAY ĐỔI HÀNG LOẠT</>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {variants.length === 0 ? (
                         <div className="empty-msg-box">
                             <i className="bi bi-box-seam" style={{ fontSize: '36px', color: '#cbd5e1' }}></i>
@@ -908,9 +1139,18 @@ const AdminProductDetail = () => {
                             <table className="table table-hover align-middle mb-0">
                                 <thead>
                                     <tr>
+                                        <th style={{ width: '4%', textAlign: 'center' }}>
+                                            <input
+                                                type="checkbox"
+                                                style={{ width: '17px', height: '17px', cursor: 'pointer' }}
+                                                checked={variants.length > 0 && selectedVariantIds.length === variants.length}
+                                                onChange={handleSelectAllVariants}
+                                                title="Chọn tất cả biến thể"
+                                            />
+                                        </th>
                                         <th style={{ width: '6%' }}>STT</th>
-                                        <th style={{ width: '22%' }}>KÍCH CỠ</th>
-                                        <th style={{ width: '25%' }}>MÀU SẮC</th>
+                                        <th style={{ width: '20%' }}>KÍCH CỠ</th>
+                                        <th style={{ width: '23%' }}>MÀU SẮC</th>
                                         <th style={{ width: '24%' }}>GIÁ BÁN (VNĐ)</th>
                                         <th style={{ width: '15%' }}>KHO</th>
                                         <th style={{ width: '8%', textAlign: 'center' }}>THAO TÁC</th>
@@ -919,8 +1159,17 @@ const AdminProductDetail = () => {
                                 <tbody>
                                     {variants.map((v, idx) => {
                                         const isInlineEditing = inlineEditingId === v.id;
+                                        const isSelected = selectedVariantIds.includes(v.id);
                                         return (
-                                            <tr key={v.id} className={isInlineEditing ? "editing-row-active" : ""}>
+                                            <tr key={v.id} className={isInlineEditing ? "editing-row-active" : isSelected ? "table-active" : ""}>
+                                                <td style={{ textAlign: 'center' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        style={{ width: '17px', height: '17px', cursor: 'pointer' }}
+                                                        checked={isSelected}
+                                                        onChange={() => handleToggleSelectVariant(v.id)}
+                                                    />
+                                                </td>
                                                 <td style={{ fontWeight: '700', color: '#64748b' }}>#{idx + 1}</td>
                                                 
                                                 {/* KÍCH CỠ - Editable Select or Static Chip */}
@@ -960,17 +1209,25 @@ const AdminProductDetail = () => {
                                                 {/* GIÁ BÁN (VNĐ) - Direct inline edit or static label */}
                                                 <td>
                                                     {isInlineEditing ? (
-                                                        <div className="inline-table-input-wrap">
-                                                            <input
-                                                                type="number"
-                                                                min="5000"
-                                                                className="form-control inline-table-input"
-                                                                value={inlinePrice}
-                                                                onChange={(e) => setInlinePrice(e.target.value)}
-                                                                placeholder="Giá..."
-                                                            />
-                                                            <span className="unit-label">đ</span>
-                                                        </div>
+                                                        <>
+                                                            <div className="inline-table-input-wrap">
+                                                                <input
+                                                                    type="number"
+                                                                    min="5001"
+                                                                    className="form-control inline-table-input"
+                                                                    style={inlinePrice !== "" && parseFloat(inlinePrice) <= 5000 ? { borderColor: '#e50914', boxShadow: '0 0 0 2px rgba(229, 9, 20, 0.2)' } : {}}
+                                                                    value={inlinePrice}
+                                                                    onChange={(e) => setInlinePrice(e.target.value)}
+                                                                    placeholder="Giá (> 5,000đ)..."
+                                                                />
+                                                                <span className="unit-label">đ</span>
+                                                            </div>
+                                                            {inlinePrice !== "" && parseFloat(inlinePrice) <= 5000 && (
+                                                                <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                    <i className="bi bi-exclamation-triangle-fill"></i> Giá phải &gt; 5,000đ
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     ) : (
                                                         <span className="price-cell">{v.price?.toLocaleString("vi-VN")} đ</span>
                                                     )}
@@ -979,17 +1236,25 @@ const AdminProductDetail = () => {
                                                 {/* SỐ LƯỢNG KHO - Direct inline edit or static label */}
                                                 <td>
                                                     {isInlineEditing ? (
-                                                        <div className="inline-table-input-wrap">
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                className="form-control inline-table-input"
-                                                                value={inlineQty}
-                                                                onChange={(e) => setInlineQty(e.target.value)}
-                                                                placeholder="Kho..."
-                                                            />
-                                                            <span className="unit-label">đôi</span>
-                                                        </div>
+                                                        <>
+                                                            <div className="inline-table-input-wrap">
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    className="form-control inline-table-input"
+                                                                    style={inlineQty !== "" && parseInt(inlineQty) < 1 ? { borderColor: '#e50914', boxShadow: '0 0 0 2px rgba(229, 9, 20, 0.2)' } : {}}
+                                                                    value={inlineQty}
+                                                                    onChange={(e) => setInlineQty(e.target.value)}
+                                                                    placeholder="Kho (>= 1)..."
+                                                                />
+                                                                <span className="unit-label">đôi</span>
+                                                            </div>
+                                                            {inlineQty !== "" && parseInt(inlineQty) < 1 && (
+                                                                <div style={{ color: '#e50914', fontSize: '11px', fontWeight: '700', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                                    <i className="bi bi-exclamation-triangle-fill"></i> Kho phải &gt;= 1
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     ) : (
                                                         <span className={`qty-badge ${v.quantity > 0 ? "in" : "out"}`}>
                                                             {v.quantity} đôi
@@ -1053,6 +1318,46 @@ const AdminProductDetail = () => {
                     )}
                 </div>
             </div>
+
+            {/* CONFIRMATION MODAL FOR BULK SAVE */}
+            {showBulkConfirmModal && (
+                <div className="admin-confirm-overlay" style={{ zIndex: 10000 }}>
+                    <div className="admin-confirm-box" style={{ width: '90%', maxWidth: '480px', padding: '28px', borderRadius: '16px', background: '#fff', color: '#333', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                        <div className="mb-3">
+                            <i className="bi bi-question-circle-fill text-warning" style={{ fontSize: '54px' }}></i>
+                        </div>
+                        <h4 style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '10px', color: '#111' }}>
+                            XÁC NHẬN CẬP NHẬT BIẾN THỂ HÀNG LOẠT
+                        </h4>
+                        <p style={{ color: '#555', fontSize: '14px', marginBottom: '24px', lineHeight: '1.5' }}>
+                            Bạn có chắc chắn muốn lưu các thay đổi về Giá & Tồn kho cho <b>{selectedVariantIds.length > 0 ? selectedVariantIds.length : variants.length} biến thể</b> sản phẩm này không?
+                        </p>
+                        <div className="d-flex justify-content-center gap-3">
+                            <button
+                                type="button"
+                                className="btn btn-secondary fw-bold px-4"
+                                onClick={() => setShowBulkConfirmModal(false)}
+                                disabled={isSavingBulk}
+                            >
+                                HỦY BỎ
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger fw-bold px-4"
+                                style={{ background: '#e50914', border: 'none' }}
+                                onClick={confirmAndExecuteBulkSave}
+                                disabled={isSavingBulk}
+                            >
+                                {isSavingBulk ? (
+                                    <><span className="spinner-border spinner-border-sm me-2"></span>Đang lưu...</>
+                                ) : (
+                                    'XÁC NHẬN LƯU'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 };

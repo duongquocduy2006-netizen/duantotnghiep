@@ -120,33 +120,23 @@ public class VoucherApiController {
         try {
             // Compute Eligible Subtotal (excluding active Flash Sale items)
             List<Map<String, Object>> items;
+            String fsSubquery = "LEFT JOIN ( " +
+                    "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "    FROM flash_sale_products fsp " +
+                    "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                    "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                    ") fsp ON fsp.product_id = v.product_id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) ";
+
             if (buyNowVariantId != null && buyNowQty != null) {
-                String buyNowSql = "SELECT v.id as variant_id, ? as quantity, " +
-                        "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                        "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                        "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price, " +
-                        "CASE WHEN EXISTS (SELECT 1 FROM flash_sale_products fsp " +
-                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                        "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                        "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) THEN 1 ELSE 0 END as is_flash_sale " +
-                        "FROM product_variants v WHERE v.id = ?";
+                String buyNowSql = "SELECT v.id as variant_id, ? as quantity, v.price as original_price, " +
+                        "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                        "FROM product_variants v " + fsSubquery +
+                        "WHERE v.id = ?";
                 items = jdbc.queryForList(buyNowSql, buyNowQty, buyNowVariantId);
             } else {
-                String cartSql = "SELECT ci.product_variant_id as variant_id, ci.quantity, " +
-                        "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                        "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                        "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price, " +
-                        "CASE WHEN EXISTS (SELECT 1 FROM flash_sale_products fsp " +
-                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                        "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                        "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                        "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)) THEN 1 ELSE 0 END as is_flash_sale " +
-                        "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " +
+                String cartSql = "SELECT ci.product_variant_id as variant_id, ci.quantity, v.price as original_price, " +
+                        "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                        "FROM cart_items ci JOIN product_variants v ON ci.product_variant_id = v.id " + fsSubquery +
                         "WHERE ci.user_id = ?";
                 items = jdbc.queryForList(cartSql, accountId);
             }
@@ -155,22 +145,25 @@ public class VoucherApiController {
             int flashSaleCount = 0;
             int totalItemCount = items.size();
 
-            for (Map<String, Object> item : items) {
-                double price = ((Number) item.get("price")).doubleValue();
+            List<Map<String, Object>> processedItems = com.ShoeStore.util.FlashSalePriceUtil.processAndSplitList(items);
+
+            for (Map<String, Object> item : processedItems) {
+                boolean isFs = Boolean.TRUE.equals(item.get("is_flash_sale"));
                 int qty = ((Number) item.get("quantity")).intValue();
-                int isFlashSale = ((Number) item.get("is_flash_sale")).intValue();
-                if (isFlashSale == 1) {
-                    flashSaleCount++;
+                double price = ((Number) item.get("price")).doubleValue();
+
+                if (isFs) {
+                    flashSaleCount += qty;
                 } else {
                     eligibleSubtotal += price * qty;
                 }
             }
 
             Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
-            Optional<Voucher> voucherOpt = voucherService.validateVoucher(code, rankId, cartTotal, accountId);
+            com.ShoeStore.service.VoucherService.VoucherValidationResult vResult = voucherService.validateVoucherDetailed(code, rankId, cartTotal, accountId);
 
-            if (voucherOpt.isPresent()) {
-                Voucher voucher = voucherOpt.get();
+            if (vResult.isValid()) {
+                Voucher voucher = vResult.getVoucher();
                 if (eligibleSubtotal <= 0 && totalItemCount > 0) {
                     return ResponseEntity.ok(Map.of(
                             "success", true,
@@ -201,7 +194,7 @@ public class VoucherApiController {
             } else {
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
-                        "message", "Mã giảm giá không hợp lệ, hết hạn hoặc không đủ điều kiện!"
+                        "message", vResult.getMessage()
                 ));
             }
         } catch (Exception e) {
@@ -280,6 +273,20 @@ public class VoucherApiController {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Loại giảm giá chỉ cho phép giảm theo % và mức giảm tối đa chỉ được 50%!"));
             }
 
+            String cleanCode = code.trim().toUpperCase();
+
+            // Check if voucher code already exists on ANOTHER voucher (prevents SQL UNIQUE KEY constraint error)
+            Optional<Voucher> existingCodeOpt = voucherService.getVoucherByCode(cleanCode);
+            if (existingCodeOpt.isPresent()) {
+                Voucher existingVoucher = existingCodeOpt.get();
+                if (id == null || !existingVoucher.getId().equals(id)) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Mã giảm giá '" + cleanCode + "' đã tồn tại trong hệ thống. Vui lòng đặt mã giảm giá khác!"
+                    ));
+                }
+            }
+
             Voucher voucher;
             if (id != null) {
                 voucher = voucherService.getVoucherById(id).orElse(new Voucher());
@@ -287,7 +294,7 @@ public class VoucherApiController {
                 voucher = new Voucher();
             }
 
-            voucher.setCode(code.trim().toUpperCase());
+            voucher.setCode(cleanCode);
             voucher.setDiscountType("PERCENT"); // Bắt buộc lưu PERCENT
             voucher.setDiscountValue(discountValue);
             voucher.setMaxDiscount(maxDiscount);

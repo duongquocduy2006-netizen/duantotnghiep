@@ -9,6 +9,13 @@ public class OrderDTO {
     private double finalAmount;
     private int status;
     private String paymentMethod;
+    private Integer paymentStatus;
+    private String cancelReason;
+    private String refundReason;
+    private Date refundAt;
+    private String refundBankBin;
+    private String refundBankAccount;
+    private String refundAccountName;
 
     public OrderDTO() {
     }
@@ -69,5 +76,61 @@ public class OrderDTO {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    public Integer getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public void setPaymentStatus(Integer paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
+    }
+
+    public String getRefundReason() {
+        return refundReason;
+    }
+
+    public void setRefundReason(String refundReason) {
+        this.refundReason = refundReason;
+    }
+
+    public Date getRefundAt() {
+        return refundAt;
+    }
+
+    public void setRefundAt(Date refundAt) {
+        this.refundAt = refundAt;
+    }
+
+    public String getRefundBankBin() {
+        return refundBankBin;
+    }
+
+    public void setRefundBankBin(String refundBankBin) {
+        this.refundBankBin = refundBankBin;
+    }
+
+    public String getRefundBankAccount() {
+        return refundBankAccount;
+    }
+
+    public void setRefundBankAccount(String refundBankAccount) {
+        this.refundBankAccount = refundBankAccount;
+    }
+
+    public String getRefundAccountName() {
+        return refundAccountName;
+    }
+
+    public void setRefundAccountName(String refundAccountName) {
+        this.refundAccountName = refundAccountName;
     }
 }

@@ -64,6 +64,8 @@ const QuickCartModal = ({ productId, isOpen = true, onClose }) => {
         } catch (err) {
             if (err.response && err.response.status === 401) {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập để thêm vào giỏ hàng!' }));
+            } else if (err.response && err.response.data && err.response.data.message) {
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: err.response.data.message }));
             } else {
                 window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Lỗi xử lý giỏ hàng.' }));
             }

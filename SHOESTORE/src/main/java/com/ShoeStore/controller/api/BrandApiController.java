@@ -29,7 +29,29 @@ public class BrandApiController {
 	// 1. Lấy toàn bộ thương hiệu (GET)
 	@GetMapping
 	public List<Brand> getAllBrands() {
-		return brandRepo.findAll();
+		List<Brand> all = brandRepo.findAll();
+		// Tự động dọn dẹp các dòng thương hiệu bị trùng tên dư thừa trước đó trong DB
+		Map<String, Brand> uniqueMap = new java.util.LinkedHashMap<>();
+		List<Brand> duplicatesToDelete = new java.util.ArrayList<>();
+
+		for (Brand b : all) {
+			if (b.getName() == null || b.getName().trim().isEmpty()) continue;
+			String key = b.getName().trim().toLowerCase();
+			if (uniqueMap.containsKey(key)) {
+				duplicatesToDelete.add(b);
+			} else {
+				uniqueMap.put(key, b);
+			}
+		}
+
+		if (!duplicatesToDelete.isEmpty()) {
+			try {
+				brandRepo.deleteAll(duplicatesToDelete);
+				return brandRepo.findAll();
+			} catch (Exception ignored) {}
+		}
+
+		return all;
 	}
 
 	// 2. Lấy một thương hiệu theo ID (GET)
@@ -61,8 +83,19 @@ public class BrandApiController {
 			Boolean active = (Boolean) payload.get("active");
 			String imageBase64 = (String) payload.get("imageBase64");
 
+			if (name == null || name.trim().isEmpty()) {
+				return ResponseEntity.badRequest().body(Map.of("error", "Tên thương hiệu không được để trống!"));
+			}
+
+			String cleanName = name.trim();
+			boolean exists = brandRepo.findAll().stream()
+					.anyMatch(b -> b.getName() != null && b.getName().trim().equalsIgnoreCase(cleanName));
+			if (exists) {
+				return ResponseEntity.badRequest().body(Map.of("error", "Tên thương hiệu '" + cleanName + "' đã tồn tại! Vui lòng nhập tên khác."));
+			}
+
 			Brand brand = new Brand();
-			brand.setName(name);
+			brand.setName(cleanName);
 			brand.setActive(active != null ? active : true);
 
 			if (imageBase64 != null && !imageBase64.isEmpty()) {
@@ -89,7 +122,19 @@ public class BrandApiController {
 				Boolean active = (Boolean) payload.get("active");
 				String imageBase64 = (String) payload.get("imageBase64");
 
-				if (name != null) brand.setName(name);
+				if (name != null) {
+					String cleanName = name.trim();
+					if (cleanName.isEmpty()) {
+						return ResponseEntity.badRequest().body(Map.of("error", "Tên thương hiệu không được để trống!"));
+					}
+					boolean exists = brandRepo.findAll().stream()
+							.anyMatch(b -> b.getName() != null && !b.getId().equals(id) && b.getName().trim().equalsIgnoreCase(cleanName));
+					if (exists) {
+						return ResponseEntity.badRequest().body(Map.of("error", "Tên thương hiệu '" + cleanName + "' đã tồn tại!"));
+					}
+					brand.setName(cleanName);
+				}
+
 				if (active != null) brand.setActive(active);
 
 				if (imageBase64 != null && !imageBase64.isEmpty()) {
@@ -111,10 +156,15 @@ public class BrandApiController {
 	@DeleteMapping("/{id}")
 	public ResponseEntity<?> deleteBrand(@PathVariable Integer id) {
 		return brandRepo.findById(id).map(brand -> {
-			// Kiểm tra xem có sản phẩm nào đang dùng Brand này không
-			if (productRepo.existsByBrandName(brand.getName())) {
+			String bName = brand.getName() != null ? brand.getName().trim() : "";
+			// Nếu có một thương hiệu khác cùng tên (ví dụ #BRD-02 đã đại diện cho ADIDAS), cho phép xóa dòng trùng dư thừa #BRD-11
+			boolean duplicateBrandExists = brandRepo.findAll().stream()
+					.anyMatch(other -> !other.getId().equals(id) && other.getName() != null && other.getName().trim().equalsIgnoreCase(bName));
+
+			if (!duplicateBrandExists && productRepo.existsByBrandName(brand.getName())) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Không thể xóa thương hiệu này vì vẫn còn sản phẩm đang mang tên của hãng!"));
 			}
+
 			brandRepo.delete(brand);
 			return ResponseEntity.ok(Map.of("message", "Xóa thành công!"));
 		}).orElse(ResponseEntity.notFound().build());

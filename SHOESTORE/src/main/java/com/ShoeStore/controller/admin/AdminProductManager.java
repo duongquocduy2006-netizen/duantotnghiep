@@ -547,6 +547,30 @@ public class AdminProductManager {
                 return "redirect:/admin/products/detail/" + productId;
             }
 
+            // CHECK FLASH SALE VALIDATION: Chặn đổi giá sản phẩm nhỏ hơn hoặc bằng giá Flash Sale đang/sắp chạy
+            try {
+                String checkFsSql = "SELECT fsp.sale_price, fs.name FROM flash_sale_products fsp " +
+                        "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                        "WHERE fsp.product_id = ? AND fs.end_date >= GETDATE()";
+                java.util.List<java.util.Map<String, Object>> activeFsList = jdbc.queryForList(checkFsSql, productId);
+                for (java.util.Map<String, Object> fsRow : activeFsList) {
+                    BigDecimal fsSalePrice = fsRow.get("sale_price") != null ? new BigDecimal(fsRow.get("sale_price").toString()) : null;
+                    String fsName = (String) fsRow.get("name");
+                    if (fsSalePrice != null) {
+                        int cmp = price.compareTo(fsSalePrice);
+                        if (cmp < 0) {
+                            redirectAttributes.addFlashAttribute("error", "Lỗi: Giá gốc (" + String.format("%,.0f", price.doubleValue()) + "đ) không được THẤP HƠN giá Flash Sale (" + String.format("%,.0f", fsSalePrice.doubleValue()) + "đ) của chiến dịch '" + fsName + "'!");
+                            return "redirect:/admin/products/detail/" + productId;
+                        } else if (cmp == 0) {
+                            redirectAttributes.addFlashAttribute("error", "Lỗi: Giá gốc (" + String.format("%,.0f", price.doubleValue()) + "đ) không được BẰNG giá Flash Sale (" + String.format("%,.0f", fsSalePrice.doubleValue()) + "đ) của chiến dịch '" + fsName + "'!");
+                            return "redirect:/admin/products/detail/" + productId;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore if query error
+            }
+
             Size size = sizeRepository.findById(sizeId).orElse(null);
             Color color = colorRepository.findById(colorId).orElse(null);
 

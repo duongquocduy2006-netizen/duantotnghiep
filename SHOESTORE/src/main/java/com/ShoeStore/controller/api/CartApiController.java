@@ -32,20 +32,23 @@ public class CartApiController {
 
         String sql = "SELECT ci.id, ci.quantity, ci.product_variant_id as variant_id, p.id as product_id, " +
                 "p.product_name, s.size_name, col.color_name, v.price as original_price, v.quantity as stock, " +
-                "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                "       JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                "       WHERE fsp.product_id = p.id AND fs.status = 1 " +
-                "       AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                "       AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price, " +
-                "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url " +
+                "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, " +
+                "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
                 "FROM cart_items ci " +
                 "JOIN product_variants v ON ci.product_variant_id = v.id " +
                 "JOIN products p ON v.product_id = p.id " +
                 "JOIN sizes s ON v.size_id = s.id " +
                 "JOIN colors col ON v.color_id = col.id " +
+                "LEFT JOIN ( " +
+                "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                "    FROM flash_sale_products fsp " +
+                "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                ") fsp ON fsp.product_id = p.id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) " +
                 "WHERE ci.user_id = ?";
 
-        List<Map<String, Object>> cartItems = jdbc.queryForList(sql, accountId);
+        List<Map<String, Object>> rawCartItems = jdbc.queryForList(sql, accountId);
+        List<Map<String, Object>> cartItems = com.ShoeStore.util.FlashSalePriceUtil.processAndSplitList(rawCartItems);
 
         double total = cartItems.stream()
                 .mapToDouble(item -> ((Number) item.get("price")).doubleValue() * ((Number) item.get("quantity")).intValue())
@@ -134,31 +137,66 @@ public class CartApiController {
                     .body(Map.of("success", false, "message", "Bạn chưa đăng nhập!"));
         }
 
-        if (!payload.containsKey("itemId") || !payload.containsKey("quantity")) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu itemId hoặc quantity!"));
+        Object rawItemId = payload.get("itemId");
+        Object rawCartItemId = payload.get("cartItemId");
+        Integer cartItemId = null;
+
+        if (rawCartItemId instanceof Number n) {
+            cartItemId = n.intValue();
+        } else if (rawCartItemId != null) {
+            try {
+                cartItemId = Integer.parseInt(String.valueOf(rawCartItemId));
+            } catch (Exception ignored) {}
         }
 
-        Integer itemId = ((Number) payload.get("itemId")).intValue();
-        Integer quantity = ((Number) payload.get("quantity")).intValue();
+        if (cartItemId == null && rawItemId != null) {
+            try {
+                cartItemId = Integer.parseInt(String.valueOf(rawItemId).replaceAll("_.*$", ""));
+            } catch (Exception ignored) {}
+        }
+
+        if (cartItemId == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu itemId!"));
+        }
 
         try {
-            if (quantity <= 0) {
-                jdbc.update("DELETE FROM cart_items WHERE id = ?", itemId);
-            } else {
-                // Kiểm tra tồn kho trước khi update
-                String stockSql = "SELECT v.quantity FROM product_variants v " +
+            if (payload.containsKey("delta") && payload.get("delta") instanceof Number n) {
+                int delta = n.intValue();
+                String stockSql = "SELECT v.quantity, ci.quantity as current_cart_qty FROM product_variants v " +
                         "JOIN cart_items ci ON v.id = ci.product_variant_id " +
                         "WHERE ci.id = ?";
-                int availableStock = jdbc.queryForObject(stockSql, Integer.class, itemId);
-
-                if (quantity > availableStock) {
-                    return ResponseEntity.badRequest().body(Map.of(
-                            "success", false,
-                            "message", "Chỉ còn " + availableStock + " sản phẩm trong kho!"
-                    ));
+                List<Map<String, Object>> res = jdbc.queryForList(stockSql, cartItemId);
+                if (res.isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Sản phẩm không tồn tại!"));
                 }
+                int availableStock = ((Number) res.get(0).get("quantity")).intValue();
+                int currentCartQty = ((Number) res.get(0).get("current_cart_qty")).intValue();
+                int targetQty = currentCartQty + delta;
 
-                jdbc.update("UPDATE cart_items SET quantity = ? WHERE id = ?", quantity, itemId);
+                if (targetQty <= 0) {
+                    jdbc.update("DELETE FROM cart_items WHERE id = ?", cartItemId);
+                } else {
+                    if (targetQty > availableStock) {
+                        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Chỉ còn " + availableStock + " sản phẩm trong kho!"));
+                    }
+                    jdbc.update("UPDATE cart_items SET quantity = ? WHERE id = ?", targetQty, cartItemId);
+                }
+            } else if (payload.containsKey("quantity") && payload.get("quantity") instanceof Number n) {
+                int quantity = n.intValue();
+                if (quantity <= 0) {
+                    jdbc.update("DELETE FROM cart_items WHERE id = ?", cartItemId);
+                } else {
+                    String stockSql = "SELECT v.quantity FROM product_variants v " +
+                            "JOIN cart_items ci ON v.id = ci.product_variant_id " +
+                            "WHERE ci.id = ?";
+                    int availableStock = jdbc.queryForObject(stockSql, Integer.class, cartItemId);
+
+                    if (quantity > availableStock) {
+                        return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Chỉ còn " + availableStock + " sản phẩm trong kho!"));
+                    }
+
+                    jdbc.update("UPDATE cart_items SET quantity = ? WHERE id = ?", quantity, cartItemId);
+                }
             }
 
             return ResponseEntity.ok(Map.of("success", true, "message", "Đã cập nhật số lượng!"));
@@ -179,14 +217,53 @@ public class CartApiController {
                     .body(Map.of("success", false, "message", "Bạn chưa đăng nhập!"));
         }
 
-        if (!payload.containsKey("itemId")) {
+        if (!payload.containsKey("itemId") && !payload.containsKey("cartItemId")) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Thiếu itemId!"));
         }
 
-        Integer itemId = ((Number) payload.get("itemId")).intValue();
+        Object rawItemId = payload.get("itemId");
+        Object rawCartItemId = payload.get("cartItemId");
+        Integer cartItemId = null;
+
+        if (rawCartItemId instanceof Number n) {
+            cartItemId = n.intValue();
+        } else if (rawCartItemId != null) {
+            try {
+                cartItemId = Integer.parseInt(String.valueOf(rawCartItemId));
+            } catch (Exception ignored) {}
+        }
+
+        if (cartItemId == null && rawItemId != null) {
+            try {
+                cartItemId = Integer.parseInt(String.valueOf(rawItemId).replaceAll("_.*$", ""));
+            } catch (Exception ignored) {}
+        }
+
+        if (cartItemId == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "ID sản phẩm không hợp lệ!"));
+        }
+
+        int removeQty = 1;
+        if (payload.containsKey("quantity") && payload.get("quantity") instanceof Number n) {
+            removeQty = n.intValue();
+        }
 
         try {
-            jdbc.update("DELETE FROM cart_items WHERE id = ?", itemId);
+            String currentQtySql = "SELECT quantity FROM cart_items WHERE id = ?";
+            List<Integer> qtys = jdbc.queryForList(currentQtySql, Integer.class, cartItemId);
+            if (qtys.isEmpty()) {
+                return ResponseEntity.ok(Map.of("success", true, "message", "Đã xóa sản phẩm khỏi giỏ hàng!"));
+            }
+
+            int currentQty = qtys.get(0);
+            int newQty = currentQty - removeQty;
+
+            if (newQty <= 0) {
+                jdbc.update("DELETE FROM cart_items WHERE id = ?", cartItemId);
+            } else {
+                jdbc.update("UPDATE cart_items SET quantity = ? WHERE id = ?", newQty, cartItemId);
+            }
+
             return ResponseEntity.ok(Map.of("success", true, "message", "Đã xóa sản phẩm khỏi giỏ hàng!"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -280,16 +357,18 @@ public class CartApiController {
             // Lấy thông tin biến thể sản phẩm
             String sql = "SELECT -1 as id, v.id as variant_id, p.id as product_id, " +
                     "p.product_name, s.size_name, col.color_name, v.price as original_price, v.quantity as stock, " +
-                    "ISNULL((SELECT fsp.sale_price FROM flash_sale_products fsp " +
-                    "JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
-                    "WHERE fsp.product_id = v.product_id AND fs.status = 1 " +
-                    "AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
-                    "AND (fsp.quantity_limit = 0 OR fsp.quantity_limit IS NULL OR fsp.sold_quantity < fsp.quantity_limit)), v.price) as price, " +
-                    "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url " +
+                    "(SELECT TOP 1 '/images/' + image_url FROM product_images WHERE product_id = p.id ORDER BY is_primary DESC, id ASC) as image_url, " +
+                    "fsp.fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
                     "FROM product_variants v " +
                     "JOIN products p ON v.product_id = p.id " +
                     "JOIN sizes s ON v.size_id = s.id " +
                     "JOIN colors col ON v.color_id = col.id " +
+                    "LEFT JOIN ( " +
+                    "    SELECT fsp.product_id, fsp.variant_id, fsp.id as fsp_id, fsp.sale_price, fsp.quantity_limit, fsp.sold_quantity " +
+                    "    FROM flash_sale_products fsp " +
+                    "    JOIN flash_sales fs ON fsp.flash_sale_id = fs.id " +
+                    "    WHERE fs.status = 1 AND GETDATE() BETWEEN fs.start_date AND fs.end_date " +
+                    ") fsp ON fsp.product_id = p.id AND (fsp.variant_id IS NULL OR fsp.variant_id = v.id) " +
                     "WHERE v.id = ?";
                     
             List<Map<String, Object>> variants = jdbc.queryForList(sql, variantId);
@@ -309,12 +388,15 @@ public class CartApiController {
             item.put("quantity", finalQty);
             item.put("id", -1); // Fake cart item id
             
-            double price = ((Number) item.get("price")).doubleValue();
-            double totalPrice = price * finalQty;
+            com.ShoeStore.util.FlashSalePriceUtil.SplitResult sr = 
+                com.ShoeStore.util.FlashSalePriceUtil.processAndSplitItem(item);
+
+            List<Map<String, Object>> cartItems = sr.items;
+            double totalPrice = sr.totalPrice;
             
             return ResponseEntity.ok(Map.of(
                     "success", true,
-                    "cartItems", List.of(item),
+                    "cartItems", cartItems,
                     "totalPrice", totalPrice
             ));
             

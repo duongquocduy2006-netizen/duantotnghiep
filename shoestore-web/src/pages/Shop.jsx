@@ -268,18 +268,20 @@ const Shop = () => {
             if (res.data && res.data.success) {
                 if (res.data.action === 'added') {
                     setWishlistIds([...wishlistIds, productId]);
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã thêm sản phẩm vào danh sách yêu thích!' }));
                 } else {
                     setWishlistIds(wishlistIds.filter(id => id !== productId));
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xóa sản phẩm khỏi danh sách yêu thích!' }));
                 }
             } else {
-                alert(res.data.message || "Vui lòng đăng nhập!");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data.message || "Vui lòng đăng nhập!" }));
             }
         } catch (error) {
             if (error.response && error.response.status === 401) {
-                alert("Vui lòng đăng nhập để sử dụng tính năng này!");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Vui lòng đăng nhập để sử dụng tính năng này!" }));
                 navigate('/login');
             } else {
-                alert("Đã xảy ra lỗi khi xử lý yêu thích.");
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: "Đã xảy ra lỗi khi xử lý yêu thích." }));
             }
         }
     };

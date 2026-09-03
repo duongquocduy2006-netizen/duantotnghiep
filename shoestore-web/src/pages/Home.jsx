@@ -120,14 +120,19 @@ const Home = () => {
         try {
             const res = await api.post('/api/favourites/toggle', { productId });
             if (res.data?.success) {
-                if (res.data.action === 'added') setWishlistIds(p => [...p, productId]);
-                else setWishlistIds(p => p.filter(id => id !== productId));
+                if (res.data.action === 'added') {
+                    setWishlistIds(p => [...p, productId]);
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã thêm sản phẩm vào danh sách yêu thích!' }));
+                } else {
+                    setWishlistIds(p => p.filter(id => id !== productId));
+                    window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xóa sản phẩm khỏi danh sách yêu thích!' }));
+                }
             } else {
-                alert(res.data?.message || 'Vui lòng đăng nhập!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: res.data?.message || 'Vui lòng đăng nhập!' }));
             }
         } catch (err) {
             if (err.response?.status === 401) {
-                alert('Vui lòng đăng nhập!');
+                window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Vui lòng đăng nhập!' }));
                 navigate('/login');
             }
         }
@@ -379,24 +384,24 @@ const Home = () => {
                 {/* ══════════════════════════════════════════
                     FEATURES BAR
                 ══════════════════════════════════════════ */}
-                <div className="god-features-bar text-white py-4">
+                <div className="god-features-bar py-4">
                     <div className="container">
                         <div className="row g-3 justify-content-center">
                             {[
-                                { icon: 'fa-truck-fast',    title: 'Miễn Phí Vận Chuyển', sub: 'Đơn từ 500K hoặc thẻ VIP' },
-                                { icon: 'fa-rotate-left',   title: '7 Ngày Đổi Trả',       sub: 'Dễ dàng, không phiền hà' },
-                                { icon: 'fa-shield-halved', title: '100% Chính Hãng',       sub: 'Cam kết chất lượng Authentic' },
-                                { icon: 'fa-headset',       title: 'Hỗ Trợ 24/7',          sub: 'Đội ngũ CSKH chu đáo' },
+                                { icon: 'fa-truck-fast',    title: 'MIỄN PHÍ VẬN CHUYỂN', sub: 'Ưu đãi theo Hạng thành viên' },
+                                { icon: 'fa-credit-card',   title: 'THANH TOÁN DỄ DÀNG',   sub: 'Hỗ trợ COD & Thanh toán PayOS' },
+                                { icon: 'fa-shield-halved', title: '100% CHÍNH HÃNG',       sub: 'Cam kết chất lượng Authentic' },
+                                { icon: 'fa-headset',       title: 'HỖ TRỢ 24/7',          sub: 'Đội ngũ CSKH chu đáo' },
                             ].map((f, i) => (
                                 <div key={i}
-                                     className="col-lg-3 col-md-6 d-flex align-items-center justify-content-start justify-content-lg-center gap-3 border-start-lg">
+                                     className="col-lg-3 col-md-6 d-flex align-items-center justify-content-start justify-content-lg-center gap-3">
                                     <div className="feature-icon">
                                         <i className={`fa-solid ${f.icon} text-danger fs-3`} />
                                     </div>
                                     <div>
-                                        <h6 className="font-oswald text-uppercase m-0"
-                                            style={{ fontSize: 14, letterSpacing: 1 }}>{f.title}</h6>
-                                        <p className="m-0" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{f.sub}</p>
+                                        <h6 className="font-oswald text-uppercase m-0 fw-bold"
+                                            style={{ fontSize: 14, letterSpacing: 0.5, color: '#0f172a' }}>{f.title}</h6>
+                                        <p className="m-0" style={{ fontSize: 12, color: '#64748b' }}>{f.sub}</p>
                                     </div>
                                 </div>
                             ))}

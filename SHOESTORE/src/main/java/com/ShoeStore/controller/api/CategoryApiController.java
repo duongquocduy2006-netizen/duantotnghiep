@@ -37,8 +37,19 @@ public class CategoryApiController {
     // 3. Thêm mới danh mục (POST)
     @PostMapping
     public ResponseEntity<?> createCategory(@RequestBody Category category) {
+        if (category.getName() == null || category.getName().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("{\"error\": \"Tên danh mục không được để trống!\"}");
+        }
+        String cleanName = category.getName().trim();
+        boolean exists = categoryRepo.findAll().stream()
+                .anyMatch(c -> c.getName() != null && c.getName().trim().equalsIgnoreCase(cleanName));
+        if (exists) {
+            return ResponseEntity.badRequest().body("{\"error\": \"Tên danh mục '" + cleanName + "' đã tồn tại! Vui lòng nhập tên khác.\"}");
+        }
+
+        category.setName(cleanName);
         if (category.getSlug() == null || category.getSlug().isBlank()) {
-            category.setSlug(generateSlug(category.getName()));
+            category.setSlug(generateSlug(cleanName));
         }
         try {
             Category saved = categoryRepo.save(category);
@@ -52,13 +63,25 @@ public class CategoryApiController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateCategory(@PathVariable Integer id, @RequestBody Category categoryDetails) {
         return categoryRepo.findById(id).map(category -> {
-            category.setName(categoryDetails.getName());
+            if (categoryDetails.getName() != null) {
+                String cleanName = categoryDetails.getName().trim();
+                if (cleanName.isEmpty()) {
+                    return ResponseEntity.badRequest().body("{\"error\": \"Tên danh mục không được để trống!\"}");
+                }
+                boolean exists = categoryRepo.findAll().stream()
+                        .anyMatch(c -> c.getName() != null && !c.getId().equals(id) && c.getName().trim().equalsIgnoreCase(cleanName));
+                if (exists) {
+                    return ResponseEntity.badRequest().body("{\"error\": \"Tên danh mục '" + cleanName + "' đã bị trùng lặp!\"}");
+                }
+                category.setName(cleanName);
+            }
+
             category.setActive(categoryDetails.isActive()); 
             
             if (categoryDetails.getSlug() != null && !categoryDetails.getSlug().isBlank()) {
                 category.setSlug(categoryDetails.getSlug());
-            } else {
-                category.setSlug(generateSlug(categoryDetails.getName()));
+            } else if (category.getName() != null) {
+                category.setSlug(generateSlug(category.getName()));
             }
             
             try {
