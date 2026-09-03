@@ -370,11 +370,19 @@ public class CheckoutController {
                 pmId = 1;
             }
 
-            String addressSql = "INSERT INTO addresses (receiving_name, phone_number, street_detail, is_default, user_id) VALUES (?, ?, ?, 0, ?)";
+            try {
+                jdbc.update("UPDATE addresses SET is_default = 0 WHERE user_id = ?", accountId);
+            } catch (Exception ignored) {}
+
+            String addressSql = "INSERT INTO addresses (receiving_name, phone_number, street_detail, is_default, user_id) VALUES (?, ?, ?, 1, ?)";
             jdbc.update(addressSql, fullName, phone, fullAddress, accountId);
 
-            Long addressId = jdbc.queryForObject("SELECT TOP 1 id FROM addresses WHERE user_id = ? ORDER BY id DESC",
+            Long addressId = jdbc.queryForObject("SELECT TOP 1 id FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC",
                     Long.class, accountId);
+
+            try {
+                jdbc.update("UPDATE accounts SET full_name = ?, phone = ? WHERE id = ?", fullName, phone, accountId);
+            } catch (Exception ignored) {}
 
             long timestamp = System.currentTimeMillis() / 1000;
             String orderCode = "ORD-" + timestamp;

@@ -5,6 +5,13 @@ import api from '../services/api';
 import './Checkout.css';
 import './Membership.css';
 
+const normalizeName = (name) => {
+    if (!name) return '';
+    return name.toLowerCase()
+        .replace(/^(tỉnh|thành phố|tp\.|quận|huyện|thị xã|phường|xã|thị trấn)\s+/i, '')
+        .trim();
+};
+
 const Checkout = () => {
     const navigate = useNavigate();
 
@@ -140,75 +147,129 @@ const Checkout = () => {
                     }));
                 }
 
-                // Parse address
-                const parts = lastAddr.street_detail.split(',').map(p => p.trim());
-                if (parts.length >= 3) {
-                    const provinceText = parts[parts.length - 1];
-                    const districtText = parts.length >= 4 ? parts[parts.length - 2] : '';
-                    const wardText = parts.length >= 4 ? parts[parts.length - 3] : parts[parts.length - 2];
-                    const streetText = parts.slice(0, parts.length >= 4 ? parts.length - 3 : parts.length - 2).join(', ');
+                const fullStr = lastAddr.street_detail.trim();
+                const parts = fullStr.split(',').map(p => p.trim()).filter(Boolean);
 
-                    setStreetDetail(streetText);
+                // 1. Tìm Province phù hợp từ danh sách provincesList
+                let matchedProv = null;
+                for (let i = parts.length - 1; i >= 0; i--) {
+                    const partNorm = normalizeName(parts[i]);
+                    if (!partNorm) continue;
+                    matchedProv = provincesList.find(p => {
+                        const pNorm = normalizeName(p.ProvinceName);
+                        return pNorm === partNorm || pNorm.includes(partNorm) || partNorm.includes(pNorm);
+                    });
+                    if (matchedProv) break;
+                }
 
-                    // Match Province
-                    const matchedProv = provincesList.find(p => 
-                        p.ProvinceName.toLowerCase().includes(provinceText.toLowerCase()) ||
-                        provinceText.toLowerCase().includes(p.ProvinceName.toLowerCase())
-                    );
+                if (!matchedProv) {
+                    const fullNorm = normalizeName(fullStr);
+                    matchedProv = provincesList.find(p => fullNorm.includes(normalizeName(p.ProvinceName)));
+                }
 
-                    if (matchedProv) {
-                        const provId = matchedProv.ProvinceID;
-                        setSelectedProvince(provId);
+                if (matchedProv) {
+                    const provId = matchedProv.ProvinceID;
+                    setSelectedProvince(provId);
 
-                        // Match District and Wards
-                        try {
-                            const distRes = await api.get(`/api/ghn/districts?provinceId=${provId}`);
-                            if (distRes.data && distRes.data.code === 200) {
-                                const districtsList = distRes.data.data || [];
-                                setDistricts(districtsList);
+                    try {
+                        const distRes = await api.get(`/api/ghn/districts?provinceId=${provId}`);
+                        if (distRes.data && distRes.data.code === 200) {
+                            const districtsList = distRes.data.data || [];
+                            setDistricts(districtsList);
 
-                                const wardPromises = districtsList.map(async (d) => {
-                                    try {
-                                        const wRes = await api.get(`/api/ghn/wards?districtId=${d.DistrictID}`);
-                                        if (wRes.data && wRes.data.code === 200) {
-                                            return (wRes.data.data || []).map(w => ({
-                                                ...w,
-                                                DistrictID: d.DistrictID,
-                                                DistrictName: d.DistrictName
-                                            }));
-                                        }
-                                    } catch (err) {
-                                        console.error('Lỗi tải xã prefill:', err);
+                            const wardPromises = districtsList.map(async (d) => {
+                                try {
+                                    const wRes = await api.get(`/api/ghn/wards?districtId=${d.DistrictID}`);
+                                    if (wRes.data && wRes.data.code === 200) {
+                                        return (wRes.data.data || []).map(w => ({
+                                            ...w,
+                                            DistrictID: d.DistrictID,
+                                            DistrictName: d.DistrictName
+                                        }));
                                     }
-                                    return [];
+                                } catch (err) {
+                                    console.error('Lỗi tải xã prefill:', err);
+                                }
+                                return [];
+                            });
+
+                            const wardsNested = await Promise.all(wardPromises);
+                            const allWards = wardsNested.flat();
+                            allWards.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
+
+                            // 2. Tìm Phường/Xã (Ward) & Quận/Huyện (District)
+                            let matchedWard = null;
+                            for (let i = 0; i < parts.length; i++) {
+                                const partNorm = normalizeName(parts[i]);
+                                if (partNorm.length < 2) continue;
+                                matchedWard = allWards.find(w => {
+                                    const wNorm = normalizeName(w.WardName);
+                                    return wNorm === partNorm || wNorm.includes(partNorm) || partNorm.includes(wNorm);
                                 });
+                                if (matchedWard) break;
+                            }
 
-                                const wardsNested = await Promise.all(wardPromises);
-                                const allWards = wardsNested.flat();
-                                allWards.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
-                                setWards(allWards);
+                            if (!matchedWard) {
+                                const fullNorm = normalizeName(fullStr);
+                                matchedWard = allWards.find(w => {
+                                    const wNorm = normalizeName(w.WardName);
+                                    return wNorm.length >= 3 && fullNorm.includes(wNorm);
+                                });
+                            }
 
-                                const matchedWard = allWards.find(w => 
-                                    w.WardName.toLowerCase().includes(wardText.toLowerCase()) ||
-                                    wardText.toLowerCase().includes(w.WardName.toLowerCase())
-                                );
+                            if (matchedWard) {
+                                setSelectedWard(matchedWard.WardCode);
+                                setSelectedDistrict(matchedWard.DistrictID);
+                                const districtWards = allWards.filter(w => w.DistrictID === matchedWard.DistrictID);
+                                setWards(districtWards);
+                                calculateGHNFee(matchedWard.DistrictID, matchedWard.WardCode, cartTotal, accountData ? accountData.membership_rank_id : null);
+                            } else {
+                                // Nếu chưa tìm thấy Xã, tìm Huyện
+                                let matchedDist = null;
+                                for (let i = 0; i < parts.length; i++) {
+                                    const partNorm = normalizeName(parts[i]);
+                                    if (partNorm.length < 2) continue;
+                                    matchedDist = districtsList.find(d => {
+                                        const dNorm = normalizeName(d.DistrictName);
+                                        return dNorm === partNorm || dNorm.includes(partNorm) || partNorm.includes(dNorm);
+                                    });
+                                    if (matchedDist) break;
+                                }
 
-                                if (matchedWard) {
-                                    setSelectedWard(matchedWard.WardCode);
-                                    setSelectedDistrict(matchedWard.DistrictID);
-                                    const districtWards = allWards.filter(w => w.DistrictID === matchedWard.DistrictID);
-                                    setWards(districtWards);
-                                    // calculate fee
-                                    calculateGHNFee(matchedWard.DistrictID, matchedWard.WardCode, cartTotal, accountData.membership_rank_id);
+                                if (matchedDist) {
+                                    setSelectedDistrict(matchedDist.DistrictID);
+                                    try {
+                                        const wRes = await api.get(`/api/ghn/wards?districtId=${matchedDist.DistrictID}`);
+                                        if (wRes.data && wRes.data.code === 200) {
+                                            const districtWards = wRes.data.data || [];
+                                            districtWards.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
+                                            setWards(districtWards);
+                                            if (districtWards.length > 0) {
+                                                setSelectedWard(districtWards[0].WardCode);
+                                                calculateGHNFee(matchedDist.DistrictID, districtWards[0].WardCode, cartTotal, accountData ? accountData.membership_rank_id : null);
+                                            }
+                                        }
+                                    } catch (err) {}
                                 }
                             }
-                        } catch (err) {
-                            console.error('Lỗi tải huyện khi prefill:', err);
                         }
+                    } catch (err) {
+                        console.error('Lỗi tải huyện khi prefill:', err);
                     }
-                } else {
-                    setStreetDetail(lastAddr.street_detail);
                 }
+
+                // Đặt streetDetail
+                let cleanStreet = fullStr;
+                if (matchedProv) {
+                    const filtered = parts.filter(p => {
+                        const pNorm = normalizeName(p);
+                        return pNorm !== normalizeName(matchedProv.ProvinceName);
+                    });
+                    if (filtered.length > 0) {
+                        cleanStreet = filtered.join(', ');
+                    }
+                }
+                setStreetDetail(cleanStreet || fullStr);
             }
 
             setLoading(false);
@@ -251,18 +312,17 @@ const Checkout = () => {
             zoomControl: true
         });
 
-        // Use CartoDB Voyager tiles (fast, reliable, beautiful, no adblock blocking)
-        const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        // Use standard OpenStreetMap tiles with multiple subdomains and fallback
+        const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxZoom: 19,
-            subdomains: 'abcd'
+            subdomains: ['a', 'b', 'c']
         });
 
-        // Fallback to OSM standard if any tile fails
         tileLayer.on('tileerror', (error) => {
             if (error.coords && error.tile) {
                 const { z, x, y } = error.coords;
-                error.tile.src = `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`;
+                error.tile.src = `https://a.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`;
             }
         });
 
@@ -271,12 +331,17 @@ const Checkout = () => {
 
         // Force Leaflet to recalculate dimensions after DOM renders
         const invalidate = () => {
-            if (m) m.invalidateSize();
+            if (m) {
+                try { m.invalidateSize(true); } catch (e) {}
+            }
         };
         invalidate();
+        requestAnimationFrame(invalidate);
         setTimeout(invalidate, 50);
-        setTimeout(invalidate, 200);
-        setTimeout(invalidate, 500);
+        setTimeout(invalidate, 150);
+        setTimeout(invalidate, 300);
+        setTimeout(invalidate, 600);
+        setTimeout(invalidate, 1200);
 
         reverseGeocode(defaultLat, defaultLng);
 
@@ -291,6 +356,40 @@ const Checkout = () => {
             const center = m.getCenter();
             reverseGeocode(center.lat, center.lng);
         });
+    };
+
+    const enrichVietnameseAddress = (rawAddrName) => {
+        if (!rawAddrName) return rawAddrName;
+
+        const hasProv = provinces.some(p => {
+            const pNorm = normalizeName(p.ProvinceName);
+            return pNorm && normalizeName(rawAddrName).includes(pNorm);
+        });
+
+        if (hasProv) return rawAddrName;
+
+        const normRaw = normalizeName(rawAddrName);
+        if (!normRaw) return rawAddrName;
+
+        if (selectedProvince) {
+            const curP = provinces.find(p => String(p.ProvinceID) === String(selectedProvince));
+            if (curP) {
+                const curD = districts.find(d => normalizeName(rawAddrName).includes(normalizeName(d.DistrictName)));
+                if (curD) {
+                    return `${rawAddrName}, ${curD.DistrictName}, ${curP.ProvinceName}`;
+                }
+                return `${rawAddrName}, ${curP.ProvinceName}`;
+            }
+        }
+
+        for (const p of provinces) {
+            const pNorm = normalizeName(p.ProvinceName);
+            if (pNorm && (pNorm.includes(normRaw) || normRaw.includes(pNorm))) {
+                return `${rawAddrName}, ${p.ProvinceName}`;
+            }
+        }
+
+        return rawAddrName;
     };
 
     const formatVietnameseAddress = (addr, rawDisplayName) => {
@@ -336,7 +435,6 @@ const Checkout = () => {
             const wardLower = wardRaw.toLowerCase();
             const distLower = districtRaw.toLowerCase();
 
-            // Bỏ qua nếu cityRaw trùng tên phường hoặc quận (tránh biến "Cái Răng" thành "Tỉnh Cái Răng")
             if (cityLower !== wardLower && cityLower !== distLower) {
                 if (/^(thành phố|tỉnh|tp\.)/i.test(cityRaw)) {
                     cityPart = cityRaw;
@@ -348,7 +446,6 @@ const Checkout = () => {
             }
         }
 
-        // Nếu cityPart bị trống, tìm tỉnh từ display_name hoặc danh sách tỉnh GHN
         if (!cityPart && rawDisplayName) {
             const matchedP = provinces.find(p => rawDisplayName.toLowerCase().includes(p.ProvinceName.toLowerCase().replace(/^(tỉnh|thành phố|tp\.)\s+/i, '').trim()));
             if (matchedP) {
@@ -356,7 +453,6 @@ const Checkout = () => {
             }
         }
 
-        // Lọc danh sách các mục duy nhất
         const candidates = [roadPart, wardPart, districtPart, cityPart].filter(Boolean);
         const finalParts = [];
 
@@ -391,7 +487,6 @@ const Checkout = () => {
         let addressName = null;
         let addressObj = null;
 
-        // 1. Try Nominatim (OSM primary)
         try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&accept-language=vi`);
             if (res.ok) {
@@ -405,7 +500,6 @@ const Checkout = () => {
             console.warn("Nominatim failed, trying Photon fallback...", e);
         }
 
-        // 2. Try Photon (Komoot OSM Geocoder)
         if (!addressName) {
             try {
                 const res = await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}&lang=vi`);
@@ -427,7 +521,6 @@ const Checkout = () => {
             }
         }
 
-        // 3. Try BigDataCloud Free Client Geocode API
         if (!addressName) {
             try {
                 const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=vi`);
@@ -447,10 +540,11 @@ const Checkout = () => {
             }
         }
 
-        // Fallback if all 3 failed:
         if (!addressName) {
             addressName = `Vị trí tại tọa độ (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
             addressObj = { road: 'Vị trí đã chọn trên bản đồ' };
+        } else {
+            addressName = enrichVietnameseAddress(addressName);
         }
 
         setResolvedAddress({
@@ -696,160 +790,165 @@ const Checkout = () => {
     const confirmLocation = async () => {
         if (!resolvedAddress) return;
         const addr = resolvedAddress.address || {};
+        const fullDisp = resolvedAddress.display_name || '';
 
-        // 1. Match Province
-        const provText = addr.city || addr.state || addr.province || '';
-        if (provText) {
-            const matchedProv = provinces.find(p => 
-                p.ProvinceName.toLowerCase().includes(provText.toLowerCase()) ||
-                provText.toLowerCase().includes(p.ProvinceName.toLowerCase())
-            );
+        // Thu thập các phần chữ gợi ý vị trí
+        const textHints = [
+            addr.city, addr.state, addr.province, addr.county,
+            addr.city_district, addr.district, addr.suburb, addr.town,
+            addr.village, addr.quarter, addr.commune, addr.neighbourhood,
+            ...fullDisp.split(',').map(s => s.trim())
+        ].filter(Boolean);
 
-            if (matchedProv) {
-                const provId = matchedProv.ProvinceID;
-                setSelectedProvince(provId);
+        // 1. Tìm Tỉnh / Thành phố
+        let matchedProv = null;
+        for (const hint of textHints) {
+            const normHint = normalizeName(hint);
+            if (!normHint || normHint.length < 2) continue;
+            matchedProv = provinces.find(p => {
+                const normP = normalizeName(p.ProvinceName);
+                return normP === normHint || normP.includes(normHint) || normHint.includes(normP);
+            });
+            if (matchedProv) break;
+        }
 
-                // 2. Load all wards then match
+        // Nếu chưa tìm thấy Tỉnh từ gợi ý, dùng Tỉnh đang được chọn trên giao diện nếu có
+        if (!matchedProv && selectedProvince) {
+            matchedProv = provinces.find(p => String(p.ProvinceID) === String(selectedProvince));
+        }
+
+        let provId = matchedProv ? matchedProv.ProvinceID : null;
+        let districtsList = [];
+        let allWards = [];
+
+        if (provId) {
+            setSelectedProvince(provId);
+            try {
+                const res = await api.get(`/api/ghn/districts?provinceId=${provId}`);
+                if (res.data && res.data.code === 200) {
+                    districtsList = res.data.data || [];
+                    setDistricts(districtsList);
+
+                    const wardPromises = districtsList.map(async (d) => {
+                        try {
+                            const wRes = await api.get(`/api/ghn/wards?districtId=${d.DistrictID}`);
+                            if (wRes.data && wRes.data.code === 200) {
+                                return (wRes.data.data || []).map(w => ({
+                                    ...w,
+                                    DistrictID: d.DistrictID,
+                                    DistrictName: d.DistrictName
+                                }));
+                            }
+                        } catch (err) {
+                            console.error('Lỗi tải xã khi geocode:', err);
+                        }
+                        return [];
+                    });
+
+                    const wardsNested = await Promise.all(wardPromises);
+                    allWards = wardsNested.flat();
+                    allWards.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
+                    setWards(allWards);
+                }
+            } catch (err) {
+                console.error('Lỗi tải GHN theo provId:', err);
+            }
+        }
+
+        // 2. Tìm Xã & Huyện
+        let matchedWard = null;
+
+        if (allWards.length > 0) {
+            for (const hint of textHints) {
+                const normHint = normalizeName(hint);
+                if (!normHint || normHint.length < 2) continue;
+                matchedWard = allWards.find(w => {
+                    const normW = normalizeName(w.WardName);
+                    return normW === normHint || normW.includes(normHint) || normHint.includes(normW);
+                });
+                if (matchedWard) break;
+            }
+        }
+
+        // Tìm toàn cục nếu Tỉnh hoặc Xã chưa khớp (VD: địa chỉ bản đồ chỉ ghi "Phường Cái Răng" không kèm chữ "Cần Thơ")
+        if (!matchedWard && !provId) {
+            for (const p of provinces) {
+                if (matchedWard) break;
                 try {
-                    const res = await api.get(`/api/ghn/districts?provinceId=${provId}`);
+                    const res = await api.get(`/api/ghn/districts?provinceId=${p.ProvinceID}`);
                     if (res.data && res.data.code === 200) {
-                        const districtsList = res.data.data || [];
-                        setDistricts(districtsList);
-
-                        const wardPromises = districtsList.map(async (d) => {
-                            try {
-                                const wRes = await api.get(`/api/ghn/wards?districtId=${d.DistrictID}`);
-                                if (wRes.data && wRes.data.code === 200) {
-                                    return (wRes.data.data || []).map(w => ({
-                                        ...w,
-                                        DistrictID: d.DistrictID,
-                                        DistrictName: d.DistrictName
-                                    }));
-                                }
-                            } catch (err) {
-                                console.error('Lỗi tải xã khi geocode:', err);
-                            }
-                            return [];
-                        });
-
-                        const wardsNested = await Promise.all(wardPromises);
-                        const allWards = wardsNested.flat();
-                        allWards.sort((a, b) => a.WardName.localeCompare(b.WardName, 'vi'));
-                        setWards(allWards);
-
-                        // Collect all possible ward text candidates from OSM address
-                        const wardCandidates = [
-                            addr.suburb, addr.village, addr.quarter, addr.town, 
-                            addr.commune, addr.city_district, addr.neighbourhood
-                        ].filter(Boolean);
-
-                        let matchedWard = null;
-
-                        // Try each candidate
-                        for (const candidate of wardCandidates) {
+                        const pDistricts = res.data.data || [];
+                        for (const d of pDistricts) {
                             if (matchedWard) break;
-                            const candidateLower = candidate.toLowerCase();
-                            // Try exact includes match
-                            matchedWard = allWards.find(w => {
-                                const wNameLower = w.WardName.toLowerCase();
-                                return wNameLower.includes(candidateLower) || candidateLower.includes(wNameLower);
-                            });
-                            if (!matchedWard) {
-                                // Try stripped prefix match (remove Phường/Xã/Thị trấn)
-                                const strippedCandidate = candidateLower.replace(/^(phường|xã|thị trấn)\s+/i, '').trim();
-                                if (strippedCandidate) {
-                                    matchedWard = allWards.find(w => {
-                                        const strippedWard = w.WardName.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/i, '').trim();
-                                        return strippedWard === strippedCandidate || strippedWard.includes(strippedCandidate) || strippedCandidate.includes(strippedWard);
+                            const wRes = await api.get(`/api/ghn/wards?districtId=${d.DistrictID}`);
+                            if (wRes.data && wRes.data.code === 200) {
+                                const pWards = wRes.data.data || [];
+                                for (const hint of textHints) {
+                                    const normHint = normalizeName(hint);
+                                    if (!normHint || normHint.length < 2) continue;
+                                    const foundW = pWards.find(w => {
+                                        const normW = normalizeName(w.WardName);
+                                        return normW === normHint || normW.includes(normHint) || normHint.includes(normW);
                                     });
+                                    if (foundW) {
+                                        matchedWard = {
+                                            ...foundW,
+                                            DistrictID: d.DistrictID,
+                                            DistrictName: d.DistrictName,
+                                            ProvinceID: p.ProvinceID,
+                                            ProvinceName: p.ProvinceName
+                                        };
+                                        provId = p.ProvinceID;
+                                        setSelectedProvince(p.ProvinceID);
+                                        setDistricts(pDistricts);
+                                        allWards = pWards.map(w => ({ ...w, DistrictID: d.DistrictID }));
+                                        break;
+                                    }
                                 }
                             }
-                        }
-
-                        // Final fallback: search display_name for any ward name
-                        if (!matchedWard && resolvedAddress.display_name) {
-                            const dispNameLower = resolvedAddress.display_name.toLowerCase();
-                            matchedWard = allWards.find(w => {
-                                const wNameLower = w.WardName.toLowerCase();
-                                return dispNameLower.includes(wNameLower);
-                            });
-                            if (!matchedWard) {
-                                matchedWard = allWards.find(w => {
-                                    const strippedWard = w.WardName.toLowerCase().replace(/^(phường|xã|thị trấn)\s+/i, '').trim();
-                                    return strippedWard.length >= 3 && dispNameLower.includes(strippedWard);
-                                });
-                            }
-                        }
-
-                        // District-level fallback: if no ward matched, try to find the district
-                        // and pick the first ward in that district
-                        if (!matchedWard) {
-                            const districtCandidates = [
-                                addr.city_district, addr.suburb, addr.village, 
-                                addr.quarter, addr.town, addr.commune
-                            ].filter(Boolean);
-
-                            let matchedDistrict = null;
-                            for (const candidate of districtCandidates) {
-                                if (matchedDistrict) break;
-                                const candidateLower = candidate.toLowerCase()
-                                    .replace(/^(phường|xã|thị trấn|quận|huyện|thị xã|thành phố)\s+/i, '').trim();
-                                if (candidateLower.length < 2) continue;
-                                matchedDistrict = districtsList.find(d => {
-                                    const dNameLower = d.DistrictName.toLowerCase()
-                                        .replace(/^(quận|huyện|thị xã|thành phố)\s+/i, '').trim();
-                                    return dNameLower === candidateLower || dNameLower.includes(candidateLower) || candidateLower.includes(dNameLower);
-                                });
-                            }
-
-                            // Also try matching from display_name
-                            if (!matchedDistrict && resolvedAddress.display_name) {
-                                const dispLower = resolvedAddress.display_name.toLowerCase();
-                                matchedDistrict = districtsList.find(d => {
-                                    const dNameLower = d.DistrictName.toLowerCase();
-                                    return dispLower.includes(dNameLower);
-                                });
-                            }
-
-                            if (matchedDistrict) {
-                                setSelectedDistrict(matchedDistrict.DistrictID);
-                                // Pick first ward in matched district so form is not empty
-                                const districtWards = allWards.filter(w => w.DistrictID === matchedDistrict.DistrictID);
-                                if (districtWards.length > 0) {
-                                    setSelectedWard(districtWards[0].WardCode);
-                                    setWards(districtWards);
-                                    calculateGHNFee(matchedDistrict.DistrictID, districtWards[0].WardCode);
-                                }
-                            }
-                        }
-
-                        if (matchedWard) {
-                            setSelectedWard(matchedWard.WardCode);
-                            setSelectedDistrict(matchedWard.DistrictID);
-                            const districtWards = allWards.filter(w => w.DistrictID === matchedWard.DistrictID);
-                            setWards(districtWards);
-                            calculateGHNFee(matchedWard.DistrictID, matchedWard.WardCode);
                         }
                     }
-                } catch (err) {
-                    console.error('Lỗi tải thông tin GHN sau geocode:', err);
+                } catch (e) {}
+            }
+        }
+
+        if (matchedWard) {
+            setSelectedWard(matchedWard.WardCode);
+            setSelectedDistrict(matchedWard.DistrictID);
+            const districtWards = allWards.filter(w => w.DistrictID === matchedWard.DistrictID);
+            setWards(districtWards.length > 0 ? districtWards : allWards);
+            calculateGHNFee(matchedWard.DistrictID, matchedWard.WardCode);
+        } else if (districtsList.length > 0) {
+            let matchedDistrict = null;
+            for (const hint of textHints) {
+                const normHint = normalizeName(hint);
+                if (!normHint || normHint.length < 2) continue;
+                matchedDistrict = districtsList.find(d => {
+                    const normD = normalizeName(d.DistrictName);
+                    return normD === normHint || normD.includes(normHint) || normHint.includes(normD);
+                });
+                if (matchedDistrict) break;
+            }
+
+            if (matchedDistrict) {
+                setSelectedDistrict(matchedDistrict.DistrictID);
+                const districtWards = allWards.filter(w => w.DistrictID === matchedDistrict.DistrictID);
+                if (districtWards.length > 0) {
+                    setSelectedWard(districtWards[0].WardCode);
+                    setWards(districtWards);
+                    calculateGHNFee(matchedDistrict.DistrictID, districtWards[0].WardCode);
                 }
             }
         }
 
-        // 3. Điền địa chỉ chi tiết = toàn bộ display_name gốc, không cắt bỏ gì
-        setStreetDetail(resolvedAddress.display_name || '');
+        // 3. Điền địa chỉ chi tiết
+        setStreetDetail(fullDisp || '');
         closeMapModal();
     };
 
 
 
-    const normalizeName = (name) => {
-        if (!name) return '';
-        return name.toLowerCase()
-            .replace(/^(tỉnh|thành phố|quận|huyện|thị xã|phường|xã|thị trấn)\s+/i, '')
-            .trim();
-    };
+
 
     const updateStreetDetailWithSelects = (newProvinceId, newDistrictId, newWardCode, currentStreetDetail, currentProvinces, currentDistricts, currentWards) => {
         const provinceObj = currentProvinces.find(p => String(p.ProvinceID) === String(newProvinceId));

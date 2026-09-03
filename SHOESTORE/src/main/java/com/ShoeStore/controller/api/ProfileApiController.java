@@ -59,7 +59,7 @@ public class ProfileApiController {
             if (freshAccount.get("saved_account_name") == null) freshAccount.put("saved_account_name", "");
 
             Long accountId = ((Number) freshAccount.get("id")).longValue();
-            String addressSql = "SELECT TOP 1 receiving_name, phone_number, street_detail FROM addresses WHERE user_id = ? ORDER BY id DESC";
+            String addressSql = "SELECT TOP 1 receiving_name, phone_number, street_detail FROM addresses WHERE user_id = ? ORDER BY is_default DESC, id DESC";
             java.util.List<Map<String, Object>> addresses = jdbc.queryForList(addressSql, accountId);
             Map<String, Object> lastAddress = addresses.isEmpty() ? null : addresses.get(0);
 
