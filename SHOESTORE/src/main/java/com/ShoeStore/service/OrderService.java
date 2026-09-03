@@ -20,6 +20,8 @@ public class OrderService {
             jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'cancel_reason') ALTER TABLE orders ADD cancel_reason NVARCHAR(500) NULL;");
             jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'external_transaction_id') ALTER TABLE orders ADD external_transaction_id NVARCHAR(255) NULL;");
             jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('orders') AND name = 'voucher_id') ALTER TABLE orders ADD voucher_id INT NULL;");
+            jdbc.execute("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('addresses') AND name = 'is_default') ALTER TABLE addresses ADD is_default BIT NULL DEFAULT 0;");
+            jdbc.execute("IF EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK__addresses__user___4E88ABD4') BEGIN ALTER TABLE addresses DROP CONSTRAINT FK__addresses__user___4E88ABD4; ALTER TABLE addresses ADD CONSTRAINT FK_addresses_accounts FOREIGN KEY (user_id) REFERENCES accounts(id); END");
         } catch (Exception e) {
             System.err.println("Error auto-checking orders schema in OrderService: " + e.getMessage());
         }
@@ -27,16 +29,18 @@ public class OrderService {
 
     public List<OrderDTO> getAllOrders(String keyword, Integer status) {
         StringBuilder sql = new StringBuilder(
-                "SELECT o.order_code, a.receiving_name, o.created_at, o.final_amount, o.status, pm.method_name " +
+                "SELECT o.order_code, COALESCE(a.receiving_name, acc.full_name, N'Khách vãng lai') as customer_name, o.created_at, o.final_amount, o.status, pm.method_name " +
                         "FROM orders o " +
                         "LEFT JOIN addresses a ON o.receiver_address_id = a.id " +
+                        "LEFT JOIN accounts acc ON o.user_id = acc.id " +
                         "LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id " +
                         "WHERE 1=1 ");
 
         List<Object> params = new java.util.ArrayList<>();
 
         if (keyword != null && !keyword.trim().isEmpty()) {
-            sql.append("AND (o.order_code LIKE ? OR a.receiving_name LIKE ?) ");
+            sql.append("AND (o.order_code LIKE ? OR a.receiving_name LIKE ? OR acc.full_name LIKE ?) ");
+            params.add("%" + keyword.trim() + "%");
             params.add("%" + keyword.trim() + "%");
             params.add("%" + keyword.trim() + "%");
         }
@@ -51,7 +55,7 @@ public class OrderService {
         return jdbc.query(sql.toString(), (rs, rowNum) -> {
             OrderDTO dto = new OrderDTO();
             dto.setOrderCode(rs.getString("order_code"));
-            dto.setCustomerName(rs.getString("receiving_name"));
+            dto.setCustomerName(rs.getString("customer_name"));
             dto.setCreatedAt(rs.getTimestamp("created_at"));
             dto.setFinalAmount(rs.getDouble("final_amount"));
             dto.setStatus(rs.getInt("status"));
