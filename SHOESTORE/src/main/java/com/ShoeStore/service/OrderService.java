@@ -131,6 +131,11 @@ public class OrderService {
         int currentPaymentStatus = order.get("payment_status") != null ? ((Number) order.get("payment_status")).intValue() : 0;
         String methodName = (String) order.get("method_name");
 
+        // Trừ kho khi chuyển sang trạng thái "Đang giao hàng" (2)
+        if (newStatus == 2 && oldStatus != 2) {
+            updateInventory(orderCode);
+        }
+
         // 2. Cập nhật trạng thái mới (kèm lý do hủy nếu có) + luôn cập nhật updated_at
         if (newStatus == 4 && cancelReason != null && !cancelReason.trim().isEmpty()) {
             jdbc.update("UPDATE orders SET status = ?, cancel_reason = ?, updated_at = GETDATE() WHERE order_code = ?",
@@ -153,8 +158,8 @@ public class OrderService {
 
         // Nếu chuyển sang trạng thái "Đã hủy" (4)
         if (newStatus == 4 && oldStatus != 4) {
-            // Khôi phục tồn kho nếu trước đó đã bị trừ (trạng thái Chờ duyệt (1), Đang giao (2), hoặc Thành công (3))
-            if (oldStatus == 1 || oldStatus == 2 || oldStatus == 3) {
+            // Khôi phục tồn kho chỉ khi trước đó đã bị trừ (trạng thái Đang giao (2), hoặc Thành công (3))
+            if (oldStatus == 2 || oldStatus == 3) {
                 restoreInventory(orderCode);
             }
 
@@ -259,12 +264,28 @@ public class OrderService {
     }
 
     public void updateInventory(String orderCode) {
-        // 1. Lấy danh sách sản phẩm (biến thể) và số lượng từ đơn hàng
-        String sqlItems = "SELECT oi.product_variant_id, oi.quantity " +
+        // 1. Lấy danh sách sản phẩm (biến thể), số lượng yêu cầu và tồn kho thực tế
+        String sqlItems = "SELECT oi.product_variant_id, oi.quantity, p.product_name, s.size_name, col.color_name, pv.quantity as stock_qty " +
                 "FROM order_items oi " +
                 "JOIN orders o ON oi.order_id = o.id " +
+                "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
+                "JOIN products p ON pv.product_id = p.id " +
+                "JOIN sizes s ON pv.size_id = s.id " +
+                "JOIN colors col ON pv.color_id = col.id " +
                 "WHERE o.order_code = ?";
         List<java.util.Map<String, Object>> items = jdbc.queryForList(sqlItems, orderCode);
+
+        // Kiểm tra tồn kho trước khi trừ
+        for (java.util.Map<String, Object> item : items) {
+            int stockQty = ((Number) item.get("stock_qty")).intValue();
+            int reqQty = ((Number) item.get("quantity")).intValue();
+            if (stockQty < reqQty) {
+                String pName = (String) item.get("product_name");
+                String sName = (String) item.get("size_name");
+                String cName = (String) item.get("color_name");
+                throw new IllegalStateException("Không đủ tồn kho cho sản phẩm: " + pName + " (Size: " + sName + ", Màu: " + cName + "). Tồn kho hiện tại: " + stockQty + ", Đơn hàng yêu cầu: " + reqQty);
+            }
+        }
 
         // 2. Trừ số lượng trong kho của từng biến thể
         for (java.util.Map<String, Object> item : items) {
@@ -551,10 +572,7 @@ public class OrderService {
         // 4. Xóa mặt hàng khỏi order_items
         jdbc.update("DELETE FROM order_items WHERE order_id = ? AND product_variant_id = ?", orderId, variantId);
 
-        // 5. Cộng lại số lượng tồn kho (Stock) cho biến thể sản phẩm đó
-        jdbc.update("UPDATE product_variants SET quantity = quantity + ? WHERE id = ?", quantity, variantId);
-
-        // 6. Tính toán lại tổng tiền mới của đơn hàng (total_amount)
+        // 5. Tính toán lại tổng tiền mới của đơn hàng (total_amount)
         String sumSql = "SELECT ISNULL(SUM(price * quantity), 0) FROM order_items WHERE order_id = ?";
         Double newTotalAmount = jdbc.queryForObject(sumSql, Double.class, orderId);
 
@@ -646,27 +664,7 @@ public class OrderService {
      * Hoàn kho → Xóa items → Tính lại tổng → Hủy nếu rỗng
      */
     private void processOrderAfterItemRemoval(Long orderId, Map<String, Object> order, Integer productId, Integer variantId) {
-        // Bước 1: Hoàn trả tồn kho cho các items bị xóa
-        String findItemsSql;
-        if (productId != null) {
-            findItemsSql = "SELECT oi.product_variant_id, oi.quantity FROM order_items oi " +
-                    "JOIN product_variants pv ON oi.product_variant_id = pv.id " +
-                    "WHERE oi.order_id = ? AND pv.product_id = ?";
-        } else {
-            findItemsSql = "SELECT oi.product_variant_id, oi.quantity FROM order_items oi " +
-                    "WHERE oi.order_id = ? AND oi.product_variant_id = ?";
-        }
-        Object paramId = productId != null ? productId : variantId;
-        List<Map<String, Object>> itemsToRemove = jdbc.queryForList(findItemsSql, orderId, paramId);
-
-        for (Map<String, Object> item : itemsToRemove) {
-            Integer vid = ((Number) item.get("product_variant_id")).intValue();
-            int qty = ((Number) item.get("quantity")).intValue();
-            // Hoàn trả tồn kho
-            jdbc.update("UPDATE product_variants SET quantity = quantity + ? WHERE id = ?", qty, vid);
-        }
-
-        // Bước 2: Xóa order_items
+        // Bước 1: Xóa order_items
         if (productId != null) {
             jdbc.update("DELETE FROM order_items WHERE order_id = ? AND product_variant_id IN " +
                     "(SELECT id FROM product_variants WHERE product_id = ?)", orderId, productId);

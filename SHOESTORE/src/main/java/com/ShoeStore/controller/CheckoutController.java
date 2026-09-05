@@ -433,9 +433,6 @@ public class CheckoutController {
                 }
             }
 
-            // Trừ tồn kho sản phẩm ngay khi đặt hàng
-            orderService.updateInventory(orderCode);
-
             // --- Post-Order Actions ---
             if (voucher != null) {
                 jdbc.update("UPDATE vouchers SET quantity = quantity - 1 WHERE id = ?", voucher.getId());
@@ -540,9 +537,6 @@ public class CheckoutController {
             String actualOrderCode = (String) order.get("order_code");
 
             System.out.println("Identified Order ID: " + orderId + " for User ID: " + userId);
-
-            // Khôi phục tồn kho sản phẩm trước khi xóa đơn hàng nháp
-            orderService.restoreInventory(actualOrderCode);
 
             // 2. Khôi phục giỏ hàng
             List<Map<String, Object>> items = jdbc

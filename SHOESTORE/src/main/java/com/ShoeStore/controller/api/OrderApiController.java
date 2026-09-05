@@ -336,8 +336,6 @@ public class OrderApiController {
                 }
             }
 
-            // Trừ tồn kho sản phẩm ngay khi đặt hàng
-            orderService.updateInventory(orderCode);
             // Cập nhật Voucher
             if (voucher != null) {
                 jdbc.update("UPDATE vouchers SET quantity = quantity - 1 WHERE id = ?", voucher.getId());
@@ -491,9 +489,6 @@ public class OrderApiController {
                 Long userId = ((Number) order.get("user_id")).longValue();
                 Integer vId = (Integer) order.get("voucher_id");
                 String actualOrderCode = (String) order.get("order_code");
-
-                // Khôi phục tồn kho vì đã bị trừ lúc đặt hàng
-                orderService.restoreInventory(actualOrderCode);
 
                 // Khôi phục lại giỏ hàng
                 List<Map<String, Object>> items = jdbc.queryForList("SELECT product_variant_id, quantity FROM order_items WHERE order_id = ?", orderId);
