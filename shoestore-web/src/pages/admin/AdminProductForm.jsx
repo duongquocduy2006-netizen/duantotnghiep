@@ -388,6 +388,7 @@ const AdminProductForm = () => {
     const [aiSuccessMsg, setAiSuccessMsg] = useState('');
     const [aiImageBase64, setAiImageBase64] = useState('');
     const [aiImagesBase64List, setAiImagesBase64List] = useState([]);
+    const [aiAddedImageIds, setAiAddedImageIds] = useState([]);
 
     // Tag-input: selected size/color names
     const [selectedSizes, setSelectedSizes] = useState([]);
@@ -469,8 +470,29 @@ const AdminProductForm = () => {
         }
     };
 
-    const handleResetAiForm = () => {
+    const handleResetAiForm = async () => {
         if (window.confirm("Bạn có chắc chắn muốn HỦY & XÓA TOÀN BỘ dữ liệu do AI điền tự động để làm mới không?")) {
+            // Server-side cleanup for edit mode
+            if (isEdit && id && aiAddedImageIds.length > 0) {
+                for (const imgId of aiAddedImageIds) {
+                    try {
+                        await api.delete(`/api/products/image/${imgId}`);
+                    } catch (err) {
+                        console.error(`Lỗi xóa ảnh AI (ID: ${imgId}) trên server:`, err);
+                    }
+                }
+            }
+
+            // Filter state images
+            if (isEdit && id) {
+                setImages(prev => prev.filter(img => !aiAddedImageIds.includes(img.id)));
+            } else {
+                setImages(prev => prev.filter(img => {
+                    const imgUrl = typeof img === 'string' ? img : img?.url;
+                    return !aiImagesBase64List.includes(imgUrl) && imgUrl !== aiImageBase64;
+                }));
+            }
+
             setProduct({ productName: '', description: '', status: 1, brandName: '', categoryId: '' });
             setVariant({ sizeId: '', colorId: '', price: '', quantity: '' });
             setSelectedSizes([]);
@@ -478,8 +500,10 @@ const AdminProductForm = () => {
             setVariantOverrides({});
             setAiImageBase64('');
             setAiImagesBase64List([]);
-            setImages([]);
+            setAiAddedImageIds([]);
             setAiSuccessMsg('');
+
+            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Đã xóa toàn bộ dữ liệu và ảnh do AI tạo.' }));
         }
     };
 
@@ -516,12 +540,19 @@ const AdminProductForm = () => {
 
             if (isEdit && id) {
                 try {
+                    const existingImgIds = new Set(images.map(img => img.id).filter(Boolean));
                     for (let i = 0; i < base64List.length; i++) {
                         await api.post(`/api/products/${id}/image`, { imageBase64: base64List[i] });
                     }
                     const prodRes = await api.get(`/api/products/${id}`);
                     if (prodRes.data && prodRes.data.images) {
-                        setImages(prodRes.data.images);
+                        const fetchedImages = prodRes.data.images;
+                        const newlyAddedIds = fetchedImages
+                            .map(img => img.id)
+                            .filter(imgId => imgId && !existingImgIds.has(imgId));
+
+                        setAiAddedImageIds(prev => [...prev, ...newlyAddedIds]);
+                        setImages(fetchedImages);
                     }
                 } catch (imgErr) {
                     console.error("Lỗi tự động lưu ảnh AI lên server:", imgErr);
@@ -682,6 +713,7 @@ const AdminProductForm = () => {
                 const response = await api.delete(`/api/products/image/${imageId}`);
                 if (response.data && response.data.success) {
                     setImages(images.filter(img => img.id !== imageId));
+                    setAiAddedImageIds(prev => prev.filter(aiId => aiId !== imageId));
                 }
             } catch (err) {
                 console.error("Lỗi xóa ảnh:", err);
