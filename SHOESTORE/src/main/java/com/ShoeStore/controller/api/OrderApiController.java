@@ -205,7 +205,7 @@ public class OrderApiController {
                     .mapToDouble(item -> ((Number) item.get("price")).doubleValue() * ((Number) item.get("quantity")).intValue())
                     .sum();
 
-            double tempShipping = shippingFee != null ? shippingFee : 30000;
+            double tempShipping = 30000.0;
             Integer userRankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class, accountId);
             if (userRankId == null) {
                 Integer points = jdbc.queryForObject("SELECT COALESCE(points, 0) FROM accounts WHERE id = ?", Integer.class, accountId);
@@ -220,7 +220,7 @@ public class OrderApiController {
                 Boolean freeShip = jdbc.queryForObject(
                         "SELECT COALESCE(free_shipping, 0) FROM membership_ranks WHERE id = ?", Boolean.class, userRankId);
                 if (Boolean.TRUE.equals(freeShip)) {
-                    tempShipping = 0;
+                    tempShipping = 0.0;
                 }
             }
             final double shipping = tempShipping;
@@ -258,7 +258,7 @@ public class OrderApiController {
                 }
             }
 
-            double finalTotal = total + shipping - discount;
+            double finalTotal = Math.max(0.0, total + shipping - discount);
 
             // Xác định payment method id
             Integer pmId;

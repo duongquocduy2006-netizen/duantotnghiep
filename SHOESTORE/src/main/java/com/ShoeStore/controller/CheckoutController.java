@@ -329,16 +329,14 @@ public class CheckoutController {
                         item -> ((Number) item.get("price")).doubleValue() * ((Number) item.get("quantity")).intValue())
                 .sum();
 
-        double shipping = 30000;
-        if (shippingFee == null) {
-            Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class,
-                    accountId);
-            if (rankId != null) {
-                Boolean freeShip = jdbc.queryForObject(
-                        "SELECT COALESCE(free_shipping, 0) FROM membership_ranks WHERE id = ?", Boolean.class, rankId);
-                if (Boolean.TRUE.equals(freeShip)) {
-                    shipping = 0;
-                }
+        double shipping = 30000.0;
+        Integer rankId = jdbc.queryForObject("SELECT membership_rank_id FROM accounts WHERE id = ?", Integer.class,
+                accountId);
+        if (rankId != null) {
+            Boolean freeShip = jdbc.queryForObject(
+                    "SELECT COALESCE(free_shipping, 0) FROM membership_ranks WHERE id = ?", Boolean.class, rankId);
+            if (Boolean.TRUE.equals(freeShip)) {
+                shipping = 0.0;
             }
         }
 
